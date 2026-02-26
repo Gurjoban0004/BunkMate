@@ -21,9 +21,12 @@ export default function KeyboardWrapper({
         // We use a plain View with no overflow manipulation —
         // overflowY:'auto' on a flex:1 div creates a new stacking
         // context in Safari/Chrome that breaks hit-testing on child inputs.
+        // 
+        // ⚡️ Fix: Added overflow: 'visible' to ensure child hit-targets 
+        // are never clipped or swallowed by the container's bounds.
         return (
-            <View style={[styles.container, style]}>
-                <View style={[styles.scrollContent, contentContainerStyle]}>
+            <View style={[styles.container, style, { overflow: 'visible' }]}>
+                <View style={[styles.scrollContent, contentContainerStyle, { overflow: 'visible' }]}>
                     {children}
                 </View>
             </View>

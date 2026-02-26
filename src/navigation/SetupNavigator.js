@@ -41,9 +41,12 @@ export default function SetupNavigator() {
                         // Explicit overflow visible ensures no child input
                         // gets clipped by the card container
                         overflow: 'visible',
+                        // Force pointer events on the card itself
+                        pointerEvents: 'auto',
                     },
                 }),
             }}
+            detachInactiveScreens={Platform.OS === 'web'}
         >
             <Stack.Screen
                 name="Welcome"

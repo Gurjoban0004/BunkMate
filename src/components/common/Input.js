@@ -30,44 +30,46 @@ export default function Input({
         const flatStyle = StyleSheet.flatten(style) || {};
 
         return (
-            <input
-                type={inputType}
-                value={value}
-                onChange={(e) => onChangeText(e.target.value)}
-                placeholder={placeholder}
-                onKeyDown={(e) => {
-                    if (e.key === 'Enter' && onSubmitEditing) onSubmitEditing();
-                }}
-                // autoCapitalize is valid on <input> for mobile browsers
-                autoCapitalize={autoCapitalize || 'off'}
-                style={{
-                    backgroundColor: COLORS.inputBackground,
-                    color: COLORS.textPrimary,
-                    paddingLeft: SPACING.md,
-                    paddingRight: SPACING.md,
-                    paddingTop: SPACING.md,
-                    paddingBottom: SPACING.md,
-                    borderRadius: BORDER_RADIUS.sm,
-                    border: `1px solid ${COLORS.border}`,
-                    // Must be >= 16px to prevent iOS Safari viewport zoom on focus
-                    fontSize: 16,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    width: '100%',
-                    pointerEvents: 'auto',
-                    cursor: 'text',
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
-                    // Ensure z-index is high enough
-                    position: 'relative',
-                    zIndex: 10,
-                    // Remove default appearance
-                    appearance: 'none',
-                    WebkitAppearance: 'none',
-                    ...flatStyle,
-                }}
-                {...props}
-            />
+            <div style={{ width: '100%', position: 'relative', zIndex: 100 }}>
+                <input
+                    type={inputType}
+                    value={value}
+                    onChange={(e) => onChangeText(e.target.value)}
+                    placeholder={placeholder}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && onSubmitEditing) onSubmitEditing();
+                    }}
+                    // autoCapitalize is valid on <input> for mobile browsers
+                    autoCapitalize={autoCapitalize || 'off'}
+                    style={{
+                        backgroundColor: COLORS.inputBackground,
+                        color: COLORS.textPrimary,
+                        paddingLeft: SPACING.md,
+                        paddingRight: SPACING.md,
+                        paddingTop: SPACING.md,
+                        paddingBottom: SPACING.md,
+                        borderRadius: BORDER_RADIUS.sm,
+                        border: `1px solid ${COLORS.border}`,
+                        // Must be >= 16px to prevent iOS Safari viewport zoom on focus
+                        fontSize: 16,
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                        width: '100%',
+                        pointerEvents: 'auto',
+                        cursor: 'text',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
+                        // Ensure z-index is high enough
+                        position: 'relative',
+                        zIndex: 10,
+                        // Remove default appearance
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        ...flatStyle,
+                    }}
+                    {...props}
+                />
+            </div>
         );
     }
 

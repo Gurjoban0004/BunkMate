@@ -39,6 +39,16 @@ if (Platform.OS === 'web') {
             font-size: max(16px, 1em) !important;
         }
 
+        /* ── Safari Hit-Testing Fix ───────────────────────────────────────
+           iOS Safari can sometimes miscalculate the touch targets of elements
+           nested inside flex-grow containers that are themselves inside
+           absolute-positioned navigation cards. We force the main app
+           container to be hit-testable and ensure no invisible overlays
+           are created by the bundler/runtime. */
+        #root, #root > div {
+            pointer-events: auto !important;
+        }
+
         /* ── Focus outline ────────────────────────────────────────────────
            Remove only from inputs, NOT from everything (*) — blanket
            outline:none on * can confuse WebKit's internal focus routing   */
