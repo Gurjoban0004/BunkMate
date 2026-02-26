@@ -6,6 +6,7 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
+    Platform
 } from 'react-native';
 import KeyboardWrapper from '../../components/common/KeyboardWrapper';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
@@ -30,16 +31,45 @@ const NameScreen = ({ navigation }) => {
 
                     <Text style={styles.title}>What should we call you?</Text>
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Your name"
-                        placeholderTextColor={COLORS.textMuted}
-                        value={name}
-                        onChangeText={setName}
-                        autoCapitalize="words"
-                        returnKeyType="done"
-                        onSubmitEditing={handleContinue}
-                    />
+                    {Platform.OS === 'web' ? (
+                        <input
+                            type="text"
+                            placeholder="Your name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleContinue();
+                            }}
+                            style={{
+                                width: '100%',
+                                backgroundColor: COLORS.cardBackground,
+                                borderRadius: BORDER_RADIUS.md,
+                                paddingLeft: SPACING.lg,
+                                paddingRight: SPACING.lg,
+                                paddingTop: SPACING.md,
+                                paddingBottom: SPACING.md,
+                                fontSize: FONT_SIZES.lg,
+                                color: COLORS.textPrimary,
+                                borderWidth: 2,
+                                borderStyle: 'solid',
+                                borderColor: COLORS.border,
+                                textAlign: 'center',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                            }}
+                        />
+                    ) : (
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Your name"
+                            placeholderTextColor={COLORS.textMuted}
+                            value={name}
+                            onChangeText={setName}
+                            autoCapitalize="words"
+                            returnKeyType="done"
+                            onSubmitEditing={handleContinue}
+                        />
+                    )}
 
                     <Text style={styles.subtitle}>
                         This helps personalize your experience
