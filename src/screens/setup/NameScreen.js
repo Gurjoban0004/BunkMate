@@ -36,7 +36,6 @@ const NameScreen = ({ navigation }) => {
                         placeholderTextColor={COLORS.textMuted}
                         value={name}
                         onChangeText={setName}
-                        autoFocus={true}
                         autoCapitalize="words"
                         returnKeyType="done"
                         onSubmitEditing={handleContinue}
