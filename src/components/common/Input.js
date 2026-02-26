@@ -8,18 +8,38 @@ export default function Input({
     placeholder,
     keyboardType = 'default',
     style,
+    // Strip out React Native-only props so they don't get spread onto
+    // a DOM <input> element and cause React warnings or Safari quirks
+    autoCapitalize,
+    returnKeyType,
+    onSubmitEditing,
+    placeholderTextColor,
     ...props
 }) {
     if (Platform.OS === 'web') {
-        const { autoCapitalize, returnKeyType, onSubmitEditing, placeholderTextColor, ...domProps } = props;
+        // Map RN keyboardType to HTML input type
+        const inputType = keyboardType === 'numeric' || keyboardType === 'number-pad'
+            ? 'number'
+            : keyboardType === 'email-address'
+            ? 'email'
+            : keyboardType === 'phone-pad'
+            ? 'tel'
+            : 'text';
+
+        // Flatten RN StyleSheet style object so we can spread it as inline CSS
+        const flatStyle = StyleSheet.flatten(style) || {};
+
         return (
             <input
-                {...domProps}
-                autoCapitalize={autoCapitalize}
-                type={keyboardType === 'numeric' ? 'number' : 'text'}
+                type={inputType}
                 value={value}
                 onChange={(e) => onChangeText(e.target.value)}
                 placeholder={placeholder}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && onSubmitEditing) onSubmitEditing();
+                }}
+                // autoCapitalize is valid on <input> for mobile browsers
+                autoCapitalize={autoCapitalize || 'off'}
                 style={{
                     backgroundColor: COLORS.inputBackground,
                     color: COLORS.textPrimary,
@@ -28,16 +48,19 @@ export default function Input({
                     paddingTop: SPACING.md,
                     paddingBottom: SPACING.md,
                     borderRadius: BORDER_RADIUS.sm,
-                    borderWidth: 1,
-                    borderStyle: 'solid',
-                    borderColor: COLORS.border,
-                    fontSize: 16, // typical body size 
-                    fontFamily: 'System', // fallback
+                    border: `1px solid ${COLORS.border}`,
+                    // Must be >= 16px to prevent iOS Safari viewport zoom on focus
+                    fontSize: 16,
                     outline: 'none',
                     boxSizing: 'border-box',
                     width: '100%',
-                    ...(StyleSheet.flatten(style) || {})
+                    pointerEvents: 'auto',
+                    cursor: 'text',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
+                    ...flatStyle,
                 }}
+                {...props}
             />
         );
     }
@@ -48,8 +71,11 @@ export default function Input({
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor={COLORS.textDisabled}
+            placeholderTextColor={placeholderTextColor || COLORS.textDisabled}
             keyboardType={keyboardType}
+            autoCapitalize={autoCapitalize}
+            returnKeyType={returnKeyType}
+            onSubmitEditing={onSubmitEditing}
             {...props}
         />
     );

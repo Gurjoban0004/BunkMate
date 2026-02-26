@@ -9,15 +9,6 @@ import {
 } from 'react-native';
 import { COLORS } from '../../theme/theme';
 
-/**
- * KeyboardWrapper — wraps screen content in a ScrollView that
- * automatically adjusts for the keyboard WITHOUT pushing the
- * top of the screen off-view.
- *
- * On iOS 15+, `automaticallyAdjustKeyboardInsets` handles everything.
- * On Android, extra bottom padding provides space.
- * Tap outside to dismiss the keyboard.
- */
 export default function KeyboardWrapper({
     children,
     scrollEnabled = true,
@@ -25,13 +16,11 @@ export default function KeyboardWrapper({
     contentContainerStyle,
     dismissOnTap = true,
 }) {
-    // 🌐 WEB-SPECIFIC IMPLEMENTATION
-    // Web browsers handle keyboards natively. React Native's synthetic touch responders
-    // (like keyboardShouldPersistTaps and TouchableWithoutFeedback) aggressively steal 
-    // focus on Safari macOS and iOS. We bypass them completely here.
     if (Platform.OS === 'web') {
-        // We use a pure View with overflowY instead of ScrollView to completely 
-        // bypass React Native Web's scroll touch responders, which cause Safari to cancel taps.
+        // On web the browser handles the keyboard natively.
+        // We use a plain View with no overflow manipulation —
+        // overflowY:'auto' on a flex:1 div creates a new stacking
+        // context in Safari/Chrome that breaks hit-testing on child inputs.
         return (
             <View style={[styles.container, style]}>
                 <View style={[styles.scrollContent, contentContainerStyle]}>
@@ -41,7 +30,6 @@ export default function KeyboardWrapper({
         );
     }
 
-    // 📱 NATIVE APP IMPLEMENTATION
     const scrollView = (
         <ScrollView
             style={[styles.container, style]}
@@ -54,7 +42,6 @@ export default function KeyboardWrapper({
             automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
             {children}
-            {/* Extra bottom spacer for keyboard on Android */}
             {Platform.OS === 'android' && <View style={styles.keyboardSpacer} />}
         </ScrollView>
     );

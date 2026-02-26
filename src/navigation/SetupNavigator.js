@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import NameScreen from '../screens/setup/NameScreen';
@@ -19,6 +20,29 @@ export default function SetupNavigator() {
                 headerTintColor: COLORS.textPrimary,
                 headerShadowVisible: false,
                 headerBackTitleVisible: false,
+                // ─── Web fix ───────────────────────────────────────────────
+                // On web, the default card-based transition leaves animating
+                // overlay divs in the DOM that have no pointer-events style.
+                // These invisible divs sit on top of the current screen and
+                // swallow every tap/click — including on your text inputs.
+                //
+                // Disabling the animation entirely prevents those overlay divs
+                // from ever being created, so touches reach your inputs normally.
+                ...(Platform.OS === 'web' && {
+                    animationEnabled: false,
+                    // cardStyle prevents the screen wrapper div from clipping
+                    // or creating a new stacking context that blocks events
+                    cardStyle: {
+                        backgroundColor: COLORS.background,
+                        // These two are the critical ones:
+                        // Without flex:1 the card div collapses and a sibling
+                        // overlay div ends up covering it in z-order
+                        flex: 1,
+                        // Explicit overflow visible ensures no child input
+                        // gets clipped by the card container
+                        overflow: 'visible',
+                    },
+                }),
             }}
         >
             <Stack.Screen

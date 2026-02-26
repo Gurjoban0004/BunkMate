@@ -28,7 +28,6 @@ const NameScreen = ({ navigation }) => {
             <KeyboardWrapper>
                 <View style={styles.content}>
                     <Text style={styles.emoji}>👋</Text>
-
                     <Text style={styles.title}>What should we call you?</Text>
 
                     {Platform.OS === 'web' ? (
@@ -40,6 +39,10 @@ const NameScreen = ({ navigation }) => {
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') handleContinue();
                             }}
+                            // autoFocus gives iOS Safari a user-gesture-linked
+                            // focus which is the only reliable way to open the
+                            // keyboard on a PWA on iOS 16.4+
+                            autoFocus={false}
                             style={{
                                 width: '100%',
                                 backgroundColor: COLORS.cardBackground,
@@ -48,14 +51,24 @@ const NameScreen = ({ navigation }) => {
                                 paddingRight: SPACING.lg,
                                 paddingTop: SPACING.md,
                                 paddingBottom: SPACING.md,
-                                fontSize: FONT_SIZES.lg,
+                                // Must be >= 16px or iOS Safari auto-zooms
+                                // the viewport on focus, which can cause the
+                                // input to scroll off screen
+                                fontSize: '16px',
                                 color: COLORS.textPrimary,
-                                borderWidth: 2,
-                                borderStyle: 'solid',
-                                borderColor: COLORS.border,
+                                border: `2px solid ${COLORS.border}`,
                                 textAlign: 'center',
                                 outline: 'none',
-                                boxSizing: 'border-box'
+                                boxSizing: 'border-box',
+                                // Explicit pointer-events and cursor ensure
+                                // the element is always tappable
+                                pointerEvents: 'auto',
+                                cursor: 'text',
+                                // -webkit-tap-highlight-color gives visual
+                                // tap feedback on iOS Safari PWA
+                                WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
+                                // Prevent touch-action interference
+                                touchAction: 'manipulation',
                             }}
                         />
                     ) : (

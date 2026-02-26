@@ -8,32 +8,64 @@ import { DEV_MODE, SKIP_SETUP, MOCK_SCENARIO } from './src/dev/config';
 import DevMenu from './src/dev/DevMenu';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 
+// ─── Web: Disable react-native-screens on web ─────────────────────────────────
+// react-native-screens injects ScreenContainer divs that leave ghost overlay
+// divs in the DOM during/after navigation transitions. These overlays have no
+// pointer-events style set, so they sit invisibly on top of your current screen
+// and swallow every tap and click — including on text inputs.
+//
+// Calling enableScreens(false) before any navigation renders forces
+// @react-navigation/stack to use plain View-based rendering on web,
+// completely bypassing the broken ScreenContainer behavior.
 if (Platform.OS === 'web') {
-    // 🌐 iOS/Mac Safari Bug Fix: 
-    // React Native Web applies user-select: none globally, which causes Safari 
-    // to instantly dismiss touches or refuse focus on text inputs.
+    // Dynamically import so it doesn't affect native bundles at all
+    const { enableScreens } = require('react-native-screens');
+    enableScreens(false);
+}
+
+if (Platform.OS === 'web') {
     const style = document.createElement('style');
     style.textContent = `
+        /* ── Core input fix ───────────────────────────────────────────────
+           React Native Web sets user-select:none globally. Safari uses this
+           as a signal to reject focus on tapped elements. We override just
+           for inputs so they behave like normal web text fields.           */
         input, textarea, [contenteditable] {
             -webkit-user-select: text !important;
             user-select: text !important;
             pointer-events: auto !important;
+            /* Prevent iOS Safari from zooming on focus (font-size < 16px) */
+            font-size: max(16px, 1em) !important;
         }
+
+        /* ── Navigation overlay fix ───────────────────────────────────────
+           @react-navigation/stack leaves transition card divs in the DOM.
+           Any card div that is not the active screen must never intercept
+           pointer events. We target the known RN Web class names here as
+           a belt-and-suspenders backup to the enableScreens(false) fix.  */
+        [data-testid="screen-container"] > * {
+            pointer-events: none;
+        }
+        [data-testid="screen-container"] > *:last-child {
+            pointer-events: auto;
+        }
+
+        /* ── Focus outline ────────────────────────────────────────────────
+           Remove only from inputs, NOT from everything (*) — blanket
+           outline:none on * can confuse WebKit's internal focus routing   */
         input:focus, textarea:focus {
             outline: none;
         }
     `;
-    document.head.append(style);
+    document.head.appendChild(style);
 }
 
 function AppContent() {
     const { state, dispatch, isLoading } = useApp();
     const [devReady, setDevReady] = useState(!DEV_MODE || !SKIP_SETUP);
 
-    // In dev mode with SKIP_SETUP, load mock data after the initial state loads
     useEffect(() => {
         if (DEV_MODE && SKIP_SETUP && !isLoading && !devReady) {
-            // Only load mock data if there's no existing saved data
             if (!state.setupComplete) {
                 const { MOCK_SCENARIOS } = require('./src/dev/mockData');
                 const mockData = MOCK_SCENARIOS[MOCK_SCENARIO] || MOCK_SCENARIOS.NORMAL;
