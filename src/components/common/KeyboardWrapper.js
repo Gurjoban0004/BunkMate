@@ -25,12 +25,31 @@ export default function KeyboardWrapper({
     contentContainerStyle,
     dismissOnTap = true,
 }) {
+    // 🌐 WEB-SPECIFIC IMPLEMENTATION
+    // Web browsers handle keyboards natively. React Native's synthetic touch responders
+    // (like keyboardShouldPersistTaps and TouchableWithoutFeedback) aggressively steal 
+    // focus on Safari macOS and iOS. We bypass them completely here.
+    if (Platform.OS === 'web') {
+        return (
+            <ScrollView
+                style={[styles.container, style]}
+                contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                scrollEnabled={scrollEnabled}
+            >
+                {children}
+            </ScrollView>
+        );
+    }
+
+    // 📱 NATIVE APP IMPLEMENTATION
     const scrollView = (
         <ScrollView
             style={[styles.container, style]}
             contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
-            keyboardShouldPersistTaps={Platform.OS === 'web' ? 'always' : 'handled'}
-            keyboardDismissMode={Platform.OS === 'web' ? 'none' : 'interactive'}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
             bounces={true}
             scrollEnabled={scrollEnabled}
@@ -42,7 +61,7 @@ export default function KeyboardWrapper({
         </ScrollView>
     );
 
-    if (dismissOnTap && Platform.OS !== 'web') {
+    if (dismissOnTap) {
         return (
             <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                 <View style={styles.wrapper}>{scrollView}</View>
