@@ -1,0 +1,54 @@
+{
+    "expo": {
+        "name": "BunkMate",
+        "slug": "bunkmate",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "dark",
+        "newArchEnabled": true,
+        "splash": {
+            "image": "./assets/splash-icon.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#1A1A2E"
+        },
+        "ios": {
+            "supportsTablet": false,
+            "bundleIdentifier": "com.bunkmate.app",
+            "infoPlist": {
+                "UIBackgroundModes": [
+                    "remote-notification"
+                ],
+                "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized insights and notifications."
+            }
+        },
+        "android": {
+            "package": "com.bunkmate.app",
+            "versionCode": 1,
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/adaptive-icon.png",
+                "backgroundColor": "#1A1A2E"
+            }
+        },
+        "web": {
+            "favicon": "./assets/favicon.png",
+            "name": "BunkMate",
+            "shortName": "BunkMate",
+            "themeColor": "#6C63FF",
+            "backgroundColor": "#1A1A2E",
+            "description": "Smart Attendance Tracker",
+            "display": "standalone",
+            "startUrl": "/",
+            "bundler": "metro"
+        },
+        "plugins": [
+            [
+                "expo-notifications",
+                {
+                    "icon": "./assets/icon.png",
+                    "color": "#6C63FF"
+                }
+            ]
+        ]
+    }
+}
