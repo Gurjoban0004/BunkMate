@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     Alert,
 } from 'react-native';
-import {} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { getUnmarkedByDate } from '../../utils/backlog';
 import Button from '../../components/common/Button';

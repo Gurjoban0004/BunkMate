@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import {} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../theme/theme';
