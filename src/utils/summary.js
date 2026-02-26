@@ -37,6 +37,9 @@ export function generateWeeklySummary(state) {
     const weekStart = getStartOfWeek(new Date());
     const weekEnd = getEndOfWeek(new Date());
 
+    const records = state.attendanceRecords || {};
+    const holidays = state.holidays || [];
+
     let totalClasses = 0;
     let attendedClasses = 0;
     const subjectStats = {};
@@ -48,8 +51,8 @@ export function generateWeeklySummary(state) {
         const d = new Date(weekStart);
         d.setDate(d.getDate() + i);
         const dateKey = getDateKey(d);
-        const dayRecord = state.attendanceRecords[dateKey];
-        const isHoliday = dayRecord?._holiday || (state.holidays || []).includes(dateKey);
+        const dayRecord = records[dateKey];
+        const isHoliday = dayRecord?._holiday || holidays.includes(dateKey);
 
         if (!dayRecord || isHoliday) {
             dailyStatus[dayNames[i]] = 'no_class';

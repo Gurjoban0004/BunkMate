@@ -4,7 +4,7 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    Alert,
+    ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
@@ -93,66 +93,70 @@ export default function TimeSlotsScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-            <View style={styles.content}>
-                <Text style={styles.header}>⏰ Your Class Timings</Text>
-                <Text style={styles.subtitle}>
-                    When do your classes start and end? We'll generate your slots automatically.
-                </Text>
-
-                <View style={styles.card}>
-                    <HourStepper
-                        label="First class starts at:"
-                        value={startHour}
-                        min={6}
-                        max={18}
-                        onChange={(val) => {
-                            setStartHour(val);
-                            if (val >= endHour) setEndHour(val + 1);
-                        }}
-                    />
-
-                    <View style={styles.divider} />
-
-                    <HourStepper
-                        label="Last class ends at:"
-                        value={endHour}
-                        min={startHour + 1}
-                        max={22}
-                        onChange={setEndHour}
-                    />
-                </View>
-
-                <View style={styles.card}>
-                    <HourStepper
-                        label="Lunch break starts at:"
-                        value={lunchStart}
-                        min={startHour + 1}
-                        max={endHour - 1}
-                        onChange={setLunchStart}
-                    />
-                    <Text style={styles.lunchSubtext}>
-                        Lunch break lasts for 1 hour
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.content}>
+                    <Text style={styles.header}>⏰ Your Class Timings</Text>
+                    <Text style={styles.subtitle}>
+                        When do your classes start and end? We'll generate your slots automatically.
                     </Text>
 
-                    <TouchableOpacity
-                        style={styles.checkboxRow}
-                        onPress={() => setHasLunchPattern(!hasLunchPattern)}
-                    >
-                        <View style={[styles.checkbox, hasLunchPattern && styles.checkboxActive]}>
-                            {hasLunchPattern && <Text style={styles.checkmark}>✓</Text>}
-                        </View>
-                        <Text style={styles.checkboxLabel}>Avoid scheduling classes during lunch</Text>
-                    </TouchableOpacity>
+                    <View style={styles.card}>
+                        <HourStepper
+                            label="First class starts at:"
+                            value={startHour}
+                            min={6}
+                            max={18}
+                            onChange={(val) => {
+                                setStartHour(val);
+                                if (val >= endHour) setEndHour(val + 1);
+                            }}
+                        />
+
+                        <View style={styles.divider} />
+
+                        <HourStepper
+                            label="Last class ends at:"
+                            value={endHour}
+                            min={startHour + 1}
+                            max={22}
+                            onChange={setEndHour}
+                        />
+                    </View>
+
+                    <View style={styles.card}>
+                        <HourStepper
+                            label="Lunch break starts at:"
+                            value={lunchStart}
+                            min={startHour + 1}
+                            max={endHour - 1}
+                            onChange={setLunchStart}
+                        />
+                        <Text style={styles.lunchSubtext}>
+                            Lunch break lasts for 1 hour
+                        </Text>
+
+                        <TouchableOpacity
+                            style={styles.checkboxRow}
+                            onPress={() => setHasLunchPattern(!hasLunchPattern)}
+                        >
+                            <View style={[styles.checkbox, hasLunchPattern && styles.checkboxActive]}>
+                                {hasLunchPattern && <Text style={styles.checkmark}>✓</Text>}
+                            </View>
+                            <Text style={styles.checkboxLabel}>Avoid scheduling classes during lunch</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.infoBox}>
+                        <Text style={styles.infoText}>
+                            💡 Each generated slot will be 1 hour long. You can easily merge slots together for 2-hour classes in the next step!
+                        </Text>
+                    </View>
                 </View>
 
-                <View style={styles.infoBox}>
-                    <Text style={styles.infoText}>
-                        💡 Each generated slot will be 1 hour long. You can easily merge slots together for 2-hour classes in the next step!
-                    </Text>
+                <View style={styles.footer}>
+                    <Button title="Generate Slots" onPress={handleContinue} />
                 </View>
-            </View>
-
-            <Button title="Continue to Timetable" onPress={handleContinue} />
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -161,6 +165,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
+    },
+    scrollContent: {
+        flexGrow: 1,
         padding: SPACING.lg,
     },
     content: {
@@ -274,5 +281,8 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.sm,
         color: COLORS.primary,
         lineHeight: 20,
+    },
+    footer: {
+        paddingTop: SPACING.md,
     }
 });

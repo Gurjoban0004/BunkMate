@@ -21,10 +21,13 @@ export function getSubjectAttendance(subjectId, state) {
     let recordedTotal = 0;
     let recordedAttended = 0;
 
-    Object.entries(state.attendanceRecords).forEach(([dateKey, dayRecord]) => {
+    const records = state.attendanceRecords || {};
+    const holidays = state.holidays || [];
+
+    Object.entries(records).forEach(([dateKey, dayRecord]) => {
         // Skip holidays
         if (dayRecord._holiday) return;
-        if (state.holidays?.includes(dateKey)) return;
+        if (holidays.includes(dateKey)) return;
 
         const record = dayRecord[subjectId];
         if (record) {
@@ -54,7 +57,8 @@ export function getSubjectAttendance(subjectId, state) {
  * This handles multiple sessions of the same subject in one day by summing their units.
  */
 export function getClassesForDay(state, dayName) {
-    const daySchedule = state.timetable[dayName] || [];
+    const timetable = state.timetable || {};
+    const daySchedule = timetable[dayName] || [];
 
     if (daySchedule.length === 0) return [];
 
@@ -111,8 +115,9 @@ export function getTodayClasses(state) {
  */
 export function getSubjectUnits(subjectId, state) {
     let maxUnits = 1;
+    const timetable = state.timetable || {};
 
-    Object.values(state.timetable).forEach((daySlots) => {
+    Object.values(timetable).forEach((daySlots) => {
         let consecutiveCount = 0;
         let lastSubject = null;
 

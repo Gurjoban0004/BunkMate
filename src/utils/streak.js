@@ -14,14 +14,16 @@
  */
 export function calculateOverallStreak(state) {
     let streak = 0;
-    const sortedDates = Object.keys(state.attendanceRecords).sort().reverse();
+    const records = state.attendanceRecords || {};
+    const holidays = state.holidays || [];
+    const sortedDates = Object.keys(records).sort().reverse();
 
     for (const dateKey of sortedDates) {
-        const dayRecords = state.attendanceRecords[dateKey];
+        const dayRecords = records[dateKey];
 
         // Skip holidays
         if (dayRecords._holiday) continue;
-        if (state.holidays?.includes(dateKey)) continue;
+        if (holidays.includes(dateKey)) continue;
 
         let allPresent = true;
         let hasClasses = false;
@@ -63,14 +65,16 @@ export function calculateOverallStreak(state) {
  */
 export function calculateSubjectStreak(subjectId, state) {
     let streak = 0;
-    const sortedDates = Object.keys(state.attendanceRecords).sort().reverse();
+    const records = state.attendanceRecords || {};
+    const holidays = state.holidays || [];
+    const sortedDates = Object.keys(records).sort().reverse();
 
     for (const dateKey of sortedDates) {
-        const dayRecords = state.attendanceRecords[dateKey];
+        const dayRecords = records[dateKey];
 
         // Skip holidays
         if (dayRecords._holiday) continue;
-        if (state.holidays?.includes(dateKey)) continue;
+        if (holidays.includes(dateKey)) continue;
 
         const record = dayRecords[subjectId];
         if (!record) continue; // No class that day

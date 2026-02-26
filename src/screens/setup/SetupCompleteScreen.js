@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import { useApp } from '../../context/AppContext';
@@ -15,17 +15,19 @@ export default function SetupCompleteScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.content}>
-                <Text style={styles.emoji}>🎉</Text>
-                <Text style={styles.title}>You're All Set!</Text>
-                <Text style={styles.subtitle}>
-                    Start tracking your attendance today.
-                </Text>
-            </View>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.content}>
+                    <Text style={styles.emoji}>🎉</Text>
+                    <Text style={styles.title}>You're All Set!</Text>
+                    <Text style={styles.subtitle}>
+                        Start tracking your attendance today.
+                    </Text>
+                </View>
 
-            <View style={styles.footer}>
-                <Button title="Go to Today" onPress={handleComplete} />
-            </View>
+                <View style={styles.footer}>
+                    <Button title="Go to Today" onPress={handleComplete} />
+                </View>
+            </ScrollView>
         </SafeAreaView>
     );
 }
@@ -34,6 +36,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
+    },
+    scrollContent: {
+        flexGrow: 1,
         padding: SPACING.screenPadding,
     },
     content: {

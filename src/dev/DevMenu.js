@@ -6,7 +6,6 @@ import {
     StyleSheet,
     Modal,
     ScrollView,
-    Alert,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme/theme';
 import { DEV_MODE, SHOW_DEV_MENU } from './config';

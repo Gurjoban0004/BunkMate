@@ -8,7 +8,6 @@ import {
     TouchableOpacity,
     Modal,
     TextInput,
-    Alert,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';

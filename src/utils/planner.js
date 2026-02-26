@@ -1,42 +1,6 @@
-import { getSubjectAttendance, calculatePercentage } from './attendance';
+import { getSubjectAttendance, calculatePercentage, getClassesForDay } from './attendance';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-/**
- * Get grouped classes for any day of the week.
- * Generalises getTodayClasses to work for any day.
- */
-export function getClassesForDay(state, dayName) {
-    const daySchedule = state.timetable[dayName] || [];
-    if (daySchedule.length === 0) return [];
-
-    const groupedClasses = [];
-    let currentGroup = null;
-
-    daySchedule.forEach((slot) => {
-        const timeSlot = state.timeSlots.find((ts) => ts.id === slot.slotId);
-        const subject = state.subjects.find((s) => s.id === slot.subjectId);
-        if (!timeSlot || !subject) return;
-
-        if (currentGroup && currentGroup.subjectId === slot.subjectId) {
-            currentGroup.endTime = timeSlot.end;
-            currentGroup.units += 1;
-        } else {
-            if (currentGroup) groupedClasses.push(currentGroup);
-            currentGroup = {
-                subjectId: slot.subjectId,
-                subjectName: subject.name,
-                color: subject.color,
-                startTime: timeSlot.start,
-                endTime: timeSlot.end,
-                units: 1,
-            };
-        }
-    });
-
-    if (currentGroup) groupedClasses.push(currentGroup);
-    return groupedClasses;
-}
 
 /**
  * Simulate skipping a class and return safety info.

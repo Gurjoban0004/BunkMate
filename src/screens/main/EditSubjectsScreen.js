@@ -7,7 +7,6 @@ import {
     ScrollView,
     TouchableOpacity,
     TextInput,
-    Alert,
     Modal,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';

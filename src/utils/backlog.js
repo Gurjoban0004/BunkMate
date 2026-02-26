@@ -11,6 +11,9 @@ export function getUnmarkedClasses(state) {
     const twoWeeksAgo = new Date(today);
     twoWeeksAgo.setDate(today.getDate() - 14);
 
+    const records = state.attendanceRecords || {};
+    const holidays = state.holidays || [];
+
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     for (let d = new Date(twoWeeksAgo); d < today; d.setDate(d.getDate() + 1)) {
@@ -18,14 +21,14 @@ export function getUnmarkedClasses(state) {
         const dayName = dayNames[d.getDay()];
 
         // Skip if holiday
-        if (state.attendanceRecords[dateKey]?._holiday) continue;
-        if ((state.holidays || []).includes(dateKey)) continue;
+        if (records[dateKey]?._holiday) continue;
+        if (holidays.includes(dateKey)) continue;
 
         // Get scheduled classes for this day
-        const scheduledClasses = getClassesForDay(dayName, state);
+        const scheduledClasses = getClassesForDay(state, dayName);
 
         scheduledClasses.forEach((classInfo) => {
-            const record = state.attendanceRecords[dateKey]?.[classInfo.subjectId];
+            const record = records[dateKey]?.[classInfo.subjectId];
             if (!record) {
                 unmarked.push({
                     date: dateKey,

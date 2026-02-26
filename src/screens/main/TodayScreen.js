@@ -6,7 +6,6 @@ import {
     StyleSheet,
     ScrollView,
     RefreshControl,
-    Alert,
     Modal,
     TouchableOpacity,
 } from 'react-native';
@@ -79,18 +78,9 @@ const TodayScreen = ({ navigation }) => {
     // Handlers
     const handleMarkAttendance = (subjectId, status, units) => {
         if (status === null) {
-            // Undo - remove the record
-            const newDayRecord = { ...state.attendanceRecords[todayKey] };
-            delete newDayRecord[subjectId];
             dispatch({
-                type: 'LOAD_STATE',
-                payload: {
-                    ...state,
-                    attendanceRecords: {
-                        ...state.attendanceRecords,
-                        [todayKey]: newDayRecord,
-                    },
-                },
+                type: 'REMOVE_ATTENDANCE',
+                payload: { date: todayKey, subjectId },
             });
         } else {
             dispatch({

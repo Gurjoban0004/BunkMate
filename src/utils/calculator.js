@@ -49,7 +49,8 @@ export function detectPattern(subjectId, state) {
     // Check which days this subject falls on
     const subjectDays = {};
     DAY_NAMES.forEach(day => {
-        const slots = state.timetable[day] || [];
+        const timetable = state.timetable || {};
+        const slots = timetable[day] || [];
         slots.forEach(slot => {
             if (slot.subjectId === subjectId) {
                 subjectDays[day] = true;
@@ -153,7 +154,8 @@ export function findBestBunkDay(subjectId, state, threshold = 75) {
     let bestReason = '';
 
     DAY_NAMES.forEach(day => {
-        const daySlots = state.timetable[day] || [];
+        const timetable = state.timetable || {};
+        const daySlots = timetable[day] || [];
         // Check if this subject is on this day
         const hasSubject = daySlots.some(s => s.subjectId === subjectId);
         if (!hasSubject) return;
@@ -256,7 +258,8 @@ export function getTrendInfo(trend) {
 export function estimateRemainingClasses(subjectId, state, weeksLeft = 10) {
     let classesPerWeek = 0;
     DAY_NAMES.forEach(day => {
-        const slots = state.timetable[day] || [];
+        const timetable = state.timetable || {};
+        const slots = timetable[day] || [];
         slots.forEach(slot => {
             if (slot.subjectId === subjectId) {
                 classesPerWeek++;
@@ -284,7 +287,8 @@ export function getNextClass(subjectId, state) {
         const dayName = jsToDay[checkDayIndex];
         if (!dayName) continue; // Skip Sunday
 
-        const slots = state.timetable[dayName] || [];
+        const timetable = state.timetable || {};
+        const slots = timetable[dayName] || [];
         for (const slot of slots) {
             if (slot.subjectId !== subjectId) continue;
 

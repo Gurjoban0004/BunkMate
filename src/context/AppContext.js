@@ -118,9 +118,22 @@ function appReducer(state, action) {
                 attendanceRecords: {
                     ...state.attendanceRecords,
                     [date]: {
-                        ...state.attendanceRecords[date],
+                        ...(state.attendanceRecords[date] || {}),
                         [subjectId]: { status, units, ...(isExtra ? { isExtra: true } : {}) },
                     },
+                },
+            };
+        }
+
+        case 'REMOVE_ATTENDANCE': {
+            const { date, subjectId } = action.payload;
+            const newDayRecord = { ...(state.attendanceRecords[date] || {}) };
+            delete newDayRecord[subjectId];
+            return {
+                ...state,
+                attendanceRecords: {
+                    ...state.attendanceRecords,
+                    [date]: newDayRecord,
                 },
             };
         }
@@ -190,15 +203,14 @@ function appReducer(state, action) {
 
         case 'REMOVE_HOLIDAY': {
             const removeKey = action.payload;
+            const existingRecord = state.attendanceRecords[removeKey] || {};
+            const { _holiday, ...remainingRecords } = existingRecord;
             return {
                 ...state,
                 holidays: (state.holidays || []).filter(h => h !== removeKey),
                 attendanceRecords: {
                     ...state.attendanceRecords,
-                    [removeKey]: Object.fromEntries(
-                        Object.entries(state.attendanceRecords[removeKey] || {})
-                            .filter(([key]) => key !== '_holiday')
-                    ),
+                    [removeKey]: remainingRecords,
                 },
             };
         }

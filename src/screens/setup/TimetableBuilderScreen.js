@@ -7,7 +7,6 @@ import {
     TouchableOpacity,
     Modal,
     TextInput,
-    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
