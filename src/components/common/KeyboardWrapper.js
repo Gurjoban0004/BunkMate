@@ -42,7 +42,7 @@ export default function KeyboardWrapper({
         </ScrollView>
     );
 
-    if (dismissOnTap) {
+    if (dismissOnTap && Platform.OS !== 'web') {
         return (
             <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                 <View style={styles.wrapper}>{scrollView}</View>
@@ -50,7 +50,7 @@ export default function KeyboardWrapper({
         );
     }
 
-    return scrollView;
+    return <View style={styles.wrapper}>{scrollView}</View>;
 }
 
 const styles = StyleSheet.create({
