@@ -58,6 +58,12 @@ export default function Input({
                     cursor: 'text',
                     touchAction: 'manipulation',
                     WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
+                    // Ensure z-index is high enough
+                    position: 'relative',
+                    zIndex: 10,
+                    // Remove default appearance
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
                     ...flatStyle,
                 }}
                 {...props}

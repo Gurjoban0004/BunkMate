@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { COLORS } from './src/theme/theme';
@@ -36,18 +37,6 @@ if (Platform.OS === 'web') {
             pointer-events: auto !important;
             /* Prevent iOS Safari from zooming on focus (font-size < 16px) */
             font-size: max(16px, 1em) !important;
-        }
-
-        /* ── Navigation overlay fix ───────────────────────────────────────
-           @react-navigation/stack leaves transition card divs in the DOM.
-           Any card div that is not the active screen must never intercept
-           pointer events. We target the known RN Web class names here as
-           a belt-and-suspenders backup to the enableScreens(false) fix.  */
-        [data-testid="screen-container"] > * {
-            pointer-events: none;
-        }
-        [data-testid="screen-container"] > *:last-child {
-            pointer-events: auto;
         }
 
         /* ── Focus outline ────────────────────────────────────────────────
@@ -107,11 +96,13 @@ function AppContent() {
 
 export default function App() {
     return (
-        <ErrorBoundary>
-            <AppProvider>
-                <AppContent />
-            </AppProvider>
-        </ErrorBoundary>
+        <SafeAreaProvider>
+            <ErrorBoundary>
+                <AppProvider>
+                    <AppContent />
+                </AppProvider>
+            </ErrorBoundary>
+        </SafeAreaProvider>
     );
 }
 

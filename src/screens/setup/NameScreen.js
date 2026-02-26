@@ -69,6 +69,12 @@ const NameScreen = ({ navigation }) => {
                                 WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
                                 // Prevent touch-action interference
                                 touchAction: 'manipulation',
+                                // Ensure z-index is high enough
+                                position: 'relative',
+                                zIndex: 10,
+                                // Remove default appearance
+                                appearance: 'none',
+                                WebkitAppearance: 'none',
                             }}
                         />
                     ) : (
