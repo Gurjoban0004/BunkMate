@@ -1,0 +1,10 @@
+src/dev/DevMenu.js
+src/screens/setup/TimeSlotsScreen.js
+src/screens/setup/TimetableScreen.js
+src/screens/setup/TimetableBuilderScreen.js
+src/screens/setup/ExistingAttendanceScreen.js
+src/screens/main/TodayScreen.js
+src/screens/main/SettingsScreen.js
+src/screens/main/EditTimetableScreen.js
+src/screens/main/EditSubjectsScreen.js
+src/utils/alert.js

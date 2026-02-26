@@ -14,6 +14,14 @@ export default function Input({
     returnKeyType,
     onSubmitEditing,
     placeholderTextColor,
+    selectionColor,
+    cursorColor,
+    clearButtonMode,
+    enablesReturnKeyAutomatically,
+    keyboardAppearance,
+    blurOnSubmit,
+    autoCorrect,
+    spellCheck,
     ...props
 }) {
     if (Platform.OS === 'web') {
@@ -21,10 +29,10 @@ export default function Input({
         const inputType = keyboardType === 'numeric' || keyboardType === 'number-pad'
             ? 'number'
             : keyboardType === 'email-address'
-            ? 'email'
-            : keyboardType === 'phone-pad'
-            ? 'tel'
-            : 'text';
+                ? 'email'
+                : keyboardType === 'phone-pad'
+                    ? 'tel'
+                    : 'text';
 
         // Flatten RN StyleSheet style object so we can spread it as inline CSS
         const flatStyle = StyleSheet.flatten(style) || {};

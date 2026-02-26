@@ -6,10 +6,11 @@ import {
     TouchableOpacity,
     Alert,
 } from 'react-native';
-import {} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
+import { showAlert } from '../../utils/alert';
 
 // Helper to format 24h hour int to 12h string
 const formatHour = (hour24) => {
@@ -55,12 +56,12 @@ export default function TimeSlotsScreen({ navigation }) {
 
     const handleContinue = () => {
         if (startHour >= endHour) {
-            Alert.alert('Invalid Times', 'Classes must end after they start.');
+            showAlert('Invalid Times', 'Classes must end after they start.');
             return;
         }
 
         if (hasLunchPattern && (lunchStart <= startHour || lunchStart >= endHour)) {
-            Alert.alert('Invalid Lunch Break', 'Lunch break must be during class hours.');
+            showAlert('Invalid Lunch Break', 'Lunch break must be during class hours.');
             return;
         }
 
@@ -82,7 +83,7 @@ export default function TimeSlotsScreen({ navigation }) {
         }
 
         if (generatedSlots.length === 0) {
-            Alert.alert('Error', 'No class slots could be generated with these settings.');
+            showAlert('Error', 'No class slots could be generated with these settings.');
             return;
         }
 

@@ -3,12 +3,11 @@ import React, { useState } from 'react';
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
     StyleSheet,
-    Platform
 } from 'react-native';
 import KeyboardWrapper from '../../components/common/KeyboardWrapper';
+import Input from '../../components/common/Input';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 
@@ -30,67 +29,15 @@ const NameScreen = ({ navigation }) => {
                     <Text style={styles.emoji}>👋</Text>
                     <Text style={styles.title}>What should we call you?</Text>
 
-                    {Platform.OS === 'web' ? (
-                        <div style={{ width: '100%', position: 'relative', zIndex: 100 }}>
-                            <input
-                                type="text"
-                                placeholder="Your name"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleContinue();
-                                }}
-                                // autoFocus gives iOS Safari a user-gesture-linked
-                                // focus which is the only reliable way to open the
-                                // keyboard on a PWA on iOS 16.4+
-                                autoFocus={false}
-                                style={{
-                                    width: '100%',
-                                    backgroundColor: COLORS.cardBackground,
-                                    borderRadius: BORDER_RADIUS.md,
-                                    paddingLeft: SPACING.lg,
-                                    paddingRight: SPACING.lg,
-                                    paddingTop: SPACING.md,
-                                    paddingBottom: SPACING.md,
-                                    // Must be >= 16px or iOS Safari auto-zooms
-                                    // the viewport on focus, which can cause the
-                                    // input to scroll off screen
-                                    fontSize: '16px',
-                                    color: COLORS.textPrimary,
-                                    border: `2px solid ${COLORS.border}`,
-                                    textAlign: 'center',
-                                    outline: 'none',
-                                    boxSizing: 'border-box',
-                                    // Explicit pointer-events and cursor ensure
-                                    // the element is always tappable
-                                    pointerEvents: 'auto',
-                                    cursor: 'text',
-                                    // -webkit-tap-highlight-color gives visual
-                                    // tap feedback on iOS Safari PWA
-                                    WebkitTapHighlightColor: 'rgba(0,0,0,0.1)',
-                                    // Prevent touch-action interference
-                                    touchAction: 'manipulation',
-                                    // Ensure z-index is high enough
-                                    position: 'relative',
-                                    zIndex: 10,
-                                    // Remove default appearance
-                                    appearance: 'none',
-                                    WebkitAppearance: 'none',
-                                }}
-                            />
-                        </div>
-                    ) : (
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Your name"
-                            placeholderTextColor={COLORS.textMuted}
-                            value={name}
-                            onChangeText={setName}
-                            autoCapitalize="words"
-                            returnKeyType="done"
-                            onSubmitEditing={handleContinue}
-                        />
-                    )}
+                    <Input
+                        placeholder="Your name"
+                        value={name}
+                        onChangeText={setName}
+                        autoCapitalize="words"
+                        returnKeyType="done"
+                        onSubmitEditing={handleContinue}
+                        style={styles.input}
+                    />
 
                     <Text style={styles.subtitle}>
                         This helps personalize your experience

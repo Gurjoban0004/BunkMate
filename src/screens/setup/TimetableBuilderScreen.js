@@ -9,10 +9,11 @@ import {
     TextInput,
     Alert,
 } from 'react-native';
-import {} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
+import { showAlert } from '../../utils/alert';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const THEME_COLORS = ['#FF6B6B', '#FF9F43', '#FDCB6E', '#1DD1A1', '#48DBFB', '#5F27CD', '#C8D6E5', '#222F3E'];
@@ -63,7 +64,7 @@ export default function TimetableBuilderScreen({ navigation }) {
 
     const handleCreateSubject = () => {
         if (!subjectName.trim()) {
-            Alert.alert('Error', 'Subject name is required.');
+            showAlert('Error', 'Subject name is required.');
             return;
         }
 
@@ -88,7 +89,7 @@ export default function TimetableBuilderScreen({ navigation }) {
 
     const handleSaveClass = () => {
         if (!selectedSubjectId) {
-            Alert.alert('Error', 'Please select a subject or add a new one.');
+            showAlert('Error', 'Please select a subject or add a new one.');
             return;
         }
 

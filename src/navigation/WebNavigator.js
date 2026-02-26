@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 
 // Import Screens
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
@@ -10,36 +10,88 @@ import ExistingAttendanceScreen from '../screens/setup/ExistingAttendanceScreen'
 import TeacherNamesScreen from '../screens/setup/TeacherNamesScreen';
 import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 
+import WebHeader from './WebHeader';
 import { COLORS } from '../theme/theme';
 
 export default function WebNavigator() {
-    // 1. Manage history stack
     const [history, setHistory] = useState([
         { name: 'Welcome', params: {} }
     ]);
 
-    // Current active screen is always top of the stack
     const currentRoute = history[history.length - 1];
 
-    // 2. Mock Navigation Object for child screens
-    const mockNavigation = {
-        navigate: (screenName, params = {}) => {
-            setHistory(prev => [...prev, { name: screenName, params }]);
-        },
-        goBack: () => {
-            setHistory(prev => {
-                if (prev.length > 1) {
-                    return prev.slice(0, -1);
+    useEffect(() => {
+        if (Platform.OS === 'web') {
+            const handlePopState = (event) => {
+                const state = event.state;
+                if (state && typeof state.index === 'number') {
+                    setHistory(prev => {
+                        if (state.index < prev.length) {
+                            return prev.slice(0, state.index + 1);
+                        }
+                        return prev;
+                    });
+                } else {
+                    // Fallback to initial route
+                    setHistory([{ name: 'Welcome', params: {} }]);
                 }
-                return prev;
+            };
+
+            window.addEventListener('popstate', handlePopState);
+            // Initialize base state
+            window.history.replaceState({ index: 0 }, '', window.location.pathname);
+
+            return () => window.removeEventListener('popstate', handlePopState);
+        }
+    }, []);
+
+    const mockNavigation = useMemo(() => ({
+        navigate: (screenName, params = {}) => {
+            setHistory(prev => {
+                const newStack = [...prev, { name: screenName, params }];
+                if (Platform.OS === 'web') {
+                    window.history.pushState({ index: newStack.length - 1 }, '', `?screen=${screenName}`);
+                }
+                return newStack;
             });
         },
-        setOptions: () => {
-            // No-op for web header updates
+        push: (screenName, params = {}) => {
+            setHistory(prev => {
+                const newStack = [...prev, { name: screenName, params }];
+                if (Platform.OS === 'web') {
+                    window.history.pushState({ index: newStack.length - 1 }, '', `?screen=${screenName}`);
+                }
+                return newStack;
+            });
         },
-    };
+        replace: (screenName, params = {}) => {
+            setHistory(prev => {
+                const newStack = [...prev.slice(0, -1), { name: screenName, params }];
+                if (Platform.OS === 'web') {
+                    window.history.replaceState({ index: newStack.length - 1 }, '', `?screen=${screenName}`);
+                }
+                return newStack;
+            });
+        },
+        reset: (stateConfig) => {
+            const routes = stateConfig.routes || [{ name: 'Welcome', params: {} }];
+            setHistory(routes);
+            if (Platform.OS === 'web') {
+                window.history.pushState({ index: routes.length - 1 }, '', `?screen=${routes[routes.length - 1].name}`);
+            }
+        },
+        goBack: () => {
+            if (Platform.OS === 'web' && history.length > 1) {
+                window.history.back();
+            } else {
+                setHistory(prev => (prev.length > 1 ? prev.slice(0, -1) : prev));
+            }
+        },
+        setOptions: () => { }, // no-op
+    }), [history.length]);
 
-    // Helper to render the actual screen component with the mock nav/route props
+    const handleBack = useCallback(() => mockNavigation.goBack(), [mockNavigation]);
+
     const renderScreen = () => {
         const props = {
             navigation: mockNavigation,
@@ -60,6 +112,11 @@ export default function WebNavigator() {
 
     return (
         <View style={styles.container}>
+            <WebHeader
+                title={currentRoute.name.replace(/([A-Z])/g, ' $1').trim()}
+                canGoBack={history.length > 1}
+                onGoBack={handleBack}
+            />
             {renderScreen()}
         </View>
     );

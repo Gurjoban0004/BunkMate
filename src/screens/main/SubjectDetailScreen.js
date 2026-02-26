@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
-import {} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, calculateBunks } from '../../utils/attendance';
 import { calculateSubjectStreak, getStreakMessage } from '../../utils/streak';

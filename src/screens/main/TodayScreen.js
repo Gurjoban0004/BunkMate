@@ -30,6 +30,7 @@ import EmptyDay from '../../components/today/EmptyDay';
 import HolidayCard from '../../components/today/HolidayCard';
 import AddExtraClassButton from '../../components/today/AddExtraClassButton';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
+import { showAlert } from '../../utils/alert';
 
 const TodayScreen = ({ navigation }) => {
     const { state, dispatch } = useApp();
@@ -100,7 +101,7 @@ const TodayScreen = ({ navigation }) => {
     };
 
     const handleHolidayPress = () => {
-        Alert.alert(
+        showAlert(
             '🏖️ Mark as Holiday',
             'Mark today as a holiday? No classes will be counted.',
             [

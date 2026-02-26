@@ -11,6 +11,7 @@ import {
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../theme/theme';
 import { DEV_MODE, SHOW_DEV_MENU } from './config';
 import { MOCK_SCENARIOS } from './mockData';
+import { showAlert } from '../utils/alert';
 
 const SCENARIO_DESCRIPTIONS = {
     NORMAL: 'Mixed attendance, some good, some bad',
@@ -28,7 +29,7 @@ export default function DevMenu({ onLoadScenario, onClearData }) {
     if (!DEV_MODE || !SHOW_DEV_MENU) return null;
 
     const handleLoadScenario = (scenarioName) => {
-        Alert.alert(
+        showAlert(
             'Load Scenario',
             `Load "${scenarioName}" mock data? This will replace current data.`,
             [
@@ -45,7 +46,7 @@ export default function DevMenu({ onLoadScenario, onClearData }) {
     };
 
     const handleClearData = () => {
-        Alert.alert(
+        showAlert(
             'Clear All Data',
             'This will reset the app to fresh state. Continue?',
             [

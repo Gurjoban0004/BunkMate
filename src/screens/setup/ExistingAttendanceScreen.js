@@ -7,6 +7,7 @@ import Card from '../../components/common/Card';
 import KeyboardWrapper from '../../components/common/KeyboardWrapper';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../theme/theme';
+import { showAlert } from '../../utils/alert';
 
 export default function ExistingAttendanceScreen({ navigation }) {
     const { state, dispatch } = useApp();
@@ -36,7 +37,7 @@ export default function ExistingAttendanceScreen({ navigation }) {
             const total = parseInt(sub.total) || 0;
             const attended = parseInt(sub.attended) || 0;
             if (attended > total) {
-                Alert.alert('Invalid Input', `${sub.name}: Attended marks cannot exceed total marks.`);
+                showAlert('Invalid Input', `${sub.name}: Attended marks cannot exceed total marks.`);
                 return;
             }
         }

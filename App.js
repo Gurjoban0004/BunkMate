@@ -8,6 +8,8 @@ import { COLORS } from './src/theme/theme';
 import { DEV_MODE, SKIP_SETUP, MOCK_SCENARIO } from './src/dev/config';
 import DevMenu from './src/dev/DevMenu';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
+import { AlertProvider, useAlert } from './src/context/AlertContext';
+import { setGlobalWebAlert } from './src/utils/alert';
 
 // ─── Web: Disable react-native-screens on web ─────────────────────────────────
 // react-native-screens injects ScreenContainer divs that leave ghost overlay
@@ -104,12 +106,24 @@ function AppContent() {
     );
 }
 
+function AlertGlobalConnector({ children }) {
+    const { showAlert } = useAlert();
+    useEffect(() => {
+        setGlobalWebAlert(showAlert);
+    }, [showAlert]);
+    return children;
+}
+
 export default function App() {
     return (
         <SafeAreaProvider>
             <ErrorBoundary>
                 <AppProvider>
-                    <AppContent />
+                    <AlertProvider>
+                        <AlertGlobalConnector>
+                            <AppContent />
+                        </AlertGlobalConnector>
+                    </AlertProvider>
                 </AppProvider>
             </ErrorBoundary>
         </SafeAreaProvider>

@@ -13,6 +13,7 @@ import {
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { clearAppState } from '../../storage/storage';
+import { showAlert } from '../../utils/alert';
 
 const THRESHOLD_OPTIONS = [70, 75, 80, 85, 90];
 
@@ -46,7 +47,7 @@ const SettingsScreen = ({ navigation }) => {
     };
 
     const handleResetSemester = () => {
-        Alert.alert(
+        showAlert(
             '🗑️ Reset Semester',
             'This will delete ALL your attendance data. This cannot be undone.\n\nAre you sure?',
             [

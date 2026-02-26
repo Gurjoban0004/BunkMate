@@ -1,45 +1,8 @@
 import { getDateKey } from './dateHelpers';
-import { getTodayClasses } from './attendance';
-
-/**
- * Get classes from a specific day, grouped by consecutive same-subject slots.
- */
-function getClassesForDay(dayName, state) {
-    const daySchedule = state.timetable[dayName] || [];
-    if (daySchedule.length === 0) return [];
-
-    const groupedClasses = [];
-    let currentGroup = null;
-
-    daySchedule.forEach((slot) => {
-        const timeSlot = state.timeSlots.find((ts) => ts.id === slot.slotId);
-        const subject = state.subjects.find((s) => s.id === slot.subjectId);
-        if (!timeSlot || !subject) return;
-
-        if (currentGroup && currentGroup.subjectId === slot.subjectId) {
-            currentGroup.endTime = timeSlot.end;
-            currentGroup.units += 1;
-        } else {
-            if (currentGroup) groupedClasses.push(currentGroup);
-            currentGroup = {
-                subjectId: slot.subjectId,
-                subjectName: subject.name,
-                teacher: subject.teacher,
-                color: subject.color,
-                startTime: timeSlot.start,
-                endTime: timeSlot.end,
-                units: 1,
-            };
-        }
-    });
-
-    if (currentGroup) groupedClasses.push(currentGroup);
-    return groupedClasses;
-}
+import { getClassesForDay } from './attendance';
 
 /**
  * Get all unmarked classes from the past 2 weeks.
- * Returns array of { date, dayName, ...classInfo } sorted newest first.
  */
 export function getUnmarkedClasses(state) {
     const unmarked = [];

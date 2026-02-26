@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screens
@@ -15,6 +15,7 @@ import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 
+import WebHeader from './WebHeader';
 import { COLORS, TYPOGRAPHY } from '../theme/theme';
 
 function TabIcon({ label, focused }) {
@@ -30,10 +31,7 @@ function TabIcon({ label, focused }) {
 export default function WebTabNavigator() {
     const insets = useSafeAreaInsets();
 
-    // 1. Manage active tab
     const [currentTab, setCurrentTab] = useState('Today');
-
-    // 2. Manage history stack for EACH tab independently
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }],
         Subjects: [{ name: 'SubjectsList', params: {} }],
@@ -44,37 +42,103 @@ export default function WebTabNavigator() {
     const activeStack = stacks[currentTab];
     const currentRoute = activeStack[activeStack.length - 1];
 
-    // 3. Mock Navigation Object
-    const mockNavigation = {
+    useEffect(() => {
+        if (Platform.OS === 'web') {
+            const handlePopState = (event) => {
+                const state = event.state;
+                if (state && state.tab && typeof state.index === 'number') {
+                    setCurrentTab(state.tab);
+                    setStacks(prev => {
+                        const tabStack = prev[state.tab];
+                        if (state.index < tabStack.length) {
+                            return {
+                                ...prev,
+                                [state.tab]: tabStack.slice(0, state.index + 1)
+                            };
+                        }
+                        return prev;
+                    });
+                } else {
+                    setCurrentTab('Today');
+                    setStacks({
+                        Today: [{ name: 'TodayMain', params: {} }],
+                        Subjects: [{ name: 'SubjectsList', params: {} }],
+                        Planner: [{ name: 'PlannerMain', params: {} }],
+                        Settings: [{ name: 'SettingsMain', params: {} }],
+                    });
+                }
+            };
+
+            window.addEventListener('popstate', handlePopState);
+            window.history.replaceState({ tab: 'Today', index: 0 }, '', window.location.pathname);
+
+            return () => window.removeEventListener('popstate', handlePopState);
+        }
+    }, []);
+
+    const mockNavigation = useMemo(() => ({
         navigate: (screenOrTabName, params = {}) => {
-            // Check if jumping to a different tab directly
             if (['Today', 'Subjects', 'Planner', 'Settings'].includes(screenOrTabName)) {
                 setCurrentTab(screenOrTabName);
-                // Also reset that tab's stack optionally, or let it maintain state
+                if (Platform.OS === 'web') {
+                    window.history.pushState({ tab: screenOrTabName, index: stacks[screenOrTabName].length - 1 }, '', `?tab=${screenOrTabName}`);
+                }
             } else {
-                // Otherwise push to current tab's stack
-                setStacks(prev => ({
-                    ...prev,
-                    [currentTab]: [...prev[currentTab], { name: screenOrTabName, params }]
-                }));
+                setStacks(prev => {
+                    const newStack = [...prev[currentTab], { name: screenOrTabName, params }];
+                    if (Platform.OS === 'web') {
+                        window.history.pushState({ tab: currentTab, index: newStack.length - 1 }, '', `?tab=${currentTab}&screen=${screenOrTabName}`);
+                    }
+                    return { ...prev, [currentTab]: newStack };
+                });
             }
         },
-        goBack: () => {
+        push: (screenOrTabName, params = {}) => {
             setStacks(prev => {
-                const currentTabStack = prev[currentTab];
-                if (currentTabStack.length > 1) {
-                    return {
-                        ...prev,
-                        [currentTab]: currentTabStack.slice(0, -1)
-                    };
+                const newStack = [...prev[currentTab], { name: screenOrTabName, params }];
+                if (Platform.OS === 'web') {
+                    window.history.pushState({ tab: currentTab, index: newStack.length - 1 }, '', `?tab=${currentTab}&screen=${screenOrTabName}`);
                 }
-                return prev;
+                return { ...prev, [currentTab]: newStack };
             });
         },
+        replace: (screenName, params = {}) => {
+            setStacks(prev => {
+                const newStack = [...prev[currentTab].slice(0, -1), { name: screenName, params }];
+                if (Platform.OS === 'web') {
+                    window.history.replaceState({ tab: currentTab, index: newStack.length - 1 }, '', `?tab=${currentTab}&screen=${screenName}`);
+                }
+                return { ...prev, [currentTab]: newStack };
+            });
+        },
+        reset: (stateConfig) => {
+            // Simplified reset handling for custom web navigator
+            setStacks(prev => {
+                const routes = stateConfig.routes || [{ name: 'TodayMain', params: {} }];
+                if (Platform.OS === 'web') {
+                    window.history.pushState({ tab: currentTab, index: routes.length - 1 }, '', `?tab=${currentTab}&screen=${routes[routes.length - 1].name}`);
+                }
+                return { ...prev, [currentTab]: routes };
+            });
+        },
+        goBack: () => {
+            if (Platform.OS === 'web' && activeStack.length > 1) {
+                window.history.back();
+            } else {
+                setStacks(prev => {
+                    const currentTabStack = prev[currentTab];
+                    if (currentTabStack.length > 1) {
+                        return { ...prev, [currentTab]: currentTabStack.slice(0, -1) };
+                    }
+                    return prev;
+                });
+            }
+        },
         setOptions: () => { }, // no-op
-    };
+    }), [currentTab, stacks]);
 
-    // Helper to render the exact screen component
+    const handleBack = useCallback(() => mockNavigation.goBack(), [mockNavigation]);
+
     const renderScreen = () => {
         const props = {
             navigation: mockNavigation,
@@ -82,38 +146,42 @@ export default function WebTabNavigator() {
         };
 
         switch (currentRoute.name) {
-            // Today Stack
             case 'TodayMain': return <TodayScreen {...props} />;
             case 'PastAttendance': return <PastAttendanceScreen {...props} />;
             case 'WeeklySummary': return <WeeklySummaryScreen {...props} />;
-
-            // Subjects Stack
             case 'SubjectsList': return <SubjectsScreen {...props} />;
             case 'SubjectDetail': return <SubjectDetailScreen {...props} />;
-
-            // Planner Stack
             case 'PlannerMain': return <PlannerScreen {...props} />;
             case 'RecoveryPlan': return <RecoveryPlanScreen {...props} />;
             case 'EndGame': return <EndGameScreen {...props} />;
-
-            // Settings Stack
             case 'SettingsMain': return <SettingsScreen {...props} />;
             case 'EditTimetable': return <EditTimetableScreen {...props} />;
             case 'EditSubjects': return <EditSubjectsScreen {...props} />;
-            // Settings also re-uses PastAttendance, which is fine!
-
             default: return <TodayScreen {...props} />;
         }
     };
 
+    // Determine title for WebHeader based on current route
+    const getHeaderTitle = () => {
+        const name = currentRoute.name;
+        if (name.endsWith('Main') || name.endsWith('List')) {
+            return currentTab;
+        }
+        return name.replace(/([A-Z])/g, ' $1').trim();
+    };
+
     return (
         <View style={styles.container}>
-            {/* Main Screen Content */}
+            <WebHeader
+                title={getHeaderTitle()}
+                canGoBack={activeStack.length > 1}
+                onGoBack={handleBack}
+            />
+
             <View style={styles.content}>
                 {renderScreen()}
             </View>
 
-            {/* Custom Bottom Tab Bar */}
             <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 4) }]}>
                 {['Today', 'Subjects', 'Planner', 'Settings'].map((tabName) => {
                     const focused = currentTab === tabName;
@@ -121,7 +189,7 @@ export default function WebTabNavigator() {
                         <TouchableOpacity
                             key={tabName}
                             style={styles.tabItem}
-                            onPress={() => setCurrentTab(tabName)}
+                            onPress={() => mockNavigation.navigate(tabName)}
                             activeOpacity={0.7}
                         >
                             <TabIcon label={tabName} focused={focused} />
@@ -146,7 +214,6 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        // Optional relative positioning for safety
         position: 'relative',
         zIndex: 1,
     },
@@ -156,7 +223,6 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: COLORS.border,
         paddingTop: 8,
-        // zIndex ensures tabs stay above web content
         zIndex: 100,
     },
     tabItem: {

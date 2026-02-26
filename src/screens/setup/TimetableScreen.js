@@ -10,11 +10,12 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
 } from 'react-native';
-import {} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { showAlert } from '../../utils/alert';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -65,7 +66,7 @@ export default function TimetableScreen({ navigation }) {
     const addNewSubject = () => {
         const name = newSubjectName.trim();
         if (!name) {
-            Alert.alert('Error', 'Please enter a subject name.');
+            showAlert('Error', 'Please enter a subject name.');
             return;
         }
         const existing = subjectsList.find((s) => s.name.toLowerCase() === name.toLowerCase());
@@ -93,7 +94,7 @@ export default function TimetableScreen({ navigation }) {
 
     const handleContinue = () => {
         if (subjectsList.length === 0) {
-            Alert.alert('No Subjects', 'Please add at least one subject to your timetable.');
+            showAlert('No Subjects', 'Please add at least one subject to your timetable.');
             return;
         }
         dispatch({ type: 'SET_TIMETABLE', payload: timetable });

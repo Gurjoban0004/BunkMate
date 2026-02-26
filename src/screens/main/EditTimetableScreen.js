@@ -14,6 +14,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme
 import { useApp } from '../../context/AppContext';
 import Button from '../../components/common/Button';
 import { formatTimeRange } from '../../utils/dateHelpers';
+import { showAlert } from '../../utils/alert';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -65,7 +66,7 @@ const EditTimetableScreen = ({ navigation }) => {
 
     const handleSaveSlot = () => {
         if (!selectedSubjectId) {
-            Alert.alert('Error', 'Please select a subject');
+            showAlert('Error', 'Please select a subject');
             return;
         }
 
@@ -91,7 +92,7 @@ const EditTimetableScreen = ({ navigation }) => {
     };
 
     const handleDeleteClass = (slotId) => {
-        Alert.alert('Remove Class?', 'This will clear this time slot and make it a Free Period.', [
+        showAlert('Remove Class?', 'This will clear this time slot and make it a Free Period.', [
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Remove',
@@ -111,7 +112,7 @@ const EditTimetableScreen = ({ navigation }) => {
         // Validate HH:MM format
         const regex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
         if (!regex.test(newStartTime) || !regex.test(newEndTime)) {
-            Alert.alert('Invalid format', 'Please use HH:MM format (24-hour)');
+            showAlert('Invalid format', 'Please use HH:MM format (24-hour)');
             return;
         }
 

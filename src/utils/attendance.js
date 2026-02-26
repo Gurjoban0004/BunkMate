@@ -50,33 +50,39 @@ export function getSubjectAttendance(subjectId, state) {
 }
 
 /**
- * Get today's classes, grouped by consecutive same-subject slots.
- * A 2-hour class (same subject in 2 consecutive slots) = 1 card with units=2.
- * Now includes subject color.
+ * Get classes for a specific day name (e.g., 'Monday'), grouped by subject.
+ * This handles multiple sessions of the same subject in one day by summing their units.
  */
-export function getTodayClasses(state) {
-    const dayName = getTodayDayName();
-    const todaySchedule = state.timetable[dayName] || [];
+export function getClassesForDay(state, dayName) {
+    const daySchedule = state.timetable[dayName] || [];
 
-    if (todaySchedule.length === 0) return [];
+    if (daySchedule.length === 0) return [];
 
-    const groupedClasses = [];
-    let currentGroup = null;
+    const groupedMap = new Map();
 
-    todaySchedule.forEach((slot) => {
+    daySchedule.forEach((slot) => {
         const timeSlot = state.timeSlots.find((ts) => ts.id === slot.slotId);
         const subject = state.subjects.find((s) => s.id === slot.subjectId);
 
         if (!timeSlot || !subject) return;
 
-        if (currentGroup && currentGroup.subjectId === slot.subjectId) {
-            // Same subject in consecutive slot → extend the group
-            currentGroup.endTime = timeSlot.end;
-            currentGroup.units += 1;
+        if (groupedMap.has(slot.subjectId)) {
+            const existing = groupedMap.get(slot.subjectId);
+            existing.units += 1;
+            // Keep the earliest start and latest end for display
+            const [exStartH, exStartM] = existing.startTime.split(':').map(Number);
+            const [tsStartH, tsStartM] = timeSlot.start.split(':').map(Number);
+            if (tsStartH * 60 + tsStartM < exStartH * 60 + exStartM) {
+                existing.startTime = timeSlot.start;
+            }
+
+            const [exEndH, exEndM] = existing.endTime.split(':').map(Number);
+            const [tsEndH, tsEndM] = timeSlot.end.split(':').map(Number);
+            if (tsEndH * 60 + tsEndM > exEndH * 60 + exEndM) {
+                existing.endTime = timeSlot.end;
+            }
         } else {
-            // New subject → save previous group and start new one
-            if (currentGroup) groupedClasses.push(currentGroup);
-            currentGroup = {
+            groupedMap.set(slot.subjectId, {
                 subjectId: slot.subjectId,
                 subjectName: subject.name,
                 teacher: subject.teacher,
@@ -84,13 +90,19 @@ export function getTodayClasses(state) {
                 startTime: timeSlot.start,
                 endTime: timeSlot.end,
                 units: 1,
-            };
+            });
         }
     });
 
-    if (currentGroup) groupedClasses.push(currentGroup);
+    return Array.from(groupedMap.values());
+}
 
-    return groupedClasses;
+/**
+ * Get today's classes, grouped by subject to handle multiple sessions per day.
+ */
+export function getTodayClasses(state) {
+    const dayName = getTodayDayName();
+    return getClassesForDay(state, dayName);
 }
 
 /**

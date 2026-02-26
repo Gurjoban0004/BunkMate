@@ -14,6 +14,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance } from '../../utils/attendance';
 import Button from '../../components/common/Button';
+import { showAlert } from '../../utils/alert';
 
 const THEME_COLORS = [
     '#FF6B6B', // Red
@@ -65,7 +66,7 @@ const EditSubjectsScreen = ({ navigation }) => {
 
     const handleSave = () => {
         if (!name.trim()) {
-            Alert.alert('Error', 'Subject name is required');
+            showAlert('Error', 'Subject name is required');
             return;
         }
 
@@ -73,7 +74,7 @@ const EditSubjectsScreen = ({ navigation }) => {
         const totalNum = parseInt(total) || 0;
 
         if (attendedNum > totalNum) {
-            Alert.alert('Error', 'Attended classes cannot be greater than total classes');
+            showAlert('Error', 'Attended classes cannot be greater than total classes');
             return;
         }
 
@@ -107,7 +108,7 @@ const EditSubjectsScreen = ({ navigation }) => {
     };
 
     const handleDelete = (subject) => {
-        Alert.alert(
+        showAlert(
             '⚠️ Delete Subject?',
             `Are you sure you want to delete ${subject.name}?\n\nThis will remove it from your timetable and delete all attendance records. This cannot be undone!`,
             [
