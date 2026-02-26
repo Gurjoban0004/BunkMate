@@ -142,7 +142,7 @@ export default function TimetableBuilderScreen({ navigation }) {
     };
 
     const handleFinish = () => {
-        navigation.navigate('SetupComplete');
+        navigation.navigate('ExistingAttendance');
     };
 
     return (

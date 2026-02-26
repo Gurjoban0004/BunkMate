@@ -259,7 +259,17 @@ const SettingsScreen = ({ navigation }) => {
 
                 {/* Timetable Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📚 TIMETABLE</Text>
+                    <Text style={styles.sectionTitle}>📚 DATA & TIMETABLE</Text>
+
+                    <TouchableOpacity
+                        style={styles.card}
+                        onPress={() => navigation.navigate('PastAttendance')}
+                    >
+                        <View style={styles.linkRow}>
+                            <Text style={styles.linkText}>Log Past Attendance</Text>
+                            <Text style={styles.chevron}>›</Text>
+                        </View>
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         style={styles.card}

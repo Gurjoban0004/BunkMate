@@ -130,6 +130,11 @@ function SettingsStackScreen() {
                 component={EditSubjectsScreen}
                 options={{ title: 'Edit Subjects' }}
             />
+            <SettingsStack.Screen
+                name="PastAttendance"
+                component={PastAttendanceScreen}
+                options={{ title: 'Mark Past Attendance' }}
+            />
         </SettingsStack.Navigator>
     );
 }
