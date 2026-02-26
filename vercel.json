@@ -1,6 +1,7 @@
 {
-    "cleanUrls": true,
-    "framework": "create-react-app",
+    "version": 2,
+    "buildCommand": "npx expo export -p web",
+    "outputDirectory": "dist",
     "rewrites": [
         {
             "source": "/(.*)",
