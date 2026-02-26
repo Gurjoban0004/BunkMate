@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {} from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { generateWeeklySummary } from '../../utils/summary';
 import { calculateOverallStreak } from '../../utils/streak';

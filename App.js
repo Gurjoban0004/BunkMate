@@ -1,12 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { AppProvider, useApp } from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { COLORS } from './src/theme/theme';
 import { DEV_MODE, SKIP_SETUP, MOCK_SCENARIO } from './src/dev/config';
 import DevMenu from './src/dev/DevMenu';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
+
+if (Platform.OS === 'web') {
+    // 🌐 iOS/Mac Safari Bug Fix: 
+    // React Native Web applies user-select: none globally, which causes Safari 
+    // to instantly dismiss touches or refuse focus on text inputs.
+    const style = document.createElement('style');
+    style.textContent = `
+        input, textarea, [contenteditable] {
+            -webkit-user-select: auto !important;
+            user-select: auto !important;
+            pointer-events: auto !important;
+        }
+        * {
+            outline: none !important;
+        }
+    `;
+    document.head.append(style);
+}
 
 function AppContent() {
     const { state, dispatch, isLoading } = useApp();

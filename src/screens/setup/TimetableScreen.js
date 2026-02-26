@@ -10,7 +10,7 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {} from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { useApp } from '../../context/AppContext';
