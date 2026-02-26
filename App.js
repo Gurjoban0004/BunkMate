@@ -15,8 +15,8 @@ if (Platform.OS === 'web') {
     const style = document.createElement('style');
     style.textContent = `
         input, textarea, [contenteditable] {
-            -webkit-user-select: auto !important;
-            user-select: auto !important;
+            -webkit-user-select: text !important;
+            user-select: text !important;
             pointer-events: auto !important;
         }
         * {

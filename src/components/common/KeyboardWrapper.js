@@ -30,16 +30,14 @@ export default function KeyboardWrapper({
     // (like keyboardShouldPersistTaps and TouchableWithoutFeedback) aggressively steal 
     // focus on Safari macOS and iOS. We bypass them completely here.
     if (Platform.OS === 'web') {
+        // We use a pure View with overflowY instead of ScrollView to completely 
+        // bypass React Native Web's scroll touch responders, which cause Safari to cancel taps.
         return (
-            <ScrollView
-                style={[styles.container, style]}
-                contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                scrollEnabled={scrollEnabled}
-            >
-                {children}
-            </ScrollView>
+            <View style={[styles.container, style, { overflowY: 'auto' }]}>
+                <View style={[styles.scrollContent, contentContainerStyle]}>
+                    {children}
+                </View>
+            </View>
         );
     }
 
