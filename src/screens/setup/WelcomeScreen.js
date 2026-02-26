@@ -1,28 +1,69 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Button from '../../components/common/Button';
-import { COLORS, SPACING, TYPOGRAPHY } from '../../theme/theme';
+import KeyboardWrapper from '../../components/common/KeyboardWrapper';
+import Input from '../../components/common/Input';
+import { useApp } from '../../context/AppContext';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 export default function WelcomeScreen({ navigation }) {
+    const [name, setName] = useState('');
+    const { dispatch } = useApp();
+    const inputRef = useRef(null);
+
+    // Auto-focus the input on mount
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        }, 300); // Small delay to ensure screen transition finishes
+        return () => clearTimeout(timer);
+    }, []);
+
+    const handleContinue = () => {
+        if (name.trim()) {
+            dispatch({ type: 'SET_USER_NAME', payload: name.trim() });
+            navigation.navigate('SubjectList');
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <KeyboardWrapper>
                 <View style={styles.content}>
                     <Text style={styles.emoji}>📚</Text>
-                    <Text style={styles.title}>Welcome to BunkMate</Text>
-                    <Text style={styles.subtitle}>
-                        Track your attendance effortlessly.{'\n'}Set up in 2 minutes.
-                    </Text>
+                    <Text style={styles.title}>BunkMate</Text>
+                    <Text style={styles.subtitle}>Attendance, solved.</Text>
+
+                    <View style={styles.spacer} />
+
+                    <Text style={styles.greetingTitle}>Hi! What should we call you?</Text>
+                    <Input
+                        ref={inputRef}
+                        placeholder="Your Name"
+                        value={name}
+                        onChangeText={setName}
+                        autoCapitalize="words"
+                        returnKeyType="done"
+                        onSubmitEditing={handleContinue}
+                        style={styles.input}
+                    />
                 </View>
 
                 <View style={styles.footer}>
-                    <Button
-                        title="Get Started"
-                        onPress={() => navigation.navigate('Name')}
-                    />
+                    <TouchableOpacity
+                        style={[
+                            styles.continueButton,
+                            !name.trim() && styles.continueButtonDisabled,
+                        ]}
+                        onPress={handleContinue}
+                        disabled={!name.trim()}
+                    >
+                        <Text style={styles.continueText}>GET STARTED →</Text>
+                    </TouchableOpacity>
                 </View>
-            </ScrollView>
+            </KeyboardWrapper>
         </SafeAreaView>
     );
 }
@@ -32,32 +73,64 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.background,
     },
-    scrollContent: {
-        flexGrow: 1,
-        padding: SPACING.screenPadding,
-    },
     content: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: SPACING.xl,
     },
     emoji: {
-        fontSize: 80,
-        marginBottom: SPACING.lg,
+        fontSize: 64,
+        marginBottom: SPACING.md,
     },
     title: {
         ...TYPOGRAPHY.headerLarge,
         color: COLORS.textPrimary,
-        marginBottom: SPACING.md,
         textAlign: 'center',
     },
     subtitle: {
         ...TYPOGRAPHY.body,
         color: COLORS.textSecondary,
         textAlign: 'center',
-        lineHeight: 24,
+        marginBottom: SPACING.xxl,
+    },
+    spacer: {
+        height: SPACING.xxl,
+    },
+    greetingTitle: {
+        ...TYPOGRAPHY.headerSmall,
+        color: COLORS.textPrimary,
+        marginBottom: SPACING.lg,
+        textAlign: 'center',
+    },
+    input: {
+        width: '100%',
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.md,
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING.md,
+        fontSize: FONT_SIZES.lg,
+        color: COLORS.textPrimary,
+        borderWidth: 2,
+        borderColor: COLORS.border,
+        textAlign: 'center',
     },
     footer: {
-        paddingBottom: SPACING.lg,
+        paddingHorizontal: SPACING.lg,
+        paddingBottom: SPACING.xl,
+    },
+    continueButton: {
+        backgroundColor: COLORS.primary,
+        paddingVertical: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        alignItems: 'center',
+    },
+    continueButtonDisabled: {
+        backgroundColor: COLORS.border,
+    },
+    continueText: {
+        color: COLORS.textOnPrimary,
+        fontSize: FONT_SIZES.md,
+        fontWeight: '700',
     },
 });

@@ -2,11 +2,9 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
-import NameScreen from '../screens/setup/NameScreen';
-import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
-import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
-import ExistingAttendanceScreen from '../screens/setup/ExistingAttendanceScreen';
-import TeacherNamesScreen from '../screens/setup/TeacherNamesScreen';
+import SubjectListScreen from '../screens/setup/SubjectListScreen';
+import TimetablePaintScreen from '../screens/setup/TimetablePaintScreen';
+import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 import { COLORS } from '../theme/theme';
 
@@ -54,29 +52,19 @@ export default function SetupNavigator() {
                 options={{ headerShown: false }}
             />
             <Stack.Screen
-                name="Name"
-                component={NameScreen}
-                options={{ headerShown: false }}
+                name="SubjectList"
+                component={SubjectListScreen}
+                options={{ title: 'Your Subjects' }}
             />
             <Stack.Screen
-                name="TimeSlots"
-                component={TimeSlotsScreen}
-                options={{ title: 'Time Slots' }}
+                name="TimetablePaint"
+                component={TimetablePaintScreen}
+                options={{ title: 'Timetable' }}
             />
             <Stack.Screen
-                name="TimetableBuilder"
-                component={TimetableBuilderScreen}
-                options={{ title: 'Build Timetable' }}
-            />
-            <Stack.Screen
-                name="ExistingAttendance"
-                component={ExistingAttendanceScreen}
-                options={{ title: 'Current Attendance' }}
-            />
-            <Stack.Screen
-                name="TeacherNames"
-                component={TeacherNamesScreen}
-                options={{ title: 'Teacher Names' }}
+                name="AttendanceStats"
+                component={AttendanceStatsScreen}
+                options={{ title: 'Stats (Optional)' }}
             />
             <Stack.Screen
                 name="SetupComplete"

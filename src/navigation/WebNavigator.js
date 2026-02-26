@@ -3,11 +3,9 @@ import { View, StyleSheet, Platform } from 'react-native';
 
 // Import Screens
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
-import NameScreen from '../screens/setup/NameScreen';
-import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
-import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
-import ExistingAttendanceScreen from '../screens/setup/ExistingAttendanceScreen';
-import TeacherNamesScreen from '../screens/setup/TeacherNamesScreen';
+import SubjectListScreen from '../screens/setup/SubjectListScreen';
+import TimetablePaintScreen from '../screens/setup/TimetablePaintScreen';
+import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 
 import WebHeader from './WebHeader';
@@ -100,11 +98,9 @@ export default function WebNavigator() {
 
         switch (currentRoute.name) {
             case 'Welcome': return <WelcomeScreen {...props} />;
-            case 'Name': return <NameScreen {...props} />;
-            case 'TimeSlots': return <TimeSlotsScreen {...props} />;
-            case 'TimetableBuilder': return <TimetableBuilderScreen {...props} />;
-            case 'ExistingAttendance': return <ExistingAttendanceScreen {...props} />;
-            case 'TeacherNames': return <TeacherNamesScreen {...props} />;
+            case 'SubjectList': return <SubjectListScreen {...props} />;
+            case 'TimetablePaint': return <TimetablePaintScreen {...props} />;
+            case 'AttendanceStats': return <AttendanceStatsScreen {...props} />;
             case 'SetupComplete': return <SetupCompleteScreen {...props} />;
             default: return <WelcomeScreen {...props} />;
         }

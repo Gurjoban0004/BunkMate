@@ -10,7 +10,7 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
 import { getTodayKey, getNextDay } from '../../utils/dateHelpers';
 
-export default function ExistingAttendanceScreen({ navigation }) {
+export default function AttendanceStatsScreen({ navigation }) {
     const { state, dispatch } = useApp();
 
     const [subjectData, setSubjectData] = useState(
@@ -48,6 +48,22 @@ export default function ExistingAttendanceScreen({ navigation }) {
         return Math.round((a / t) * 100);
     };
 
+    const finishSetup = (updates, trackingDate, isTodayIncluded) => {
+        const todayStr = getTodayKey();
+        dispatch({ type: 'SET_INITIAL_ATTENDANCE', payload: updates });
+        dispatch({
+            type: 'SET_TRACKING_CONFIG',
+            payload: {
+                setupDate: todayStr,
+                trackingStartDate: trackingDate,
+                todayIncludedInSetup: isTodayIncluded,
+            }
+        });
+
+        // Finalize setup
+        dispatch({ type: 'COMPLETE_SETUP' });
+    };
+
     const handleContinue = () => {
         for (const sub of subjectData) {
             const total = parseInt(sub.total) || 0;
@@ -57,6 +73,7 @@ export default function ExistingAttendanceScreen({ navigation }) {
                 return;
             }
         }
+
         const updates = subjectData.map((sub) => ({
             id: sub.id,
             initialTotal: parseInt(sub.total) || 0,
@@ -66,26 +83,37 @@ export default function ExistingAttendanceScreen({ navigation }) {
         const todayStr = getTodayKey();
         const trackingStartDate = trackingOption === 'yesterday' ? todayStr : getNextDay(todayStr);
 
-        dispatch({ type: 'SET_INITIAL_ATTENDANCE', payload: updates });
-        dispatch({
-            type: 'SET_TRACKING_CONFIG',
-            payload: {
-                setupDate: todayStr,
-                trackingStartDate,
-                todayIncludedInSetup: trackingOption === 'today',
-            }
-        });
+        finishSetup(updates, trackingStartDate, trackingOption === 'today');
+    };
 
-        navigation.navigate('TeacherNames');
+    const handleSkip = () => {
+        // Skip setup -> 0 attendance, start tracking from today
+        const updates = state.subjects.map(sub => ({
+            id: sub.id,
+            initialTotal: 0,
+            initialAttended: 0,
+        }));
+
+        const todayStr = getTodayKey();
+        // Set trackingStart to today so any classes scheduled today appear in the backlog/Today screen
+        finishSetup(updates, todayStr, false);
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['bottom']}>
+        <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
             <KeyboardWrapper contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.header}>Current Attendance</Text>
-                <Text style={styles.subtitle}>
-                    Enter your attendance so far this semester
-                </Text>
+
+                <View style={styles.headerBox}>
+                    <Text style={styles.header}>One last thing!</Text>
+                    <Text style={styles.subtitle}>
+                        Enter your attendance so far this semester.
+                    </Text>
+
+                    <TouchableOpacity style={styles.skipButtonRow} onPress={handleSkip}>
+                        <Text style={styles.skipText}>Starting fresh? </Text>
+                        <Text style={styles.skipTextBold}>Skip this step →</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {subjectData.map((subject) => {
                     const pct = getPercentage(subject.attended, subject.total);
@@ -95,7 +123,7 @@ export default function ExistingAttendanceScreen({ navigation }) {
                             <Text style={styles.subjectName}>{subject.name}</Text>
                             <View style={styles.inputRow}>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Total marks</Text>
+                                    <Text style={styles.inputLabel}>Total classes</Text>
                                     <Input
                                         placeholder="0"
                                         value={subject.total}
@@ -157,16 +185,8 @@ export default function ExistingAttendanceScreen({ navigation }) {
                     <Text style={styles.optionHelp}>→ Tracking starts from tomorrow</Text>
                 </TouchableOpacity>
 
-                <View style={styles.tipBox}>
-                    <Text style={styles.tipTitle}>💡 Tip</Text>
-                    <Text style={styles.tipText}>
-                        <Text style={{ fontWeight: '600' }}>Setting up in the morning?</Text> → Pick "Yesterday"{'\n'}
-                        <Text style={{ fontWeight: '600' }}>Already attended today's classes?</Text> → Pick "Today"
-                    </Text>
-                </View>
-
                 <View style={styles.buttonContainer}>
-                    <Button title="Continue" onPress={handleContinue} />
+                    <Button title="Finish Setup 🎉" onPress={handleContinue} />
                 </View>
             </KeyboardWrapper>
         </SafeAreaView>
@@ -182,15 +202,36 @@ const styles = StyleSheet.create({
         padding: SPACING.screenPadding,
         paddingBottom: SPACING.xxl,
     },
+    headerBox: {
+        marginBottom: SPACING.lg,
+    },
     header: {
-        ...TYPOGRAPHY.headerMedium,
+        ...TYPOGRAPHY.headerLarge,
         color: COLORS.textPrimary,
-        marginBottom: SPACING.sm,
+        marginBottom: SPACING.xs,
     },
     subtitle: {
         ...TYPOGRAPHY.body,
         color: COLORS.textSecondary,
-        marginBottom: SPACING.lg,
+        marginBottom: SPACING.md,
+    },
+    skipButtonRow: {
+        flexDirection: 'row',
+        backgroundColor: COLORS.primaryLight,
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        alignItems: 'center',
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.primary,
+    },
+    skipText: {
+        ...TYPOGRAPHY.body,
+        color: COLORS.primary,
+    },
+    skipTextBold: {
+        ...TYPOGRAPHY.body,
+        fontWeight: '700',
+        color: COLORS.primary,
     },
     subjectCard: {
         marginBottom: SPACING.cardGap,
@@ -282,27 +323,7 @@ const styles = StyleSheet.create({
         color: COLORS.primary,
         marginLeft: 36, // Align with text, account for radio
     },
-    tipBox: {
-        backgroundColor: COLORS.inputBackground,
-        padding: SPACING.md,
-        borderRadius: BORDER_RADIUS.sm,
-        marginTop: SPACING.sm,
-        marginBottom: SPACING.md,
-        borderLeftWidth: 4,
-        borderLeftColor: COLORS.secondary,
-    },
-    tipTitle: {
-        ...TYPOGRAPHY.body,
-        fontWeight: '700',
-        color: COLORS.textPrimary,
-        marginBottom: SPACING.xs,
-    },
-    tipText: {
-        ...TYPOGRAPHY.caption,
-        color: COLORS.textSecondary,
-        lineHeight: 20,
-    },
     buttonContainer: {
-        marginTop: SPACING.md,
+        marginTop: SPACING.xl,
     },
 });
