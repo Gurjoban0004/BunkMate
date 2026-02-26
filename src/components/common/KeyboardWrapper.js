@@ -29,8 +29,8 @@ export default function KeyboardWrapper({
         <ScrollView
             style={[styles.container, style]}
             contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps={Platform.OS === 'web' ? 'always' : 'handled'}
+            keyboardDismissMode={Platform.OS === 'web' ? 'none' : 'interactive'}
             showsVerticalScrollIndicator={false}
             bounces={true}
             scrollEnabled={scrollEnabled}
