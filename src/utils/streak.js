@@ -16,9 +16,13 @@ export function calculateOverallStreak(state) {
     let streak = 0;
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
+    const trackingStartDate = state.trackingStartDate;
     const sortedDates = Object.keys(records).sort().reverse();
 
     for (const dateKey of sortedDates) {
+        // Stop if we reach before tracking start date
+        if (trackingStartDate && dateKey < trackingStartDate) break;
+
         const dayRecords = records[dateKey];
 
         // Skip holidays
@@ -67,9 +71,13 @@ export function calculateSubjectStreak(subjectId, state) {
     let streak = 0;
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
+    const trackingStartDate = state.trackingStartDate;
     const sortedDates = Object.keys(records).sort().reverse();
 
     for (const dateKey of sortedDates) {
+        // Stop if we reach before tracking start date
+        if (trackingStartDate && dateKey < trackingStartDate) break;
+
         const dayRecords = records[dateKey];
 
         // Skip holidays

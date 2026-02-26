@@ -1,4 +1,5 @@
 import { getSubjectAttendance, calculatePercentage, getClassesForDay } from './attendance';
+import { getDateKey } from './dateHelpers';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -20,7 +21,11 @@ export function canSkipClass(attended, total, units, threshold = 75) {
  * Get the skip status for a specific day.
  * Returns: { status: 'safe'|'partial'|'risky'|'noclass', classes: [...] }
  */
-export function getDayStatus(state, dayName, threshold = 75) {
+export function getDayStatus(state, dayName, threshold = 75, dateKey = null) {
+    if (dateKey && state.trackingStartDate && dateKey < state.trackingStartDate) {
+        return { status: 'setup_day', classes: [], safeCount: 0, riskyCount: 0 };
+    }
+
     const classes = getClassesForDay(state, dayName);
 
     if (classes.length === 0) {
@@ -72,8 +77,9 @@ export function getWeekPlan(state, threshold = 75) {
         const diff = dayIndex - todayDayIndex;
         const date = new Date(today);
         date.setDate(today.getDate() + diff);
+        const dateKey = getDateKey(date);
 
-        const dayStatus = getDayStatus(state, dayName, threshold);
+        const dayStatus = getDayStatus(state, dayName, threshold, dateKey);
 
         return {
             dayName,

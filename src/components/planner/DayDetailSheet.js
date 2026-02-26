@@ -13,6 +13,7 @@ const DayDetailSheet = ({ visible, dayData, onClose }) => {
         safe: { emoji: '🟢', text: 'Safe to skip entire day', color: COLORS.success },
         partial: { emoji: '🟡', text: `Skip ${safeCount} only`, color: COLORS.warning },
         risky: { emoji: '🔴', text: 'Attend all classes', color: COLORS.danger },
+        setup_day: { emoji: '✅', text: 'Already counted in setup', color: COLORS.successDark },
     };
 
     const verdict = verdictConfig[status] || verdictConfig.risky;
@@ -34,58 +35,69 @@ const DayDetailSheet = ({ visible, dayData, onClose }) => {
                         </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.subtitle}>If you skip this day:</Text>
-
-                    {/* Class Table */}
-                    <View style={styles.table}>
-                        {/* Table Header */}
-                        <View style={styles.tableHeader}>
-                            <Text style={[styles.tableHeaderText, { flex: 2 }]}>Subject</Text>
-                            <Text style={styles.tableHeaderText}>Now</Text>
-                            <Text style={styles.tableHeaderText}>After</Text>
-                            <Text style={styles.tableHeaderText}>Status</Text>
+                    {status === 'setup_day' ? (
+                        <View style={[styles.verdictBox, { borderColor: verdict.color, marginTop: SPACING.md }]}>
+                            <Text style={styles.verdictEmoji}>{verdict.emoji}</Text>
+                            <Text style={[styles.verdictText, { color: verdict.color }]}>
+                                {verdict.text}
+                            </Text>
                         </View>
+                    ) : (
+                        <>
+                            <Text style={styles.subtitle}>If you skip this day:</Text>
 
-                        {/* Table Rows */}
-                        {classes.map((cls) => (
-                            <View key={cls.subjectId} style={styles.tableRow}>
-                                <View style={[styles.tableCell, { flex: 2 }]}>
-                                    <View style={[styles.colorDot, { backgroundColor: cls.color }]} />
-                                    <Text style={styles.subjectName} numberOfLines={1}>
-                                        {cls.subjectName}
-                                    </Text>
+                            {/* Class Table */}
+                            <View style={styles.table}>
+                                {/* Table Header */}
+                                <View style={styles.tableHeader}>
+                                    <Text style={[styles.tableHeaderText, { flex: 2 }]}>Subject</Text>
+                                    <Text style={styles.tableHeaderText}>Now</Text>
+                                    <Text style={styles.tableHeaderText}>After</Text>
+                                    <Text style={styles.tableHeaderText}>Status</Text>
                                 </View>
-                                <Text style={styles.tableCell}>
-                                    {cls.currentPercentage.toFixed(0)}%
-                                </Text>
-                                <Text style={[
-                                    styles.tableCell,
-                                    { color: cls.safe ? COLORS.success : COLORS.danger },
-                                ]}>
-                                    {cls.newPercentage.toFixed(0)}%
-                                </Text>
-                                <Text style={styles.tableCell}>
-                                    {cls.safe ? '✅' : cls.newPercentage >= 73 ? '⚠️' : '🚨'}
+
+                                {/* Table Rows */}
+                                {classes.map((cls) => (
+                                    <View key={cls.subjectId} style={styles.tableRow}>
+                                        <View style={[styles.tableCell, { flex: 2 }]}>
+                                            <View style={[styles.colorDot, { backgroundColor: cls.color }]} />
+                                            <Text style={styles.subjectName} numberOfLines={1}>
+                                                {cls.subjectName}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.tableCell}>
+                                            {cls.currentPercentage.toFixed(0)}%
+                                        </Text>
+                                        <Text style={[
+                                            styles.tableCell,
+                                            { color: cls.safe ? COLORS.success : COLORS.danger },
+                                        ]}>
+                                            {cls.newPercentage.toFixed(0)}%
+                                        </Text>
+                                        <Text style={styles.tableCell}>
+                                            {cls.safe ? '✅' : cls.newPercentage >= 73 ? '⚠️' : '🚨'}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+
+                            {/* Verdict */}
+                            <View style={[styles.verdictBox, { borderColor: verdict.color }]}>
+                                <Text style={styles.verdictEmoji}>{verdict.emoji}</Text>
+                                <Text style={[styles.verdictText, { color: verdict.color }]}>
+                                    Verdict: {verdict.text}
                                 </Text>
                             </View>
-                        ))}
-                    </View>
 
-                    {/* Verdict */}
-                    <View style={[styles.verdictBox, { borderColor: verdict.color }]}>
-                        <Text style={styles.verdictEmoji}>{verdict.emoji}</Text>
-                        <Text style={[styles.verdictText, { color: verdict.color }]}>
-                            Verdict: {verdict.text}
-                        </Text>
-                    </View>
-
-                    {/* Recommendation */}
-                    {recommendation ? (
-                        <View style={styles.recommendBox}>
-                            <Text style={styles.recommendLabel}>💡 Recommendation:</Text>
-                            <Text style={styles.recommendText}>{recommendation}</Text>
-                        </View>
-                    ) : null}
+                            {/* Recommendation */}
+                            {recommendation ? (
+                                <View style={styles.recommendBox}>
+                                    <Text style={styles.recommendLabel}>💡 Recommendation:</Text>
+                                    <Text style={styles.recommendText}>{recommendation}</Text>
+                                </View>
+                            ) : null}
+                        </>
+                    )}
                 </View>
             </View>
         </Modal>

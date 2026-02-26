@@ -7,6 +7,7 @@ const STATUS_COLORS = {
     partial: '#FF9800',
     risky: '#EF5350',
     noclass: '#9CA3AF',
+    setup_day: '#9CA3AF',
 };
 
 const STATUS_EMOJI = {
@@ -14,6 +15,7 @@ const STATUS_EMOJI = {
     partial: '🟡',
     risky: '🔴',
     noclass: '⚪',
+    setup_day: '⚪',
 };
 
 const WeekCalendar = ({ weekPlan, selectedDay, onDayPress }) => {

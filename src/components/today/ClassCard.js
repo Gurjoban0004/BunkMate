@@ -17,6 +17,7 @@ const ClassCard = ({
     state,
     onMark,
     isCurrentClass = false,
+    isPreCounted = false,
 }) => {
     const { subjectId, subjectName, teacher, startTime, endTime, units } = classInfo;
 
@@ -104,6 +105,41 @@ const ClassCard = ({
     };
 
     const cardStyle = getCardStyle();
+
+    if (isPreCounted) {
+        return (
+            <View style={[styles.container, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border, opacity: 0.8 }]}>
+                <View style={[styles.colorBar, { backgroundColor: COLORS.border }]} />
+                <View style={styles.content}>
+                    <View style={styles.headerRow}>
+                        <View style={styles.subjectInfo}>
+                            <View style={styles.titleRow}>
+                                <Text style={[styles.subjectName, { color: COLORS.textSecondary }]}>{subjectName}</Text>
+                                {units > 1 && (
+                                    <View style={[styles.durationBadge, { backgroundColor: COLORS.inputBackground }]}>
+                                        <Text style={[styles.durationBadgeText, { color: COLORS.textSecondary }]}>{units}-HR CLASS</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <View style={styles.metaRow}>
+                                {teacher && <Text style={styles.teacher}>{teacher}</Text>}
+                            </View>
+                        </View>
+                        <View style={[styles.timeContainer, { backgroundColor: COLORS.background }]}>
+                            <Text style={[styles.time, { color: COLORS.textSecondary }]}>
+                                {formatTimeRange(startTime, endTime)}
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={{ marginTop: SPACING.md, flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.success, fontWeight: '600' }}>
+                            ✓ Included in setup
+                        </Text>
+                    </View>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <Animated.View

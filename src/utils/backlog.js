@@ -14,10 +14,15 @@ export function getUnmarkedClasses(state) {
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
 
+    const trackingStartDate = state.trackingStartDate;
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     for (let d = new Date(twoWeeksAgo); d < today; d.setDate(d.getDate() + 1)) {
         const dateKey = getDateKey(d);
+
+        // Skip days before tracking started
+        if (dateKey < trackingStartDate) continue;
+
         const dayName = dayNames[d.getDay()];
 
         // Skip if holiday

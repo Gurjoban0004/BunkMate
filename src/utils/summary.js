@@ -39,6 +39,7 @@ export function generateWeeklySummary(state) {
 
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
+    const trackingStartDate = state.trackingStartDate;
 
     let totalClasses = 0;
     let attendedClasses = 0;
@@ -53,6 +54,12 @@ export function generateWeeklySummary(state) {
         const dateKey = getDateKey(d);
         const dayRecord = records[dateKey];
         const isHoliday = dayRecord?._holiday || holidays.includes(dateKey);
+
+        // Skip days before tracking started
+        if (trackingStartDate && dateKey < trackingStartDate) {
+            dailyStatus[dayNames[i]] = 'no_class';
+            continue;
+        }
 
         if (!dayRecord || isHoliday) {
             dailyStatus[dayNames[i]] = 'no_class';

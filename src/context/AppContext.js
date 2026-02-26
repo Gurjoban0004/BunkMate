@@ -39,6 +39,11 @@ const initialState = {
 
     // Track which warning notifications have been sent (avoid spam)
     notificationState: {},
+
+    // Setup tracking fields
+    setupDate: null,              // Date when setup was completed
+    trackingStartDate: null,      // Date from which to track attendance
+    todayIncludedInSetup: false,  // Was today's attendance included in initial numbers?
 };
 
 function appReducer(state, action) {
@@ -178,7 +183,15 @@ function appReducer(state, action) {
         }
 
         case 'COMPLETE_SETUP':
-            return { ...state, setupComplete: true };
+            return { ...state, setupComplete: true, ...(action.payload || {}) };
+
+        case 'SET_TRACKING_CONFIG':
+            return {
+                ...state,
+                setupDate: action.payload.setupDate,
+                trackingStartDate: action.payload.trackingStartDate,
+                todayIncludedInSetup: action.payload.todayIncludedInSetup,
+            };
 
         case 'UPDATE_SETTINGS':
             return {

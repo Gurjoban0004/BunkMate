@@ -19,6 +19,23 @@ const QuickAnswerCard = ({ dayStatus, compact = false, onPlannerPress }) => {
         return null;
     }
 
+    if (dayStatus.status === 'setup_day') {
+        return (
+            <Animated.View style={{ opacity: fadeAnim }}>
+                <View style={[styles.compactCard, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.success }]}>
+                    <View style={styles.compactRow}>
+                        <Text style={[styles.compactLabel, { color: COLORS.textSecondary }]}>
+                            ⚡ Setup Day
+                        </Text>
+                        <Text style={[styles.compactAnswer, { color: COLORS.textSecondary }]}>
+                            Already Counted
+                        </Text>
+                    </View>
+                </View>
+            </Animated.View>
+        );
+    }
+
     const { status, classes, safeCount, riskyCount } = dayStatus;
 
     const config = {

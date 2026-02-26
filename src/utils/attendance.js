@@ -23,8 +23,12 @@ export function getSubjectAttendance(subjectId, state) {
 
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
+    const trackingStartDate = state.trackingStartDate;
 
     Object.entries(records).forEach(([dateKey, dayRecord]) => {
+        // Skip records before tracking started
+        if (trackingStartDate && dateKey < trackingStartDate) return;
+
         // Skip holidays
         if (dayRecord._holiday) return;
         if (holidays.includes(dateKey)) return;

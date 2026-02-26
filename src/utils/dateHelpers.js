@@ -60,3 +60,12 @@ export function formatTimeRange(startStr, endStr) {
         return `${start.text} ${start.ampm} - ${end.text} ${end.ampm}`;
     }
 }
+
+/**
+ * Returns the date key for the day after the given date key.
+ */
+export function getNextDay(dateKey) {
+    const d = new Date(dateKey + 'T12:00:00'); // Use noon to avoid TZ issues
+    d.setDate(d.getDate() + 1);
+    return getDateKey(d);
+}

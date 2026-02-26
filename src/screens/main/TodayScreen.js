@@ -62,6 +62,9 @@ const TodayScreen = ({ navigation }) => {
     const isHoliday = (state.holidays || []).includes(todayKey) ||
         state.attendanceRecords[todayKey]?._holiday;
 
+    // Check if this is a setup day (today < trackingStartDate)
+    const isSetupDay = state.trackingStartDate && todayKey < state.trackingStartDate;
+
     // Check for unmarked backlog
     const unmarkedCount = useMemo(() => getUnmarkedCount(state), [state]);
 
@@ -196,6 +199,40 @@ const TodayScreen = ({ navigation }) => {
                 {/* Holiday State */}
                 {isHoliday ? (
                     <HolidayCard onUndo={() => dispatch({ type: 'REMOVE_HOLIDAY', payload: todayKey })} />
+                ) : isSetupDay ? (
+                    <>
+                        <View style={styles.setupDayCard}>
+                            <Text style={styles.setupDayTitle}>✅ Setup Complete!</Text>
+                            <Text style={styles.setupDayText}>
+                                Today's attendance was included in your initial numbers.{'\n'}
+                                Daily tracking starts tomorrow!
+                            </Text>
+                        </View>
+
+                        <SectionHeader
+                            title="Today's Classes (Already Counted)"
+                            classCount={classCount}
+                            hideHolidayButton={true}
+                        />
+
+                        {/* Empty State */}
+                        {classCount === 0 ? (
+                            <EmptyDay />
+                        ) : (
+                            <View style={styles.sectionContainer}>
+                                {todayClasses.map((classInfo, index) => (
+                                    <ClassCard
+                                        key={`setup-${classInfo.subjectId}-${index}`}
+                                        classInfo={classInfo}
+                                        state={state}
+                                        onMark={() => { }}
+                                        isCurrentClass={false}
+                                        isPreCounted={true}
+                                    />
+                                ))}
+                            </View>
+                        )}
+                    </>
                 ) : (
                     <>
                         {/* Classes Section */}
@@ -322,6 +359,28 @@ const styles = StyleSheet.create({
     header: {
         paddingHorizontal: SPACING.lg,
         paddingBottom: SPACING.md,
+    },
+    setupDayCard: {
+        marginHorizontal: SPACING.lg,
+        marginBottom: SPACING.md,
+        padding: SPACING.lg,
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.lg,
+        borderWidth: 1,
+        borderColor: COLORS.success,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.success,
+    },
+    setupDayTitle: {
+        fontSize: FONT_SIZES.md,
+        fontWeight: '700',
+        color: COLORS.successDark,
+        marginBottom: SPACING.xs,
+    },
+    setupDayText: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textSecondary,
+        lineHeight: 20,
     },
     greeting: {
         fontSize: FONT_SIZES.xl,

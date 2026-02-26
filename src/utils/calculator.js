@@ -59,7 +59,9 @@ export function detectPattern(subjectId, state) {
     });
 
     // Count bunks per day
+    const trackingStartDate = state.trackingStartDate;
     Object.entries(state.attendanceRecords).forEach(([dateKey, dayRecord]) => {
+        if (trackingStartDate && dateKey < trackingStartDate) return;
         if (dayRecord._holiday) return;
         const record = dayRecord[subjectId];
         if (record && record.status === 'absent') {
@@ -104,8 +106,10 @@ export function detectPattern(subjectId, state) {
 export function calculateTrend(subjectId, state) {
     const now = new Date();
     const records = [];
+    const trackingStartDate = state.trackingStartDate;
 
     Object.entries(state.attendanceRecords).forEach(([dateKey, dayRecord]) => {
+        if (trackingStartDate && dateKey < trackingStartDate) return;
         if (dayRecord._holiday) return;
         const record = dayRecord[subjectId];
         if (record && record.status !== 'cancelled') {
