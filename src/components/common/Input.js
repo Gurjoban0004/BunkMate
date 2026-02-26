@@ -11,13 +11,15 @@ export default function Input({
     ...props
 }) {
     if (Platform.OS === 'web') {
+        const { autoCapitalize, returnKeyType, onSubmitEditing, placeholderTextColor, ...domProps } = props;
         return (
             <input
+                {...domProps}
+                autoCapitalize={autoCapitalize}
                 type={keyboardType === 'numeric' ? 'number' : 'text'}
                 value={value}
                 onChange={(e) => onChangeText(e.target.value)}
                 placeholder={placeholder}
-                {...props}
                 style={{
                     backgroundColor: COLORS.inputBackground,
                     color: COLORS.textPrimary,

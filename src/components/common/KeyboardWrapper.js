@@ -33,7 +33,7 @@ export default function KeyboardWrapper({
         // We use a pure View with overflowY instead of ScrollView to completely 
         // bypass React Native Web's scroll touch responders, which cause Safari to cancel taps.
         return (
-            <View style={[styles.container, style, { overflowY: 'auto' }]}>
+            <View style={[styles.container, style]}>
                 <View style={[styles.scrollContent, contentContainerStyle]}>
                     {children}
                 </View>

@@ -19,8 +19,8 @@ if (Platform.OS === 'web') {
             user-select: text !important;
             pointer-events: auto !important;
         }
-        * {
-            outline: none !important;
+        input:focus, textarea:focus {
+            outline: none;
         }
     `;
     document.head.append(style);
