@@ -35,12 +35,17 @@ export default function SubjectListScreen({ navigation }) {
         return () => clearTimeout(timer);
     }, []);
 
-    const handleAddSubject = () => {
-        const trimmed = inputValue.trim();
-        if (!trimmed) return;
+    const handleAddSubject = (submitText) => {
+        const textToUse = typeof submitText === 'string' ? submitText : inputValue;
+        const trimmed = textToUse.trim();
+        if (!trimmed) {
+            if (inputRef.current) inputRef.current.focus();
+            return;
+        }
 
         // Prevent exact duplicates
         if (subjects.find(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
+            setTimeout(() => setInputValue(''), 0);
             return;
         }
 
@@ -51,11 +56,11 @@ export default function SubjectListScreen({ navigation }) {
         };
 
         setSubjects(prev => [...prev, newSubject]);
-        setInputValue('');
+        setTimeout(() => setInputValue(''), 0); // Web async safety
 
         // Keep focus for rapid entry
         if (inputRef.current) {
-            inputRef.current.focus();
+            setTimeout(() => inputRef.current?.focus(), 50);
         }
     };
 
@@ -119,11 +124,14 @@ export default function SubjectListScreen({ navigation }) {
                             placeholderTextColor={COLORS.textMuted}
                             value={inputValue}
                             onChangeText={setInputValue}
-                            onSubmitEditing={handleAddSubject}
-                            returnKeyType="next"
+                            onSubmitEditing={(e) => handleAddSubject(e.nativeEvent.text)}
+                            returnKeyType="done"
                             autoCapitalize="words"
                             blurOnSubmit={false} // Prevents keyboard from closing
                         />
+                        <TouchableOpacity style={styles.addButton} onPress={handleAddSubject}>
+                            <Text style={styles.addButtonText}>Add</Text>
+                        </TouchableOpacity>
                     </View>
 
                     {subjects.length === 0 && (
@@ -222,6 +230,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
         borderWidth: 1,
         borderColor: 'transparent',
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     inputContainerEmpty: {
         borderColor: COLORS.primary,
@@ -229,10 +239,24 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
     },
     input: {
+        flex: 1,
         paddingHorizontal: SPACING.lg,
         paddingVertical: SPACING.md,
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
+        ...Platform.select({ web: { outlineStyle: 'none' } }),
+    },
+    addButton: {
+        backgroundColor: COLORS.primary,
+        borderRadius: BORDER_RADIUS.sm,
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: 10,
+        marginRight: SPACING.xs,
+    },
+    addButtonText: {
+        color: COLORS.textOnPrimary,
+        fontWeight: 'bold',
+        fontSize: FONT_SIZES.sm,
     },
     emptyState: {
         alignItems: 'center',

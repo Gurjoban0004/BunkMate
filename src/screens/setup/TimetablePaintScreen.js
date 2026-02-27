@@ -26,7 +26,7 @@ export default function TimetablePaintScreen({ navigation }) {
         return initial;
     });
 
-    const [activeSubjectId, setActiveSubjectId] = useState(null);
+    const [activeSubjectId, setActiveSubjectId] = useState(subjects.length > 0 ? subjects[0].id : null);
     const [activeDay, setActiveDay] = useState('Monday');
 
     const handleSlotPress = (index) => {
