@@ -60,8 +60,8 @@ export default function AttendanceStatsScreen({ navigation }) {
             }
         });
 
-        // Finalize setup
-        dispatch({ type: 'COMPLETE_SETUP' });
+        // Proceed to the celebratory screen
+        navigation.navigate('SetupComplete');
     };
 
     const handleContinue = () => {
