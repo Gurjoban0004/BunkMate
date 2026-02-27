@@ -91,13 +91,16 @@ export function getClassesForDay(state, dayName) {
 
         // Check if this slot is consecutive with the last one for the same subject
         // Allow up to a 30-minute gap to still consider it a single block
+        // Overlapping slots (negative gap) are also merged, which happens for 2-hour classes
         if (
             lastClass &&
             lastClass.subjectId === slot.subjectId &&
-            currentStartMins >= lastEndMins &&
             (currentStartMins - lastEndMins) <= 30
         ) {
-            lastClass.endTime = endTime;
+            // Extend end time only if this slot ends later
+            if (parseTimeToMinutes(endTime) > parseTimeToMinutes(lastClass.endTime)) {
+                lastClass.endTime = endTime;
+            }
             lastClass.units += 1;
         } else {
             const newClass = {
