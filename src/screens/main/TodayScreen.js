@@ -135,6 +135,24 @@ const TodayScreen = ({ navigation }) => {
     // Categorize classes
     const categorizeClasses = () => {
         if (currentClassIndex === -1) {
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+            // If it's before the first class
+            if (todayClasses.length > 0) {
+                const [firstStartH, firstStartM] = todayClasses[0].startTime.split(':').map(Number);
+                if (currentMinutes < firstStartH * 60 + firstStartM) {
+                    return { now: null, upcoming: todayClasses, done: [] };
+                }
+
+                // If it's after the last class
+                const lastClass = todayClasses[todayClasses.length - 1];
+                const [lastEndH, lastEndM] = lastClass.endTime.split(':').map(Number);
+                if (currentMinutes >= lastEndH * 60 + lastEndM) {
+                    return { now: null, upcoming: [], done: todayClasses };
+                }
+            }
+
             return { now: null, upcoming: todayClasses, done: [] };
         }
 

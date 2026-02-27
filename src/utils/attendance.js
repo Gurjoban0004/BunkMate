@@ -66,43 +66,46 @@ export function getClassesForDay(state, dayName) {
 
     if (daySchedule.length === 0) return [];
 
-    const groupedMap = new Map();
+    const groupedClasses = [];
+    let lastClass = null;
 
-    daySchedule.forEach((slot) => {
+    // Sort schedule by time slot start time
+    const sortedSchedule = [...daySchedule].sort((a, b) => {
+        const slotA = state.timeSlots.find((ts) => ts.id === a.slotId);
+        const slotB = state.timeSlots.find((ts) => ts.id === b.slotId);
+        if (!slotA || !slotB) return 0;
+        return parseTimeToMinutes(slotA.start) - parseTimeToMinutes(slotB.start);
+    });
+
+    sortedSchedule.forEach((slot) => {
         const timeSlot = state.timeSlots.find((ts) => ts.id === slot.slotId);
         const subject = state.subjects.find((s) => s.id === slot.subjectId);
 
         if (!timeSlot || !subject) return;
 
-        if (groupedMap.has(slot.subjectId)) {
-            const existing = groupedMap.get(slot.subjectId);
-            existing.units += 1;
-            // Keep the earliest start and latest end for display
-            const [exStartH, exStartM] = existing.startTime.split(':').map(Number);
-            const [tsStartH, tsStartM] = timeSlot.start.split(':').map(Number);
-            if (tsStartH * 60 + tsStartM < exStartH * 60 + exStartM) {
-                existing.startTime = timeSlot.start;
-            }
+        const startTime = slot.customStart || timeSlot.start;
+        const endTime = slot.customEnd || timeSlot.end;
 
-            const [exEndH, exEndM] = existing.endTime.split(':').map(Number);
-            const [tsEndH, tsEndM] = timeSlot.end.split(':').map(Number);
-            if (tsEndH * 60 + tsEndM > exEndH * 60 + exEndM) {
-                existing.endTime = timeSlot.end;
-            }
+        // Check if this slot is consecutive with the last one for the same subject
+        if (lastClass && lastClass.subjectId === slot.subjectId && lastClass.endTime === startTime) {
+            lastClass.endTime = endTime;
+            lastClass.units += 1;
         } else {
-            groupedMap.set(slot.subjectId, {
+            const newClass = {
                 subjectId: slot.subjectId,
                 subjectName: subject.name,
                 teacher: subject.teacher,
                 color: subject.color,
-                startTime: timeSlot.start,
-                endTime: timeSlot.end,
+                startTime: startTime,
+                endTime: endTime,
                 units: 1,
-            });
+            };
+            groupedClasses.push(newClass);
+            lastClass = newClass;
         }
     });
 
-    return Array.from(groupedMap.values());
+    return groupedClasses;
 }
 
 /**
@@ -145,16 +148,26 @@ export function calculateBunks(attended, total, targetPercent) {
     const currentPercent = calculatePercentage(attended, total);
 
     if (currentPercent >= targetPercent) {
-        const canBunk = Math.floor((attended - target * total) / target);
+        // canBunk = (attended / target) - total
+        const canBunk = target > 0 ? Math.floor(attended / target - total) : 0;
         return {
             status: 'safe',
             count: Math.max(0, canBunk),
             message: `You can bunk ${Math.max(0, canBunk)} more classes`,
         };
     } else {
-        const needAttend = Math.ceil(
-            (target * total - attended) / (1 - target)
-        );
+        // needAttend = (target * total - attended) / (1 - target)
+        const divisor = 1 - target;
+        if (divisor <= 0) {
+            // Target is 100% or more, you'll never reach it if you've missed even one class
+            // But if total is 0, technically you're at 0%
+            return {
+                status: 'danger',
+                count: Infinity,
+                message: `You missed a class, you can't reach 100% attendance!`,
+            };
+        }
+        const needAttend = Math.ceil((target * total - attended) / divisor);
         return {
             status: 'danger',
             count: Math.max(0, needAttend),
