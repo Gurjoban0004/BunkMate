@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import KeyboardWrapper from '../../components/common/KeyboardWrapper';
 import Input from '../../components/common/Input';
@@ -11,14 +11,14 @@ export default function WelcomeScreen({ navigation }) {
     const { dispatch } = useApp();
     const inputRef = useRef(null);
 
-    // Auto-focus the input on mount
+    // Focus input softly
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (inputRef.current) {
-                inputRef.current.focus();
-            }
-        }, 300); // Small delay to ensure screen transition finishes
-        return () => clearTimeout(timer);
+        if (Platform.OS !== 'web') {
+            const timer = setTimeout(() => {
+                inputRef.current?.focus();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
     }, []);
 
     const handleContinue = () => {

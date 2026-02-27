@@ -78,7 +78,7 @@ export default function SubjectListScreen({ navigation }) {
             }));
 
             dispatch({ type: 'SET_SUBJECTS', payload: subjectsWithStats });
-            navigation.navigate('TimetablePaint');
+            navigation.navigate('TimeSlots');
         }
     };
 
