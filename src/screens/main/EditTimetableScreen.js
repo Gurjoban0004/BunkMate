@@ -155,14 +155,41 @@ const EditTimetableScreen = ({ navigation }) => {
                         <Text style={styles.emptyText}>No time slots configured.</Text>
                     </View>
                 ) : (
-                    orderedTimeSlots.map((slot) => {
+                    orderedTimeSlots.map((slot, index) => {
                         const classData = activeDayClasses.find(c => c.slotId === slot.id);
                         const subject = classData ? state.subjects.find(s => s.id === classData.subjectId) : null;
+
+                        // Check if this slot should be merged visually with the previous
+                        if (subject && index > 0) {
+                            const prevSlot = orderedTimeSlots[index - 1];
+                            const prevClassData = activeDayClasses.find(c => c.slotId === prevSlot.id);
+                            if (prevClassData && prevClassData.subjectId === subject.id) {
+                                return null; // Skip rendering, it's merged into the previous card
+                            }
+                        }
+
+                        let displayStart = slot.start;
+                        let displayEnd = slot.end;
+
+                        // Find the total span of this class
+                        if (subject) {
+                            let iterIndex = index + 1;
+                            while (iterIndex < orderedTimeSlots.length) {
+                                const nextSlot = orderedTimeSlots[iterIndex];
+                                const nextClassData = activeDayClasses.find(c => c.slotId === nextSlot.id);
+                                if (nextClassData && nextClassData.subjectId === subject.id) {
+                                    displayEnd = nextSlot.end;
+                                    iterIndex++;
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
 
                         return (
                             <View key={slot.id} style={styles.slotContainer}>
                                 <Text style={styles.timeLabel}>
-                                    {formatTimeRange(slot.start, slot.end)}
+                                    {formatTimeRange(displayStart, displayEnd)}
                                 </Text>
 
                                 {subject ? (

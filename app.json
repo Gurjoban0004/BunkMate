@@ -39,7 +39,12 @@
             "description": "Smart Attendance Tracker",
             "display": "standalone",
             "startUrl": "/",
-            "bundler": "metro"
+            "bundler": "metro",
+            "splash": {
+                "image": "./assets/splash-icon.png",
+                "resizeMode": "contain",
+                "backgroundColor": "#1A1A2E"
+            }
         },
         "plugins": [
             [

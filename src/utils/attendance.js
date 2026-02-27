@@ -86,8 +86,17 @@ export function getClassesForDay(state, dayName) {
         const startTime = slot.customStart || timeSlot.start;
         const endTime = slot.customEnd || timeSlot.end;
 
+        const currentStartMins = parseTimeToMinutes(startTime);
+        const lastEndMins = lastClass ? parseTimeToMinutes(lastClass.endTime) : 0;
+
         // Check if this slot is consecutive with the last one for the same subject
-        if (lastClass && lastClass.subjectId === slot.subjectId && lastClass.endTime === startTime) {
+        // Allow up to a 30-minute gap to still consider it a single block
+        if (
+            lastClass &&
+            lastClass.subjectId === slot.subjectId &&
+            currentStartMins >= lastEndMins &&
+            (currentStartMins - lastEndMins) <= 30
+        ) {
             lastClass.endTime = endTime;
             lastClass.units += 1;
         } else {
