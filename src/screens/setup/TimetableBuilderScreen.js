@@ -432,6 +432,23 @@ export default function TimetableBuilderScreen({ navigation }) {
                                     </TouchableOpacity>
                                 </ScrollView>
 
+                                <Text style={styles.inputLabel}>Quick Duration</Text>
+                                <View style={styles.durationRow}>
+                                    <TouchableOpacity
+                                        style={[styles.durationButton, (classEndMins - classStartMins === 60) && styles.durationButtonActive]}
+                                        onPress={() => setClassEndMins(classStartMins + 60)}
+                                    >
+                                        <Text style={[styles.durationText, (classEndMins - classStartMins === 60) && styles.durationTextActive]}>1 Hour</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.durationButton, (classEndMins - classStartMins === 120) && styles.durationButtonActive]}
+                                        onPress={() => setClassEndMins(classStartMins + 120)}
+                                    >
+                                        <Text style={[styles.durationText, (classEndMins - classStartMins === 120) && styles.durationTextActive]}>2 Hours</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+
                                 <View style={styles.timeOverridesContainer}>
                                     <TimeStepper
                                         label="Class Starts:"

@@ -1,4 +1,4 @@
-import { getTodayDayName } from './dateHelpers';
+import { getTodayDayName, parseTimeToMinutes } from './dateHelpers';
 
 /**
  * Calculate attendance percentage, rounded to 1 decimal.
