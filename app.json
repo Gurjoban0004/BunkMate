@@ -1,7 +1,7 @@
 {
     "expo": {
-        "name": "BunkMate",
-        "slug": "bunkmate",
+        "name": "Presence",
+        "slug": "presence",
         "version": "1.0.0",
         "orientation": "portrait",
         "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
         },
         "ios": {
             "supportsTablet": false,
-            "bundleIdentifier": "com.bunkmate.app",
+            "bundleIdentifier": "com.presence.app",
             "infoPlist": {
                 "UIBackgroundModes": [
                     "remote-notification"
@@ -23,7 +23,7 @@
             }
         },
         "android": {
-            "package": "com.bunkmate.app",
+            "package": "com.presence.app",
             "versionCode": 1,
             "adaptiveIcon": {
                 "foregroundImage": "./assets/adaptive-icon.png",
@@ -32,8 +32,8 @@
         },
         "web": {
             "favicon": "./assets/favicon.png",
-            "name": "BunkMate",
-            "shortName": "BunkMate",
+            "name": "Presence",
+            "shortName": "Presence",
             "themeColor": "#6C63FF",
             "backgroundColor": "#1A1A2E",
             "description": "Smart Attendance Tracker",

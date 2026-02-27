@@ -43,7 +43,7 @@ export async function scheduleDailyReminder(time24 = '18:00') {
 
     const id = await Notifications.scheduleNotificationAsync({
         content: {
-            title: '📚 BunkMate Reminder',
+            title: '📚 Presence Reminder',
             body: "Don't forget to mark today's attendance!",
             sound: true,
         },

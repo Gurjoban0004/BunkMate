@@ -15,7 +15,7 @@ export default function WebHeader({ title, canGoBack, onGoBack }) {
                 <View style={styles.placeholder} />
             )}
             <Text style={styles.title} numberOfLines={1}>
-                {title || 'BunkMate'}
+                {title || 'Presence'}
             </Text>
             <View style={styles.placeholder} />
         </View>

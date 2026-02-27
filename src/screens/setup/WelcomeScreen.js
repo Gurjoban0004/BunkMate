@@ -38,7 +38,7 @@ export default function WelcomeScreen({ navigation }) {
                 >
                     <View style={styles.content}>
                         <Text style={styles.emoji}>📚</Text>
-                        <Text style={styles.title}>BunkMate</Text>
+                        <Text style={styles.title}>Presence</Text>
                         <Text style={styles.subtitle}>Attendance, solved.</Text>
 
                         <View style={styles.spacer} />

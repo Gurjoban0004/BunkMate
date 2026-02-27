@@ -316,7 +316,7 @@ const SettingsScreen = ({ navigation }) => {
                     <Text style={styles.sectionTitle}>ℹ️ ABOUT</Text>
 
                     <View style={styles.aboutCard}>
-                        <Text style={styles.appName}>BunkMate</Text>
+                        <Text style={styles.appName}>Presence</Text>
                         <Text style={styles.version}>Version 1.0.0</Text>
                         <Text style={styles.madeWith}>Made with ❤️ for students</Text>
                     </View>

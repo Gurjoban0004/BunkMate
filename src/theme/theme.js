@@ -1,4 +1,4 @@
-// BunkMate Design System — Light Pastel Theme
+// Presence Design System — Light Pastel Theme
 // All styling constants — NEVER hardcode colors/spacing in components
 
 export const COLORS = {

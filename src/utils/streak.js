@@ -2,7 +2,7 @@ import { getDateKey } from './dateHelpers';
 import { getClassesForDay } from './attendance';
 
 /**
- * Streak Calculations for BunkMate
+ * Streak Calculations for Presence
  *
  * Overall streak: consecutive classes attended across ALL subjects
  * Per-subject streak: consecutive classes attended for ONE subject
