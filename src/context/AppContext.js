@@ -232,7 +232,13 @@ function appReducer(state, action) {
             return { ...initialState };
 
         case 'LOAD_STATE':
-            return { ...action.payload };
+            const loaded = action.payload;
+            return {
+                ...initialState,
+                ...loaded,
+                settings: { ...initialState.settings, ...(loaded.settings || {}) },
+                timetable: { ...initialState.timetable, ...(loaded.timetable || {}) },
+            };
 
         default:
             return state;
@@ -250,8 +256,7 @@ export function AppProvider({ children }) {
                 const { loadAppState } = await import('../storage/storage');
                 const saved = await loadAppState();
                 if (saved && saved.setupComplete !== undefined) {
-                    // Merge with initialState to ensure new fields exist
-                    dispatch({ type: 'LOAD_STATE', payload: { ...initialState, ...saved } });
+                    dispatch({ type: 'LOAD_STATE', payload: saved });
                 }
             } catch (e) {
                 console.error('Failed to load state:', e);

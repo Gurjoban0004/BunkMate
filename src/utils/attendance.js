@@ -179,7 +179,14 @@ export function calculateBunks(attended, total, targetPercent) {
                 message: `You missed a class, you can't reach 100% attendance!`,
             };
         }
-        const needAttend = Math.ceil((target * total - attended) / divisor);
+
+        let needAttend = 0;
+        if (target === 1) {
+            needAttend = Infinity;
+        } else {
+            needAttend = Math.ceil((target * total - attended) / divisor);
+        }
+
         return {
             status: 'danger',
             count: Math.max(0, needAttend),

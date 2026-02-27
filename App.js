@@ -74,9 +74,9 @@ function AppContent() {
             }
             setDevReady(true);
         } else if (!DEV_MODE || !SKIP_SETUP) {
-            setDevReady(true);
+            if (!devReady) setDevReady(true);
         }
-    }, [isLoading]);
+    }, [isLoading, DEV_MODE, SKIP_SETUP, state.setupComplete, devReady, dispatch]);
 
     if (isLoading || !devReady) {
         return (
