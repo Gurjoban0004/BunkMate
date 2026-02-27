@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 
-// Import Screens
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import SubjectListScreen from '../screens/setup/SubjectListScreen';
-import TimetablePaintScreen from '../screens/setup/TimetablePaintScreen';
+import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
+import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 
@@ -99,7 +99,8 @@ export default function WebNavigator() {
         switch (currentRoute.name) {
             case 'Welcome': return <WelcomeScreen {...props} />;
             case 'SubjectList': return <SubjectListScreen {...props} />;
-            case 'TimetablePaint': return <TimetablePaintScreen {...props} />;
+            case 'TimeSlots': return <TimeSlotsScreen {...props} />;
+            case 'TimetableBuilder': return <TimetableBuilderScreen {...props} />;
             case 'AttendanceStats': return <AttendanceStatsScreen {...props} />;
             case 'SetupComplete': return <SetupCompleteScreen {...props} />;
             default: return <WelcomeScreen {...props} />;

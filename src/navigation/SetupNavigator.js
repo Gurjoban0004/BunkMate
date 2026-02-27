@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import SubjectListScreen from '../screens/setup/SubjectListScreen';
-import TimetablePaintScreen from '../screens/setup/TimetablePaintScreen';
+import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
+import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 import { COLORS } from '../theme/theme';
@@ -57,9 +58,14 @@ export default function SetupNavigator() {
                 options={{ title: 'Your Subjects' }}
             />
             <Stack.Screen
-                name="TimetablePaint"
-                component={TimetablePaintScreen}
-                options={{ title: 'Timetable' }}
+                name="TimeSlots"
+                component={TimeSlotsScreen}
+                options={{ title: 'Time Slots' }}
+            />
+            <Stack.Screen
+                name="TimetableBuilder"
+                component={TimetableBuilderScreen}
+                options={{ title: 'Build Timetable' }}
             />
             <Stack.Screen
                 name="AttendanceStats"
