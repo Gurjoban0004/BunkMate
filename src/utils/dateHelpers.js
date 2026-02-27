@@ -62,6 +62,26 @@ export function formatTimeRange(startStr, endStr) {
 }
 
 /**
+ * Converts integer minutes since midnight to "HH:MM" 24h string.
+ * e.g., 545 -> "09:05"
+ */
+export function formatMinutesToTime(totalMins) {
+    const hours = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+/**
+ * Parses "HH:MM" 24h string into total minutes since midnight.
+ * e.g., "09:05" -> 545
+ */
+export function parseTimeToMinutes(timeStr) {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(':');
+    return parseInt(h, 10) * 60 + parseInt(m, 10);
+}
+
+/**
  * Returns the date key for the day after the given date key.
  */
 export function getNextDay(dateKey) {

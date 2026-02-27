@@ -13,6 +13,42 @@ import Button from '../../components/common/Button';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
+import { formatMinutesToTime, parseTimeToMinutes } from '../../utils/dateHelpers';
+
+// Formatter for the TimeStepper display
+const formatMins = (totalMins) => {
+    const hours24 = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    const period = hours24 >= 12 ? 'PM' : 'AM';
+    const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
+    return `${hours12}:${String(mins).padStart(2, '0')} ${period}`;
+};
+
+// Reusable micro-stepper for the modal
+const TimeStepper = ({ value, min, max, onChange, label }) => (
+    <View style={styles.stepperContainer}>
+        <Text style={styles.stepperLabel}>{label}</Text>
+        <View style={styles.stepperControls}>
+            <TouchableOpacity
+                style={styles.stepButton}
+                onPress={() => onChange(Math.max(min, value - 5))}
+            >
+                <Text style={styles.stepButtonText}>-</Text>
+            </TouchableOpacity>
+
+            <View style={styles.stepperValueContainer}>
+                <Text style={styles.stepperValue}>{formatMins(value)}</Text>
+            </View>
+
+            <TouchableOpacity
+                style={styles.stepButton}
+                onPress={() => onChange(Math.min(max, value + 5))}
+            >
+                <Text style={styles.stepButtonText}>+</Text>
+            </TouchableOpacity>
+        </View>
+    </View>
+);
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const THEME_COLORS = ['#FF6B6B', '#FF9F43', '#FDCB6E', '#1DD1A1', '#48DBFB', '#5F27CD', '#C8D6E5', '#222F3E'];
@@ -27,7 +63,10 @@ export default function TimetableBuilderScreen({ navigation }) {
     // Selection state
     const [selectedCell, setSelectedCell] = useState(null); // { day, slotIndex }
     const [selectedSubjectId, setSelectedSubjectId] = useState(null);
-    const [durationChars, setDurationChars] = useState(1); // 1 or 2
+
+    // Custom Time Override State
+    const [classStartMins, setClassStartMins] = useState(0);
+    const [classEndMins, setClassEndMins] = useState(0);
 
     // New Subject State
     const [subjectName, setSubjectName] = useState('');
@@ -43,19 +82,28 @@ export default function TimetableBuilderScreen({ navigation }) {
         const existingClass = timetable[day].find(c => c.slotId === timeSlot.id);
 
         setSelectedCell({ day, slotIndex, timeSlotId: timeSlot.id });
+
+        // Initialize the custom times to either the existing override, or the scaffold defaults
+        const defaultStart = parseTimeToMinutes(timeSlot.start);
+        const defaultEnd = parseTimeToMinutes(timeSlot.end);
+
         if (existingClass) {
             setSelectedSubjectId(existingClass.subjectId);
-            // Check if 2 hr
+            setClassStartMins(existingClass.customStart ? parseTimeToMinutes(existingClass.customStart) : defaultStart);
+            setClassEndMins(existingClass.customEnd ? parseTimeToMinutes(existingClass.customEnd) : defaultEnd);
+
+            // If the user previously merged 2 slots together, we want the modal end time to reflect that next slot's end time
             const nextSlot = timeSlots[slotIndex + 1];
             if (nextSlot) {
                 const nextClass = timetable[day].find(c => c.slotId === nextSlot.id);
-                setDurationChars((nextClass && nextClass.subjectId === existingClass.subjectId) ? 2 : 1);
-            } else {
-                setDurationChars(1);
+                if (nextClass && nextClass.subjectId === existingClass.subjectId && !existingClass.customEnd) {
+                    setClassEndMins(parseTimeToMinutes(nextSlot.end));
+                }
             }
         } else {
             setSelectedSubjectId(null);
-            setDurationChars(1);
+            setClassStartMins(defaultStart);
+            setClassEndMins(defaultEnd);
         }
         setNewSubjectMode(false);
         setModalVisible(true);
@@ -92,25 +140,52 @@ export default function TimetableBuilderScreen({ navigation }) {
             return;
         }
 
+        if (classStartMins >= classEndMins) {
+            showAlert('Invalid Time', 'End time must be after start time.');
+            return;
+        }
+
         const { day, slotIndex, timeSlotId } = selectedCell;
         let daySlots = [...timetable[day]];
 
+        const defaultStartStr = timeSlots[slotIndex].start;
+        const defaultEndStr = timeSlots[slotIndex].end;
+
+        const customStartStr = formatMinutesToTime(classStartMins);
+        const customEndStr = formatMinutesToTime(classEndMins);
+
+        // Only save overrides if they changed from the scaffolding
+        const overrides = {};
+        if (customStartStr !== defaultStartStr) overrides.customStart = customStartStr;
+        if (customEndStr !== defaultEndStr) overrides.customEnd = customEndStr;
+
         // Remove whatever was in this slot
         daySlots = daySlots.filter(c => c.slotId !== timeSlotId);
-        daySlots.push({ slotId: timeSlotId, subjectId: selectedSubjectId });
 
-        // Handle 2-hour duration
-        if (durationChars === 2) {
-            const nextSlot = timeSlots[slotIndex + 1];
-            if (nextSlot) {
-                // Clear and occupy next slot
+        // Add current slot back
+        daySlots.push({
+            slotId: timeSlotId,
+            subjectId: selectedSubjectId,
+            ...overrides
+        });
+
+        // 2-hour multi-slot mapping: The old system visually merged slots if the next chronological slot belonged to the same subject.
+        // We will maintain this backwards-compatible visual logic: if the user selected an EndTime that spills into the next slot's jurisdiction,
+        // we will silently occupy the next slot as well so the visual renderer merges them smoothly and the schedule doesn't look empty there.
+        const nextSlot = timeSlots[slotIndex + 1];
+        if (nextSlot) {
+            const nextSlotStart = parseTimeToMinutes(nextSlot.start);
+            // If they increased the duration so much it overlaps with the next block entirely
+            if (classEndMins > nextSlotStart) {
                 daySlots = daySlots.filter(c => c.slotId !== nextSlot.id);
-                daySlots.push({ slotId: nextSlot.id, subjectId: selectedSubjectId });
-            }
-        } else {
-            // If they changed from 2hr to 1hr, we should probably clear the next slot if it had the same subject
-            const nextSlot = timeSlots[slotIndex + 1];
-            if (nextSlot) {
+                daySlots.push({
+                    slotId: nextSlot.id,
+                    subjectId: selectedSubjectId,
+                    customStart: nextSlot.start, // effectively hides visual start text for the second half
+                    customEnd: customEndStr !== nextSlot.end ? customEndStr : undefined,
+                });
+            } else {
+                // Check if it was previously occupied by this class and needs clearing
                 const nextClass = daySlots.find(c => c.slotId === nextSlot.id);
                 if (nextClass && nextClass.subjectId === selectedSubjectId) {
                     daySlots = daySlots.filter(c => c.slotId !== nextSlot.id);
@@ -126,13 +201,16 @@ export default function TimetableBuilderScreen({ navigation }) {
         const { day, slotIndex, timeSlotId } = selectedCell;
         let daySlots = [...timetable[day]];
 
+        const classToRemove = daySlots.find(c => c.slotId === timeSlotId);
+
         // Remove from current
         daySlots = daySlots.filter(c => c.slotId !== timeSlotId);
 
-        // Remove from next if it was a 2hr class
-        if (durationChars === 2) {
-            const nextSlot = timeSlots[slotIndex + 1];
-            if (nextSlot) {
+        // Check if next slot was a spillover from this 2+hr class and clear it too
+        const nextSlot = timeSlots[slotIndex + 1];
+        if (nextSlot && classToRemove) {
+            const nextClass = daySlots.find(c => c.slotId === nextSlot.id);
+            if (nextClass && nextClass.subjectId === classToRemove.subjectId) {
                 daySlots = daySlots.filter(c => c.slotId !== nextSlot.id);
             }
         }
@@ -199,6 +277,12 @@ export default function TimetableBuilderScreen({ navigation }) {
                                         }
 
                                         if (subject) {
+                                            const displayStart = classInfo.customStart ? classInfo.customStart.substring(0, 5) : slot.start.substring(0, 5);
+                                            const displayEnd = classInfo.customEnd ? classInfo.customEnd.substring(0, 5) : slot.end.substring(0, 5);
+
+                                            // Provide visual distinction if it's deeply customized time
+                                            const isCustom = classInfo.customStart || classInfo.customEnd;
+
                                             return (
                                                 <TouchableOpacity
                                                     key={slot.id}
@@ -206,13 +290,18 @@ export default function TimetableBuilderScreen({ navigation }) {
                                                         styles.cell,
                                                         styles.filledCell,
                                                         { backgroundColor: subject.color + '40', borderLeftColor: subject.color },
-                                                        isMerged && { width: 140 } // Double width (60*2 + margins)
+                                                        isMerged && { width: 140 } // Double width (70*2)
                                                     ]}
                                                     onPress={() => handleCellTap(day, index, slot)}
                                                 >
                                                     <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={1}>
                                                         {subject.name}
                                                     </Text>
+                                                    {isCustom && (
+                                                        <Text style={[styles.customTimeText, { color: subject.color }]} numberOfLines={1}>
+                                                            {displayStart} - {displayEnd}
+                                                        </Text>
+                                                    )}
                                                 </TouchableOpacity>
                                             );
                                         }
@@ -343,29 +432,22 @@ export default function TimetableBuilderScreen({ navigation }) {
                                     </TouchableOpacity>
                                 </ScrollView>
 
-                                <Text style={styles.inputLabel}>Duration</Text>
-                                <View style={styles.durationRow}>
-                                    <TouchableOpacity
-                                        style={[styles.durationButton, durationChars === 1 && styles.durationButtonActive]}
-                                        onPress={() => setDurationChars(1)}
-                                    >
-                                        <Text style={[styles.durationText, durationChars === 1 && styles.durationTextActive]}>1 Hour</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.durationButton,
-                                            durationChars === 2 && styles.durationButtonActive,
-                                            // Disable 2 hr if it's the last slot of the day
-                                            (selectedCell && selectedCell.slotIndex === timeSlots.length - 1) && { opacity: 0.5 }
-                                        ]}
-                                        onPress={() => {
-                                            if (selectedCell && selectedCell.slotIndex < timeSlots.length - 1) {
-                                                setDurationChars(2);
-                                            }
-                                        }}
-                                    >
-                                        <Text style={[styles.durationText, durationChars === 2 && styles.durationTextActive]}>2 Hours</Text>
-                                    </TouchableOpacity>
+                                <View style={styles.timeOverridesContainer}>
+                                    <TimeStepper
+                                        label="Class Starts:"
+                                        value={classStartMins}
+                                        min={0}
+                                        max={classEndMins - 5}
+                                        onChange={(val) => setClassStartMins(val)}
+                                    />
+                                    <View style={styles.microDivider} />
+                                    <TimeStepper
+                                        label="Class Ends:"
+                                        value={classEndMins}
+                                        min={classStartMins + 5}
+                                        max={1440}
+                                        onChange={(val) => setClassEndMins(val)}
+                                    />
                                 </View>
 
                                 <View style={styles.modalActions}>
@@ -633,5 +715,62 @@ const styles = StyleSheet.create({
     },
     flex2: {
         flex: 2,
+    },
+    timeOverridesContainer: {
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.md,
+        marginTop: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        ...SHADOWS.small,
+    },
+    microDivider: {
+        height: 1,
+        backgroundColor: COLORS.border,
+        marginVertical: SPACING.md,
+    },
+    stepperContainer: {
+        flexDirection: 'column',
+    },
+    stepperLabel: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+        marginBottom: SPACING.sm,
+    },
+    stepperControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    stepButton: {
+        padding: SPACING.sm,
+        width: 44,
+        alignItems: 'center',
+    },
+    stepButtonText: {
+        fontSize: 20,
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    stepperValueContainer: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    stepperValue: {
+        fontSize: FONT_SIZES.md,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
+    },
+    customTimeText: {
+        fontSize: 10,
+        fontWeight: '600',
+        marginTop: 2,
+        opacity: 0.8,
     }
 });

@@ -12,32 +12,36 @@ import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
 
-// Helper to format 24h hour int to 12h string
-const formatHour = (hour24) => {
-    const period = hour24 >= 12 ? 'PM' : 'AM';
-    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
-    return `${hour12}:00 ${period}`;
+import { formatMinutesToTime } from '../../utils/dateHelpers';
+
+// Helper to format total minutes to 12h string for display
+const formatMins = (totalMins) => {
+    const hours24 = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    const period = hours24 >= 12 ? 'PM' : 'AM';
+    const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
+    return `${hours12}:${String(mins).padStart(2, '0')} ${period}`;
 };
 
-// Simple Number Stepper for Hours
-const HourStepper = ({ value, min, max, onChange, label }) => (
+// Simple Number Stepper for Time (5 min increments)
+const TimeStepper = ({ value, min, max, onChange, label }) => (
     <View style={styles.stepperContainer}>
         <Text style={styles.stepperLabel}>{label}</Text>
         <View style={styles.stepperControls}>
             <TouchableOpacity
                 style={styles.stepButton}
-                onPress={() => onChange(Math.max(min, value - 1))}
+                onPress={() => onChange(Math.max(min, value - 5))}
             >
                 <Text style={styles.stepButtonText}>-</Text>
             </TouchableOpacity>
 
             <View style={styles.stepperValueContainer}>
-                <Text style={styles.stepperValue}>{formatHour(value)}</Text>
+                <Text style={styles.stepperValue}>{formatMins(value)}</Text>
             </View>
 
             <TouchableOpacity
                 style={styles.stepButton}
-                onPress={() => onChange(Math.min(max, value + 1))}
+                onPress={() => onChange(Math.min(max, value + 5))}
             >
                 <Text style={styles.stepButtonText}>+</Text>
             </TouchableOpacity>
@@ -48,19 +52,19 @@ const HourStepper = ({ value, min, max, onChange, label }) => (
 export default function TimeSlotsScreen({ navigation }) {
     const { dispatch } = useApp();
 
-    const [startHour, setStartHour] = useState(9); // 9 AM
-    const [endHour, setEndHour] = useState(16);    // 4 PM
+    const [startMins, setStartMins] = useState(540); // 9:00 AM
+    const [endMins, setEndMins] = useState(960);     // 4:00 PM
 
     const [hasLunchPattern, setHasLunchPattern] = useState(true);
-    const [lunchStart, setLunchStart] = useState(13); // 1 PM
+    const [lunchStartMins, setLunchStartMins] = useState(780); // 1:00 PM
 
     const handleContinue = () => {
-        if (startHour >= endHour) {
+        if (startMins >= endMins) {
             showAlert('Invalid Times', 'Classes must end after they start.');
             return;
         }
 
-        if (hasLunchPattern && (lunchStart <= startHour || lunchStart >= endHour)) {
+        if (hasLunchPattern && (lunchStartMins <= startMins || lunchStartMins >= endMins)) {
             showAlert('Invalid Lunch Break', 'Lunch break must be during class hours.');
             return;
         }
@@ -68,22 +72,23 @@ export default function TimeSlotsScreen({ navigation }) {
         const generatedSlots = [];
         let slotId = 1;
 
-        for (let hour = startHour; hour < endHour; hour++) {
-            // Skip the lunch hour if it exists
-            if (hasLunchPattern && hour === lunchStart) {
+        // Generate 1-hour scaffolding slots based on the start time
+        for (let m = startMins; m + 60 <= endMins; m += 60) {
+            // Skip the lunch hour if it exists (exact match)
+            if (hasLunchPattern && m === lunchStartMins) {
                 continue;
             }
 
             generatedSlots.push({
                 id: slotId.toString(),
-                start: `${String(hour).padStart(2, '0')}:00`,
-                end: `${String(hour + 1).padStart(2, '0')}:00`,
+                start: formatMinutesToTime(m),
+                end: formatMinutesToTime(m + 60),
             });
             slotId++;
         }
 
         if (generatedSlots.length === 0) {
-            showAlert('Error', 'No class slots could be generated with these settings.');
+            showAlert('Error', 'No class slots could be generated. Make sure your start and end times are far enough apart.');
             return;
         }
 
@@ -101,35 +106,35 @@ export default function TimeSlotsScreen({ navigation }) {
                     </Text>
 
                     <View style={styles.card}>
-                        <HourStepper
+                        <TimeStepper
                             label="First class starts at:"
-                            value={startHour}
-                            min={6}
-                            max={18}
+                            value={startMins}
+                            min={360} // 6 AM
+                            max={1080} // 6 PM
                             onChange={(val) => {
-                                setStartHour(val);
-                                if (val >= endHour) setEndHour(val + 1);
+                                setStartMins(val);
+                                if (val >= endMins) setEndMins(val + 60);
                             }}
                         />
 
                         <View style={styles.divider} />
 
-                        <HourStepper
+                        <TimeStepper
                             label="Last class ends at:"
-                            value={endHour}
-                            min={startHour + 1}
-                            max={22}
-                            onChange={setEndHour}
+                            value={endMins}
+                            min={startMins + 60}
+                            max={1320} // 10 PM
+                            onChange={setEndMins}
                         />
                     </View>
 
                     <View style={styles.card}>
-                        <HourStepper
+                        <TimeStepper
                             label="Lunch break starts at:"
-                            value={lunchStart}
-                            min={startHour + 1}
-                            max={endHour - 1}
-                            onChange={setLunchStart}
+                            value={lunchStartMins}
+                            min={startMins + 60}
+                            max={endMins - 60}
+                            onChange={setLunchStartMins}
                         />
                         <Text style={styles.lunchSubtext}>
                             Lunch break lasts for 1 hour

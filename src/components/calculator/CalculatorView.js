@@ -19,7 +19,7 @@ import {
 
 import SubjectPicker from './SubjectPicker';
 import StatsCard from './StatsCard';
-import BunkSlider from './BunkSlider';
+import BunkStepper from './BunkStepper';
 import ImpactPreview from './ImpactPreview';
 import TargetSelector from './TargetSelector';
 import ResultCard from './ResultCard';
@@ -180,8 +180,8 @@ const CalculatorView = ({ navigation }) => {
                 remainingClasses={remainingClasses}
             />
 
-            {/* Bunk Slider */}
-            <BunkSlider
+            {/* Bunk Stepper */}
+            <BunkStepper
                 value={sliderValue}
                 onValueChange={setSliderValue}
                 maxValue={Math.max(15, maxBunks + 5)}

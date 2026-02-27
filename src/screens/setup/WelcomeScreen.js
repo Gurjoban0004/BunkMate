@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import KeyboardWrapper from '../../components/common/KeyboardWrapper';
 import Input from '../../components/common/Input';
@@ -31,25 +31,31 @@ export default function WelcomeScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardWrapper>
-                <View style={styles.content}>
-                    <Text style={styles.emoji}>📚</Text>
-                    <Text style={styles.title}>BunkMate</Text>
-                    <Text style={styles.subtitle}>Attendance, solved.</Text>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View style={styles.content}>
+                        <Text style={styles.emoji}>📚</Text>
+                        <Text style={styles.title}>BunkMate</Text>
+                        <Text style={styles.subtitle}>Attendance, solved.</Text>
 
-                    <View style={styles.spacer} />
+                        <View style={styles.spacer} />
 
-                    <Text style={styles.greetingTitle}>Hi! What should we call you?</Text>
-                    <Input
-                        ref={inputRef}
-                        placeholder="Your Name"
-                        value={name}
-                        onChangeText={setName}
-                        autoCapitalize="words"
-                        returnKeyType="done"
-                        onSubmitEditing={handleContinue}
-                        style={styles.input}
-                    />
-                </View>
+                        <Text style={styles.greetingTitle}>Hi! What should we call you?</Text>
+                        <Input
+                            ref={inputRef}
+                            placeholder="Your Name"
+                            value={name}
+                            onChangeText={setName}
+                            autoCapitalize="words"
+                            returnKeyType="done"
+                            onSubmitEditing={handleContinue}
+                            style={styles.input}
+                        />
+                    </View>
+                </ScrollView>
 
                 <View style={styles.footer}>
                     <TouchableOpacity
@@ -73,11 +79,15 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.background,
     },
-    content: {
-        flex: 1,
+    scrollContent: {
+        flexGrow: 1,
         justifyContent: 'center',
+    },
+    content: {
         alignItems: 'center',
         paddingHorizontal: SPACING.xl,
+        paddingTop: SPACING.xxl,
+        paddingBottom: SPACING.xxl,
     },
     emoji: {
         fontSize: 64,
