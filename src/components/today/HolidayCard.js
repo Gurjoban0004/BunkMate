@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const HolidayCard = ({ onUndo }) => {
     return (
@@ -18,13 +18,12 @@ const HolidayCard = ({ onUndo }) => {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: COLORS.infoLight,
+        backgroundColor: COLORS.primaryLight,
         marginHorizontal: SPACING.lg,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.xl,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.info,
+        ...SHADOWS.small,
     },
     emoji: {
         fontSize: 64,
@@ -33,7 +32,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: FONT_SIZES.xl,
         fontWeight: '700',
-        color: COLORS.info,
+        color: COLORS.primary,
     },
     subtitle: {
         fontSize: FONT_SIZES.md,
@@ -46,13 +45,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.lg,
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
-        borderColor: COLORS.info,
+
+
     },
     undoText: {
         fontSize: FONT_SIZES.sm,
         fontWeight: '600',
-        color: COLORS.info,
+        color: COLORS.primary,
     },
 });
 

@@ -14,12 +14,12 @@ const SectionHeader = ({ title, classCount, onHolidayPress, showHoliday = true }
                 )}
             </View>
 
-            {showHoliday && (
+            {showHoliday && onHolidayPress && (
                 <TouchableOpacity
                     style={styles.holidayButton}
                     onPress={onHolidayPress}
                 >
-                    <Text style={styles.holidayEmoji}>🏖️</Text>
+                    <Text style={styles.holidayText}>Mark Holiday 🏖️</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -31,9 +31,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: SPACING.lg,
+        paddingHorizontal: SPACING.screenPadding,
         paddingVertical: SPACING.sm,
-        marginTop: SPACING.sm,
+        marginTop: SPACING.md,
     },
     left: {
         flexDirection: 'row',
@@ -59,10 +59,15 @@ const styles = StyleSheet.create({
         color: COLORS.textOnPrimary,
     },
     holidayButton: {
-        padding: SPACING.xs,
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 6,
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: 12,
     },
-    holidayEmoji: {
-        fontSize: 24,
+    holidayText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
     },
 });
 

@@ -33,7 +33,6 @@ const EditSubjectsScreen = ({ navigation }) => {
 
     // Form state
     const [name, setName] = useState('');
-    const [teacher, setTeacher] = useState('');
     const [selectedColor, setSelectedColor] = useState(THEME_COLORS[0]);
     const [attended, setAttended] = useState('0');
     const [total, setTotal] = useState('0');
@@ -42,7 +41,6 @@ const EditSubjectsScreen = ({ navigation }) => {
         if (subject) {
             setEditingSubject(subject);
             setName(subject.name);
-            setTeacher(subject.teacher || '');
             setSelectedColor(subject.color || THEME_COLORS[0]);
 
             // For editing, show current attendance so they can override if needed
@@ -52,7 +50,6 @@ const EditSubjectsScreen = ({ navigation }) => {
         } else {
             setEditingSubject(null);
             setName('');
-            setTeacher('');
             // Pick an unused color if possible
             const usedColors = state.subjects.map(s => s.color);
             const unusedColor = THEME_COLORS.find(c => !usedColors.includes(c)) || THEME_COLORS[0];
@@ -83,7 +80,6 @@ const EditSubjectsScreen = ({ navigation }) => {
                 payload: {
                     id: editingSubject.id,
                     name: name.trim(),
-                    teacher: teacher.trim(),
                     color: selectedColor,
                     initialAttended: attendedNum,
                     initialTotal: totalNum,
@@ -95,7 +91,6 @@ const EditSubjectsScreen = ({ navigation }) => {
                 payload: {
                     id: Date.now().toString(),
                     name: name.trim(),
-                    teacher: teacher.trim(),
                     color: selectedColor,
                     initialAttended: attendedNum,
                     initialTotal: totalNum,
@@ -108,12 +103,12 @@ const EditSubjectsScreen = ({ navigation }) => {
 
     const handleDelete = (subject) => {
         showAlert(
-            '⚠️ Delete Subject?',
+            'Delete Subject?',
             `Are you sure you want to delete ${subject.name}?\n\nThis will remove it from your timetable and delete all attendance records. This cannot be undone!`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: '🗑️ Delete',
+                    text: 'Delete',
                     style: 'destructive',
                     onPress: () => {
                         dispatch({ type: 'DELETE_SUBJECT', payload: subject.id });
@@ -136,7 +131,7 @@ const EditSubjectsScreen = ({ navigation }) => {
 
                 {state.subjects.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyEmoji}>📚</Text>
+                        <Text style={styles.emptyEmoji}></Text>
                         <Text style={styles.emptyText}>No subjects added yet</Text>
                     </View>
                 ) : (
@@ -151,9 +146,6 @@ const EditSubjectsScreen = ({ navigation }) => {
                                             {subject.name}
                                         </Text>
                                     </View>
-                                    {subject.teacher ? (
-                                        <Text style={styles.teacherName}>Prof. {subject.teacher}</Text>
-                                    ) : null}
                                     <Text style={styles.statsText}>
                                         {stats.percentage}% • {stats.attendedUnits}/{stats.totalUnits} marks
                                     </Text>
@@ -209,15 +201,6 @@ const EditSubjectsScreen = ({ navigation }) => {
                             value={name}
                             onChangeText={setName}
                             placeholder="e.g., Data Structures"
-                            placeholderTextColor={COLORS.textMuted}
-                        />
-
-                        <Text style={styles.inputLabel}>Teacher (Optional)</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={teacher}
-                            onChangeText={setTeacher}
-                            placeholder="e.g., Prof. Smith"
                             placeholderTextColor={COLORS.textMuted}
                         />
 
@@ -304,8 +287,8 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.md,
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -330,12 +313,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: COLORS.textPrimary,
         flex: 1,
-    },
-    teacherName: {
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textSecondary,
-        marginBottom: 2,
-        marginLeft: SPACING.md + 4,
     },
     statsText: {
         fontSize: FONT_SIZES.xs,
@@ -362,8 +339,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         borderStyle: 'dashed',
     },
     addButtonText: {
@@ -424,8 +401,8 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     colorPalette: {
         flexDirection: 'row',
@@ -437,11 +414,11 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        borderWidth: 3,
+
         borderColor: 'transparent',
     },
     colorOptionSelected: {
-        borderColor: COLORS.textPrimary,
+
     },
     attendanceRow: {
         flexDirection: 'row',
@@ -454,8 +431,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
         paddingHorizontal: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     attendanceLabel: {
         fontSize: FONT_SIZES.sm,

@@ -18,18 +18,19 @@ export default function KeyboardWrapper({
 }) {
     if (Platform.OS === 'web') {
         // On web the browser handles the keyboard natively.
-        // We use a plain View with no overflow manipulation —
-        // overflowY:'auto' on a flex:1 div creates a new stacking
-        // context in Safari/Chrome that breaks hit-testing on child inputs.
-        // 
-        // ⚡️ Fix: Added overflow: 'visible' to ensure child hit-targets 
-        // are never clipped or swallowed by the container's bounds.
+        // We still need a ScrollView for pages with lots of content.
+        // Using overflow: 'visible' on contentContainerStyle preserves
+        // hit-testing on child inputs (the Safari stacking-context fix).
         return (
-            <View style={[styles.container, style, { overflow: 'visible' }]}>
-                <View style={[styles.scrollContent, contentContainerStyle, { overflow: 'visible' }]}>
-                    {children}
-                </View>
-            </View>
+            <ScrollView
+                style={[styles.container, style]}
+                contentContainerStyle={[styles.scrollContent, contentContainerStyle]}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                scrollEnabled={scrollEnabled}
+            >
+                {children}
+            </ScrollView>
         );
     }
 

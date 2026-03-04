@@ -1,53 +1,66 @@
 // Presence Design System — Light Pastel Theme
 // All styling constants — NEVER hardcode colors/spacing in components
+import { Platform } from 'react-native';
 
 export const COLORS = {
-    // === BACKGROUNDS ===
-    background: '#F8F9FA',
-    cardBackground: '#FFFFFF',
-    inputBackground: '#F1F3F4',
+    // ---------------------------------------------------------
+    // 1. BACKGROUNDS (The Canvas)
+    // ---------------------------------------------------------
+    background: '#F5F7FA',       // Main screen background
+    cardBackground: '#FFFFFF',   // Card surfaces, tab bar, modals
+    inputBackground: '#F1F3F4',  // Text inputs, mode toggle track
 
-    // === PRIMARY ACCENT ===
-    primary: '#6C63FF',    // Soft purple (main action)
-    primaryLight: '#E8E6FF', // Light purple tint
-    primaryDark: '#5A52D9',   // Pressed state
+    // ---------------------------------------------------------
+    // 2. PRIMARY BRAND (The Identity)
+    // ---------------------------------------------------------
+    primary: '#8B80F9',          // Active tabs, toggle text, percentage values
+    primaryLight: '#E8E6FF',     // Stepper buttons bg, active tab icon pill
+    primaryDark: '#5A52D9',      // Stepper button text
+    textOnPrimary: '#FFFFFF',    // Text on primary-colored surfaces
 
-    // === TEXT ON PRIMARY ===
-    textOnPrimary: '#FFFFFF',
+    // ---------------------------------------------------------
+    // 3. SEMANTIC STATUS (The Communication)
+    // ---------------------------------------------------------
+    // Success
+    success: '#6BCB77',          // On-track dots, progress bar fills
+    successLight: '#E8F5E9',     // Safe badge bg
+    successDark: '#2E7D32',      // Softer text contrast for badges
 
-    // === STATUS ===
-    success: '#4CAF50',
-    successLight: '#E8F5E9',
-    successDark: '#388E3C',
+    // Danger
+    danger: '#FF6B6B',           // Needs-work dots, bar fills
+    dangerLight: '#FFEBEE',      // Danger percentage badge bg
+    dangerDark: '#D32F2F',       // Clean, readable dark ruby
 
-    danger: '#EF5350',
-    dangerLight: '#FFEBEE',
-    dangerDark: '#C62828',
+    // Warning
+    warning: '#FFD93D',          // Warning dots, progress bar fills
+    warningLight: '#FFF8E1',     // Softer warning badge bg
+    warningDark: '#F57C00',      // Balanced dark orange
 
-    warning: '#FF9800',
-    warningLight: '#FFF3E0',
-    warningDark: '#E65100',
+    // ---------------------------------------------------------
+    // 4. TEXT (The Hierarchy)
+    // ---------------------------------------------------------
+    textPrimary: '#2D3436',      // Headers, subject names, main content
+    textSecondary: '#636E72',    // Subtitles, secondary info, progress markers
+    textMuted: '#9CA3AF',        // Captions, hints, inactive tab labels
 
-    // === INFO ===
-    info: '#29B6F6',
-    infoLight: '#E1F5FE',
+    // ---------------------------------------------------------
+    // 5. STRUCTURAL (Consolidated Grays)
+    // ---------------------------------------------------------
+    border: '#E5E7EB',           // Borders, dividers, AND empty progress tracks
 
-    // === TEXT ===
-    textPrimary: '#1A1A2E',
-    textSecondary: '#6B7280',
-    textMuted: '#9CA3AF',
-
-    // === BORDERS & DIVIDERS ===
-    border: '#E5E7EB',
-    divider: '#F0F0F0',
-
-    // === PROGRESS BAR ===
-    progressBackground: '#E5E7EB',
-
-    // === SUBJECT COLORS ===
-    subjectColors: [
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-        '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+    // ---------------------------------------------------------
+    // 6. SUBJECT COLORS (Strictly Decorative)
+    // No semantic reds, greens, or yellows to avoid confusion.
+    // ---------------------------------------------------------
+    subjectPalette: [
+        '#4ECDC4', // Teal
+        '#45B7D1', // Sky Blue
+        '#DDA0DD', // Plum
+        '#BB8FCE', // Lavender
+        '#98D8C8', // Mint
+        '#85C1E9', // Light Blue
+        '#F48FB1', // Soft Pink
+        '#B39DDB', // Deep Lavender
     ],
 };
 
@@ -59,8 +72,8 @@ export const SPACING = {
     xl: 32,
     xxl: 48,
     screenPadding: 20,
-    cardPadding: 16,
-    cardGap: 12,
+    cardPadding: 20,
+    cardGap: 16,
 };
 
 export const TYPOGRAPHY = {
@@ -87,27 +100,33 @@ export const FONT_SIZES = {
 export const BORDER_RADIUS = {
     sm: 8,
     md: 12,
-    lg: 16,
+    lg: 20,
     xl: 20,
     full: 9999,
 };
 
 export const SHADOWS = {
-    small: {
+    small: Platform.OS === 'web' ? {
+        boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+    } : {
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
     },
-    medium: {
+    medium: Platform.OS === 'web' ? {
+        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+    } : {
         shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    large: {
+    large: Platform.OS === 'web' ? {
+        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
+    } : {
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,

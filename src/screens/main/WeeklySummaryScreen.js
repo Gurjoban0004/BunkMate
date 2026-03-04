@@ -29,7 +29,7 @@ export default function WeeklySummaryScreen({ navigation }) {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* Header */}
-                <Text style={styles.header}>📊 Week in Review</Text>
+                <Text style={styles.header}>Week in Review</Text>
                 <Text style={styles.weekRange}>{summary.weekRange}</Text>
 
                 {/* Overall */}
@@ -57,14 +57,14 @@ export default function WeeklySummaryScreen({ navigation }) {
                 {/* Subject Breakdown */}
                 {summary.sortedSubjects.length > 0 && (
                     <>
-                        <Text style={styles.sectionTitle}>📚 Subject Breakdown</Text>
+                        <Text style={styles.sectionTitle}>Subject Breakdown</Text>
                         {summary.sortedSubjects.map((sub, idx) => (
                             <View key={sub.id} style={styles.subjectRow}>
                                 <View style={styles.subjectHeader}>
                                     <View style={styles.nameRow}>
-                                        <View style={[styles.colorDot, { backgroundColor: sub.color || COLORS.purple }]} />
+                                        <View style={[styles.colorDot, { backgroundColor: sub.color || COLORS.primary }]} />
                                         <Text style={styles.subjectName}>
-                                            {idx === 0 ? '🏆 ' : idx === summary.sortedSubjects.length - 1 ? '⚠️ ' : ''}
+                                            {idx === 0 ? '🏆 ' : idx === summary.sortedSubjects.length - 1 ? '' : ''}
                                             {sub.name}
                                         </Text>
                                     </View>
@@ -80,12 +80,12 @@ export default function WeeklySummaryScreen({ navigation }) {
 
                 {/* Tip */}
                 <Card style={styles.tipCard}>
-                    <Text style={styles.tipTitle}>💡 Tip of the Week</Text>
+                    <Text style={styles.tipTitle}>Tip of the Week</Text>
                     <Text style={styles.tipText}>{summary.tip}</Text>
                 </Card>
 
                 {/* Day-by-Day */}
-                <Text style={styles.sectionTitle}>📅 Day-by-Day</Text>
+                <Text style={styles.sectionTitle}>Day-by-Day</Text>
                 <Card style={styles.dayCard}>
                     <View style={styles.dayRow}>
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
@@ -160,9 +160,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: SPACING.md,
         marginBottom: SPACING.md,
-        backgroundColor: COLORS.yellowBg,
-        borderWidth: 1,
-        borderColor: COLORS.yellow,
+        backgroundColor: COLORS.warningLight,
+
+
     },
     streakEmoji: {
         fontSize: 32,
@@ -170,11 +170,11 @@ const styles = StyleSheet.create({
     streakTitle: {
         ...TYPOGRAPHY.body,
         fontWeight: '600',
-        color: COLORS.yellowDark,
+        color: COLORS.warningDark,
     },
     streakCount: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.yellow,
+        color: COLORS.warning,
     },
     sectionTitle: {
         ...TYPOGRAPHY.headerSmall,
@@ -187,8 +187,8 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.sm,
         marginBottom: SPACING.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         ...SHADOWS.small,
     },
     subjectHeader: {
@@ -223,8 +223,8 @@ const styles = StyleSheet.create({
         marginTop: SPACING.md,
         marginBottom: SPACING.md,
         backgroundColor: COLORS.primaryBg,
-        borderWidth: 1,
-        borderColor: COLORS.primary,
+
+
     },
     tipTitle: {
         ...TYPOGRAPHY.body,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     },
     dayLabel: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
     },
     actions: {
         flexDirection: 'row',

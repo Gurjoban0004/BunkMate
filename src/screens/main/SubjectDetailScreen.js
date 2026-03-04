@@ -17,7 +17,7 @@ export default function SubjectDetailScreen({ route }) {
     const [editModal, setEditModal] = useState(null); // { date, record }
 
     const subject = state.subjects.find((s) => s.id === subjectId);
-    const subjectColor = subject?.color || COLORS.purple;
+    const subjectColor = subject?.color || COLORS.primary;
     const stats = useMemo(() => getSubjectAttendance(subjectId, state), [subjectId, state]);
     const bunk = useMemo(
         () => (stats ? calculateBunks(stats.attendedUnits, stats.totalUnits, 75) : null),
@@ -95,9 +95,7 @@ export default function SubjectDetailScreen({ route }) {
                     <Text style={styles.statsText}>
                         {stats.attendedUnits} / {stats.totalUnits} marks
                     </Text>
-                    {subject.teacher ? (
-                        <Text style={styles.teacherText}>{subject.teacher}</Text>
-                    ) : null}
+                    {/* Teacher removed */}
                 </Card>
 
                 {/* Streak */}
@@ -113,13 +111,13 @@ export default function SubjectDetailScreen({ route }) {
                     <Card style={[styles.bunkCard, bunk.status === 'safe' ? styles.bunkSafe : styles.bunkDanger]}>
                         {bunk.status === 'safe' ? (
                             <>
-                                <Text style={styles.bunkLabel}>✅ You can bunk</Text>
+                                <Text style={styles.bunkLabel}>You can bunk</Text>
                                 <Text style={[styles.bunkNumber, styles.textGreen]}>{bunk.count}</Text>
                                 <Text style={styles.bunkLabel}>more classes and stay at 75%</Text>
                             </>
                         ) : (
                             <>
-                                <Text style={styles.bunkLabel}>⚠️ You need to attend</Text>
+                                <Text style={styles.bunkLabel}>You need to attend</Text>
                                 <Text style={[styles.bunkNumber, styles.textRed]}>{bunk.count}</Text>
                                 <Text style={styles.bunkLabel}>classes to reach 75%</Text>
                             </>
@@ -129,13 +127,13 @@ export default function SubjectDetailScreen({ route }) {
 
                 {/* Attendance Graph */}
                 <Card style={styles.graphCard}>
-                    <Text style={styles.sectionTitle}>📈 Attendance Trend</Text>
+                    <Text style={styles.sectionTitle}>Attendance Trend</Text>
                     <AttendanceGraph subjectId={subjectId} state={state} days={14} />
                 </Card>
 
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>
-                    <Text style={styles.sectionTitle}>📅 Calendar</Text>
+                    <Text style={styles.sectionTitle}>Calendar</Text>
                     <CalendarView subjectId={subjectId} state={state} />
                 </Card>
 
@@ -164,7 +162,7 @@ export default function SubjectDetailScreen({ route }) {
                                 </View>
                             </View>
                         ))}
-                        <Text style={styles.editHint}>⚠️ Records older than 2 weeks cannot be edited</Text>
+                        <Text style={styles.editHint}>Records older than 2 weeks cannot be edited</Text>
                     </View>
                 )}
             </ScrollView>
@@ -178,7 +176,7 @@ export default function SubjectDetailScreen({ route }) {
                             <>
                                 <Text style={styles.modalSubtitle}>{subject.name} · {formatRecordDate(editModal.date)}</Text>
                                 <Text style={styles.modalCurrent}>
-                                    Current: {editModal.status === 'present' ? '✅ Present' : editModal.status === 'cancelled' ? '🚫 Cancelled' : '❌ Absent'}
+                                    Current: {editModal.status === 'present' ? 'Present' : editModal.status === 'cancelled' ? 'Cancelled' : 'Absent'}
                                 </Text>
 
                                 <Text style={styles.modalLabel}>Change to:</Text>
@@ -187,19 +185,19 @@ export default function SubjectDetailScreen({ route }) {
                                         style={[styles.modalOption, styles.presentOption]}
                                         onPress={() => handleSaveEdit('present')}
                                     >
-                                        <Text style={styles.modalOptionText}>✅ Present</Text>
+                                        <Text style={styles.modalOptionText}>Present</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.modalOption, styles.absentOption]}
                                         onPress={() => handleSaveEdit('absent')}
                                     >
-                                        <Text style={styles.modalOptionText}>❌ Absent</Text>
+                                        <Text style={styles.modalOptionText}>Absent</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.modalOption, styles.cancelledOption]}
                                         onPress={() => handleSaveEdit('cancelled')}
                                     >
-                                        <Text style={styles.modalOptionText}>🚫 Cancel</Text>
+                                        <Text style={styles.modalOptionText}>Cancel</Text>
                                     </TouchableOpacity>
                                 </View>
 
@@ -245,31 +243,26 @@ const styles = StyleSheet.create({
         ...TYPOGRAPHY.body,
         color: COLORS.textSecondary,
     },
-    teacherText: {
-        ...TYPOGRAPHY.bodySmall,
-        color: COLORS.textDisabled,
-        marginTop: SPACING.xs,
-    },
     textGreen: { color: COLORS.success },
     textRed: { color: COLORS.danger },
-    textDisabled: { color: COLORS.textDisabled },
+    textDisabled: { color: COLORS.textMuted },
     streakCard: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: SPACING.md,
-        backgroundColor: COLORS.yellowBg,
-        borderWidth: 1,
-        borderColor: COLORS.yellow,
+        backgroundColor: COLORS.warningLight,
+
+
     },
     streakText: {
         ...TYPOGRAPHY.body,
         fontWeight: '600',
-        color: COLORS.yellowDark,
+        color: COLORS.warningDark,
     },
     streakCount: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.yellow,
+        color: COLORS.warning,
         fontWeight: '600',
     },
     bunkCard: {
@@ -279,11 +272,11 @@ const styles = StyleSheet.create({
     },
     bunkSafe: {
         borderLeftColor: COLORS.success,
-        backgroundColor: COLORS.successBg,
+        backgroundColor: COLORS.successLight,
     },
     bunkDanger: {
         borderLeftColor: COLORS.danger,
-        backgroundColor: COLORS.dangerBg,
+        backgroundColor: COLORS.dangerLight,
     },
     bunkLabel: {
         ...TYPOGRAPHY.body,
@@ -316,8 +309,8 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         borderRadius: 8,
         marginBottom: SPACING.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         ...SHADOWS.small,
     },
     historyDate: {
@@ -326,7 +319,7 @@ const styles = StyleSheet.create({
     },
     historyUnits: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
         marginTop: 2,
     },
     historyRight: {
@@ -345,7 +338,7 @@ const styles = StyleSheet.create({
     },
     editHint: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
         marginTop: SPACING.xs,
         textAlign: 'center',
     },
@@ -392,18 +385,16 @@ const styles = StyleSheet.create({
         paddingVertical: SPACING.sm + 2,
         borderRadius: BORDER_RADIUS.sm,
         alignItems: 'center',
-        borderWidth: 1,
+
     },
     presentOption: {
-        borderColor: COLORS.success,
-        backgroundColor: COLORS.successBg,
+        backgroundColor: COLORS.successLight,
     },
     absentOption: {
-        borderColor: COLORS.danger,
-        backgroundColor: COLORS.dangerBg,
+        backgroundColor: COLORS.dangerLight,
     },
     cancelledOption: {
-        borderColor: COLORS.border,
+
         backgroundColor: COLORS.inputBackground,
     },
     modalOptionText: {

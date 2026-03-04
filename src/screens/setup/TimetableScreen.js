@@ -70,12 +70,12 @@ export default function TimetableScreen({ navigation }) {
         }
         const existing = subjectsList.find((s) => s.name.toLowerCase() === name.toLowerCase());
         if (existing) { assignSubject(existing.id); return; }
-        const colorIndex = subjectsList.length % COLORS.subjectColors.length;
+        const colorIndex = subjectsList.length % COLORS.subjectPalette.length;
         const newSub = {
             id: `sub-${subjectIdCounter++}`,
             name,
             teacher: '',
-            color: COLORS.subjectColors[colorIndex],
+            color: COLORS.subjectPalette[colorIndex],
             initialTotal: 0,
             initialAttended: 0,
             createdAt: new Date().toISOString(),
@@ -244,22 +244,22 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.md,
         borderRadius: BORDER_RADIUS.full,
         backgroundColor: COLORS.cardBackground,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         flexDirection: 'row',
         alignItems: 'center',
         gap: SPACING.xs,
     },
     dayTabActive: {
         backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
+
     },
     dayTabText: {
         ...TYPOGRAPHY.button,
         color: COLORS.textSecondary,
     },
     dayTabTextActive: {
-        color: '#FFFFFF',
+        color: COLORS.textOnPrimary,
     },
     badge: {
         backgroundColor: COLORS.success,
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     },
     badgeText: {
         ...TYPOGRAPHY.caption,
-        color: '#FFFFFF',
+        color: COLORS.textOnPrimary,
         fontWeight: 'bold',
     },
     slotsContainer: {
@@ -288,13 +288,13 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.sm,
         borderLeftWidth: 3,
         borderLeftColor: 'transparent',
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         ...SHADOWS.small,
     },
     slotFilled: {
-        borderLeftColor: COLORS.purple,
-        backgroundColor: COLORS.purpleBg,
+        borderLeftColor: COLORS.primary,
+        backgroundColor: COLORS.primaryLight,
     },
     slotTime: {
         ...TYPOGRAPHY.bodySmall,
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
         textAlign: 'right',
     },
     slotEmpty: {
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
         fontStyle: 'italic',
     },
     modalOverlay: {
@@ -343,8 +343,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.sm,
         marginBottom: SPACING.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     subjectOptionText: {
         ...TYPOGRAPHY.body,

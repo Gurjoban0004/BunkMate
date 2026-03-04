@@ -58,12 +58,12 @@ const StreakBanner = ({ streak }) => {
 
 const styles = StyleSheet.create({
     container: {
-        marginHorizontal: SPACING.lg,
+        marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.md,
-        backgroundColor: '#FFF3E0',
+        backgroundColor: COLORS.warningLight,
         borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
-        borderColor: '#FFB74D',
+        
+        borderColor: COLORS.warning,
         overflow: 'hidden',
     },
     content: {
@@ -81,11 +81,11 @@ const styles = StyleSheet.create({
     streakCount: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#E65100',
+        color: COLORS.warningDark,
     },
     message: {
         fontSize: 13,
-        color: '#F57C00',
+        color: COLORS.warningDark,
         marginTop: 2,
     },
 });

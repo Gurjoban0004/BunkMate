@@ -89,11 +89,11 @@ export default function AttendanceGraph({ subjectId, state, days = 14 }) {
                         const barHeight = (d.cumulativePct / 100) * CHART_HEIGHT;
                         const color =
                             d.status === 'none' || d.status === 'holiday' || d.status === 'cancelled'
-                                ? COLORS.progressBg
+                                ? COLORS.border
                                 : d.cumulativePct >= 75
                                     ? COLORS.success
                                     : d.cumulativePct >= 60
-                                        ? COLORS.yellow
+                                        ? COLORS.warning
                                         : COLORS.danger;
 
                         return (
@@ -124,7 +124,7 @@ export default function AttendanceGraph({ subjectId, state, days = 14 }) {
                     <Text style={styles.legendText}>≥75%</Text>
                 </View>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.yellow }]} />
+                    <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
                     <Text style={styles.legendText}>60-74%</Text>
                 </View>
                 <View style={styles.legendItem}>
@@ -132,7 +132,7 @@ export default function AttendanceGraph({ subjectId, state, days = 14 }) {
                     <Text style={styles.legendText}>&lt;60%</Text>
                 </View>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.progressBg }]} />
+                    <View style={[styles.legendDot, { backgroundColor: COLORS.border }]} />
                     <Text style={styles.legendText}>No class</Text>
                 </View>
             </View>
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     },
     dayLabel: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
         fontSize: 9,
         marginTop: 2,
     },
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     },
     legendText: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
         fontSize: 10,
     },
 });

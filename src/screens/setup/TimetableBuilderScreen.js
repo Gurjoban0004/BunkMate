@@ -5,8 +5,10 @@ import {
     StyleSheet,
     ScrollView,
     TouchableOpacity,
+    Platform,
     Modal,
     TextInput,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
@@ -15,243 +17,123 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from 
 import { showAlert } from '../../utils/alert';
 import { formatMinutesToTime, parseTimeToMinutes } from '../../utils/dateHelpers';
 
-// Formatter for the TimeStepper display
-const formatMins = (totalMins) => {
-    const hours24 = Math.floor(totalMins / 60);
-    const mins = totalMins % 60;
-    const period = hours24 >= 12 ? 'PM' : 'AM';
-    const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
-    return `${hours12}:${String(mins).padStart(2, '0')} ${period}`;
-};
-
-// Reusable micro-stepper for the modal
-const TimeStepper = ({ value, min, max, onChange, label }) => (
-    <View style={styles.stepperContainer}>
-        <Text style={styles.stepperLabel}>{label}</Text>
-        <View style={styles.stepperControls}>
-            <TouchableOpacity
-                style={styles.stepButton}
-                onPress={() => onChange(Math.max(min, value - 5))}
-            >
-                <Text style={styles.stepButtonText}>-</Text>
-            </TouchableOpacity>
-
-            <View style={styles.stepperValueContainer}>
-                <Text style={styles.stepperValue}>{formatMins(value)}</Text>
-            </View>
-
-            <TouchableOpacity
-                style={styles.stepButton}
-                onPress={() => onChange(Math.min(max, value + 5))}
-            >
-                <Text style={styles.stepButtonText}>+</Text>
-            </TouchableOpacity>
-        </View>
-    </View>
-);
-
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const THEME_COLORS = ['#FF6B6B', '#FF9F43', '#FDCB6E', '#1DD1A1', '#48DBFB', '#5F27CD', '#C8D6E5', '#222F3E'];
 
 export default function TimetableBuilderScreen({ navigation }) {
     const { state, dispatch } = useApp();
 
-    // UI State
-    const [modalVisible, setModalVisible] = useState(false);
-    const [newSubjectMode, setNewSubjectMode] = useState(false);
+    const [selectedBrush, setSelectedBrush] = useState(null); // subjectId or 'ERASER'
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newSubjectName, setNewSubjectName] = useState('');
 
-    // Selection state
-    const [selectedCell, setSelectedCell] = useState(null); // { day, slotIndex }
-    const [selectedSubjectId, setSelectedSubjectId] = useState(null);
-
-    // Custom Time Override State
-    const [classStartMins, setClassStartMins] = useState(0);
-    const [classEndMins, setClassEndMins] = useState(0);
-
-    // New Subject State
-    const [subjectName, setSubjectName] = useState('');
-    const [subjectTeacher, setSubjectTeacher] = useState('');
-    const [subjectColor, setSubjectColor] = useState(THEME_COLORS[0]);
-
-    // Local timetable state (we'll save to context on finish or incrementally)
-    // To make it easy, we can just update the actual context state directly
     const timetable = state.timetable;
-    const timeSlots = state.timeSlots; // Assume already sorted from previous screen
+    const timeSlots = state.timeSlots || [];
 
+    // 2. Painting logic
     const handleCellTap = (day, slotIndex, timeSlot) => {
-        const existingClass = timetable[day].find(c => c.slotId === timeSlot.id);
-
-        setSelectedCell({ day, slotIndex, timeSlotId: timeSlot.id });
-
-        // Initialize the custom times to either the existing override, or the scaffold defaults
-        const defaultStart = parseTimeToMinutes(timeSlot.start);
-        const defaultEnd = parseTimeToMinutes(timeSlot.end);
-
-        if (existingClass) {
-            setSelectedSubjectId(existingClass.subjectId);
-            setClassStartMins(existingClass.customStart ? parseTimeToMinutes(existingClass.customStart) : defaultStart);
-            setClassEndMins(existingClass.customEnd ? parseTimeToMinutes(existingClass.customEnd) : defaultEnd);
-
-            // If the user previously merged 2 slots together, we want the modal end time to reflect that next slot's end time
-            const nextSlot = timeSlots[slotIndex + 1];
-            if (nextSlot) {
-                const nextClass = timetable[day].find(c => c.slotId === nextSlot.id);
-                if (nextClass && nextClass.subjectId === existingClass.subjectId && !existingClass.customEnd) {
-                    setClassEndMins(parseTimeToMinutes(nextSlot.end));
-                }
-            }
-        } else {
-            setSelectedSubjectId(null);
-            setClassStartMins(defaultStart);
-            setClassEndMins(defaultEnd);
-        }
-        setNewSubjectMode(false);
-        setModalVisible(true);
-    };
-
-    const handleCreateSubject = () => {
-        if (!subjectName.trim()) {
-            showAlert('Error', 'Subject name is required.');
+        if (!selectedBrush) {
+            showAlert('Select a Tool', 'Please select a subject or the eraser from the palette below first.');
             return;
         }
 
-        const newId = Date.now().toString();
-        dispatch({
-            type: 'ADD_SUBJECT',
-            payload: {
-                id: newId,
-                name: subjectName.trim(),
-                teacher: subjectTeacher.trim(),
-                color: subjectColor,
-                initialAttended: 0,
-                initialTotal: 0,
-            }
-        });
-
-        setSelectedSubjectId(newId);
-        setNewSubjectMode(false);
-        setSubjectName('');
-        setSubjectTeacher('');
-    };
-
-    const handleSaveClass = () => {
-        if (!selectedSubjectId) {
-            showAlert('Error', 'Please select a subject or add a new one.');
-            return;
-        }
-
-        if (classStartMins >= classEndMins) {
-            showAlert('Invalid Time', 'End time must be after start time.');
-            return;
-        }
-
-        const { day, slotIndex, timeSlotId } = selectedCell;
         let daySlots = [...timetable[day]];
 
-        const defaultStartStr = timeSlots[slotIndex].start;
-        const defaultEndStr = timeSlots[slotIndex].end;
+        // Remove existing class in this slot
+        daySlots = daySlots.filter(c => c.slotId !== timeSlot.id);
 
-        const customStartStr = formatMinutesToTime(classStartMins);
-        const customEndStr = formatMinutesToTime(classEndMins);
-
-        // Only save overrides if they changed from the scaffolding
-        const overrides = {};
-        if (customStartStr !== defaultStartStr) overrides.customStart = customStartStr;
-        if (customEndStr !== defaultEndStr) overrides.customEnd = customEndStr;
-
-        // Remove whatever was in this slot
-        daySlots = daySlots.filter(c => c.slotId !== timeSlotId);
-
-        // Add current slot back
-        daySlots.push({
-            slotId: timeSlotId,
-            subjectId: selectedSubjectId,
-            ...overrides
-        });
-
-        // 2-hour multi-slot mapping: The old system visually merged slots if the next chronological slot belonged to the same subject.
-        // We will maintain this backwards-compatible visual logic: if the user selected an EndTime that spills into the next slot's jurisdiction,
-        // we will silently occupy the next slot as well so the visual renderer merges them smoothly and the schedule doesn't look empty there.
-        const nextSlot = timeSlots[slotIndex + 1];
-        if (nextSlot) {
-            const nextSlotStart = parseTimeToMinutes(nextSlot.start);
-            // If they increased the duration so much it overlaps with the next block entirely
-            if (classEndMins > nextSlotStart) {
-                daySlots = daySlots.filter(c => c.slotId !== nextSlot.id);
-                daySlots.push({
-                    slotId: nextSlot.id,
-                    subjectId: selectedSubjectId,
-                    customStart: nextSlot.start, // effectively hides visual start text for the second half
-                    customEnd: customEndStr !== nextSlot.end ? customEndStr : undefined,
-                });
-            } else {
-                // Check if it was previously occupied by this class and needs clearing
-                const nextClass = daySlots.find(c => c.slotId === nextSlot.id);
-                if (nextClass && nextClass.subjectId === selectedSubjectId) {
-                    daySlots = daySlots.filter(c => c.slotId !== nextSlot.id);
-                }
-            }
+        if (selectedBrush !== 'ERASER') {
+            daySlots.push({
+                slotId: timeSlot.id,
+                subjectId: selectedBrush,
+            });
         }
 
         dispatch({ type: 'SET_TIMETABLE_DAY', payload: { day, slots: daySlots } });
-        setModalVisible(false);
     };
 
-    const handleDeleteClass = () => {
-        const { day, slotIndex, timeSlotId } = selectedCell;
-        let daySlots = [...timetable[day]];
-
-        const classToRemove = daySlots.find(c => c.slotId === timeSlotId);
-
-        // Remove from current
-        daySlots = daySlots.filter(c => c.slotId !== timeSlotId);
-
-        // Check if next slot was a spillover from this 2+hr class and clear it too
-        const nextSlot = timeSlots[slotIndex + 1];
-        if (nextSlot && classToRemove) {
-            const nextClass = daySlots.find(c => c.slotId === nextSlot.id);
-            if (nextClass && nextClass.subjectId === classToRemove.subjectId) {
-                daySlots = daySlots.filter(c => c.slotId !== nextSlot.id);
-            }
-        }
-
-        dispatch({ type: 'SET_TIMETABLE_DAY', payload: { day, slots: daySlots } });
-        setModalVisible(false);
+    // 3. Copy Day logic
+    const handleCopyDay = (targetDay, prevDay) => {
+        const slotsToCopy = [...timetable[prevDay]];
+        dispatch({ type: 'SET_TIMETABLE_DAY', payload: { day: targetDay, slots: slotsToCopy } });
     };
 
     const handleFinish = () => {
         navigation.navigate('AttendanceStats');
     };
 
+    const handleCreateSubject = () => {
+        const name = newSubjectName.trim();
+        if (!name) return;
+
+        // Generate a random color from predefined list or random hue
+        const PREDEFINED_COLORS = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
+            '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'
+        ];
+        const randomColor = PREDEFINED_COLORS[Math.floor(Math.random() * PREDEFINED_COLORS.length)];
+
+        const newSubject = {
+            id: Date.now().toString(),
+            name,
+            color: randomColor,
+        };
+
+        dispatch({ type: 'ADD_SUBJECT', payload: newSubject });
+        setNewSubjectName('');
+        setShowAddModal(false);
+        setSelectedBrush(newSubject.id);
+    };
+
+    if (timeSlots.length === 0) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>No time slots generated. Please go back and ensure your start/end times are configured properly.</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
             <View style={styles.headerBox}>
-                <Text style={styles.header}>📅 Build Timetable</Text>
-                <Text style={styles.subtitle}>Tap any cell to add a class</Text>
+                <Text style={styles.header}>Paint Timetable</Text>
+                <Text style={styles.subtitle}>Select a subject below, then tap the grid to fill it.</Text>
             </View>
 
             <View style={styles.gridContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={true} bounces={false}>
-                    <ScrollView bounces={false}>
+                    <ScrollView bounces={false} style={styles.gridScroll}>
                         {/* Header Row */}
                         <View style={styles.row}>
                             <View style={[styles.cell, styles.headerCell, styles.cornerCell]} />
                             {timeSlots.map(slot => (
                                 <View key={slot.id} style={[styles.cell, styles.headerCell]}>
                                     <Text style={styles.timeText}>{slot.start.substring(0, 5)}</Text>
+                                    <View style={styles.timeDivider} />
                                     <Text style={styles.timeText}>{slot.end.substring(0, 5)}</Text>
                                 </View>
                             ))}
                         </View>
 
                         {/* Day Rows */}
-                        {DAYS.map(day => {
+                        {DAYS.map((day, dayIndex) => {
                             let skipNext = false;
+                            const prevDay = dayIndex > 0 ? DAYS[dayIndex - 1] : null;
 
                             return (
                                 <View key={day} style={styles.row}>
                                     <View style={[styles.cell, styles.dayCell]}>
                                         <Text style={styles.dayText}>{day.substring(0, 3)}</Text>
+                                        {prevDay && (
+                                            <TouchableOpacity
+                                                style={styles.copyBtn}
+                                                onPress={() => handleCopyDay(day, prevDay)}
+                                                hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}
+                                            >
+                                                <Text style={styles.copyBtnText}>Copy {prevDay.substring(0, 3)}</Text>
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
 
                                     {timeSlots.map((slot, index) => {
@@ -263,7 +145,7 @@ export default function TimetableBuilderScreen({ navigation }) {
                                         const classInfo = timetable[day].find(c => c.slotId === slot.id);
                                         const subject = classInfo ? state.subjects.find(s => s.id === classInfo.subjectId) : null;
 
-                                        // Check if next slot has the same subject (2-hour class visually merged)
+                                        // Auto-merge visually if consecutive slots have same subject
                                         let isMerged = false;
                                         if (subject) {
                                             const nextSlot = timeSlots[index + 1];
@@ -277,31 +159,21 @@ export default function TimetableBuilderScreen({ navigation }) {
                                         }
 
                                         if (subject) {
-                                            const displayStart = classInfo.customStart ? classInfo.customStart.substring(0, 5) : slot.start.substring(0, 5);
-                                            const displayEnd = classInfo.customEnd ? classInfo.customEnd.substring(0, 5) : slot.end.substring(0, 5);
-
-                                            // Provide visual distinction if it's deeply customized time
-                                            const isCustom = classInfo.customStart || classInfo.customEnd;
-
                                             return (
                                                 <TouchableOpacity
                                                     key={slot.id}
+                                                    activeOpacity={0.7}
                                                     style={[
                                                         styles.cell,
                                                         styles.filledCell,
-                                                        { backgroundColor: subject.color + '40', borderLeftColor: subject.color },
-                                                        isMerged && { width: 140 } // Double width (70*2)
+                                                        { backgroundColor: subject.color + '20', borderLeftColor: subject.color },
+                                                        isMerged && { width: 140 } // Double width
                                                     ]}
                                                     onPress={() => handleCellTap(day, index, slot)}
                                                 >
-                                                    <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={1}>
+                                                    <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={2}>
                                                         {subject.name}
                                                     </Text>
-                                                    {isCustom && (
-                                                        <Text style={[styles.customTimeText, { color: subject.color }]} numberOfLines={1}>
-                                                            {displayStart} - {displayEnd}
-                                                        </Text>
-                                                    )}
                                                 </TouchableOpacity>
                                             );
                                         }
@@ -309,11 +181,10 @@ export default function TimetableBuilderScreen({ navigation }) {
                                         return (
                                             <TouchableOpacity
                                                 key={slot.id}
+                                                activeOpacity={0.5}
                                                 style={styles.cell}
                                                 onPress={() => handleCellTap(day, index, slot)}
-                                            >
-                                                <Text style={styles.addText}>+</Text>
-                                            </TouchableOpacity>
+                                            />
                                         );
                                     })}
                                 </View>
@@ -323,173 +194,101 @@ export default function TimetableBuilderScreen({ navigation }) {
                 </ScrollView>
             </View>
 
+            {/* Bottom Palette */}
+            <View style={styles.paletteContainer}>
+                <Text style={styles.paletteHeader}>Palette</Text>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.paletteScroll}
+                >
+                    <TouchableOpacity
+                        style={[
+                            styles.paletteBtn,
+                            styles.eraserBtn,
+                            selectedBrush === 'ERASER' && styles.paletteBtnActive
+                        ]}
+                        onPress={() => setSelectedBrush('ERASER')}
+                    >
+                        <Text style={[styles.paletteBtnText, selectedBrush === 'ERASER' && styles.paletteTextActive]}>🧹 Eraser</Text>
+                    </TouchableOpacity>
+
+                    {state.subjects.map(sub => {
+                        const isSelected = selectedBrush === sub.id;
+                        return (
+                            <TouchableOpacity
+                                key={sub.id}
+                                style={[
+                                    styles.paletteBtn,
+                                    { backgroundColor: sub.color + '15', borderColor: sub.color },
+                                    isSelected && { backgroundColor: sub.color }
+                                ]}
+                                onPress={() => setSelectedBrush(sub.id)}
+                            >
+                                <Text style={[
+                                    styles.paletteBtnText,
+                                    { color: sub.color },
+                                    isSelected && { color: '#FFF' }
+                                ]}>
+                                    {sub.name}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+
+                    <TouchableOpacity
+                        style={[styles.paletteBtn, styles.addBtn]}
+                        onPress={() => setShowAddModal(true)}
+                    >
+                        <Text style={styles.addBtnText}>+ Add Subject</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </View>
+
             <View style={styles.footer}>
                 <Button title="Continue" onPress={handleFinish} />
             </View>
 
-            {/* Modal for Adding/Editing Class */}
+            {/* Add Subject Modal */}
             <Modal
-                visible={modalVisible}
-                animationType="slide"
+                visible={showAddModal}
+                animationType="fade"
                 transparent={true}
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={() => setShowAddModal(false)}
             >
-                <View style={styles.modalOverlay}>
+                <KeyboardAvoidingView
+                    style={styles.modalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
                     <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>
-                                {newSubjectMode ? 'New Subject' : 'Select Subject'}
-                            </Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Text style={styles.closeText}>✕</Text>
+                        <Text style={styles.modalTitle}>New Subject</Text>
+
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. Mathematics"
+                            placeholderTextColor={COLORS.textMuted}
+                            value={newSubjectName}
+                            onChangeText={setNewSubjectName}
+                            autoFocus
+                            onSubmitEditing={handleCreateSubject}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.modalCancel]}
+                                onPress={() => setShowAddModal(false)}
+                            >
+                                <Text style={styles.modalCancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.modalSave]}
+                                onPress={handleCreateSubject}
+                            >
+                                <Text style={styles.modalSaveText}>Create</Text>
                             </TouchableOpacity>
                         </View>
-
-                        {newSubjectMode ? (
-                            <View>
-                                <Text style={styles.inputLabel}>Subject Name *</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={subjectName}
-                                    onChangeText={setSubjectName}
-                                    placeholder="e.g., Data Structures"
-                                    autoFocus
-                                />
-
-                                <Text style={styles.inputLabel}>Teacher (Optional)</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    value={subjectTeacher}
-                                    onChangeText={setSubjectTeacher}
-                                    placeholder="e.g., Prof. Smith"
-                                />
-
-                                <Text style={styles.inputLabel}>Color</Text>
-                                <View style={styles.colorPalette}>
-                                    {THEME_COLORS.map(color => (
-                                        <TouchableOpacity
-                                            key={color}
-                                            style={[
-                                                styles.colorOption,
-                                                { backgroundColor: color },
-                                                subjectColor === color && styles.colorOptionSelected
-                                            ]}
-                                            onPress={() => setSubjectColor(color)}
-                                        />
-                                    ))}
-                                </View>
-
-                                <View style={styles.modalActions}>
-                                    <Button
-                                        title="Cancel"
-                                        variant="outline"
-                                        onPress={() => setNewSubjectMode(false)}
-                                        style={styles.flex1}
-                                    />
-                                    <Button
-                                        title="Create & Select"
-                                        onPress={handleCreateSubject}
-                                        style={styles.flex1}
-                                    />
-                                </View>
-                            </View>
-                        ) : (
-                            <View>
-                                <Text style={styles.slotDetails}>
-                                    {selectedCell?.day}, {selectedCell ? timeSlots[selectedCell.slotIndex].start.substring(0, 5) : ''}
-                                </Text>
-
-                                <ScrollView style={styles.subjectList} nestedScrollEnabled>
-                                    {state.subjects.map(sub => (
-                                        <TouchableOpacity
-                                            key={sub.id}
-                                            style={[
-                                                styles.subjectOption,
-                                                selectedSubjectId === sub.id && styles.subjectOptionSelected,
-                                            ]}
-                                            onPress={() => setSelectedSubjectId(sub.id)}
-                                        >
-                                            <View style={[styles.colorDot, { backgroundColor: sub.color }]} />
-                                            <Text style={[
-                                                styles.subjectOptionText,
-                                                selectedSubjectId === sub.id && styles.subjectOptionTextSelected
-                                            ]}>
-                                                {sub.name}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                    <TouchableOpacity
-                                        style={styles.newSubjectButton}
-                                        onPress={() => {
-                                            setNewSubjectMode(true);
-                                            // Pick unused color
-                                            const usedColors = state.subjects.map(s => s.color);
-                                            const unused = THEME_COLORS.find(c => !usedColors.includes(c)) || THEME_COLORS[0];
-                                            setSubjectColor(unused);
-                                        }}
-                                    >
-                                        <Text style={styles.newSubjectButtonText}>+ Create New Subject</Text>
-                                    </TouchableOpacity>
-                                </ScrollView>
-
-                                <Text style={styles.inputLabel}>Quick Duration</Text>
-                                <View style={styles.durationRow}>
-                                    <TouchableOpacity
-                                        style={[styles.durationButton, (classEndMins - classStartMins === 60) && styles.durationButtonActive]}
-                                        onPress={() => setClassEndMins(classStartMins + 60)}
-                                    >
-                                        <Text style={[styles.durationText, (classEndMins - classStartMins === 60) && styles.durationTextActive]}>1 Hour</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.durationButton, (classEndMins - classStartMins === 120) && styles.durationButtonActive]}
-                                        onPress={() => setClassEndMins(classStartMins + 120)}
-                                    >
-                                        <Text style={[styles.durationText, (classEndMins - classStartMins === 120) && styles.durationTextActive]}>2 Hours</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-
-                                <View style={styles.timeOverridesContainer}>
-                                    <TimeStepper
-                                        label="Class Starts:"
-                                        value={classStartMins}
-                                        min={0}
-                                        max={classEndMins - 5}
-                                        onChange={(val) => setClassStartMins(val)}
-                                    />
-                                    <View style={styles.microDivider} />
-                                    <TimeStepper
-                                        label="Class Ends:"
-                                        value={classEndMins}
-                                        min={classStartMins + 5}
-                                        max={1440}
-                                        onChange={(val) => setClassEndMins(val)}
-                                    />
-                                </View>
-
-                                <View style={styles.modalActions}>
-                                    {selectedSubjectId ? (
-                                        <TouchableOpacity style={styles.deleteIconButton} onPress={handleDeleteClass}>
-                                            <Text style={styles.deleteIconText}>🗑️</Text>
-                                        </TouchableOpacity>
-                                    ) : (
-                                        <Button
-                                            title="Cancel"
-                                            variant="outline"
-                                            onPress={() => setModalVisible(false)}
-                                            style={styles.flex1}
-                                        />
-                                    )}
-                                    <Button
-                                        title="Save Class"
-                                        onPress={handleSaveClass}
-                                        style={styles.flex2}
-                                    />
-                                </View>
-                            </View>
-                        )}
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );
@@ -500,8 +299,20 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.background,
     },
+    errorBox: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: SPACING.xl,
+    },
+    errorText: {
+        color: COLORS.danger,
+        textAlign: 'center',
+        ...TYPOGRAPHY.body,
+    },
     headerBox: {
         padding: SPACING.lg,
+        paddingBottom: SPACING.sm,
     },
     header: {
         ...TYPOGRAPHY.headerMedium,
@@ -510,16 +321,19 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         ...TYPOGRAPHY.body,
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
     },
     gridContainer: {
         flex: 1,
-        marginHorizontal: SPACING.md,
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
         borderColor: COLORS.border,
-        overflow: 'hidden',
+        marginTop: SPACING.sm,
+    },
+    gridScroll: {
+        paddingBottom: SPACING.xl, // some breathing room at the bottom of the grid 
     },
     row: {
         flexDirection: 'row',
@@ -527,98 +341,146 @@ const styles = StyleSheet.create({
         borderBottomColor: COLORS.border,
     },
     cell: {
-        width: 70, // Fixed width for nice grid
-        height: 60,
+        width: 70,
+        height: 64,
         borderRightWidth: 1,
         borderRightColor: COLORS.border,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: COLORS.cardBackground, // Empty cell bg
+        backgroundColor: COLORS.cardBackground,
     },
     cornerCell: {
-        width: 50,
+        width: 55,
         backgroundColor: COLORS.inputBackground,
     },
     headerCell: {
         backgroundColor: COLORS.inputBackground,
-        height: 40,
+        height: 48,
+        paddingVertical: 2,
     },
     dayCell: {
-        width: 50,
-        backgroundColor: COLORS.inputBackground,
+        width: 55,
+        backgroundColor: '#FAFAFA',
+        paddingVertical: SPACING.xs,
+        justifyContent: 'center',
     },
     timeText: {
         fontSize: 10,
         color: COLORS.textSecondary,
-        fontWeight: '500',
+        fontWeight: '600',
+    },
+    timeDivider: {
+        height: 1,
+        width: 12,
+        backgroundColor: COLORS.border,
+        marginVertical: 2,
     },
     dayText: {
         fontSize: FONT_SIZES.sm,
         fontWeight: 'bold',
-        color: COLORS.textSecondary,
+        color: COLORS.textPrimary,
+    },
+    copyBtn: {
+        marginTop: SPACING.xs,
+        backgroundColor: COLORS.primaryLight,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    copyBtnText: {
+        fontSize: 8,
+        fontWeight: '600',
+        color: COLORS.primary,
+        textAlign: 'center',
     },
     filledCell: {
         borderLeftWidth: 4,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 2,
+        paddingHorizontal: 4,
     },
     subjectText: {
         fontSize: FONT_SIZES.sm,
         fontWeight: '700',
         textAlign: 'center',
     },
-    addText: {
-        color: COLORS.textMuted,
-        fontSize: 24,
+    paletteContainer: {
+        backgroundColor: COLORS.cardBackground,
+        paddingVertical: SPACING.md,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+        ...SHADOWS.small,
+    },
+    paletteHeader: {
+        paddingHorizontal: SPACING.lg,
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+        marginBottom: SPACING.sm,
+    },
+    paletteScroll: {
+        paddingHorizontal: SPACING.lg,
+        gap: SPACING.sm,
+        alignItems: 'center',
+    },
+    paletteBtn: {
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
+        borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    eraserBtn: {
+        backgroundColor: COLORS.inputBackground,
+        borderColor: COLORS.border,
+    },
+    paletteBtnActive: {
+        backgroundColor: COLORS.textSecondary,
+        borderColor: COLORS.textSecondary,
+    },
+    paletteBtnText: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '700',
+    },
+    paletteTextActive: {
+        color: COLORS.background,
+    },
+    addBtn: {
+        backgroundColor: COLORS.cardBackground,
+        borderColor: COLORS.primaryLight,
+        borderStyle: 'dashed',
+    },
+    addBtnText: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '600',
+        color: COLORS.primary,
     },
     footer: {
         padding: SPACING.lg,
+        backgroundColor: COLORS.background,
     },
+    // Modal Styles
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: SPACING.xl,
     },
     modalContent: {
         backgroundColor: COLORS.cardBackground,
-        borderTopLeftRadius: BORDER_RADIUS.xl,
-        borderTopRightRadius: BORDER_RADIUS.xl,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.xl,
-        paddingBottom: 40,
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: SPACING.sm,
+        width: '100%',
+        ...SHADOWS.medium,
     },
     modalTitle: {
         fontSize: FONT_SIZES.lg,
         fontWeight: '700',
         color: COLORS.textPrimary,
-    },
-    closeText: {
-        fontSize: 24,
-        color: COLORS.textMuted,
-    },
-    slotDetails: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
-        color: COLORS.primaryLight,
-        backgroundColor: COLORS.primary + '10', // Very light tint
-        paddingVertical: SPACING.xs,
-        paddingHorizontal: SPACING.md,
-        borderRadius: BORDER_RADIUS.sm,
-        alignSelf: 'flex-start',
-        marginBottom: SPACING.md,
-    },
-    inputLabel: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
-        marginBottom: SPACING.xs,
-        marginTop: SPACING.md,
+        marginBottom: SPACING.lg,
+        textAlign: 'center',
     },
     input: {
         backgroundColor: COLORS.inputBackground,
@@ -626,168 +488,33 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    subjectList: {
-        maxHeight: 180,
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.xs,
-    },
-    subjectOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: SPACING.md,
-        borderRadius: BORDER_RADIUS.sm,
-    },
-    subjectOptionSelected: {
-        backgroundColor: COLORS.primaryLight,
-    },
-    colorDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        marginRight: SPACING.sm,
-    },
-    subjectOptionText: {
-        fontSize: FONT_SIZES.md,
-        color: COLORS.textPrimary,
-    },
-    subjectOptionTextSelected: {
-        fontWeight: '600',
-        color: COLORS.primary,
-    },
-    newSubjectButton: {
-        padding: SPACING.md,
-        alignItems: 'center',
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
-        marginTop: SPACING.xs,
-    },
-    newSubjectButtonText: {
-        color: COLORS.primary,
-        fontWeight: '600',
-    },
-    durationRow: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: 4,
-        marginTop: SPACING.xs,
-    },
-    durationButton: {
-        flex: 1,
-        paddingVertical: 10,
-        alignItems: 'center',
-        borderRadius: BORDER_RADIUS.sm,
-    },
-    durationButtonActive: {
-        backgroundColor: COLORS.primary,
-    },
-    durationText: {
-        fontWeight: '500',
-        color: COLORS.textSecondary,
-    },
-    durationTextActive: {
-        color: COLORS.textOnPrimary,
-        fontWeight: '600',
-    },
-    colorPalette: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: SPACING.sm,
-        marginTop: SPACING.xs,
-    },
-    colorOption: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        borderWidth: 3,
-        borderColor: 'transparent',
-    },
-    colorOptionSelected: {
-        borderColor: COLORS.textPrimary,
+        marginBottom: SPACING.lg,
+        ...Platform.select({ web: { outlineStyle: 'none' } }),
     },
     modalActions: {
         flexDirection: 'row',
-        alignItems: 'center',
+        justifyContent: 'flex-end',
         gap: SPACING.md,
-        marginTop: SPACING.xl,
     },
-    deleteIconButton: {
-        backgroundColor: COLORS.dangerLight,
-        padding: SPACING.md,
+    modalBtn: {
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.lg,
         borderRadius: BORDER_RADIUS.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 50,
-        width: 50,
     },
-    deleteIconText: {
-        fontSize: 20,
+    modalCancel: {
+        backgroundColor: 'transparent',
     },
-    flex1: {
-        flex: 1,
+    modalSave: {
+        backgroundColor: COLORS.primary,
     },
-    flex2: {
-        flex: 2,
-    },
-    timeOverridesContainer: {
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
-        marginTop: SPACING.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        ...SHADOWS.small,
-    },
-    microDivider: {
-        height: 1,
-        backgroundColor: COLORS.border,
-        marginVertical: SPACING.md,
-    },
-    stepperContainer: {
-        flexDirection: 'column',
-    },
-    stepperLabel: {
-        fontSize: FONT_SIZES.sm,
+    modalCancelText: {
+        color: COLORS.textSecondary,
         fontWeight: '600',
-        color: COLORS.textPrimary,
-        marginBottom: SPACING.sm,
-    },
-    stepperControls: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    stepButton: {
-        padding: SPACING.sm,
-        width: 44,
-        alignItems: 'center',
-    },
-    stepButtonText: {
-        fontSize: 20,
-        color: COLORS.primary,
-        fontWeight: '600',
-    },
-    stepperValueContainer: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    stepperValue: {
         fontSize: FONT_SIZES.md,
-        fontWeight: '700',
-        color: COLORS.textPrimary,
     },
-    customTimeText: {
-        fontSize: 10,
-        fontWeight: '600',
-        marginTop: 2,
-        opacity: 0.8,
+    modalSaveText: {
+        color: COLORS.textOnPrimary,
+        fontWeight: '700',
+        fontSize: FONT_SIZES.md,
     }
 });

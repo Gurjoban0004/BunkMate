@@ -19,7 +19,7 @@ const ClassCard = ({
     isCurrentClass = false,
     isPreCounted = false,
 }) => {
-    const { subjectId, subjectName, teacher, startTime, endTime, units } = classInfo;
+    const { subjectId, subjectName, startTime, endTime, units } = classInfo;
 
     // Get subject data
     const subject = state.subjects.find(s => s.id === subjectId);
@@ -108,7 +108,7 @@ const ClassCard = ({
 
     if (isPreCounted) {
         return (
-            <View style={[styles.container, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.border, opacity: 0.8 }]}>
+            <View style={[styles.container, { backgroundColor: COLORS.cardBackground, opacity: 0.8 }]}>
                 <View style={[styles.colorBar, { backgroundColor: COLORS.border }]} />
                 <View style={styles.content}>
                     <View style={styles.headerRow}>
@@ -120,9 +120,6 @@ const ClassCard = ({
                                         <Text style={[styles.durationBadgeText, { color: COLORS.textSecondary }]}>{units}-HR CLASS</Text>
                                     </View>
                                 )}
-                            </View>
-                            <View style={styles.metaRow}>
-                                {teacher && <Text style={styles.teacher}>{teacher}</Text>}
                             </View>
                         </View>
                         <View style={[styles.timeContainer, { backgroundColor: COLORS.background }]}>
@@ -136,8 +133,8 @@ const ClassCard = ({
                             ✓ Included in setup
                         </Text>
                     </View>
-                </View>
-            </View>
+                </View >
+            </View >
         );
     }
 
@@ -148,7 +145,7 @@ const ClassCard = ({
                 {
                     transform: [{ scale: scaleAnim }],
                     backgroundColor: cardStyle.backgroundColor,
-                    borderColor: cardStyle.borderColor,
+
                 },
                 isCurrentClass && styles.currentClassShadow,
             ]}
@@ -167,9 +164,6 @@ const ClassCard = ({
                                     <Text style={styles.durationBadgeText}>{units}-HR CLASS</Text>
                                 </View>
                             )}
-                        </View>
-                        <View style={styles.metaRow}>
-                            {teacher && <Text style={styles.teacher}>{teacher}</Text>}
                         </View>
                     </View>
 
@@ -224,7 +218,7 @@ const ClassCard = ({
                 {isDanger && !markedStatus && (
                     <View style={styles.warningRow}>
                         <Text style={styles.warningText}>
-                            ⚠️ Attend {classesNeeded} more to reach {dangerThreshold}%
+                            Attend {classesNeeded} more to reach {dangerThreshold}%
                         </Text>
                     </View>
                 )}
@@ -262,7 +256,7 @@ const ClassCard = ({
                             activeOpacity={0.7}
                         >
                             <Text style={styles.presentButtonText}>
-                                ✅ Present {units > 1 && `(${units} marks)`}
+                                Present {units > 1 && `(${units} marks)`}
                             </Text>
                         </TouchableOpacity>
 
@@ -272,7 +266,7 @@ const ClassCard = ({
                             activeOpacity={0.7}
                         >
                             <Text style={styles.absentButtonText}>
-                                ❌ Absent
+                                Absent
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -291,10 +285,11 @@ const calculateClassesNeeded = (attended, total, target) => {
 
 const styles = StyleSheet.create({
     container: {
-        marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
+        flexDirection: 'row',
+        backgroundColor: COLORS.cardBackground,
+        marginHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.cardGap,
         borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1.5,
         overflow: 'hidden',
         ...SHADOWS.small,
     },
@@ -309,8 +304,9 @@ const styles = StyleSheet.create({
         width: 4,
     },
     content: {
-        padding: SPACING.md,
-        paddingLeft: SPACING.md + 4,
+        flex: 1,
+        padding: SPACING.cardPadding,
+        paddingLeft: SPACING.cardPadding + 4,
     },
     headerRow: {
         flexDirection: 'row',
@@ -344,15 +340,6 @@ const styles = StyleSheet.create({
         color: COLORS.primary,
         letterSpacing: 0.5,
     },
-    metaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 2,
-    },
-    teacher: {
-        fontSize: FONT_SIZES.xs,
-        color: COLORS.textSecondary,
-    },
     timeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -379,7 +366,7 @@ const styles = StyleSheet.create({
     progressBarContainer: {
         flex: 1,
         height: 6,
-        backgroundColor: COLORS.progressBackground,
+        backgroundColor: COLORS.border,
         borderRadius: 3,
         marginRight: SPACING.sm,
         overflow: 'hidden',
@@ -441,11 +428,10 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1.5,
     },
     presentButton: {
         backgroundColor: COLORS.successLight,
-        borderColor: COLORS.success,
+
     },
     presentButtonText: {
         fontSize: FONT_SIZES.sm,
@@ -454,7 +440,7 @@ const styles = StyleSheet.create({
     },
     absentButton: {
         backgroundColor: COLORS.dangerLight,
-        borderColor: COLORS.danger,
+
     },
     absentButtonText: {
         fontSize: FONT_SIZES.sm,

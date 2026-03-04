@@ -43,7 +43,7 @@ export async function scheduleDailyReminder(time24 = '18:00') {
 
     const id = await Notifications.scheduleNotificationAsync({
         content: {
-            title: '📚 Presence Reminder',
+            title: 'Presence Reminder',
             body: "Don't forget to mark today's attendance!",
             sound: true,
         },
@@ -113,7 +113,7 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
         if (pct < 75 && !nState.belowThresholdNotified) {
             // Below 75% warning
             shouldNotify = true;
-            title = `⚠️ ${subject.name} below 75%!`;
+            title = `${subject.name} below 75%!`;
             body = `Your attendance is at ${pct}%. Attend more classes to recover!`;
             dispatch({
                 type: 'UPDATE_NOTIFICATION_STATE',

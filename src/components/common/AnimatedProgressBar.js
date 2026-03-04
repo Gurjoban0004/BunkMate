@@ -6,7 +6,7 @@ const AnimatedProgressBar = ({
     percentage,
     color,
     height = 6,
-    backgroundColor = COLORS.progressBackground,
+    backgroundColor = COLORS.border,
     duration = 500,
 }) => {
     const widthAnim = useRef(new Animated.Value(0)).current;

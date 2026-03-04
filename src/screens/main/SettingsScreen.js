@@ -11,8 +11,10 @@ import {
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import { clearAppState } from '../../storage/storage';
+import { clearAppState, saveAppState } from '../../storage/storage';
 import { showAlert } from '../../utils/alert';
+import { encodeBase64, decodeBase64 } from '../../utils/base64';
+import { Platform, Modal, KeyboardAvoidingView } from 'react-native';
 
 const THRESHOLD_OPTIONS = [70, 75, 80, 85, 90];
 
@@ -20,6 +22,10 @@ const SettingsScreen = ({ navigation }) => {
     const { state, dispatch } = useApp();
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState(state.userName || '');
+
+    // Import Modal State
+    const [importModalVisible, setImportModalVisible] = useState(false);
+    const [importDataString, setImportDataString] = useState('');
 
     // Settings values
     const {
@@ -45,9 +51,56 @@ const SettingsScreen = ({ navigation }) => {
         setEditingName(false);
     };
 
+    const handleExportData = () => {
+        try {
+            const jsonStr = JSON.stringify(state);
+            const base64 = encodeBase64(jsonStr);
+
+            if (Platform.OS === 'web' && navigator.clipboard) {
+                navigator.clipboard.writeText(base64)
+                    .then(() => showAlert('Export Successful', 'Your backup code has been copied to your clipboard. Keep it safe!'))
+                    .catch(() => copyFallback(base64));
+            } else {
+                copyFallback(base64);
+            }
+        } catch (e) {
+            showAlert('Export Failed', 'There was an error encoding your data.');
+        }
+    };
+
+    const copyFallback = (base64) => {
+        // Fallback for native or when clipboard API fails
+        showAlert('Backup Code', 'Copy the following code:\n\n' + base64 + '\n\nSelect all text and copy.');
+    };
+
+    const handleImportData = () => {
+        if (!importDataString.trim()) {
+            showAlert('Error', 'Please enter a valid backup code.');
+            return;
+        }
+
+        try {
+            const decodedStr = decodeBase64(importDataString.trim());
+            if (!decodedStr) throw new Error('Invalid Base64');
+            const stateObj = JSON.parse(decodedStr);
+
+            if (stateObj && stateObj.subjects && stateObj.timeSlots) {
+                dispatch({ type: 'LOAD_STATE', payload: stateObj });
+                saveAppState(stateObj);
+                setImportModalVisible(false);
+                setImportDataString('');
+                showAlert('Success', 'Your data was successfully restored!');
+            } else {
+                throw new Error('Invalid Data Structure');
+            }
+        } catch (e) {
+            showAlert('Import Failed', 'The code you entered is invalid or corrupted.');
+        }
+    };
+
     const handleResetSemester = () => {
         showAlert(
-            '🗑️ Reset Semester',
+            'Reset Semester',
             'This will delete ALL your attendance data. This cannot be undone.\n\nAre you sure?',
             [
                 { text: 'Cancel', style: 'cancel' },
@@ -73,7 +126,7 @@ const SettingsScreen = ({ navigation }) => {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Settings</Text>
-                    <Text style={styles.headerEmoji}>⚙️</Text>
+                    <Text style={styles.headerEmoji}></Text>
                 </View>
 
                 {/* Profile Section */}
@@ -259,11 +312,11 @@ const SettingsScreen = ({ navigation }) => {
 
                 {/* Timetable Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>📚 DATA & TIMETABLE</Text>
+                    <Text style={styles.sectionTitle}>DATA & TIMETABLE</Text>
 
                     <TouchableOpacity
                         style={styles.card}
-                        onPress={() => navigation.navigate('PastAttendance')}
+                        onPress={() => navigation.navigate('AttendanceStats', { fromSettings: true })}
                     >
                         <View style={styles.linkRow}>
                             <Text style={styles.linkText}>Log Past Attendance</Text>
@@ -292,9 +345,44 @@ const SettingsScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
 
+                {/* Data Management Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>DATA MANAGEMENT</Text>
+
+                    <TouchableOpacity
+                        style={styles.card}
+                        onPress={handleExportData}
+                    >
+                        <View style={styles.linkRow}>
+                            <View>
+                                <Text style={styles.linkText}>Export Backup</Text>
+                                <Text style={[styles.cardDescription, { color: COLORS.textMuted, marginTop: 2, fontSize: FONT_SIZES.xs }]}>
+                                    Generate a code to save your data
+                                </Text>
+                            </View>
+                            <Text style={styles.chevron}>›</Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.card}
+                        onPress={() => setImportModalVisible(true)}
+                    >
+                        <View style={styles.linkRow}>
+                            <View>
+                                <Text style={styles.linkText}>Restore Backup</Text>
+                                <Text style={[styles.cardDescription, { color: COLORS.textMuted, marginTop: 2, fontSize: FONT_SIZES.xs }]}>
+                                    Load data from a backup code
+                                </Text>
+                            </View>
+                            <Text style={styles.chevron}>›</Text>
+                        </View>
+                    </TouchableOpacity>
+                </View>
+
                 {/* Danger Zone */}
                 <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, styles.dangerTitle]}>⚠️ DANGER ZONE</Text>
+                    <Text style={[styles.sectionTitle, styles.dangerTitle]}>DANGER ZONE</Text>
 
                     <TouchableOpacity
                         style={[styles.card, styles.dangerCard]}
@@ -302,7 +390,7 @@ const SettingsScreen = ({ navigation }) => {
                     >
                         <View style={styles.linkRow}>
                             <View>
-                                <Text style={styles.dangerText}>🗑️ Reset Semester</Text>
+                                <Text style={styles.dangerText}>Reset Semester</Text>
                                 <Text style={styles.dangerDescription}>
                                     Clear all attendance data
                                 </Text>
@@ -325,6 +413,58 @@ const SettingsScreen = ({ navigation }) => {
                 {/* Bottom Padding */}
                 <View style={styles.bottomPadding} />
             </ScrollView>
+
+            {/* Import Backup Modal */}
+            <Modal
+                visible={importModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setImportModalVisible(false)}
+            >
+                <KeyboardAvoidingView
+                    style={styles.modalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Restore Backup</Text>
+                            <TouchableOpacity onPress={() => setImportModalVisible(false)}>
+                                <Text style={styles.modalCloseText}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalSubtitle}>Paste your exported backup code below. This will overwrite all your current data!</Text>
+
+                        <TextInput
+                            style={styles.backupInput}
+                            value={importDataString}
+                            onChangeText={setImportDataString}
+                            placeholder="e.g. eyJzZXR1cENvbXBs..."
+                            multiline
+                            numberOfLines={4}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonCancel]}
+                                onPress={() => {
+                                    setImportModalVisible(false);
+                                    setImportDataString('');
+                                }}
+                            >
+                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.modalButtonConfirm]}
+                                onPress={handleImportData}
+                            >
+                                <Text style={styles.modalButtonTextConfirm}>Restore Data</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -372,8 +512,8 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.sm,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     cardTitle: {
         fontSize: FONT_SIZES.md,
@@ -472,7 +612,7 @@ const styles = StyleSheet.create({
     },
     sliderTrack: {
         height: 8,
-        backgroundColor: COLORS.progressBackground,
+        backgroundColor: COLORS.border,
         borderRadius: 4,
         overflow: 'hidden',
     },
@@ -555,7 +695,7 @@ const styles = StyleSheet.create({
     },
     dangerCard: {
         backgroundColor: COLORS.dangerLight,
-        borderColor: COLORS.danger,
+
     },
     dangerText: {
         fontSize: FONT_SIZES.md,
@@ -573,8 +713,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     appName: {
         fontSize: FONT_SIZES.lg,
@@ -593,6 +733,75 @@ const styles = StyleSheet.create({
     },
     bottomPadding: {
         height: 100,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: COLORS.cardBackground,
+        borderTopLeftRadius: BORDER_RADIUS.xl,
+        borderTopRightRadius: BORDER_RADIUS.xl,
+        padding: SPACING.xl,
+        paddingBottom: Platform.OS === 'ios' ? 40 : SPACING.xl,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.sm,
+    },
+    modalTitle: {
+        fontSize: FONT_SIZES.lg,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
+    },
+    modalCloseText: {
+        fontSize: 24,
+        color: COLORS.textMuted,
+    },
+    modalSubtitle: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.danger,
+        marginBottom: SPACING.lg,
+    },
+    backupInput: {
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.md,
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textPrimary,
+        minHeight: 100,
+        textAlignVertical: 'top',
+        marginBottom: SPACING.lg,
+        ...Platform.select({ web: { outlineStyle: 'none' } }),
+    },
+    modalActions: {
+        flexDirection: 'row',
+        gap: SPACING.md,
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        alignItems: 'center',
+    },
+    modalButtonCancel: {
+        backgroundColor: COLORS.inputBackground,
+    },
+    modalButtonConfirm: {
+        backgroundColor: COLORS.primary,
+    },
+    modalButtonTextCancel: {
+        fontSize: FONT_SIZES.md,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+    },
+    modalButtonTextConfirm: {
+        fontSize: FONT_SIZES.md,
+        fontWeight: '700',
+        color: COLORS.background,
     },
 });
 

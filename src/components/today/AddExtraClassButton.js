@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const AddExtraClassButton = ({ onPress }) => {
     return (
@@ -21,12 +21,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: COLORS.cardBackground,
-        marginHorizontal: SPACING.lg,
+        marginHorizontal: SPACING.screenPadding,
         marginTop: SPACING.md,
         paddingVertical: SPACING.md,
         borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 2,
-        borderColor: COLORS.border,
+        ...SHADOWS.small,
         borderStyle: 'dashed',
     },
     icon: {

@@ -434,8 +434,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderLeftWidth: 4,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
         ...SHADOWS.small,
     },
     classInfo: {
@@ -466,8 +466,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
         borderStyle: 'dashed',
     },
     freePeriodText: {
@@ -547,8 +547,8 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
     },
     subjectList: {
         maxHeight: 200,

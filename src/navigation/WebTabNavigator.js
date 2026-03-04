@@ -7,12 +7,12 @@ import TodayScreen from '../screens/main/TodayScreen';
 import SubjectsScreen from '../screens/main/SubjectsScreen';
 import SubjectDetailScreen from '../screens/main/SubjectDetailScreen';
 import PlannerScreen from '../screens/main/PlannerScreen';
-import RecoveryPlanScreen from '../screens/main/RecoveryPlanScreen';
-import EndGameScreen from '../screens/main/EndGameScreen';
+import PlannerSubjectDetail from '../screens/main/PlannerScreen/PlannerSubjectDetail';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
+import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 
 import WebHeader from './WebHeader';
@@ -20,10 +20,10 @@ import { COLORS, TYPOGRAPHY } from '../theme/theme';
 
 function TabIcon({ label, focused }) {
     const icons = {
-        Today: '📅',
-        Subjects: '📚',
+        Today: '',
+        Subjects: '',
         Planner: '🎯',
-        Settings: '⚙️',
+        Settings: '',
     };
     return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{icons[label]}</Text>;
 }
@@ -152,11 +152,11 @@ export default function WebTabNavigator() {
             case 'SubjectsList': return <SubjectsScreen {...props} />;
             case 'SubjectDetail': return <SubjectDetailScreen {...props} />;
             case 'PlannerMain': return <PlannerScreen {...props} />;
-            case 'RecoveryPlan': return <RecoveryPlanScreen {...props} />;
-            case 'EndGame': return <EndGameScreen {...props} />;
+            case 'PlannerSubjectDetail': return <PlannerSubjectDetail {...props} />;
             case 'SettingsMain': return <SettingsScreen {...props} />;
             case 'EditTimetable': return <EditTimetableScreen {...props} />;
             case 'EditSubjects': return <EditSubjectsScreen {...props} />;
+            case 'AttendanceStats': return <AttendanceStatsScreen {...props} />;
             default: return <TodayScreen {...props} />;
         }
     };

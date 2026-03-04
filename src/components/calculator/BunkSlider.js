@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const BunkSlider = ({ value, onValueChange, maxValue = 15, subjectColor }) => {
     const [localValue, setLocalValue] = useState(value);
@@ -34,7 +34,7 @@ const BunkSlider = ({ value, onValueChange, maxValue = 15, subjectColor }) => {
                         onSlidingComplete={handleSlidingComplete}
                         step={1}
                         minimumTrackTintColor={subjectColor || COLORS.primary}
-                        maximumTrackTintColor={COLORS.progressBackground}
+                        maximumTrackTintColor={COLORS.border}
                         thumbTintColor={subjectColor || COLORS.primary}
                     />
                 </View>
@@ -57,8 +57,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        ...SHADOWS.small,
     },
     title: {
         fontSize: FONT_SIZES.md,

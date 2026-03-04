@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const BacklogBanner = ({ count, onPress }) => {
     return (
@@ -31,8 +31,7 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.md,
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
-        borderColor: COLORS.warning,
+        ...SHADOWS.small,
     },
     content: {
         flexDirection: 'row',

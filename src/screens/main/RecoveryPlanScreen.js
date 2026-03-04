@@ -139,7 +139,7 @@ const RecoveryPlanScreen = ({ route }) => {
 
                 {/* Warning */}
                 <View style={styles.warningCard}>
-                    <Text style={styles.warningTitle}>⚠️ Important</Text>
+                    <Text style={styles.warningTitle}>Important</Text>
                     <Text style={styles.warningText}>
                         Missing even ONE class extends recovery by 1–2 extra classes!
                     </Text>
@@ -209,8 +209,8 @@ const styles = StyleSheet.create({
         padding: SPACING.xl,
         alignItems: 'center',
         marginBottom: SPACING.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         ...SHADOWS.medium,
     },
     bigLabel: {
@@ -246,8 +246,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     progressRow: {
         flexDirection: 'row',
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     progressBarContainer: {
         flex: 1,
         height: 8,
-        backgroundColor: COLORS.progressBackground,
+        backgroundColor: COLORS.border,
         borderRadius: 4,
         marginHorizontal: SPACING.sm,
         overflow: 'hidden',
@@ -282,8 +282,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     scheduleRow: {
         flexDirection: 'row',
@@ -319,8 +319,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.warningLight,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.warning,
+
+
         marginBottom: SPACING.md,
     },
     warningTitle: {

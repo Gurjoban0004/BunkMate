@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 /**
  * Renders a single personalized insight card.
@@ -11,7 +11,7 @@ const InsightCard = ({ type, data }) => {
 
     const configs = {
         bestDay: {
-            emoji: '📅',
+            emoji: '',
             title: 'Best day to bunk',
         },
         pattern: {
@@ -48,7 +48,7 @@ const InsightCard = ({ type, data }) => {
             )}
             {data.tip && (
                 <View style={styles.tipRow}>
-                    <Text style={styles.tipText}>💡 {data.tip}</Text>
+                    <Text style={styles.tipText}>{data.tip}</Text>
                 </View>
             )}
         </View>
@@ -59,11 +59,9 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.md,
-        marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        padding: SPACING.lg,
+        marginBottom: SPACING.md,
+        ...SHADOWS.small,
     },
     headerRow: {
         flexDirection: 'row',

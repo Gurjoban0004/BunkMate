@@ -10,8 +10,9 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
 import { getTodayKey, getNextDay } from '../../utils/dateHelpers';
 
-export default function AttendanceStatsScreen({ navigation }) {
+export default function AttendanceStatsScreen({ navigation, route }) {
     const { state, dispatch } = useApp();
+    const fromSettings = route?.params?.fromSettings || false;
 
     const [subjectData, setSubjectData] = useState(
         state.subjects.map((sub) => ({
@@ -60,8 +61,15 @@ export default function AttendanceStatsScreen({ navigation }) {
             }
         });
 
-        // Proceed to the celebratory screen
-        navigation.navigate('SetupComplete');
+        if (fromSettings) {
+            // When accessed from Settings, just save and go back
+            dispatch({ type: 'SET_INITIAL_ATTENDANCE', payload: updates });
+            showAlert('Saved', 'Your past attendance has been updated.');
+            navigation.goBack();
+        } else {
+            // During setup, proceed to the celebratory screen
+            navigation.navigate('SetupComplete');
+        }
     };
 
     const handleContinue = () => {
@@ -104,15 +112,20 @@ export default function AttendanceStatsScreen({ navigation }) {
             <KeyboardWrapper contentContainerStyle={styles.scrollContent}>
 
                 <View style={styles.headerBox}>
-                    <Text style={styles.header}>One last thing!</Text>
+                    <Text style={styles.header}>{fromSettings ? 'Log Past Attendance' : 'One last thing!'}</Text>
                     <Text style={styles.subtitle}>
-                        Enter your attendance so far this semester.
+                        {fromSettings
+                            ? 'Update your attendance numbers for each subject.'
+                            : 'Enter your attendance so far this semester.'
+                        }
                     </Text>
 
-                    <TouchableOpacity style={styles.skipButtonRow} onPress={handleSkip}>
-                        <Text style={styles.skipText}>Starting fresh? </Text>
-                        <Text style={styles.skipTextBold}>Skip this step →</Text>
-                    </TouchableOpacity>
+                    {!fromSettings && (
+                        <TouchableOpacity style={styles.skipButtonRow} onPress={handleSkip}>
+                            <Text style={styles.skipText}>Starting fresh? </Text>
+                            <Text style={styles.skipTextBold}>Skip this step →</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {subjectData.map((subject) => {
@@ -150,43 +163,47 @@ export default function AttendanceStatsScreen({ navigation }) {
                     );
                 })}
 
-                <View style={styles.divider} />
+                {!fromSettings && (
+                    <>
+                        <View style={styles.divider} />
 
-                <Text style={styles.sectionHeader}>📅 When to Start Tracking?</Text>
-                <Text style={styles.sectionSubtitle}>
-                    Your numbers above include attendance up to:
-                </Text>
+                        <Text style={styles.sectionHeader}>When to Start Tracking?</Text>
+                        <Text style={styles.sectionSubtitle}>
+                            Your numbers above include attendance up to:
+                        </Text>
 
-                <TouchableOpacity
-                    style={[styles.optionCard, trackingOption === 'yesterday' && styles.optionCardSelected]}
-                    onPress={() => setTrackingOption('yesterday')}
-                >
-                    <View style={styles.optionRow}>
-                        <View style={[styles.radio, trackingOption === 'yesterday' && styles.radioSelected]} />
-                        <View style={styles.optionContent}>
-                            <Text style={styles.optionTitle}>Yesterday</Text>
-                            <Text style={styles.optionDate}>{yesterdayLabel}</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.optionHelp}>→ Today's classes will appear for you to mark</Text>
-                </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.optionCard, trackingOption === 'yesterday' && styles.optionCardSelected]}
+                            onPress={() => setTrackingOption('yesterday')}
+                        >
+                            <View style={styles.optionRow}>
+                                <View style={[styles.radio, trackingOption === 'yesterday' && styles.radioSelected]} />
+                                <View style={styles.optionContent}>
+                                    <Text style={styles.optionTitle}>Yesterday</Text>
+                                    <Text style={styles.optionDate}>{yesterdayLabel}</Text>
+                                </View>
+                            </View>
+                            <Text style={styles.optionHelp}>→ Today's classes will appear for you to mark</Text>
+                        </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={[styles.optionCard, trackingOption === 'today' && styles.optionCardSelected]}
-                    onPress={() => setTrackingOption('today')}
-                >
-                    <View style={styles.optionRow}>
-                        <View style={[styles.radio, trackingOption === 'today' && styles.radioSelected]} />
-                        <View style={styles.optionContent}>
-                            <Text style={styles.optionTitle}>Today</Text>
-                            <Text style={styles.optionDate}>{todayLabel}</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.optionHelp}>→ Tracking starts from tomorrow</Text>
-                </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.optionCard, trackingOption === 'today' && styles.optionCardSelected]}
+                            onPress={() => setTrackingOption('today')}
+                        >
+                            <View style={styles.optionRow}>
+                                <View style={[styles.radio, trackingOption === 'today' && styles.radioSelected]} />
+                                <View style={styles.optionContent}>
+                                    <Text style={styles.optionTitle}>Today</Text>
+                                    <Text style={styles.optionDate}>{todayLabel}</Text>
+                                </View>
+                            </View>
+                            <Text style={styles.optionHelp}>→ Tracking starts from tomorrow</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
 
                 <View style={styles.buttonContainer}>
-                    <Button title="Finish Setup 🎉" onPress={handleContinue} />
+                    <Button title={fromSettings ? 'Save Attendance' : 'Finish Setup 🎉'} onPress={handleContinue} />
                 </View>
             </KeyboardWrapper>
         </SafeAreaView>
@@ -279,14 +296,14 @@ const styles = StyleSheet.create({
     },
     optionCard: {
         backgroundColor: COLORS.cardBackground,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
         marginBottom: SPACING.sm,
     },
     optionCardSelected: {
-        borderColor: COLORS.primary,
+
         backgroundColor: COLORS.primaryLight,
     },
     optionRow: {
@@ -298,12 +315,12 @@ const styles = StyleSheet.create({
         width: 20,
         height: 20,
         borderRadius: 10,
-        borderWidth: 2,
-        borderColor: COLORS.textSecondary,
+
+
         marginRight: SPACING.md,
     },
     radioSelected: {
-        borderColor: COLORS.primary,
+
         backgroundColor: COLORS.primary,
     },
     optionContent: {

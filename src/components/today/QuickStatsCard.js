@@ -9,7 +9,7 @@ const QuickStatsCard = ({ classCount, streak, overallPercentage }) => {
 
             <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                    <Text style={styles.statEmoji}>📚</Text>
+                    <Text style={styles.statEmoji}></Text>
                     <Text style={styles.statValue}>{classCount}</Text>
                     <Text style={styles.statLabel}>classes</Text>
                 </View>
@@ -38,9 +38,9 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.md,
-        marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
+        padding: SPACING.cardPadding,
+        marginHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.cardGap,
         ...SHADOWS.small,
     },
     title: {

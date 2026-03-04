@@ -98,8 +98,8 @@ export default function WebNavigator() {
 
         switch (currentRoute.name) {
             case 'Welcome': return <WelcomeScreen {...props} />;
-            case 'SubjectList': return <SubjectListScreen {...props} />;
             case 'TimeSlots': return <TimeSlotsScreen {...props} />;
+            case 'SubjectList': return <SubjectListScreen {...props} />;
             case 'TimetableBuilder': return <TimetableBuilderScreen {...props} />;
             case 'AttendanceStats': return <AttendanceStatsScreen {...props} />;
             case 'SetupComplete': return <SetupCompleteScreen {...props} />;

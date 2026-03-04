@@ -53,14 +53,14 @@ export default function SetupNavigator() {
                 options={{ headerShown: false }}
             />
             <Stack.Screen
-                name="SubjectList"
-                component={SubjectListScreen}
-                options={{ title: 'Your Subjects' }}
-            />
-            <Stack.Screen
                 name="TimeSlots"
                 component={TimeSlotsScreen}
                 options={{ title: 'Time Slots' }}
+            />
+            <Stack.Screen
+                name="SubjectList"
+                component={SubjectListScreen}
+                options={{ title: 'Your Subjects' }}
             />
             <Stack.Screen
                 name="TimetableBuilder"

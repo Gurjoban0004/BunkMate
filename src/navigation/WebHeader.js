@@ -40,8 +40,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.md,
         backgroundColor: COLORS.background,
         borderRadius: 8,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
     },
     backButtonText: {
         ...TYPOGRAPHY.bodySmall,

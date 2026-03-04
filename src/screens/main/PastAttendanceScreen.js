@@ -97,7 +97,7 @@ export default function PastAttendanceScreen({ navigation }) {
                         <View style={[styles.classRow, isMarked && styles.classRowMarked]}>
                             <View style={styles.classInfo}>
                                 <View style={styles.nameRow}>
-                                    <View style={[styles.colorDot, { backgroundColor: item.color || COLORS.purple }]} />
+                                    <View style={[styles.colorDot, { backgroundColor: item.color || COLORS.primary }]} />
                                     <Text style={styles.className}>{item.subjectName}</Text>
                                 </View>
                                 <Text style={styles.classTime}>
@@ -198,8 +198,8 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.sm,
         marginBottom: SPACING.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
         ...SHADOWS.small,
     },
     classRowMarked: {
@@ -244,14 +244,14 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
+        
     },
     presentSmallBtn: {
-        borderColor: COLORS.success,
+        
         backgroundColor: COLORS.successBg,
     },
     absentSmallBtn: {
-        borderColor: COLORS.danger,
+        
         backgroundColor: COLORS.dangerBg,
     },
     presentSmallText: {

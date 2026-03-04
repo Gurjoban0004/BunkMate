@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const BunkStepper = ({ value, onValueChange, maxValue = 15, subjectColor }) => {
@@ -61,8 +61,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
         ...SHADOWS.small,
     },
     title: {
@@ -90,15 +90,13 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 2,
-        borderColor: COLORS.border,
+        
+        
         ...SHADOWS.small,
     },
     stepperButtonDisabled: {
         backgroundColor: COLORS.background,
-        borderColor: COLORS.border,
-        elevation: 0,
-        shadowOpacity: 0,
+        ...(Platform.OS === 'web' ? { boxShadow: 'none' } : { elevation: 0, shadowOpacity: 0 }),
     },
     stepperButtonText: {
         fontSize: 32,

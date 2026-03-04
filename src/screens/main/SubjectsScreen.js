@@ -151,7 +151,7 @@ const SubjectsScreen = ({ navigation }) => {
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <Text style={[styles.sectionTitle, styles.sectionTitleDanger]}>
-                                        ⚠️ NEEDS ATTENTION
+                                        NEEDS ATTENTION
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeDanger]}>
                                         <Text style={styles.sectionBadgeText}>
@@ -203,7 +203,7 @@ const SubjectsScreen = ({ navigation }) => {
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <Text style={[styles.sectionTitle, styles.sectionTitleSafe]}>
-                                        ✅ ON TRACK
+                                        ON TRACK
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeSafe]}>
                                         <Text style={styles.sectionBadgeText}>
@@ -255,12 +255,12 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.xl,
         fontWeight: '700',
         color: COLORS.textPrimary,
-        paddingHorizontal: SPACING.lg,
+        paddingHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.md,
     },
     toggleContainer: {
         flexDirection: 'row',
-        marginHorizontal: SPACING.lg,
+        marginHorizontal: SPACING.screenPadding,
         marginVertical: SPACING.md,
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: SPACING.lg,
+        paddingHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.sm,
     },
     sectionTitle: {

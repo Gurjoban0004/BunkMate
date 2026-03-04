@@ -74,10 +74,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
+        marginHorizontal: SPACING.lg,
+        marginVertical: SPACING.md,
         padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        borderRadius: BORDER_RADIUS.md,
         ...SHADOWS.small,
     },
     selectorContent: {

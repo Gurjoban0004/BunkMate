@@ -4,10 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import KeyboardWrapper from '../../components/common/KeyboardWrapper';
 import Input from '../../components/common/Input';
 import { useApp } from '../../context/AppContext';
+import { PRESETS } from '../../data/presets';
+import { showAlert } from '../../utils/alert';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 export default function WelcomeScreen({ navigation }) {
     const [name, setName] = useState('');
+    const [code, setCode] = useState('');
     const { dispatch } = useApp();
     const inputRef = useRef(null);
 
@@ -22,9 +25,22 @@ export default function WelcomeScreen({ navigation }) {
     }, []);
 
     const handleContinue = () => {
-        if (name.trim()) {
+        if (!name.trim()) return;
+
+        const trimmedCode = code.trim().toUpperCase();
+
+        if (trimmedCode) {
+            const preset = PRESETS[trimmedCode];
+            if (preset) {
+                dispatch({ type: 'SET_USER_NAME', payload: name.trim() });
+                dispatch({ type: 'LOAD_PRESET', payload: preset });
+                // AppNavigator switches automatically when setupComplete = true
+            } else {
+                showAlert('Invalid Code', 'The class code you entered is invalid. Please try again or leave blank.');
+            }
+        } else {
             dispatch({ type: 'SET_USER_NAME', payload: name.trim() });
-            navigation.navigate('SubjectList');
+            navigation.navigate('TimeSlots');
         }
     };
 
@@ -37,7 +53,7 @@ export default function WelcomeScreen({ navigation }) {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.content}>
-                        <Text style={styles.emoji}>📚</Text>
+                        <Text style={styles.emoji}></Text>
                         <Text style={styles.title}>Presence</Text>
                         <Text style={styles.subtitle}>Attendance, solved.</Text>
 
@@ -50,6 +66,17 @@ export default function WelcomeScreen({ navigation }) {
                             value={name}
                             onChangeText={setName}
                             autoCapitalize="words"
+                            returnKeyType="next"
+                            style={styles.input}
+                        />
+
+                        <View style={{ height: SPACING.lg }} />
+
+                        <Input
+                            placeholder="Class Code (Optional)"
+                            value={code}
+                            onChangeText={setCode}
+                            autoCapitalize="characters"
                             returnKeyType="done"
                             onSubmitEditing={handleContinue}
                             style={styles.input}
@@ -121,8 +148,8 @@ const styles = StyleSheet.create({
         paddingVertical: SPACING.md,
         fontSize: FONT_SIZES.lg,
         color: COLORS.textPrimary,
-        borderWidth: 2,
-        borderColor: COLORS.border,
+
+
         textAlign: 'center',
     },
     footer: {

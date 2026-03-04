@@ -87,7 +87,7 @@ export default function Input({
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor={placeholderTextColor || COLORS.textDisabled}
+            placeholderTextColor={placeholderTextColor || COLORS.textMuted}
             keyboardType={keyboardType}
             autoCapitalize={autoCapitalize}
             returnKeyType={returnKeyType}
@@ -103,8 +103,8 @@ const styles = StyleSheet.create({
         color: COLORS.textPrimary,
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         ...TYPOGRAPHY.body,
     },
 });

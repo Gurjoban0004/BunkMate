@@ -72,7 +72,7 @@ export default function CalendarView({ subjectId, state }) {
             case 'present': return COLORS.success;
             case 'absent': return COLORS.danger;
             case 'holiday': return COLORS.primary;
-            case 'cancelled': return COLORS.textDisabled;
+            case 'cancelled': return COLORS.textMuted;
             default: return 'transparent';
         }
     };
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     navBtnDisabled: {
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
     },
     monthTitle: {
         ...TYPOGRAPHY.headerSmall,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     },
     dayHeader: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
         width: CELL_SIZE,
         textAlign: 'center',
         fontWeight: '600',
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     },
     legendText: {
         ...TYPOGRAPHY.caption,
-        color: COLORS.textDisabled,
+        color: COLORS.textMuted,
         fontSize: 10,
     },
 });

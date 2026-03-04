@@ -8,7 +8,7 @@ export default function ProgressBar({ percentage, color, style }) {
         (percentage >= 75
             ? COLORS.success
             : percentage >= 60
-                ? COLORS.yellow
+                ? COLORS.warning
                 : COLORS.danger);
     const clampedWidth = Math.min(100, Math.max(0, percentage));
 
@@ -45,7 +45,7 @@ export default function ProgressBar({ percentage, color, style }) {
 const styles = StyleSheet.create({
     track: {
         height: 8,
-        backgroundColor: COLORS.progressBg,
+        backgroundColor: COLORS.border,
         borderRadius: BORDER_RADIUS.full,
         overflow: 'hidden',
     },

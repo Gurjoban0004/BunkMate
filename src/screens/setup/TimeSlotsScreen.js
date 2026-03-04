@@ -9,10 +9,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import { useApp } from '../../context/AppContext';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
-
-import { formatMinutesToTime } from '../../utils/dateHelpers';
+import { formatMinutesToTime, parseTimeToMinutes } from '../../utils/dateHelpers';
 
 // Helper to format total minutes to 12h string for display
 const formatMins = (totalMins) => {
@@ -57,6 +56,7 @@ export default function TimeSlotsScreen({ navigation }) {
 
     const [hasLunchPattern, setHasLunchPattern] = useState(true);
     const [lunchStartMins, setLunchStartMins] = useState(780); // 1:00 PM
+    const [lunchEndMins, setLunchEndMins] = useState(840);     // 2:00 PM
 
     const handleContinue = () => {
         if (startMins >= endMins) {
@@ -64,43 +64,57 @@ export default function TimeSlotsScreen({ navigation }) {
             return;
         }
 
-        if (hasLunchPattern && (lunchStartMins <= startMins || lunchStartMins >= endMins)) {
-            showAlert('Invalid Lunch Break', 'Lunch break must be during class hours.');
+        if (hasLunchPattern && (lunchStartMins <= startMins || lunchEndMins >= endMins || lunchStartMins >= lunchEndMins)) {
+            showAlert('Invalid Lunch Break', 'Lunch break must be valid and during class hours.');
             return;
         }
 
         const generatedSlots = [];
         let slotId = 1;
+        let currentMins = startMins;
+        let iterations = 0;
 
-        // Generate 1-hour scaffolding slots based on the start time
-        for (let m = startMins; m + 60 <= endMins; m += 60) {
-            // Skip the lunch hour if it exists (exact match)
-            if (hasLunchPattern && m === lunchStartMins) {
-                continue;
+        const LStart = hasLunchPattern ? lunchStartMins : null;
+        const LEnd = hasLunchPattern ? lunchEndMins : null;
+
+        while (currentMins + 60 <= endMins && iterations < 20) {
+            iterations++;
+
+            if (LStart !== null && LEnd !== null) {
+                const overlap = Math.max(0, Math.min(currentMins + 60, LEnd) - Math.max(currentMins, LStart));
+                if (overlap >= 30) {
+                    // Skip this block by jumping to end of lunch
+                    currentMins = LEnd;
+                    continue;
+                }
             }
 
             generatedSlots.push({
                 id: slotId.toString(),
-                start: formatMinutesToTime(m),
-                end: formatMinutesToTime(m + 60),
+                start: formatMinutesToTime(currentMins),
+                end: formatMinutesToTime(currentMins + 60),
             });
+            currentMins += 60;
             slotId++;
         }
 
         if (generatedSlots.length === 0) {
-            showAlert('Error', 'No class slots could be generated. Make sure your start and end times are far enough apart.');
+            showAlert('Error', 'Could not generate valid time slots. Adjust your timings.');
             return;
         }
 
-        dispatch({ type: 'SET_TIME_SLOTS', payload: generatedSlots });
-        navigation.navigate('TimetableBuilder');
+        dispatch({
+            type: 'SET_TIME_SLOTS',
+            payload: generatedSlots,
+        });
+        navigation.navigate('SubjectList');
     };
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.content}>
-                    <Text style={styles.header}>⏰ Your Class Timings</Text>
+                    <Text style={styles.header}>Your Class Timings</Text>
                     <Text style={styles.subtitle}>
                         When do your classes start and end? We'll generate your slots automatically.
                     </Text>
@@ -130,15 +144,25 @@ export default function TimeSlotsScreen({ navigation }) {
 
                     <View style={styles.card}>
                         <TimeStepper
-                            label="Lunch break starts at:"
+                            label="Break starts at:"
                             value={lunchStartMins}
-                            min={startMins + 60}
+                            min={startMins + 30}
                             max={endMins - 60}
-                            onChange={setLunchStartMins}
+                            onChange={(val) => {
+                                setLunchStartMins(val);
+                                if (val >= lunchEndMins) setLunchEndMins(val + 30);
+                            }}
                         />
-                        <Text style={styles.lunchSubtext}>
-                            Lunch break lasts for 1 hour
-                        </Text>
+
+                        <View style={styles.divider} />
+
+                        <TimeStepper
+                            label="Break ends at:"
+                            value={lunchEndMins}
+                            min={lunchStartMins + 15}
+                            max={endMins - 30}
+                            onChange={setLunchEndMins}
+                        />
 
                         <TouchableOpacity
                             style={styles.checkboxRow}
@@ -153,7 +177,7 @@ export default function TimeSlotsScreen({ navigation }) {
 
                     <View style={styles.infoBox}>
                         <Text style={styles.infoText}>
-                            💡 Each generated slot will be 1 hour long. You can easily merge slots together for 2-hour classes in the next step!
+                            We use these timings to build your visual timetable canvas in the next step.
                         </Text>
                     </View>
                 </View>
@@ -193,8 +217,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
         marginBottom: SPACING.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         ...SHADOWS.small,
     },
     stepperContainer: {
@@ -212,8 +236,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     stepButton: {
         padding: SPACING.md,
@@ -257,15 +281,15 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         borderRadius: 4,
-        borderWidth: 2,
-        borderColor: COLORS.border,
+
+
         marginRight: SPACING.sm,
         alignItems: 'center',
         justifyContent: 'center',
     },
     checkboxActive: {
         backgroundColor: COLORS.primary,
-        borderColor: COLORS.primary,
+
     },
     checkmark: {
         color: COLORS.textOnPrimary,

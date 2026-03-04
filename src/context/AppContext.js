@@ -44,6 +44,9 @@ const initialState = {
     setupDate: null,              // Date when setup was completed
     trackingStartDate: null,      // Date from which to track attendance
     todayIncludedInSetup: false,  // Was today's attendance included in initial numbers?
+
+    // Dev Mode
+    devDate: null,                // Simulated date for time travel
 };
 
 function appReducer(state, action) {
@@ -90,6 +93,16 @@ function appReducer(state, action) {
                 ...state,
                 subjects: state.subjects.map((sub) =>
                     sub.id === action.payload.id ? { ...sub, ...action.payload } : sub
+                ),
+            };
+
+        case 'SET_SUBJECT_TARGET':
+            return {
+                ...state,
+                subjects: state.subjects.map((sub) =>
+                    sub.id === action.payload.subjectId
+                        ? { ...sub, target: action.payload.target }
+                        : sub
                 ),
             };
 
@@ -182,6 +195,21 @@ function appReducer(state, action) {
             };
         }
 
+        case 'LOAD_PRESET': {
+            const preset = action.payload;
+            const today = new Date().toISOString().split('T')[0];
+            return {
+                ...state,
+                setupComplete: true,
+                timeSlots: preset.timeSlots,
+                subjects: preset.subjects,
+                timetable: preset.timetable,
+                setupDate: today,
+                trackingStartDate: today,
+                todayIncludedInSetup: false,
+            };
+        }
+
         case 'COMPLETE_SETUP':
             return { ...state, setupComplete: true, ...(action.payload || {}) };
 
@@ -238,6 +266,12 @@ function appReducer(state, action) {
                 ...loaded,
                 settings: { ...initialState.settings, ...(loaded.settings || {}) },
                 timetable: { ...initialState.timetable, ...(loaded.timetable || {}) },
+            };
+
+        case 'SET_DEV_DATE':
+            return {
+                ...state,
+                devDate: action.payload,
             };
 
         default:

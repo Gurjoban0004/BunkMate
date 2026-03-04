@@ -56,22 +56,19 @@ const ResultCard = ({ maxBunks, recoveryNeeded, currentPercentage, targetPercent
 
 const styles = StyleSheet.create({
     container: {
+        backgroundColor: COLORS.cardBackground,
+        marginHorizontal: SPACING.lg,
+        marginBottom: SPACING.lg,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
-        marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
         alignItems: 'center',
         ...SHADOWS.medium,
     },
     dangerContainer: {
         backgroundColor: COLORS.dangerLight,
-        borderWidth: 1,
-        borderColor: COLORS.danger,
     },
     safeContainer: {
         backgroundColor: COLORS.successLight,
-        borderWidth: 1,
-        borderColor: COLORS.success,
     },
     emoji: {
         fontSize: 32,

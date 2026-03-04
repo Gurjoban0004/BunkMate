@@ -220,7 +220,7 @@ const TodayScreen = ({ navigation }) => {
                 ) : isSetupDay ? (
                     <>
                         <View style={styles.setupDayCard}>
-                            <Text style={styles.setupDayTitle}>✅ Setup Complete!</Text>
+                            <Text style={styles.setupDayTitle}>Setup Complete!</Text>
                             <Text style={styles.setupDayText}>
                                 Today's attendance was included in your initial numbers.{'\n'}
                                 Daily tracking starts tomorrow!
@@ -269,7 +269,7 @@ const TodayScreen = ({ navigation }) => {
                                 {now && (
                                     <View style={styles.sectionContainer}>
                                         <View style={styles.nowBadge}>
-                                            <Text style={styles.nowBadgeText}>⏰ NOW</Text>
+                                            <Text style={styles.nowBadgeText}>NOW</Text>
                                         </View>
                                         <ClassCard
                                             classInfo={now}
@@ -373,19 +373,20 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingTop: SPACING.md,
+        paddingBottom: SPACING.lg,
     },
     header: {
-        paddingHorizontal: SPACING.lg,
+        paddingHorizontal: SPACING.screenPadding,
         paddingBottom: SPACING.md,
     },
     setupDayCard: {
-        marginHorizontal: SPACING.lg,
+        marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.md,
         padding: SPACING.lg,
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1,
-        borderColor: COLORS.success,
+
+
         borderLeftWidth: 4,
         borderLeftColor: COLORS.success,
     },
@@ -418,8 +419,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: COLORS.textMuted,
         letterSpacing: 0.5,
-        paddingHorizontal: SPACING.lg,
-        marginBottom: SPACING.xs,
+        paddingHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.sm,
     },
     nowBadge: {
         alignSelf: 'flex-start',
@@ -427,8 +428,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.sm,
         paddingVertical: 4,
         borderRadius: BORDER_RADIUS.md,
-        marginLeft: SPACING.lg,
-        marginBottom: SPACING.xs,
+        marginLeft: SPACING.screenPadding,
+        marginBottom: SPACING.sm,
     },
     nowBadgeText: {
         fontSize: FONT_SIZES.xs,

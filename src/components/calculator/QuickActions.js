@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const QuickActions = ({ nextClass, onRecoveryPress, onViewStatsPress, showRecovery }) => {
     return (
@@ -10,7 +10,7 @@ const QuickActions = ({ nextClass, onRecoveryPress, onViewStatsPress, showRecove
             {/* Next Class Info */}
             {nextClass && (
                 <View style={styles.nextClassCard}>
-                    <Text style={styles.nextClassLabel}>📅 Next class</Text>
+                    <Text style={styles.nextClassLabel}>Next class</Text>
                     <Text style={styles.nextClassDay}>{nextClass.day}</Text>
                     <Text style={styles.nextClassTime}>{nextClass.startTime} – {nextClass.endTime}</Text>
                 </View>
@@ -32,7 +32,7 @@ const QuickActions = ({ nextClass, onRecoveryPress, onViewStatsPress, showRecove
                     onPress={onViewStatsPress}
                     activeOpacity={0.7}
                 >
-                    <Text style={[styles.actionBtnText, styles.statsBtnText]}>📊 Full Stats</Text>
+                    <Text style={[styles.actionBtnText, styles.statsBtnText]}>Full Stats</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -53,10 +53,9 @@ const styles = StyleSheet.create({
     nextClassCard: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        marginBottom: SPACING.sm,
+        padding: SPACING.lg,
+        marginBottom: SPACING.md,
+        ...SHADOWS.small,
     },
     nextClassLabel: {
         fontSize: FONT_SIZES.xs,
@@ -89,8 +88,8 @@ const styles = StyleSheet.create({
     },
     statsBtn: {
         backgroundColor: COLORS.primaryLight,
-        borderWidth: 1,
-        borderColor: COLORS.primary,
+        
+        
     },
     actionBtnText: {
         fontSize: FONT_SIZES.sm,

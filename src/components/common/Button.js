@@ -47,8 +47,8 @@ const styles = StyleSheet.create({
     },
     secondary: {
         backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: COLORS.primary,
+        
+        
         ...SHADOWS.small,
     },
     disabled: {

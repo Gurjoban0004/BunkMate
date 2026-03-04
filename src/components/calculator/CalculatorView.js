@@ -208,16 +208,18 @@ const CalculatorView = ({ navigation }) => {
                 currentPercentage={stats.percentage}
                 targetPercentage={targetPercentage}
                 onRecoveryPress={stats.percentage < targetPercentage ? () => {
-                    navigation?.navigate('RecoveryPlan', {
-                        subjectId: selectedSubjectId,
-                        subjectName: selectedSubject.name,
-                        threshold: targetPercentage,
+                    navigation?.navigate('Planner', {
+                        screen: 'PlannerSubjectDetail',
+                        params: {
+                            subjectId: selectedSubjectId,
+                            subjectName: selectedSubject.name,
+                        },
                     });
                 } : null}
             />
 
             {/* Insights Section */}
-            <Text style={styles.insightsTitle}>💡 Insights for {selectedSubject.name}</Text>
+            <Text style={styles.insightsTitle}>Insights for {selectedSubject.name}</Text>
 
             {bestDayInsight && (
                 <InsightCard type="bestDay" data={bestDayInsight} />
@@ -246,10 +248,12 @@ const CalculatorView = ({ navigation }) => {
                 nextClass={nextClass}
                 showRecovery={stats.percentage < targetPercentage}
                 onRecoveryPress={() => {
-                    navigation?.navigate('RecoveryPlan', {
-                        subjectId: selectedSubjectId,
-                        subjectName: selectedSubject.name,
-                        threshold: targetPercentage,
+                    navigation?.navigate('Planner', {
+                        screen: 'PlannerSubjectDetail',
+                        params: {
+                            subjectId: selectedSubjectId,
+                            subjectName: selectedSubject.name,
+                        },
                     });
                 }}
                 onViewStatsPress={() => {

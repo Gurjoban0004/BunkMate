@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const ImpactPreview = ({ currentPercentage, projectedPercentage, bunkCount }) => {
     const change = projectedPercentage - currentPercentage;
@@ -79,11 +79,10 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.lg,
+        marginBottom: SPACING.md,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
-        marginBottom: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        ...SHADOWS.small,
     },
     title: {
         fontSize: FONT_SIZES.md,
@@ -127,7 +126,7 @@ const styles = StyleSheet.create({
     miniBar: {
         width: '100%',
         height: 6,
-        backgroundColor: COLORS.progressBackground,
+        backgroundColor: COLORS.border,
         borderRadius: 3,
         overflow: 'hidden',
     },

@@ -78,7 +78,7 @@ export default function SubjectListScreen({ navigation }) {
             }));
 
             dispatch({ type: 'SET_SUBJECTS', payload: subjectsWithStats });
-            navigation.navigate('TimeSlots');
+            navigation.navigate('TimetableBuilder');
         }
     };
 
@@ -194,8 +194,8 @@ const styles = StyleSheet.create({
         paddingVertical: SPACING.md,
         borderRadius: BORDER_RADIUS.md,
         marginBottom: SPACING.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         ...SHADOWS.small,
     },
     colorDot: {
@@ -228,14 +228,14 @@ const styles = StyleSheet.create({
         marginTop: SPACING.xs,
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
+
         borderColor: 'transparent',
         flexDirection: 'row',
         alignItems: 'center',
     },
     inputContainerEmpty: {
-        borderColor: COLORS.primary,
-        borderWidth: 2,
+
+
         backgroundColor: COLORS.cardBackground,
     },
     input: {

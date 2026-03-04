@@ -40,12 +40,10 @@ const OverallStatsCard = ({ stats, threshold }) => {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
-        marginHorizontal: SPACING.lg,
+        marginHorizontal: SPACING.screenPadding,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
         ...SHADOWS.medium,
     },
     title: {
@@ -68,7 +66,7 @@ const styles = StyleSheet.create({
     progressBar: {
         width: '100%',
         height: 6,
-        backgroundColor: COLORS.progressBackground,
+        backgroundColor: COLORS.border,
         borderRadius: 3,
         overflow: 'hidden',
         marginBottom: SPACING.sm,

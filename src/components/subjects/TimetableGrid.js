@@ -101,8 +101,8 @@ const styles = StyleSheet.create({
     gridContainer: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
         overflow: 'hidden',
         marginHorizontal: SPACING.lg,
         marginTop: SPACING.md,

@@ -127,7 +127,7 @@ const EndGameScreen = () => {
 
                 {/* Warning */}
                 <View style={styles.warningCard}>
-                    <Text style={styles.warningTitle}>⚠️ Warning</Text>
+                    <Text style={styles.warningTitle}>Warning</Text>
                     <Text style={styles.warningText}>
                         This is the ABSOLUTE minimum. No room for error or emergencies!
                     </Text>
@@ -216,8 +216,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginBottom: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     summaryRow: {
         flexDirection: 'row',
@@ -242,8 +242,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
         marginBottom: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
         ...SHADOWS.medium,
     },
     resultTitle: {
@@ -281,8 +281,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+
+
     },
     tableHeader: {
         flexDirection: 'row',
@@ -325,8 +325,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.warningLight,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.warning,
+
+
         marginBottom: SPACING.md,
     },
     warningTitle: {
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     },
     infoCard: {
         marginHorizontal: SPACING.lg,
-        backgroundColor: COLORS.infoLight,
+        backgroundColor: COLORS.primaryLight,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
     },

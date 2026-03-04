@@ -13,15 +13,11 @@ const StatsCard = ({ subject, stats, classesPerWeek, remainingClasses }) => {
 
     return (
         <View style={styles.container}>
-            {/* Subject Name & Teacher */}
             <View style={styles.headerRow}>
                 <View style={styles.headerLeft}>
                     <View style={[styles.colorDot, { backgroundColor: subject.color }]} />
                     <Text style={styles.subjectName}>{subject.name}</Text>
                 </View>
-                {subject.teacher ? (
-                    <Text style={styles.teacherName}>{subject.teacher}</Text>
-                ) : null}
             </View>
 
             {/* Big Percentage */}
@@ -64,7 +60,7 @@ const StatsCard = ({ subject, stats, classesPerWeek, remainingClasses }) => {
             <View style={styles.tagsRow}>
                 {classesPerWeek > 0 && (
                     <View style={styles.tag}>
-                        <Text style={styles.tagText}>📅 {classesPerWeek}/wk</Text>
+                        <Text style={styles.tagText}>{classesPerWeek}/wk</Text>
                     </View>
                 )}
                 <View style={[styles.tag, { backgroundColor: statusBg }]}>
@@ -84,9 +80,7 @@ const styles = StyleSheet.create({
         padding: SPACING.lg,
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        ...SHADOWS.medium,
+        ...SHADOWS.small,
     },
     headerRow: {
         flexDirection: 'row',
@@ -109,10 +103,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: COLORS.textPrimary,
     },
-    teacherName: {
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textMuted,
-    },
     bigPercentage: {
         fontSize: 44,
         fontWeight: '800',
@@ -122,7 +112,7 @@ const styles = StyleSheet.create({
     progressBar: {
         width: '100%',
         height: 10,
-        backgroundColor: COLORS.progressBackground,
+        backgroundColor: COLORS.border,
         borderRadius: 5,
         overflow: 'hidden',
         marginBottom: SPACING.md,

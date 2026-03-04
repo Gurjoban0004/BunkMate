@@ -1,17 +1,17 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import TodayScreen from '../screens/main/TodayScreen';
 import SubjectsScreen from '../screens/main/SubjectsScreen';
 import SubjectDetailScreen from '../screens/main/SubjectDetailScreen';
 import PlannerScreen from '../screens/main/PlannerScreen';
-import RecoveryPlanScreen from '../screens/main/RecoveryPlanScreen';
-import EndGameScreen from '../screens/main/EndGameScreen';
+import PlannerSubjectDetail from '../screens/main/PlannerScreen/PlannerSubjectDetail';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
+import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import { COLORS } from '../theme/theme';
 
@@ -92,14 +92,11 @@ function PlannerStackScreen() {
                 options={{ headerShown: false }}
             />
             <PlannerStack.Screen
-                name="RecoveryPlan"
-                component={RecoveryPlanScreen}
-                options={{ title: 'Recovery Plan' }}
-            />
-            <PlannerStack.Screen
-                name="EndGame"
-                component={EndGameScreen}
-                options={{ title: 'Minimum Effort' }}
+                name="PlannerSubjectDetail"
+                component={PlannerSubjectDetail}
+                options={({ route }) => ({
+                    title: route.params?.subjectName || 'Subject',
+                })}
             />
         </PlannerStack.Navigator>
     );
@@ -135,6 +132,11 @@ function SettingsStackScreen() {
                 component={PastAttendanceScreen}
                 options={{ title: 'Mark Past Attendance' }}
             />
+            <SettingsStack.Screen
+                name="AttendanceStats"
+                component={AttendanceStatsScreen}
+                options={{ title: 'Log Past Attendance' }}
+            />
         </SettingsStack.Navigator>
     );
 }
@@ -146,7 +148,18 @@ function TabIcon({ label, focused }) {
         Planner: '🎯',
         Settings: '⚙️',
     };
-    return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{icons[label]}</Text>;
+    return (
+        <View style={{
+            backgroundColor: focused ? COLORS.primaryLight : 'transparent',
+            paddingHorizontal: focused ? 16 : 0,
+            paddingVertical: focused ? 6 : 0,
+            borderRadius: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+        }}>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{icons[label]}</Text>
+        </View>
+    );
 }
 
 export default function TabNavigator() {
@@ -159,10 +172,23 @@ export default function TabNavigator() {
                 tabBarStyle: {
                     backgroundColor: COLORS.cardBackground,
                     borderTopColor: COLORS.border,
-                    paddingTop: 4,
+                    borderTopWidth: 1,
+                    paddingTop: 6,
+                    paddingBottom: 4,
+                    height: 60,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: -2 },
+                    shadowOpacity: 0.06,
+                    shadowRadius: 8,
+                    elevation: 8,
                 },
                 tabBarActiveTintColor: COLORS.primary,
-                tabBarInactiveTintColor: COLORS.textSecondary,
+                tabBarInactiveTintColor: COLORS.textMuted,
+                tabBarLabelStyle: {
+                    fontSize: 11,
+                    fontWeight: '600',
+                    marginTop: 2,
+                },
                 headerShown: false,
             })}
         >
