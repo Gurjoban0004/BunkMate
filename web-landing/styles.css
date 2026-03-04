@@ -259,25 +259,6 @@ body {
   box-shadow: 0 4px 12px -2px rgba(var(--c-primary-rgb), 0.12);
 }
 
-/* Platform highlight badge */
-.btn.recommended {
-  position: relative;
-}
-
-.btn.recommended::after {
-  content: 'Recommended';
-  position: absolute;
-  top: -9px;
-  right: 14px;
-  font-size: 0.5625rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: linear-gradient(135deg, #6BCB77 0%, #4CAF50 100%);
-  color: white;
-  padding: 3px 8px;
-  border-radius: 8px;
-}
 
 /* ===== Setup Guide (shared) ===== */
 .setup-guide {

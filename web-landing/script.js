@@ -29,10 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== Platform auto-highlight =====
     const platform = detectPlatform();
 
-    if (platform === 'ios') {
-        btnIOS.classList.add('recommended');
-    } else if (platform === 'android') {
-        btnAndroid.classList.add('recommended');
+    if (platform === 'android') {
         // Auto-expand Android section on Android devices
         androidBody.classList.add('open');
         androidChevron.classList.add('open');
