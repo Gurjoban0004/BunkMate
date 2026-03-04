@@ -256,6 +256,40 @@ function appReducer(state, action) {
             };
         }
 
+        case 'RESYNC_ATTENDANCE': {
+            // Portal re-sync: update initial values and clear tracked records for each subject
+            const { updates } = action.payload;
+            const updatedSubjectIds = new Set(updates.map(u => u.subjectId));
+            const today = new Date().toISOString().split('T')[0];
+
+            // Clear attendance records for synced subjects
+            const cleanedRecords = { ...state.attendanceRecords };
+            Object.keys(cleanedRecords).forEach(dateKey => {
+                const dayRecord = { ...cleanedRecords[dateKey] };
+                updatedSubjectIds.forEach(sid => {
+                    delete dayRecord[sid];
+                });
+                cleanedRecords[dateKey] = dayRecord;
+            });
+
+            return {
+                ...state,
+                subjects: state.subjects.map(sub => {
+                    const update = updates.find(u => u.subjectId === sub.id);
+                    if (update) {
+                        return {
+                            ...sub,
+                            initialAttended: update.newAttended,
+                            initialTotal: update.newTotal,
+                        };
+                    }
+                    return sub;
+                }),
+                attendanceRecords: cleanedRecords,
+                trackingStartDate: today,
+            };
+        }
+
         case 'RESET_STATE':
             return { ...initialState };
 

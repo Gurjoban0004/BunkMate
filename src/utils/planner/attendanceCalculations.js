@@ -98,38 +98,21 @@ export function calculateRecoveryClasses(attended, total, targetPercentage) {
 }
 
 /**
- * Calculate skip allowance — how many you can skip out of next N while staying above target.
+ * Calculate absolute skip allowance — how many consecutive classes you can skip right now while staying above target.
  */
 export function calculateSkipAllowance(targetPercentage, currentAttended, currentTotal) {
-    const testRange = 20;
-    let maxSkips = 0;
+    let maxSafeSkips = 0;
 
-    for (let skips = 0; skips <= testRange; skips++) {
-        const attends = testRange - skips;
-        const newAttended = currentAttended + attends;
-        const newTotal = currentTotal + testRange;
-        const newPercentage = calculatePlannerPercentage(newAttended, newTotal);
-
-        if (newPercentage >= targetPercentage) {
-            maxSkips = skips;
-        } else {
-            break;
-        }
+    while (calculatePlannerPercentage(currentAttended, currentTotal + maxSafeSkips + 1) >= targetPercentage) {
+        maxSafeSkips++;
     }
 
     return {
-        skips: maxSkips,
-        outOf: testRange,
-        ratio: `${maxSkips} of ${testRange}`,
-        simplified: simplifyRatio(maxSkips, testRange),
+        skips: maxSafeSkips,
+        outOf: maxSafeSkips,
+        ratio: `${maxSafeSkips} consecutive`,
+        simplified: `${maxSafeSkips} consecutive`,
     };
-}
-
-function simplifyRatio(skips, total) {
-    if (skips === 0) return '0';
-    const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
-    const divisor = gcd(skips, total);
-    return `${skips / divisor} in ${total / divisor}`;
 }
 
 /**

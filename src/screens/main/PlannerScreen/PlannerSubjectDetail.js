@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../../../theme/theme';
 import { useApp } from '../../../context/AppContext';
 import { getSubjectPlannerData } from '../../../utils/planner/dataAdapter';
+import { simulateAttendance } from '../../../utils/planner/attendanceCalculations';
 import FloatingBackButton from '../../../components/common/FloatingBackButton';
 
 import StatusHeader from '../../../components/planner/SubjectDetail/StatusHeader';
@@ -18,13 +19,28 @@ import PatternsInsights from '../../../components/planner/SubjectDetail/Patterns
  * Receives subjectId via route params.
  */
 export default function PlannerSubjectDetail({ route }) {
-    const { subjectId } = route.params;
+    const { subjectId, initialMode = 'skip' } = route.params;
     const { state } = useApp();
 
     const subjectData = useMemo(
         () => getSubjectPlannerData(subjectId, state),
         [subjectId, state]
     );
+
+    const [simulationOffset, setSimulationOffset] = React.useState(0);
+
+    const simulatedSubjectData = useMemo(() => {
+        if (!subjectData) return null;
+        if (simulationOffset === 0) return subjectData;
+
+        const sim = simulateAttendance(subjectData.attended, subjectData.total, simulationOffset);
+        return {
+            ...subjectData,
+            attended: sim.attended,
+            total: sim.total,
+            percentage: sim.percentage
+        };
+    }, [subjectData, simulationOffset]);
 
     if (!subjectData) return null;
 
@@ -35,12 +51,37 @@ export default function PlannerSubjectDetail({ route }) {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <StatusHeader subjectData={subjectData} />
-                <NextClassDecision subjectData={subjectData} />
-                <WhatIfSimulator subjectData={subjectData} />
-                <Next7DaysView subjectData={subjectData} />
-                <RecoveryPaths subjectData={subjectData} />
-                <PatternsInsights subjectData={subjectData} />
+                <StatusHeader subjectData={simulatedSubjectData} />
+
+                {initialMode === 'skip' ? (
+                    <>
+                        <NextClassDecision subjectData={simulatedSubjectData} />
+                        <WhatIfSimulator
+                            subjectData={subjectData}
+                            simulatedSubjectData={simulatedSubjectData}
+                            initialMode={initialMode}
+                            simulationOffset={simulationOffset}
+                            setSimulationOffset={setSimulationOffset}
+                        />
+                        <Next7DaysView subjectData={simulatedSubjectData} />
+                        <RecoveryPaths subjectData={simulatedSubjectData} />
+                    </>
+                ) : (
+                    <>
+                        <RecoveryPaths subjectData={simulatedSubjectData} />
+                        <WhatIfSimulator
+                            subjectData={subjectData}
+                            simulatedSubjectData={simulatedSubjectData}
+                            initialMode={initialMode}
+                            simulationOffset={simulationOffset}
+                            setSimulationOffset={setSimulationOffset}
+                        />
+                        <NextClassDecision subjectData={simulatedSubjectData} />
+                        <Next7DaysView subjectData={simulatedSubjectData} />
+                    </>
+                )}
+
+                <PatternsInsights subjectData={simulatedSubjectData} />
 
                 <View style={{ height: SPACING.xxl }} />
             </ScrollView>

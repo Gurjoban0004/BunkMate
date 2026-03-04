@@ -37,6 +37,7 @@ const PlannerScreen = ({ navigation }) => {
         navigation.navigate('PlannerSubjectDetail', {
             subjectId: subject.id,
             subjectName: subject.name,
+            initialMode: activeMode,
         });
     };
 

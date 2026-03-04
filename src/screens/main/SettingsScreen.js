@@ -28,6 +28,7 @@ const SettingsScreen = ({ navigation }) => {
     // Import Modal State
     const [importModalVisible, setImportModalVisible] = useState(false);
     const [importDataString, setImportDataString] = useState('');
+    const [resetModalVisible, setResetModalVisible] = useState(false);
 
     // Settings values
     const {
@@ -94,22 +95,10 @@ const SettingsScreen = ({ navigation }) => {
         }
     };
 
-    const handleResetSemester = () => {
-        showAlert(
-            'Reset Semester',
-            'This will delete ALL your attendance data. This cannot be undone.\n\nAre you sure?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Reset Everything',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await clearAppState();
-                        dispatch({ type: 'RESET_STATE' });
-                    },
-                },
-            ]
-        );
+    const handleResetSemester = async () => {
+        await clearAppState();
+        dispatch({ type: 'RESET_STATE' });
+        setResetModalVisible(false);
     };
 
     return (
@@ -258,6 +247,11 @@ const SettingsScreen = ({ navigation }) => {
                             <Text style={styles.linkText}>Update Past Attendance</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
+                        <View style={styles.divider} />
+                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('SyncFromPortal')}>
+                            <Text style={styles.linkText}>Sync from Portal</Text>
+                            <Text style={styles.chevron}>›</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -279,7 +273,7 @@ const SettingsScreen = ({ navigation }) => {
 
                 {/* Danger Zone */}
                 <View style={styles.section}>
-                    <TouchableOpacity style={[styles.card, styles.dangerCard]} onPress={handleResetSemester}>
+                    <TouchableOpacity style={[styles.card, styles.dangerCard]} onPress={() => setResetModalVisible(true)}>
                         <Text style={styles.dangerText}>Reset Entire Semester</Text>
                     </TouchableOpacity>
                 </View>
@@ -326,6 +320,37 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                     </View>
                 </KeyboardAvoidingView>
+            </Modal>
+
+            {/* Reset Semester Modal */}
+            <Modal visible={resetModalVisible} animationType="slide" transparent={true} onRequestClose={() => setResetModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.resetModalContent}>
+                        <View style={styles.resetDragHandle} />
+                        <Text style={styles.resetEmoji}>⚠️</Text>
+                        <Text style={styles.resetTitle}>Reset Semester</Text>
+                        <Text style={styles.resetDescription}>
+                            This will permanently delete all your attendance data, subjects, timetable, and settings.
+                        </Text>
+                        <Text style={styles.resetWarning}>
+                            This action cannot be undone.
+                        </Text>
+                        <View style={styles.resetActions}>
+                            <TouchableOpacity
+                                style={[styles.resetButton, styles.resetButtonCancel]}
+                                onPress={() => setResetModalVisible(false)}
+                            >
+                                <Text style={styles.resetButtonCancelText}>Keep My Data</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.resetButton, styles.resetButtonConfirm]}
+                                onPress={handleResetSemester}
+                            >
+                                <Text style={styles.resetButtonConfirmText}>Reset Everything</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
             </Modal>
         </SafeAreaView>
     );
@@ -387,6 +412,20 @@ const styles = StyleSheet.create({
     modalButtonConfirm: { backgroundColor: COLORS.primary },
     modalButtonTextCancel: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.textSecondary },
     modalButtonTextConfirm: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.background },
+
+    // Reset Modal Styles
+    resetModalContent: { backgroundColor: COLORS.cardBackground, borderTopLeftRadius: BORDER_RADIUS.xl, borderTopRightRadius: BORDER_RADIUS.xl, padding: SPACING.xl, paddingBottom: Platform.OS === 'ios' ? 50 : SPACING.xxl, alignItems: 'center' },
+    resetDragHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: SPACING.xl },
+    resetEmoji: { fontSize: 56, marginBottom: SPACING.md },
+    resetTitle: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary, marginBottom: SPACING.sm },
+    resetDescription: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: SPACING.md, paddingHorizontal: SPACING.lg },
+    resetWarning: { fontSize: FONT_SIZES.sm, color: COLORS.danger, fontWeight: '600', textAlign: 'center', marginBottom: SPACING.xl },
+    resetActions: { flexDirection: 'column', gap: SPACING.sm, width: '100%' },
+    resetButton: { paddingVertical: SPACING.md + 2, borderRadius: BORDER_RADIUS.md, alignItems: 'center', width: '100%' },
+    resetButtonCancel: { backgroundColor: COLORS.successLight },
+    resetButtonConfirm: { backgroundColor: COLORS.dangerLight },
+    resetButtonCancelText: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.successDark },
+    resetButtonConfirmText: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.danger },
 });
 
 export default SettingsScreen;

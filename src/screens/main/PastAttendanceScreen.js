@@ -80,8 +80,19 @@ export default function PastAttendanceScreen({ navigation }) {
         );
     }
 
+    const holidays = state.holidays || [];
+
+    const toggleHoliday = (dateKey) => {
+        if (holidays.includes(dateKey)) {
+            dispatch({ type: 'UNDO_HOLIDAY', payload: dateKey });
+        } else {
+            dispatch({ type: 'MARK_HOLIDAY', payload: dateKey });
+        }
+    };
+
     const sections = unmarkedByDate.map((group) => ({
         title: `${group.dayName}, ${formatDate(group.date)}`,
+        date: group.date,
         data: group.classes,
     }));
 
@@ -91,9 +102,23 @@ export default function PastAttendanceScreen({ navigation }) {
             <SectionList
                 sections={sections}
                 keyExtractor={(item, idx) => `${item.date}-${item.subjectId}-${idx}`}
-                renderSectionHeader={({ section }) => (
-                    <Text style={styles.sectionHeader}>{section.title}</Text>
-                )}
+                renderSectionHeader={({ section }) => {
+                    const isHoliday = holidays.includes(section.date);
+                    return (
+                        <View style={styles.sectionHeaderRow}>
+                            <Text style={styles.sectionHeader}>{section.title}</Text>
+                            <TouchableOpacity
+                                style={[styles.holidayBtn, isHoliday && styles.holidayBtnActive]}
+                                onPress={() => toggleHoliday(section.date)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.holidayBtnText}>
+                                    {isHoliday ? '🏖️ Holiday' : '🏖️'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    );
+                }}
                 renderItem={({ item }) => {
                     const record = state.attendanceRecords[item.date]?.[item.subjectId];
                     const isMarked = !!record;
@@ -188,11 +213,29 @@ const styles = StyleSheet.create({
         color: COLORS.textSecondary,
         marginTop: SPACING.xs,
     },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: SPACING.md,
+        marginBottom: SPACING.sm,
+    },
     sectionHeader: {
         ...TYPOGRAPHY.headerSmall,
         color: COLORS.textPrimary,
-        marginTop: SPACING.md,
-        marginBottom: SPACING.sm,
+    },
+    holidayBtn: {
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.full,
+        backgroundColor: COLORS.inputBackground,
+    },
+    holidayBtnActive: {
+        backgroundColor: COLORS.successLight,
+    },
+    holidayBtnText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     classRow: {
         flexDirection: 'row',

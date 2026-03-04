@@ -9,6 +9,8 @@ export const COLORS = {
     background: '#F5F7FA',       // Main screen background
     cardBackground: '#FFFFFF',   // Card surfaces, tab bar, modals
     inputBackground: '#F1F3F4',  // Text inputs, mode toggle track
+    bgBunk: '#FFF5F5',           // Simulator background for Skip mode
+    bgAttend: '#F5FFF7',         // Simulator background for Fix mode
 
     // ---------------------------------------------------------
     // 2. PRIMARY BRAND (The Identity)

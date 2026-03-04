@@ -14,6 +14,7 @@ import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
+import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 
 import WebHeader from './WebHeader';
 import { COLORS, TYPOGRAPHY } from '../theme/theme';
@@ -164,6 +165,7 @@ export default function WebTabNavigator() {
             case 'EditTimetable': return <EditTimetableScreen {...props} />;
             case 'EditSubjects': return <EditSubjectsScreen {...props} />;
             case 'AttendanceStats': return <AttendanceStatsScreen {...props} />;
+            case 'SyncFromPortal': return <SyncFromPortalScreen {...props} />;
             default: return <TodayScreen {...props} />;
         }
     };

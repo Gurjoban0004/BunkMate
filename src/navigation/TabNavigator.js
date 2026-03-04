@@ -14,6 +14,7 @@ import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import EndGameScreen from '../screens/main/EndGameScreen';
+import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import { COLORS } from '../theme/theme';
 
 const Tab = createBottomTabNavigator();
@@ -131,6 +132,11 @@ function SettingsStackScreen() {
                 name="EndGame"
                 component={EndGameScreen}
                 options={{ title: 'End Game Calculator' }}
+            />
+            <SettingsStack.Screen
+                name="SyncFromPortal"
+                component={SyncFromPortalScreen}
+                options={{ title: 'Sync from Portal' }}
             />
         </SettingsStack.Navigator>
     );

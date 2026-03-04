@@ -88,7 +88,8 @@ const ClassCard = ({
     };
 
     // Calculate what classes needed to reach threshold
-    const classesNeeded = calculateClassesNeeded(attendedUnits, totalUnits, dangerThreshold);
+    // For 2-hour classes (units > 1), divide by units to show real class count
+    const classesNeeded = calculateClassesNeeded(attendedUnits, totalUnits, dangerThreshold, units);
 
     // Determine card background based on state
     const getCardStyle = () => {
@@ -239,7 +240,6 @@ const ClassCard = ({
                                 markedStatus === 'present' ? styles.statusTextPresent : styles.statusTextAbsent,
                             ]}>
                                 Marked {markedStatus === 'present' ? 'Present' : 'Absent'}
-                                {units > 1 && ` (${units} marks)`}
                             </Text>
                         </View>
 
@@ -256,7 +256,7 @@ const ClassCard = ({
                             activeOpacity={0.7}
                         >
                             <Text style={styles.presentButtonText}>
-                                Present {units > 1 && `(${units} marks)`}
+                                Present ✓
                             </Text>
                         </TouchableOpacity>
 
@@ -276,11 +276,12 @@ const ClassCard = ({
     );
 };
 
-// Helper function
-const calculateClassesNeeded = (attended, total, target) => {
+// Helper function — returns real class count (not inflated units for 2-hr classes)
+const calculateClassesNeeded = (attended, total, target, units = 1) => {
     const targetDecimal = target / 100;
-    const needed = Math.ceil((targetDecimal * total - attended) / (1 - targetDecimal));
-    return Math.max(0, needed);
+    const neededUnits = Math.ceil((targetDecimal * total - attended) / (1 - targetDecimal));
+    // Divide by units to convert from "marks" to "physical classes"
+    return Math.max(0, Math.ceil(Math.max(0, neededUnits) / units));
 };
 
 const styles = StyleSheet.create({

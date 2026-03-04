@@ -1,5 +1,5 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { TouchableOpacity, Text, StyleSheet, Platform, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, TYPOGRAPHY, SHADOWS, BORDER_RADIUS } from '../../theme/theme';
@@ -7,17 +7,28 @@ import { COLORS, SPACING, TYPOGRAPHY, SHADOWS, BORDER_RADIUS } from '../../theme
 function FloatingBackButtonNative({ onPress }) {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
+    }, []);
 
     if (!navigation.canGoBack()) return null;
 
     return (
-        <TouchableOpacity
-            style={[styles.container, { top: Math.max(insets.top, SPACING.md) + SPACING.sm }]}
-            onPress={onPress || (() => navigation.goBack())}
-            activeOpacity={0.7}
-        >
-            <Text style={styles.text}>← Back</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ opacity: fadeAnim }}>
+            <TouchableOpacity
+                style={[styles.container, { top: Math.max(insets.top, SPACING.md) + SPACING.sm }]}
+                onPress={onPress || (() => navigation.goBack())}
+                activeOpacity={0.7}
+            >
+                <Text style={styles.text}>← Back</Text>
+            </TouchableOpacity>
+        </Animated.View>
     );
 }
 
@@ -34,14 +45,14 @@ const styles = StyleSheet.create({
         left: SPACING.lg,
         zIndex: 100,
         backgroundColor: COLORS.cardBackground,
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 8,
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: 12,
         borderRadius: BORDER_RADIUS.full,
-        ...SHADOWS.small,
+        ...SHADOWS.medium,
     },
     text: {
-        ...TYPOGRAPHY.bodySmall,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '700',
         color: COLORS.primary,
     },
 });

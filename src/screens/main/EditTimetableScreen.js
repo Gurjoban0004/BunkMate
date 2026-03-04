@@ -134,6 +134,7 @@ const EditTimetableScreen = ({ navigation }) => {
         <SafeAreaView style={styles.container}>
             <FloatingBackButton />
             <View style={styles.header}>
+                <Text style={styles.headerTitle}>Edit Timetable</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.daysScroll}>
                     {DAYS.map(day => (
                         <TouchableOpacity
@@ -388,7 +389,15 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
-        paddingVertical: SPACING.sm,
+        paddingTop: 56,
+        paddingBottom: SPACING.sm,
+    },
+    headerTitle: {
+        fontSize: FONT_SIZES.lg,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
+        paddingHorizontal: SPACING.lg,
+        marginBottom: SPACING.sm,
     },
     daysScroll: {
         paddingHorizontal: SPACING.md,
