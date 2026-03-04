@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     },
     dayCell: {
         width: 55,
-        backgroundColor: '#FAFAFA',
+        backgroundColor: COLORS.background,
         paddingVertical: SPACING.xs,
         justifyContent: 'center',
     },
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     // Modal Styles
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: COLORS.overlay,
         justifyContent: 'center',
         alignItems: 'center',
         padding: SPACING.xl,

@@ -47,20 +47,22 @@ export const COLORS = {
     // 5. STRUCTURAL (Consolidated Grays)
     // ---------------------------------------------------------
     border: '#E5E7EB',           // Borders, dividers, AND empty progress tracks
+    shadow: '#000000',           // Shadow colors
+    overlay: 'rgba(0, 0, 0, 0.5)', // Modal overlays
 
     // ---------------------------------------------------------
     // 6. SUBJECT COLORS (Strictly Decorative)
     // No semantic reds, greens, or yellows to avoid confusion.
     // ---------------------------------------------------------
     subjectPalette: [
-        '#4ECDC4', // Teal
-        '#45B7D1', // Sky Blue
-        '#DDA0DD', // Plum
-        '#BB8FCE', // Lavender
-        '#98D8C8', // Mint
         '#85C1E9', // Light Blue
         '#F48FB1', // Soft Pink
         '#B39DDB', // Deep Lavender
+        '#4ECDC4', // Teal
+        '#BB8FCE', // Lavender
+        '#45B7D1', // Sky Blue
+        '#DDA0DD', // Plum
+        '#98D8C8', // Mint
     ],
 };
 
@@ -107,27 +109,27 @@ export const BORDER_RADIUS = {
 
 export const SHADOWS = {
     small: Platform.OS === 'web' ? {
-        boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+        boxShadow: `0px 1px 2px ${COLORS.shadow}0D`, // 0.05 opacity
     } : {
-        shadowColor: '#000000',
+        shadowColor: COLORS.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
     },
     medium: Platform.OS === 'web' ? {
-        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+        boxShadow: `0px 4px 12px ${COLORS.shadow}1A`, // 0.1 opacity
     } : {
-        shadowColor: '#000000',
+        shadowColor: COLORS.shadow,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.12,
         shadowRadius: 8,
         elevation: 3,
     },
     large: Platform.OS === 'web' ? {
-        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
+        boxShadow: `0px 4px 8px ${COLORS.shadow}1A`, // 0.1 opacity
     } : {
-        shadowColor: '#000000',
+        shadowColor: COLORS.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 8,

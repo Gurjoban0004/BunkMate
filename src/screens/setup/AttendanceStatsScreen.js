@@ -296,14 +296,14 @@ const styles = StyleSheet.create({
     },
     optionCard: {
         backgroundColor: COLORS.cardBackground,
-
-
+        borderWidth: 1,
+        borderColor: COLORS.border,
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
         marginBottom: SPACING.sm,
     },
     optionCardSelected: {
-
+        borderColor: COLORS.primary,
         backgroundColor: COLORS.primaryLight,
     },
     optionRow: {
@@ -315,12 +315,12 @@ const styles = StyleSheet.create({
         width: 20,
         height: 20,
         borderRadius: 10,
-
-
+        borderWidth: 2,
+        borderColor: COLORS.border,
         marginRight: SPACING.md,
     },
     radioSelected: {
-
+        borderColor: COLORS.primary,
         backgroundColor: COLORS.primary,
     },
     optionContent: {

@@ -434,8 +434,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderLeftWidth: 4,
-        
-        
+
+
         ...SHADOWS.small,
     },
     classInfo: {
@@ -466,8 +466,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
         alignItems: 'center',
-        
-        
+
+
         borderStyle: 'dashed',
     },
     freePeriodText: {
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: COLORS.overlay,
         justifyContent: 'flex-end',
     },
     modalContent: {
@@ -547,8 +547,8 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
-        
-        
+
+
     },
     subjectList: {
         maxHeight: 200,

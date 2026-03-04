@@ -36,7 +36,7 @@ const DayDetailSheet = ({ visible, dayData, onClose }) => {
                     </View>
 
                     {status === 'setup_day' ? (
-                        <View style={[styles.verdictBox, {  marginTop: SPACING.md }]}>
+                        <View style={[styles.verdictBox, { marginTop: SPACING.md }]}>
                             <Text style={styles.verdictEmoji}>{verdict.emoji}</Text>
                             <Text style={[styles.verdictText, { color: verdict.color }]}>
                                 {verdict.text}
@@ -107,7 +107,7 @@ const DayDetailSheet = ({ visible, dayData, onClose }) => {
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: COLORS.overlay,
         justifyContent: 'flex-end',
     },
     sheet: {

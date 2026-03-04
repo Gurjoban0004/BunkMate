@@ -236,26 +236,27 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
-
-
+        overflow: 'hidden',
     },
     stepButton: {
         padding: SPACING.md,
-        width: 50,
+        width: 60,
         alignItems: 'center',
+        backgroundColor: COLORS.primaryLight,
     },
     stepButtonText: {
         fontSize: 24,
         color: COLORS.primary,
-        fontWeight: '600',
+        fontWeight: 'bold',
         lineHeight: 28,
     },
     stepperValueContainer: {
         flex: 1,
         alignItems: 'center',
+        paddingHorizontal: SPACING.sm,
     },
     stepperValue: {
-        fontSize: FONT_SIZES.lg,
+        fontSize: FONT_SIZES.md,
         fontWeight: '700',
         color: COLORS.textPrimary,
     },
@@ -276,20 +277,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: SPACING.sm,
+        padding: SPACING.sm,
     },
     checkbox: {
         width: 24,
         height: 24,
-        borderRadius: 4,
-
-
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: COLORS.border,
         marginRight: SPACING.sm,
         alignItems: 'center',
         justifyContent: 'center',
     },
     checkboxActive: {
         backgroundColor: COLORS.primary,
-
+        borderColor: COLORS.primary,
     },
     checkmark: {
         color: COLORS.textOnPrimary,
