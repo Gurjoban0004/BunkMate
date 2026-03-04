@@ -65,12 +65,8 @@ export default function TimetableBuilderScreen({ navigation }) {
         const name = newSubjectName.trim();
         if (!name) return;
 
-        // Generate a random color from predefined list or random hue
-        const PREDEFINED_COLORS = [
-            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-            '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'
-        ];
-        const randomColor = PREDEFINED_COLORS[Math.floor(Math.random() * PREDEFINED_COLORS.length)];
+        // Generate a random color from the global theme palette
+        const randomColor = COLORS.subjectPalette[Math.floor(Math.random() * COLORS.subjectPalette.length)];
 
         const newSubject = {
             id: Date.now().toString(),

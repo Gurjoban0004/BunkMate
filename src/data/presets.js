@@ -1,3 +1,4 @@
+import { COLORS } from "../theme/theme";
 export const PRESETS = {
     'CS4-G1': {
         name: 'CS-4 (G1)',
@@ -10,11 +11,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-es", name: "ES & IOT", color: "#9B59B6", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-es", name: "ES & IOT", color: COLORS.subjectPalette[2], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -70,11 +71,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-es", name: "ES & IOT", color: "#9B59B6", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-es", name: "ES & IOT", color: COLORS.subjectPalette[2], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -131,11 +132,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-es", name: "ES & IOT", color: "#9B59B6", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-es", name: "ES & IOT", color: COLORS.subjectPalette[2], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -192,11 +193,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-es", name: "ES & IOT", color: "#9B59B6", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-es", name: "ES & IOT", color: COLORS.subjectPalette[2], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -252,11 +253,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-es", name: "ES & IOT", color: "#9B59B6", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-es", name: "ES & IOT", color: COLORS.subjectPalette[2], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -314,11 +315,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-discrete", name: "Discrete", color: "#3498DB", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-discrete", name: "Discrete", color: COLORS.subjectPalette[5], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -372,11 +373,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-discrete", name: "Discrete", color: "#3498DB", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-discrete", name: "Discrete", color: COLORS.subjectPalette[5], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -431,11 +432,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-discrete", name: "Discrete", color: "#3498DB", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-discrete", name: "Discrete", color: COLORS.subjectPalette[5], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -490,11 +491,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-discrete", name: "Discrete", color: "#3498DB", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-discrete", name: "Discrete", color: COLORS.subjectPalette[5], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [
@@ -548,11 +549,11 @@ export const PRESETS = {
             { id: '6', start: '15:00', end: '16:00' },
         ],
         subjects: [
-            { id: "sub-linux", name: "Linux", color: "#45B7D1", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-be", name: "BE I", color: "#4ECDC4", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-dsoops", name: "DSOOPS", color: "#FF6B6B", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-discrete", name: "Discrete", color: "#3498DB", initialAttended: 0, initialTotal: 0 },
-            { id: "sub-cn", name: "CN", color: "#96CEB4", initialAttended: 0, initialTotal: 0 },
+            { id: "sub-linux", name: "Linux", color: COLORS.subjectPalette[0], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-be", name: "BE I", color: COLORS.subjectPalette[3], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-dsoops", name: "DSOOPS", color: COLORS.subjectPalette[1], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-discrete", name: "Discrete", color: COLORS.subjectPalette[5], initialAttended: 0, initialTotal: 0 },
+            { id: "sub-cn", name: "CN", color: COLORS.subjectPalette[4], initialAttended: 0, initialTotal: 0 },
         ],
         timetable: {
             Monday: [

@@ -259,14 +259,27 @@ function appReducer(state, action) {
         case 'RESET_STATE':
             return { ...initialState };
 
-        case 'LOAD_STATE':
+        case 'LOAD_STATE': {
             const loaded = action.payload;
+
+            // Migrate old hardcoded colors to the new theme palette
+            if (loaded.subjects && loaded.subjects.length > 0) {
+                const { COLORS } = require('../theme/theme');
+                loaded.subjects = loaded.subjects.map((sub, i) => {
+                    if (!COLORS.subjectPalette.includes(sub.color)) {
+                        return { ...sub, color: COLORS.subjectPalette[i % COLORS.subjectPalette.length] };
+                    }
+                    return sub;
+                });
+            }
+
             return {
                 ...initialState,
                 ...loaded,
                 settings: { ...initialState.settings, ...(loaded.settings || {}) },
                 timetable: { ...initialState.timetable, ...(loaded.timetable || {}) },
             };
+        }
 
         case 'SET_DEV_DATE':
             return {

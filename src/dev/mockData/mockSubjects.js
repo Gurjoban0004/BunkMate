@@ -4,6 +4,7 @@
  * Generate subjects with different scenarios
  */
 
+import { COLORS } from "../../theme/theme";
 import { addDays, subDays } from 'date-fns';
 
 /**
@@ -15,7 +16,7 @@ export function generateSubject({
     percentage,
     total = 40,
     target = 75,
-    color = '#FFB3BA',
+    color = COLORS.subjectPalette[0],
     teacher = 'Prof. Dev',
 }) {
     const attended = Math.round((percentage / 100) * total);
@@ -43,7 +44,7 @@ export const SUBJECT_TEMPLATES = {
         name: 'DBMS',
         percentage: 68,
         target: 75,
-        color: '#FF6B6B',
+        color: COLORS.subjectPalette[0],
         teacher: 'Prof. Sharma',
     },
 
@@ -53,7 +54,7 @@ export const SUBJECT_TEMPLATES = {
         name: 'Math',
         percentage: 74,
         target: 75,
-        color: '#FFD93D',
+        color: COLORS.subjectPalette[1],
         teacher: 'Prof. Verma',
     },
 
@@ -63,7 +64,7 @@ export const SUBJECT_TEMPLATES = {
         name: 'Linux',
         percentage: 85,
         target: 75,
-        color: '#4CAF50',
+        color: COLORS.subjectPalette[2],
         teacher: 'Prof. Kumar',
     },
 
@@ -73,7 +74,7 @@ export const SUBJECT_TEMPLATES = {
         name: 'Physics',
         percentage: 92,
         target: 75,
-        color: '#4ECDC4',
+        color: COLORS.subjectPalette[3],
         teacher: 'Prof. Singh',
     },
 
@@ -83,7 +84,7 @@ export const SUBJECT_TEMPLATES = {
         name: 'Chemistry',
         percentage: 75.0,
         target: 75,
-        color: '#F7DC6F',
+        color: COLORS.subjectPalette[4],
         teacher: 'Prof. Patel',
     },
 
@@ -93,7 +94,7 @@ export const SUBJECT_TEMPLATES = {
         name: 'English',
         percentage: 58,
         target: 75,
-        color: '#FF6B6B',
+        color: COLORS.subjectPalette[0],
         teacher: 'Prof. Gupta',
     },
 };

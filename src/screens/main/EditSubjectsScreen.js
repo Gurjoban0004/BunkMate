@@ -15,16 +15,8 @@ import { getSubjectAttendance } from '../../utils/attendance';
 import Button from '../../components/common/Button';
 import { showAlert } from '../../utils/alert';
 
-const THEME_COLORS = [
-    '#FF6B6B', // Red
-    '#FF9F43', // Orange
-    '#FDCB6E', // Yellow
-    '#1DD1A1', // Green
-    '#48DBFB', // Light Blue
-    '#5F27CD', // Purple
-    '#C8D6E5', // Gray
-    '#222F3E', // Dark
-];
+// Import theme palette directly
+const THEME_COLORS = [...COLORS.subjectPalette];
 
 const EditSubjectsScreen = ({ navigation }) => {
     const { state, dispatch } = useApp();

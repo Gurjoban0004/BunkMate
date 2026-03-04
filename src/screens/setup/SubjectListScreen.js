@@ -13,11 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
-// Pre-defined pleasing pastel/material colors
-const SUBJECT_COLORS = [
-    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF9999',
-    '#77DD77', '#CBAACB', '#FFB347', '#B39EB5'
-];
+// Colors now fetched dynamically from COLORS.subjectPalette
 
 export default function SubjectListScreen({ navigation }) {
     const { dispatch } = useApp();
@@ -52,7 +48,7 @@ export default function SubjectListScreen({ navigation }) {
         const newSubject = {
             id: Date.now().toString(),
             name: trimmed,
-            color: SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length],
+            color: COLORS.subjectPalette[subjects.length % COLORS.subjectPalette.length],
         };
 
         setSubjects(prev => [...prev, newSubject]);
