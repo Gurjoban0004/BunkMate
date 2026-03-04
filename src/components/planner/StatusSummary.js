@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const StatusSummary = ({ priorityList, threshold, onBunkModePress }) => {
     const criticalCount = priorityList.filter((s) => s.priority === 'critical').length;
@@ -50,7 +50,7 @@ const StatusSummary = ({ priorityList, threshold, onBunkModePress }) => {
                     </Text>
                 )}
                 <Text style={[styles.statBadge, { backgroundColor: COLORS.successLight, color: COLORS.successDark }]}>
-                    ✅ {safeCount} safe
+                    {safeCount} safe
                 </Text>
             </View>
         </View>
@@ -60,11 +60,12 @@ const StatusSummary = ({ priorityList, threshold, onBunkModePress }) => {
 const styles = StyleSheet.create({
     card: {
         marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
+        marginVertical: SPACING.md,
         padding: SPACING.lg,
+        borderRadius: BORDER_RADIUS.lg,
         borderWidth: 1,
         alignItems: 'center',
+        ...SHADOWS.small,
     },
     emoji: {
         fontSize: 32,

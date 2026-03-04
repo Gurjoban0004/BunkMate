@@ -82,8 +82,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
         ...SHADOWS.small,
     },
     title: {
@@ -107,8 +107,7 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primaryLight,
     },
     dayCellToday: {
-        borderWidth: 1.5,
-        borderColor: COLORS.primary,
+        
     },
     dayLabel: {
         fontSize: FONT_SIZES.xs,

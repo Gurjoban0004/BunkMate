@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const MODES = [
     { key: 'bunk', label: '😴 Bunk' },
@@ -68,6 +68,7 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
         padding: 3,
         position: 'relative',
+        ...SHADOWS.small,
     },
     indicator: {
         position: 'absolute',

@@ -7,7 +7,7 @@ const QuickWins = ({ quickWins }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.sectionTitle}>💡 Quick Wins</Text>
+            <Text style={styles.sectionTitle}>Quick Wins</Text>
 
             {quickWins.map((win, index) => {
                 if (win.type === 'quick_recovery') {
@@ -54,27 +54,25 @@ const QuickWins = ({ quickWins }) => {
 
 const styles = StyleSheet.create({
     container: {
-        paddingHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
+        marginHorizontal: SPACING.lg,
+        marginBottom: SPACING.lg,
     },
     sectionTitle: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
+        fontSize: FONT_SIZES.md,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
         marginBottom: SPACING.md,
     },
     card: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.md,
-        marginBottom: SPACING.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        padding: SPACING.lg,
+        marginBottom: SPACING.md,
         ...SHADOWS.small,
     },
     challengeCard: {
         backgroundColor: COLORS.primaryLight,
-        borderColor: COLORS.primary,
+        
     },
     cardTitle: {
         fontSize: FONT_SIZES.md,

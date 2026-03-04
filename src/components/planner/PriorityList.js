@@ -139,7 +139,6 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginBottom: SPACING.sm,
-        borderWidth: 1.5,
     },
     cardHeader: {
         marginBottom: SPACING.xs,
@@ -156,7 +155,7 @@ const styles = StyleSheet.create({
     },
     progressBar: {
         height: 8,
-        backgroundColor: COLORS.progressBackground,
+        backgroundColor: COLORS.border,
         borderRadius: 4,
         marginBottom: SPACING.sm,
         position: 'relative',

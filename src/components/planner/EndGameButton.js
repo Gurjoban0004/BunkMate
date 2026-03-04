@@ -27,8 +27,8 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.lg,
         paddingVertical: SPACING.md,
         paddingHorizontal: SPACING.lg,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        
+        
         ...SHADOWS.small,
     },
     row: {

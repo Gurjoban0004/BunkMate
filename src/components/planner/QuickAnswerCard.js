@@ -42,7 +42,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false, onPlannerPress }) => {
         safe: {
             emoji: '✅',
             title: 'YES — Skip the whole day!',
-            shortTitle: '✅ YES',
+            shortTitle: 'YES',
             subtitle: `All ${classes.length} classes are safe to miss`,
             bg: COLORS.successLight,
             border: COLORS.success,
@@ -51,7 +51,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false, onPlannerPress }) => {
         partial: {
             emoji: '⚠️',
             title: 'PARTIAL — Skip some classes',
-            shortTitle: '⚠️ PARTIAL',
+            shortTitle: 'PARTIAL',
             subtitle: `${safeCount} safe to skip, ${riskyCount} must attend`,
             bg: COLORS.warningLight,
             border: COLORS.warning,
@@ -141,7 +141,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false, onPlannerPress }) => {
 
                         {recommendation ? (
                             <View style={styles.recommendationBox}>
-                                <Text style={styles.recommendationLabel}>💡 Best strategy:</Text>
+                                <Text style={styles.recommendationLabel}>Best strategy:</Text>
                                 <Text style={styles.recommendationText}>{recommendation}</Text>
                             </View>
                         ) : null}
@@ -170,11 +170,12 @@ const QuickAnswerCard = ({ dayStatus, compact = false, onPlannerPress }) => {
 
 const styles = StyleSheet.create({
     compactCard: {
-        marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.sm,
-        borderRadius: BORDER_RADIUS.md,
+        marginHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.md,
         padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.lg,
         borderWidth: 1,
+        ...SHADOWS.small,
     },
     compactRow: {
         flexDirection: 'row',
@@ -195,11 +196,13 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     card: {
+        backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
+        marginBottom: SPACING.lg,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
         borderWidth: 1,
+        ...SHADOWS.medium,
     },
     question: {
         fontSize: FONT_SIZES.sm,

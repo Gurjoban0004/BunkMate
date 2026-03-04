@@ -6,7 +6,7 @@ import { AppProvider, useApp } from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { COLORS } from './src/theme/theme';
 import { DEV_MODE, SKIP_SETUP, MOCK_SCENARIO } from './src/dev/config';
-import DevMenu from './src/dev/DevMenu';
+import DevModePanel from './src/dev/DevModePanel';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { setGlobalWebAlert } from './src/utils/alert';
@@ -68,7 +68,7 @@ function AppContent() {
     useEffect(() => {
         if (DEV_MODE && SKIP_SETUP && !isLoading && !devReady) {
             if (!state.setupComplete) {
-                const { MOCK_SCENARIOS } = require('./src/dev/mockData');
+                const { MOCK_SCENARIOS } = require('./src/dev/mockData/mockScenarios');
                 const mockData = MOCK_SCENARIOS[MOCK_SCENARIO] || MOCK_SCENARIOS.NORMAL;
                 dispatch({ type: 'LOAD_STATE', payload: mockData });
             }
@@ -86,22 +86,11 @@ function AppContent() {
         );
     }
 
-    const handleLoadScenario = (scenarioData) => {
-        dispatch({ type: 'LOAD_STATE', payload: scenarioData });
-    };
-
-    const handleClearData = () => {
-        dispatch({ type: 'RESET_STATE' });
-    };
-
     return (
         <>
             <StatusBar style="dark" />
             <AppNavigator />
-            <DevMenu
-                onLoadScenario={handleLoadScenario}
-                onClearData={handleClearData}
-            />
+            <DevModePanel />
         </>
     );
 }

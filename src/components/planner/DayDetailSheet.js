@@ -36,7 +36,7 @@ const DayDetailSheet = ({ visible, dayData, onClose }) => {
                     </View>
 
                     {status === 'setup_day' ? (
-                        <View style={[styles.verdictBox, { borderColor: verdict.color, marginTop: SPACING.md }]}>
+                        <View style={[styles.verdictBox, {  marginTop: SPACING.md }]}>
                             <Text style={styles.verdictEmoji}>{verdict.emoji}</Text>
                             <Text style={[styles.verdictText, { color: verdict.color }]}>
                                 {verdict.text}
@@ -92,7 +92,7 @@ const DayDetailSheet = ({ visible, dayData, onClose }) => {
                             {/* Recommendation */}
                             {recommendation ? (
                                 <View style={styles.recommendBox}>
-                                    <Text style={styles.recommendLabel}>💡 Recommendation:</Text>
+                                    <Text style={styles.recommendLabel}>Recommendation:</Text>
                                     <Text style={styles.recommendText}>{recommendation}</Text>
                                 </View>
                             ) : null}
@@ -194,7 +194,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1.5,
         backgroundColor: COLORS.cardBackground,
         marginBottom: SPACING.md,
     },
