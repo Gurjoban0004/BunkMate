@@ -1,11 +1,34 @@
 {
     "version": 2,
-    "buildCommand": "npx expo export -p web",
+    "buildCommand": "npx expo export -p web && cp -r web-landing dist/web-landing && mkdir -p dist/releases && (cp public/releases/presence-latest.apk dist/releases/presence-latest.apk 2>/dev/null || true)",
     "outputDirectory": "dist",
     "rewrites": [
         {
-            "source": "/(.*)",
+            "source": "/",
+            "destination": "/web-landing/index.html"
+        },
+        {
+            "source": "/app",
             "destination": "/index.html"
+        },
+        {
+            "source": "/app/(.*)",
+            "destination": "/index.html"
+        }
+    ],
+    "headers": [
+        {
+            "source": "/releases/(.*).apk",
+            "headers": [
+                {
+                    "key": "Content-Type",
+                    "value": "application/vnd.android.package-archive"
+                },
+                {
+                    "key": "Content-Disposition",
+                    "value": "attachment; filename=\"presence.apk\""
+                }
+            ]
         }
     ]
 }
