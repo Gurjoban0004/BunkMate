@@ -10,6 +10,7 @@ import {
     TextInput,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 import { useApp } from '../../context/AppContext';
 import Button from '../../components/common/Button';
 import { formatTimeRange } from '../../utils/dateHelpers';
@@ -131,6 +132,7 @@ const EditTimetableScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <FloatingBackButton />
             <View style={styles.header}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.daysScroll}>
                     {DAYS.map(day => (

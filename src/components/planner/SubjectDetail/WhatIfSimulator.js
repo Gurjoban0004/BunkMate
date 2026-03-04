@@ -2,63 +2,64 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
-import { simulateAttendance, determineStatus } from '../../../utils/planner/attendanceCalculations';
+import { calculatePercentage } from '../../../utils/attendance';
+import { determineStatus } from '../../../utils/planner/attendanceCalculations';
 import PlannerProgressBar from '../shared/PlannerProgressBar';
 
 /**
- * What-If simulator with slider to see impact of attending/skipping N classes.
+ * What-If simulator utilizing a slider mechanism to simulate attending or skipping classes.
  */
 export default function WhatIfSimulator({ subjectData }) {
     const { attended, total, target } = subjectData;
-    const [offset, setOffset] = useState(0);
+    const [sliderValue, setSliderValue] = useState(0);
 
-    const simulated = simulateAttendance(attended, total, offset);
-    const status = determineStatus(simulated.percentage, target);
+    const attendCount = sliderValue > 0 ? sliderValue : 0;
+    const skipCount = sliderValue < 0 ? Math.abs(sliderValue) : 0;
 
-    const getLabel = () => {
-        if (offset === 0) return 'Current';
-        if (offset > 0) return `Attend ${offset} more`;
-        return `Skip ${Math.abs(offset)} more`;
-    };
+    const simulatedAttended = attended + attendCount;
+    const simulatedTotal = total + attendCount + skipCount;
+    const simulatedPercentage = calculatePercentage(simulatedAttended, simulatedTotal);
+    const status = determineStatus(simulatedPercentage, target);
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>What If?</Text>
-            <Text style={styles.subtitle}>Slide to simulate future classes</Text>
+            <Text style={styles.title}>What If Simulator</Text>
+            <Text style={styles.subtitle}>Test different scenarios</Text>
 
             <View style={styles.resultRow}>
-                <Text style={styles.label}>{getLabel()}</Text>
+                <Text style={styles.label}>Predicted</Text>
                 <Text style={[styles.resultPercentage, {
                     color: status === 'danger' ? COLORS.danger :
                         status === 'warning' ? COLORS.warningDark : COLORS.success
                 }]}>
-                    {simulated.percentage.toFixed(1)}%
+                    {simulatedPercentage.toFixed(1)}%
                 </Text>
             </View>
 
-            <PlannerProgressBar percentage={simulated.percentage} target={target} height={8} />
+            <PlannerProgressBar percentage={simulatedPercentage} target={target} height={8} />
 
-            <Slider
-                style={styles.slider}
-                minimumValue={-5}
-                maximumValue={10}
-                step={1}
-                value={offset}
-                onValueChange={setOffset}
-                minimumTrackTintColor={COLORS.danger}
-                maximumTrackTintColor={COLORS.success}
-                thumbTintColor={COLORS.primary}
-            />
-
-            <View style={styles.sliderLabels}>
-                <Text style={styles.sliderLabel}>Skip 5</Text>
-                <Text style={[styles.sliderLabel, styles.sliderCenter]}>Now</Text>
-                <Text style={styles.sliderLabel}>Attend 10</Text>
+            <View style={styles.sliderWrapper}>
+                <Slider
+                    style={styles.slider}
+                    minimumValue={-5}
+                    maximumValue={10}
+                    step={1}
+                    value={sliderValue}
+                    onValueChange={setSliderValue}
+                    minimumTrackTintColor={COLORS.danger}
+                    maximumTrackTintColor={COLORS.success}
+                    thumbTintColor={COLORS.primary}
+                />
+                <View style={styles.sliderLabels}>
+                    <Text style={styles.sliderLabel}>Skip 5</Text>
+                    <Text style={[styles.sliderLabel, styles.sliderCenter]}>Now</Text>
+                    <Text style={styles.sliderLabel}>Attend 10</Text>
+                </View>
             </View>
 
             <View style={styles.resultDetail}>
                 <Text style={styles.detailText}>
-                    {simulated.attended}/{simulated.total} classes → {simulated.percentage.toFixed(1)}%
+                    {simulatedAttended}/{simulatedTotal} classes → {simulatedPercentage.toFixed(1)}%
                 </Text>
             </View>
         </View>
@@ -98,10 +99,12 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.xl,
         fontWeight: '700',
     },
+    sliderWrapper: {
+        marginTop: SPACING.lg,
+    },
     slider: {
         width: '100%',
         height: 40,
-        marginTop: SPACING.sm,
     },
     sliderLabels: {
         flexDirection: 'row',

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../../../theme/theme';
 import { useApp } from '../../../context/AppContext';
 import { getSubjectPlannerData } from '../../../utils/planner/dataAdapter';
+import FloatingBackButton from '../../../components/common/FloatingBackButton';
 
 import StatusHeader from '../../../components/planner/SubjectDetail/StatusHeader';
 import NextClassDecision from '../../../components/planner/SubjectDetail/NextClassDecision';
@@ -29,6 +30,7 @@ export default function PlannerSubjectDetail({ route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
+            <FloatingBackButton />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}

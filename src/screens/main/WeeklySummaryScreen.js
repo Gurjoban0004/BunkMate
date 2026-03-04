@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { generateWeeklySummary } from '../../utils/summary';
 import { calculateOverallStreak } from '../../utils/streak';
+import { getSubjectAttendance } from '../../utils/attendance';
 import Card from '../../components/common/Card';
 import ProgressBar from '../../components/common/ProgressBar';
 import Button from '../../components/common/Button';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 const DAY_STATUS_EMOJI = {
     perfect: '🟢',
@@ -27,6 +29,7 @@ export default function WeeklySummaryScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
+            <FloatingBackButton />
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <Text style={styles.header}>Week in Review</Text>

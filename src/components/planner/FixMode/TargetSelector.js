@@ -17,7 +17,7 @@ export default function TargetSelector({ value, onChange, min = 50, max = 95 }) 
             <View style={styles.stepper}>
                 <TouchableOpacity
                     style={[styles.button, !canDecrease && styles.buttonDisabled]}
-                    onPress={() => canDecrease && onChange(value - 5)}
+                    onPress={() => canDecrease && onChange(value - 1)}
                     disabled={!canDecrease}
                     activeOpacity={0.6}
                 >
@@ -30,7 +30,7 @@ export default function TargetSelector({ value, onChange, min = 50, max = 95 }) 
 
                 <TouchableOpacity
                     style={[styles.button, !canIncrease && styles.buttonDisabled]}
-                    onPress={() => canIncrease && onChange(value + 5)}
+                    onPress={() => canIncrease && onChange(value + 1)}
                     disabled={!canIncrease}
                     activeOpacity={0.6}
                 >

@@ -10,6 +10,7 @@ import Button from '../../components/common/Button';
 import AttendanceGraph from '../../components/subjects/AttendanceGraph';
 import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function SubjectDetailScreen({ route }) {
     const { subjectId } = route.params;
@@ -82,6 +83,7 @@ export default function SubjectDetailScreen({ route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
+            <FloatingBackButton />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}

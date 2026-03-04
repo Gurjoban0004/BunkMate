@@ -10,8 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { getUnmarkedByDate } from '../../utils/backlog';
+import { getSubjectAttendance } from '../../utils/attendance';
 import Button from '../../components/common/Button';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function PastAttendanceScreen({ navigation }) {
     const { state, dispatch } = useApp();
@@ -63,6 +65,7 @@ export default function PastAttendanceScreen({ navigation }) {
     if (unmarkedByDate.length === 0) {
         return (
             <SafeAreaView style={styles.container} edges={['bottom']}>
+                <FloatingBackButton />
                 <View style={styles.emptyContainer}>
                     <Text style={styles.emptyEmoji}>✅</Text>
                     <Text style={styles.emptyText}>All caught up!</Text>
@@ -84,6 +87,7 @@ export default function PastAttendanceScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
+            <FloatingBackButton />
             <SectionList
                 sections={sections}
                 keyExtractor={(item, idx) => `${item.date}-${item.subjectId}-${idx}`}
@@ -198,8 +202,8 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.sm,
         marginBottom: SPACING.sm,
-        
-        
+
+
         ...SHADOWS.small,
     },
     classRowMarked: {
@@ -244,14 +248,14 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        
+
     },
     presentSmallBtn: {
-        
+
         backgroundColor: COLORS.successBg,
     },
     absentSmallBtn: {
-        
+
         backgroundColor: COLORS.dangerBg,
     },
     presentSmallText: {

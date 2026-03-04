@@ -9,6 +9,7 @@ import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
 import { getTodayKey, getNextDay } from '../../utils/dateHelpers';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function AttendanceStatsScreen({ navigation, route }) {
     const { state, dispatch } = useApp();
@@ -109,6 +110,7 @@ export default function AttendanceStatsScreen({ navigation, route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+            <FloatingBackButton />
             <KeyboardWrapper contentContainerStyle={styles.scrollContent}>
 
                 <View style={styles.headerBox}>

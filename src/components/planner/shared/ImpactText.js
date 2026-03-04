@@ -38,17 +38,17 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 4, // slightly tighter gap
     },
     label: {
-        fontSize: FONT_SIZES.sm,
+        fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
     percentage: {
-        fontSize: FONT_SIZES.sm,
+        fontSize: FONT_SIZES.xs,
         fontWeight: '700',
     },
     change: {
-        fontSize: FONT_SIZES.xs,
+        fontSize: 11, // slightly smaller than xs
     },
 });

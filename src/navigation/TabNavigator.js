@@ -13,6 +13,7 @@ import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
+import EndGameScreen from '../screens/main/EndGameScreen';
 import { COLORS } from '../theme/theme';
 
 const Tab = createBottomTabNavigator();
@@ -20,15 +21,13 @@ const SubjectsStack = createStackNavigator();
 const TodayStack = createStackNavigator();
 const PlannerStack = createStackNavigator();
 const SettingsStack = createStackNavigator();
+const EndGameStack = createStackNavigator();
 
 function TodayStackScreen() {
     return (
         <TodayStack.Navigator
             screenOptions={{
-                headerStyle: { backgroundColor: COLORS.background },
-                headerTintColor: COLORS.textPrimary,
-                headerShadowVisible: false,
-                headerBackTitleVisible: false,
+                headerShown: false,
             }}
         >
             <TodayStack.Screen
@@ -54,10 +53,7 @@ function SubjectsStackScreen() {
     return (
         <SubjectsStack.Navigator
             screenOptions={{
-                headerStyle: { backgroundColor: COLORS.background },
-                headerTintColor: COLORS.textPrimary,
-                headerShadowVisible: false,
-                headerBackTitleVisible: false,
+                headerShown: false,
             }}
         >
             <SubjectsStack.Screen
@@ -80,10 +76,7 @@ function PlannerStackScreen() {
     return (
         <PlannerStack.Navigator
             screenOptions={{
-                headerStyle: { backgroundColor: COLORS.background },
-                headerTintColor: COLORS.textPrimary,
-                headerShadowVisible: false,
-                headerBackTitleVisible: false,
+                headerShown: false,
             }}
         >
             <PlannerStack.Screen
@@ -106,10 +99,7 @@ function SettingsStackScreen() {
     return (
         <SettingsStack.Navigator
             screenOptions={{
-                headerStyle: { backgroundColor: COLORS.background },
-                headerTintColor: COLORS.textPrimary,
-                headerShadowVisible: false,
-                headerBackTitleVisible: false,
+                headerShown: false,
             }}
         >
             <SettingsStack.Screen
@@ -137,7 +127,27 @@ function SettingsStackScreen() {
                 component={AttendanceStatsScreen}
                 options={{ title: 'Log Past Attendance' }}
             />
+            <SettingsStack.Screen
+                name="EndGame"
+                component={EndGameScreen}
+                options={{ title: 'End Game Calculator' }}
+            />
         </SettingsStack.Navigator>
+    );
+}
+
+function EndGameStackScreen() {
+    return (
+        <EndGameStack.Navigator
+            screenOptions={{
+                headerShown: false,
+            }}
+        >
+            <EndGameStack.Screen
+                name="EndGameMain"
+                component={EndGameScreen}
+            />
+        </EndGameStack.Navigator>
     );
 }
 
@@ -146,6 +156,7 @@ function TabIcon({ label, focused }) {
         Today: '📅',
         Subjects: '📚',
         Planner: '🎯',
+        "End Game": '😴',
         Settings: '⚙️',
     };
     return (
@@ -203,6 +214,7 @@ export default function TabNavigator() {
                 component={PlannerStackScreen}
                 options={{ title: 'Planner' }}
             />
+            <Tab.Screen name="End Game" component={EndGameStackScreen} />
             <Tab.Screen name="Settings" component={SettingsStackScreen} />
         </Tab.Navigator>
     );

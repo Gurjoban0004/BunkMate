@@ -122,17 +122,24 @@ export default function WebTabNavigator() {
             });
         },
         goBack: () => {
-            if (Platform.OS === 'web' && activeStack.length > 1) {
-                window.history.back();
-            } else {
-                setStacks(prev => {
-                    const currentTabStack = prev[currentTab];
-                    if (currentTabStack.length > 1) {
-                        return { ...prev, [currentTab]: currentTabStack.slice(0, -1) };
+            setStacks(prev => {
+                const currentTabStack = prev[currentTab];
+                if (currentTabStack.length > 1) {
+                    const newStack = currentTabStack.slice(0, -1);
+                    if (Platform.OS === 'web') {
+                        const previousRoute = newStack[newStack.length - 1];
+                        // Use pushState here so we don't mess up browser history too badly,
+                        // or better yet, just replaceState so the URL matches current visual state
+                        window.history.replaceState(
+                            { tab: currentTab, index: newStack.length - 1 },
+                            '',
+                            `?tab=${currentTab}&screen=${previousRoute.name}`
+                        );
                     }
-                    return prev;
-                });
-            }
+                    return { ...prev, [currentTab]: newStack };
+                }
+                return prev;
+            });
         },
         setOptions: () => { }, // no-op
     }), [currentTab, stacks]);
