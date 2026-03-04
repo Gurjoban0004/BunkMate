@@ -20,10 +20,10 @@ import { COLORS, TYPOGRAPHY } from '../theme/theme';
 
 function TabIcon({ label, focused }) {
     const icons = {
-        Today: '',
-        Subjects: '',
+        Today: '📅',
+        Subjects: '📚',
         Planner: '🎯',
-        Settings: '',
+        Settings: '⚙️',
     };
     return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{icons[label]}</Text>;
 }

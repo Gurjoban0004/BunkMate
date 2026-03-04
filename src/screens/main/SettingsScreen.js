@@ -405,7 +405,7 @@ const SettingsScreen = ({ navigation }) => {
 
                     <View style={styles.aboutCard}>
                         <Text style={styles.appName}>Presence</Text>
-                        <Text style={styles.version}>Version 1.0.0</Text>
+                        <Text style={styles.version}>Version 1.0.1</Text>
                         <Text style={styles.madeWith}>Made with ❤️ for students</Text>
                     </View>
                 </View>
