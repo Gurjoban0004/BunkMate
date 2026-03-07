@@ -102,7 +102,8 @@ const TodayScreen = ({ navigation }) => {
 
     // Quick Answer: can I skip today?
     const todayDayName = getTodayDayName(state.devDate);
-    const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, 75), [state, todayDayName]);
+    const dangerThreshold = state.settings?.dangerThreshold || 75;
+    const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, dangerThreshold), [state, todayDayName, dangerThreshold]);
 
     // Pull to refresh
     const onRefresh = useCallback(() => {

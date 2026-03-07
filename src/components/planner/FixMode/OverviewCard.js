@@ -7,6 +7,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../th
  * Props: needsWorkCount, onTrackCount, target
  */
 export default function OverviewCard({ needsWorkCount, onTrackCount, target }) {
+    const styles = getStyles();
     const total = needsWorkCount + onTrackCount;
     const allGood = needsWorkCount === 0;
 
@@ -40,7 +41,7 @@ export default function OverviewCard({ needsWorkCount, onTrackCount, target }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,

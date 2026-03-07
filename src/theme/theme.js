@@ -6,40 +6,40 @@ export const LIGHT_COLORS = {
     // ---------------------------------------------------------
     // 1. BACKGROUNDS (The Canvas)
     // ---------------------------------------------------------
-    background: '#F5F7FA',       // Main screen background
+    background: '#F7F8FA',       // Main screen background (warmer)
     cardBackground: '#FFFFFF',   // Card surfaces, tab bar, modals
-    inputBackground: '#F1F3F4',  // Text inputs, mode toggle track
+    inputBackground: '#F0F2F4',  // Text inputs, mode toggle track (darker for contrast)
     bgBunk: '#FFF5F5',           // Simulator background for Skip mode
-    bgAttend: '#F5FFF7',         // Simulator background for Fix mode
+    bgAttend: '#F0FFF4',         // Simulator background for Fix mode (richer green)
 
     // ---------------------------------------------------------
     // 2. PRIMARY BRAND (The Identity)
     // ---------------------------------------------------------
     primary: '#8B80F9',          // Active tabs, toggle text, percentage values
-    primaryLight: '#E8E6FF',     // Stepper buttons bg, active tab icon pill
-    primaryDark: '#5A52D9',      // Stepper button text
+    primaryLight: '#EEEDFF',     // Stepper buttons bg, active tab icon pill (lighter)
+    primaryDark: '#6358D4',      // Stepper button text (richer)
     textOnPrimary: '#FFFFFF',    // Text on primary-colored surfaces
 
     // ---------------------------------------------------------
     // 3. SEMANTIC STATUS (The Communication)
     // ---------------------------------------------------------
-    success: '#6BCB77',
-    successLight: '#E8F5E9',
-    successDark: '#2E7D32',
+    success: '#5AC46A',          // Softer pastel green
+    successLight: '#E6F7E9',     // Fresher background
+    successDark: '#2A6B35',      // Richer text
 
-    danger: '#FF6B6B',
-    dangerLight: '#FFEBEE',
-    dangerDark: '#D32F2F',
+    danger: '#F25F5F',           // Softer coral red
+    dangerLight: '#FFEEEE',      // Softer pink background
+    dangerDark: '#C93A3A',       // Richer text
 
-    warning: '#FFD93D',
-    warningLight: '#FFF8E1',
-    warningDark: '#F57C00',
+    warning: '#F5D03A',          // Softer gold
+    warningLight: '#FFFAEB',     // Warmer cream background
+    warningDark: '#D4940A',      // Richer gold text
 
     // ---------------------------------------------------------
     // 4. TEXT (The Hierarchy)
     // ---------------------------------------------------------
-    textPrimary: '#2D3436',      // Headers, subject names, main content
-    textSecondary: '#636E72',    // Subtitles, secondary info, progress markers
+    textPrimary: '#1F2937',      // Richer black for headers
+    textSecondary: '#6B7280',    // Better gray for hierarchy
     textMuted: '#9CA3AF',        // Captions, hints, inactive tab labels
 
     // ---------------------------------------------------------
@@ -50,49 +50,79 @@ export const LIGHT_COLORS = {
     overlay: 'rgba(0, 0, 0, 0.5)', // Modal overlays
 
     // ---------------------------------------------------------
-    // 6. SUBJECT COLORS (Strictly Decorative)
+    // 6. SUBJECT COLORS (Refined Pastel)
     // ---------------------------------------------------------
     subjectPalette: [
-        '#85C1E9', '#F48FB1', '#B39DDB', '#4ECDC4',
-        '#BB8FCE', '#45B7D1', '#DDA0DD', '#98D8C8',
+        '#7CB9E8', // Sky blue
+        '#F2A3B8', // Rose pink
+        '#B8A9D9', // Lavender
+        '#4DD4C4', // Teal
+        '#C9A3D9', // Orchid
+        '#4CC4D9', // Cyan
+        '#E0B0E0', // Mauve
+        '#8ED4C4', // Mint
     ],
 };
 
 export const DARK_COLORS = {
-    background: '#14141A',       // Deep muted dark tone
-    cardBackground: '#1F1F2A',   // Slightly elevated dark tone
-    inputBackground: '#2B2B38',  // Input surfaces
-    bgBunk: '#2A1A1E',           // Simulator background for Skip mode
-    bgAttend: '#1A2A1E',         // Simulator background for Fix mode
+    // ---------------------------------------------------------
+    // 1. BACKGROUNDS (The Canvas)
+    // ---------------------------------------------------------
+    background: '#0F0F14',       // Deep space - main screen
+    cardBackground: '#1A1A24',   // Elevated surface - cards, modals
+    inputBackground: '#252532',  // Recessed surface - inputs, toggles
+    bgBunk: '#1F1418',           // Subtle danger tint - skip mode
+    bgAttend: '#141F18',         // Subtle success tint - fix mode
 
-    primary: '#9B92F2',          // Lighter pastel primary
-    primaryLight: '#393375',     // Stepper buttons bg dark
-    primaryDark: '#B1AAFA',      // Stepper button text lighter
-    textOnPrimary: '#FFFFFF',
+    // ---------------------------------------------------------
+    // 2. PRIMARY BRAND (The Identity)
+    // ---------------------------------------------------------
+    primary: '#A89CFF',          // Soft purple glow - active elements
+    primaryLight: '#2A2650',     // Muted purple - button backgrounds
+    primaryDark: '#C4BDFF',      // Light purple - hover/active states
+    textOnPrimary: '#FFFFFF',    // White on primary buttons
 
-    success: '#5ABD69',
-    successLight: '#1C3E26',
-    successDark: '#8CED9B',
+    // ---------------------------------------------------------
+    // 3. SEMANTIC STATUS (The Communication)
+    // ---------------------------------------------------------
+    success: '#6ECB7B',          // Soft green - present, safe
+    successLight: '#1A2E20',     // Dark green tint - success backgrounds
+    successDark: '#A8E5B3',      // Light green - success emphasis
 
-    danger: '#ED5E5E',
-    dangerLight: '#4F1D1D',
-    dangerDark: '#FFAFAF',
+    danger: '#F07575',           // Soft coral - absent, danger
+    dangerLight: '#2D1A1A',      // Dark red tint - danger backgrounds
+    dangerDark: '#FFBDBD',       // Light pink - danger emphasis
 
-    warning: '#F2CD33',
-    warningLight: '#594A10',
-    warningDark: '#FFE67B',
+    warning: '#E8C547',          // Soft gold - warnings
+    warningLight: '#2E2815',     // Dark amber tint - warning backgrounds
+    warningDark: '#FFE799',      // Light cream - warning emphasis
 
-    textPrimary: '#F1F3F5',
-    textSecondary: '#9AA0A6',
-    textMuted: '#687076',
+    // ---------------------------------------------------------
+    // 4. TEXT (The Hierarchy)
+    // ---------------------------------------------------------
+    textPrimary: '#EAECEF',      // Off-white - main content
+    textSecondary: '#8E949B',    // Muted gray - secondary info
+    textMuted: '#5C6268',        // Dark gray - captions, hints
 
-    border: '#2C2D3A',
-    shadow: '#000000',
-    overlay: 'rgba(0, 0, 0, 0.7)',
+    // ---------------------------------------------------------
+    // 5. STRUCTURAL (The Framework)
+    // ---------------------------------------------------------
+    border: '#2A2B38',           // Subtle borders, dividers
+    shadow: '#000000',           // Shadow base
+    overlay: 'rgba(0, 0, 0, 0.75)', // Modal overlay
 
+    // ---------------------------------------------------------
+    // 6. SUBJECT COLORS (Pastel Glow)
+    // ---------------------------------------------------------
     subjectPalette: [
-        '#568EA6', '#B05E7B', '#7A64A0', '#34938D',
-        '#8B6899', '#2E8B9E', '#A46EAA', '#63A293',
+        '#7EB8D0',   // Soft sky blue
+        '#D48BA3',   // Soft rose pink
+        '#A892C9',   // Soft lavender
+        '#5FBFB5',   // Soft teal
+        '#B08FC2',   // Soft orchid
+        '#5BB0C4',   // Soft cyan
+        '#C99BD0',   // Soft mauve
+        '#8CC5B5',   // Soft mint
     ],
 };
 
@@ -301,15 +331,34 @@ export const applyTheme = (themeStr) => {
         COLORS[key] = source[key];
     }
 
-    // Update SHADOWS dependent on COLORS.shadow
-    if (Platform.OS === 'web') {
-        SHADOWS.small.boxShadow = `0px 1px 2px ${COLORS.shadow}0D`;
-        SHADOWS.medium.boxShadow = `0px 4px 12px ${COLORS.shadow}1A`;
-        SHADOWS.large.boxShadow = `0px 4px 8px ${COLORS.shadow}1A`;
+    // Shadows need to be stronger in dark mode
+    if (themeStr === 'dark') {
+        if (Platform.OS === 'web') {
+            SHADOWS.small.boxShadow = `0px 2px 4px rgba(0, 0, 0, 0.3)`;
+            SHADOWS.medium.boxShadow = `0px 4px 12px rgba(0, 0, 0, 0.4)`;
+            SHADOWS.large.boxShadow = `0px 8px 24px rgba(0, 0, 0, 0.5)`;
+        } else {
+            SHADOWS.small.shadowColor = '#000000';
+            SHADOWS.small.shadowOpacity = 0.3;
+            SHADOWS.medium.shadowColor = '#000000';
+            SHADOWS.medium.shadowOpacity = 0.4;
+            SHADOWS.large.shadowColor = '#000000';
+            SHADOWS.large.shadowOpacity = 0.5;
+        }
     } else {
-        SHADOWS.small.shadowColor = COLORS.shadow;
-        SHADOWS.medium.shadowColor = COLORS.shadow;
-        SHADOWS.large.shadowColor = COLORS.shadow;
+        // Reset to light mode values
+        if (Platform.OS === 'web') {
+            SHADOWS.small.boxShadow = `0px 1px 2px ${COLORS.shadow}0D`;
+            SHADOWS.medium.boxShadow = `0px 4px 12px ${COLORS.shadow}1A`;
+            SHADOWS.large.boxShadow = `0px 4px 8px ${COLORS.shadow}1A`;
+        } else {
+            SHADOWS.small.shadowColor = COLORS.shadow;
+            SHADOWS.small.shadowOpacity = 0.05;
+            SHADOWS.medium.shadowColor = COLORS.shadow;
+            SHADOWS.medium.shadowOpacity = 0.12;
+            SHADOWS.large.shadowColor = COLORS.shadow;
+            SHADOWS.large.shadowOpacity = 0.1;
+        }
     }
 };
 

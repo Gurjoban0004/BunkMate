@@ -23,18 +23,19 @@ const SubjectsScreen = ({ navigation }) => {
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
     const dangerThreshold = state.settings?.dangerThreshold || 75;
-    const edgeThreshold = dangerThreshold + 3;
 
     // Calculate stats for all subjects
     const subjectsWithStats = useMemo(() => {
         return state.subjects.map(subject => {
             const stats = getSubjectAttendance(subject.id, state);
-            const bunkInfo = calculateBunks(stats.attendedUnits, stats.totalUnits, dangerThreshold);
+            const target = subject.target || dangerThreshold;
+            const bunkInfo = calculateBunks(stats.attendedUnits, stats.totalUnits, target);
 
             return {
                 ...subject,
                 ...stats,
                 bunkInfo,
+                resolvedTarget: target,
             };
         });
     }, [state, dangerThreshold]);
@@ -46,9 +47,12 @@ const SubjectsScreen = ({ navigation }) => {
         const safe = [];
 
         subjectsWithStats.forEach(subject => {
-            if (subject.percentage < dangerThreshold) {
+            const target = subject.resolvedTarget;
+            const edgeThresholdForSubject = target + 3;
+
+            if (subject.percentage < target) {
                 danger.push(subject);
-            } else if (subject.percentage < edgeThreshold) {
+            } else if (subject.percentage < edgeThresholdForSubject) {
                 edge.push(subject);
             } else {
                 safe.push(subject);
@@ -60,7 +64,7 @@ const SubjectsScreen = ({ navigation }) => {
         safe.sort((a, b) => b.percentage - a.percentage);
 
         return { danger, edge, safe };
-    }, [subjectsWithStats, dangerThreshold, edgeThreshold]);
+    }, [subjectsWithStats]);
 
     // Calculate overall stats
     const overallStats = useMemo(() => {

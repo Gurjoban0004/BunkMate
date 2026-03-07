@@ -104,7 +104,7 @@ function AppContent() {
 
     return (
         <>
-            <StatusBar style="dark" />
+            <StatusBar style={currentTheme === 'dark' ? 'light' : 'dark'} />
             <AppNavigator key={currentTheme} />
             <DevModePanel />
         </>

@@ -6,11 +6,11 @@ const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satu
 /**
  * Simulate skipping a class and return safety info.
  */
-export function canSkipClass(attended, total, units, threshold = 75) {
+export function canSkipClass(attended, total, units, target = 75) {
     const newTotal = total + units;
     const newPercentage = calculatePercentage(attended, newTotal);
     return {
-        safe: newPercentage >= threshold,
+        safe: newPercentage >= target,
         currentPercentage: calculatePercentage(attended, total),
         newPercentage,
         drop: calculatePercentage(attended, total) - newPercentage,
@@ -21,7 +21,9 @@ export function canSkipClass(attended, total, units, threshold = 75) {
  * Get the skip status for a specific day.
  * Returns: { status: 'safe'|'partial'|'risky'|'noclass', classes: [...] }
  */
-export function getDayStatus(state, dayName, threshold = 75, dateKey = null) {
+export function getDayStatus(state, dayName, defaultThreshold = 75, dateKey = null) {
+    const globalThreshold = state.settings?.dangerThreshold || defaultThreshold;
+
     if (dateKey && state.trackingStartDate && dateKey < state.trackingStartDate) {
         return { status: 'setup_day', classes: [], safeCount: 0, riskyCount: 0 };
     }
@@ -33,12 +35,15 @@ export function getDayStatus(state, dayName, threshold = 75, dateKey = null) {
     }
 
     const classDetails = classes.map((cls) => {
+        const subject = state.subjects.find(s => s.id === cls.subjectId);
+        const target = subject?.target || globalThreshold;
         const stats = getSubjectAttendance(cls.subjectId, state);
+        
         if (!stats) {
-            return { ...cls, safe: false, currentPercentage: 0, newPercentage: 0, drop: 0 };
+            return { ...cls, safe: false, currentPercentage: 0, newPercentage: 0, drop: 0, target };
         }
 
-        const skipInfo = canSkipClass(stats.attendedUnits, stats.totalUnits, cls.units, threshold);
+        const skipInfo = canSkipClass(stats.attendedUnits, stats.totalUnits, cls.units, target);
         return {
             ...cls,
             safe: skipInfo.safe,
@@ -47,6 +52,7 @@ export function getDayStatus(state, dayName, threshold = 75, dateKey = null) {
             drop: skipInfo.drop,
             attendedUnits: stats.attendedUnits,
             totalUnits: stats.totalUnits,
+            target,
         };
     });
 

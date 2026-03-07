@@ -33,6 +33,7 @@ const initialState = {
 
     // App settings
     settings: {
+        dangerThreshold: 75,
         notificationEnabled: true,
         notificationTime: '18:00',
         smartAlertsEnabled: true,
@@ -389,6 +390,7 @@ function appReducer(state, action) {
 
             // Migrate autopilot settings
             const settings = { ...initialState.settings, ...(loaded.settings || {}) };
+            if (settings.dangerThreshold === undefined) settings.dangerThreshold = 75;
             if (settings.autopilotEnabled === undefined) settings.autopilotEnabled = false;
             if (!settings.autopilotTime) settings.autopilotTime = '20:00';
             if (!settings.autopilotDefault) settings.autopilotDefault = 'present';

@@ -117,9 +117,12 @@ export function calculateSkipAllowance(targetPercentage, currentAttended, curren
 
 /**
  * Determine status: 'danger' (🔴), 'warning' (🟡), or 'safe' (🟢)
+ * Target is the goal (e.g. 75%), threshold is the "danger" line (e.g. 70%).
+ * If target = threshold, there's no warning zone.
  */
-export function determineStatus(percentage, target, threshold = 75) {
-    if (percentage < threshold) return 'danger';
+export function determineStatus(percentage, target, threshold) {
+    const dangerLine = threshold || target;
+    if (percentage < dangerLine) return 'danger';
     if (percentage < target) return 'warning';
     return 'safe';
 }

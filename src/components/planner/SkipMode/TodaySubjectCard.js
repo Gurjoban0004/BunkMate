@@ -13,6 +13,7 @@ import { getNextClass, formatRelativeDate } from '../../../utils/planner/schedul
  * Shows skip/attend impact, next class info, tap to detail.
  */
 export default function TodaySubjectCard({ subjectData, onPress }) {
+    const styles = getStyles();
     const { name, color, attended, total, percentage, target } = subjectData;
 
     const skipImpact = calculateSkipImpact(attended, total);
@@ -73,7 +74,7 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,

@@ -11,8 +11,9 @@ import { determineStatus } from '../../../utils/planner/attendanceCalculations';
 /**
  * Fix mode view — target selector, overview, needs-work and on-track lists.
  */
-export default function FixModeView({ subjects, onSubjectPress }) {
-    const [target, setTarget] = useState(75);
+export default function FixModeView({ subjects, onSubjectPress, defaultTarget = 75 }) {
+    const styles = getStyles();
+    const [target, setTarget] = useState(defaultTarget);
 
     const { needsWork, onTrack } = useMemo(() => {
         const nw = [];
@@ -80,7 +81,7 @@ export default function FixModeView({ subjects, onSubjectPress }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
     },

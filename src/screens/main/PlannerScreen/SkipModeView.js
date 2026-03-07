@@ -10,8 +10,9 @@ import { determineStatus, calculateSkipAllowance } from '../../../utils/planner/
 /**
  * Skip? mode view — now with a summary card showing total skippable classes.
  */
-export default function SkipModeView({ subjects, onSubjectPress }) {
-    const todayClasses = useMemo(() => getTodaysClasses(subjects), [subjects]);
+export default function SkipModeView({ subjects, onSubjectPress, activeDate = new Date() }) {
+    const styles = getStyles();
+    const todayClasses = useMemo(() => getTodaysClasses(subjects, activeDate), [subjects, activeDate]);
 
     const { todaySubjects, otherSubjects } = useMemo(() => {
         const todayIds = new Set(todayClasses.map(c => c.subject.id));
@@ -133,7 +134,7 @@ export default function SkipModeView({ subjects, onSubjectPress }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
     },

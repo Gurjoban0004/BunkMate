@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import PlannerDevTools from './PlannerDevTools';
+import AppDevTools from './AppDevTools';
 import { DEV_MODE, DEV_MODE_CONFIG } from './config';
 import { useApp } from '../context/AppContext';
 import { MOCK_SCENARIOS } from './mockData/mockScenarios';
@@ -8,7 +8,7 @@ import { COLORS, SHADOWS } from '../theme/theme';
 
 export default function DevModePanel() {
     const styles = getStyles();
-    const { state, dispatch } = useApp();
+    const { state, dispatch, runAutopilotCheck } = useApp();
     const [isOpen, setIsOpen] = useState(false);
 
     if (!DEV_MODE || !DEV_MODE_CONFIG.showDevPanel) {
@@ -48,7 +48,7 @@ export default function DevModePanel() {
                 <Text style={styles.floatingButtonText}>🔧</Text>
             </TouchableOpacity>
 
-            <PlannerDevTools
+            <AppDevTools
                 subjects={state.subjects}
                 timetable={state.timetable}
                 records={state.attendanceRecords}
@@ -64,6 +64,7 @@ export default function DevModePanel() {
                 isVisible={isOpen}
                 onClose={() => setIsOpen(false)}
                 scenarios={MOCK_SCENARIOS}
+                runAutopilotCheck={runAutopilotCheck}
             />
         </>
     );

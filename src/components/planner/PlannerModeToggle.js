@@ -7,6 +7,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme/theme';
  * Props: activeMode ('skip'|'fix'), onModeChange (fn)
  */
 export default function PlannerModeToggle({ activeMode, onModeChange }) {
+    const styles = getStyles();
     const slideAnim = useRef(new Animated.Value(activeMode === 'skip' ? 0 : 1)).current;
 
     useEffect(() => {
@@ -55,7 +56,7 @@ export default function PlannerModeToggle({ activeMode, onModeChange }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: COLORS.inputBackground,

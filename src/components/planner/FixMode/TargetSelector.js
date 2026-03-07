@@ -7,6 +7,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../th
  * Props: value (number), onChange (fn), min (default 50), max (default 95)
  */
 export default function TargetSelector({ value, onChange, min = 50, max = 95 }) {
+    const styles = getStyles();
     const canDecrease = value > min;
     const canIncrease = value < max;
 
@@ -41,7 +42,7 @@ export default function TargetSelector({ value, onChange, min = 50, max = 95 }) 
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',

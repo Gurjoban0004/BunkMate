@@ -10,6 +10,7 @@ import { getNextClass, formatRelativeDate } from '../../../utils/planner/schedul
  * Shows current %, "Next: Tomorrow" label, tap to detail.
  */
 export default function OtherSubjectCard({ subjectData, onPress }) {
+    const styles = getStyles();
     const { name, color, percentage, target } = subjectData;
     const status = determineStatus(percentage, target);
     const nextClass = getNextClass(subjectData);
@@ -45,7 +46,7 @@ export default function OtherSubjectCard({ subjectData, onPress }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,

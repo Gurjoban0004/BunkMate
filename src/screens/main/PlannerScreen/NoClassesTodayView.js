@@ -11,6 +11,10 @@ import { analyzePatterns, generateInsights } from '../../../utils/planner/patter
  * and next week preview. Displays when the user has no classes scheduled today.
  */
 export default function NoClassesTodayView({ subjects, onSubjectPress }) {
+    const styles = getStyles();
+    const { state } = useApp();
+    const globalThreshold = state.settings?.dangerThreshold || 75;
+
     // Overall stats
     const overallStats = useMemo(() => {
         if (subjects.length === 0) return { attended: 0, total: 0, percentage: 0 };
@@ -62,7 +66,7 @@ export default function NoClassesTodayView({ subjects, onSubjectPress }) {
                     {overallStats.percentage.toFixed(1)}%
                 </Text>
                 <Text style={styles.overallLabel}>Overall Attendance</Text>
-                <PlannerProgressBar percentage={overallStats.percentage} target={75} height={8} />
+                <PlannerProgressBar percentage={overallStats.percentage} target={globalThreshold} height={8} />
                 <View style={styles.countsRow}>
                     <View style={styles.countItem}>
                         <StatusDot status="danger" size={8} />
@@ -133,7 +137,7 @@ export default function NoClassesTodayView({ subjects, onSubjectPress }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
     },

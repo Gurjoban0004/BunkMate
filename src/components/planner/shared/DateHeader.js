@@ -7,6 +7,7 @@ import { COLORS, FONT_SIZES, SPACING } from '../../../theme/theme';
  * Props: date (Date object, optional — defaults to today)
  */
 export default function DateHeader({ date }) {
+    const styles = getStyles();
     const d = date || new Date();
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const monthNames = [
@@ -21,7 +22,7 @@ export default function DateHeader({ date }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     date: {
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,

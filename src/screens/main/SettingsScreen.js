@@ -19,8 +19,6 @@ import { clearAppState, saveAppState } from '../../storage/storage';
 import { showAlert } from '../../utils/alert';
 import { encodeBase64, decodeBase64 } from '../../utils/base64';
 
-const THRESHOLD_OPTIONS = [70, 75, 80, 85, 90];
-
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch } = useApp();
@@ -38,6 +36,11 @@ const SettingsScreen = ({ navigation }) => {
     const [importModalVisible, setImportModalVisible] = useState(false);
     const [importDataString, setImportDataString] = useState('');
     const [resetModalVisible, setResetModalVisible] = useState(false);
+
+    // Threshold Editor Modal State
+    const [thresholdModalVisible, setThresholdModalVisible] = useState(false);
+    const [editingSubject, setEditingSubject] = useState(null); // null means editing global threshold
+    const [tempThreshold, setTempThreshold] = useState(75);
 
     // Settings values
     const {
@@ -193,6 +196,38 @@ const SettingsScreen = ({ navigation }) => {
         setResetModalVisible(false);
     };
 
+    const handleOpenThresholdEditor = (subject = null) => {
+        setEditingSubject(subject);
+        setTempThreshold(subject ? (subject.target || dangerThreshold) : dangerThreshold);
+        setThresholdModalVisible(true);
+    };
+
+    const handleSaveThreshold = () => {
+        if (editingSubject) {
+            dispatch({
+                type: 'UPDATE_SUBJECT',
+                payload: { id: editingSubject.id, target: tempThreshold }
+            });
+        } else {
+            updateSetting('dangerThreshold', tempThreshold);
+        }
+        setThresholdModalVisible(false);
+    };
+
+    const handleResetSubjectThreshold = (subjectId) => {
+        dispatch({
+            type: 'UPDATE_SUBJECT',
+            payload: { id: subjectId, target: undefined } // Remove custom target
+        });
+        setThresholdModalVisible(false);
+    };
+
+    const getThresholdStatus = (target) => {
+        if (target > dangerThreshold) return { emoji: '⚠️', label: 'Strict requirement' };
+        if (target < dangerThreshold) return { emoji: '✓', label: 'Lenient requirement' };
+        return { emoji: '', label: 'Default threshold' };
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -230,47 +265,65 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* Core Preferences */}
+                {/* Attendance Thresholds Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>🎯 ATTENDANCE THRESHOLDS</Text>
+                    
+                    {/* Default Threshold Card */}
+                    <View style={styles.card}>
+                        <View style={styles.settingRow}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>Default Threshold</Text>
+                                <Text style={styles.cardDescription}>Applied to all subjects unless customized</Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={styles.thresholdValueBox}
+                                onPress={() => handleOpenThresholdEditor(null)}
+                            >
+                                <Text style={styles.thresholdValueText}>{dangerThreshold}%</Text>
+                                <Text style={styles.dropdownIcon}>▼</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Custom Thresholds Section */}
+                    <Text style={[styles.sectionTitle, { marginTop: SPACING.lg }]}>CUSTOM THRESHOLDS</Text>
+                    <View style={styles.cardGroup}>
+                        {state.subjects.map((subject, index) => {
+                            const currentTarget = subject.target || dangerThreshold;
+                            const status = getThresholdStatus(currentTarget);
+                            
+                            return (
+                                <View key={subject.id}>
+                                    <View style={styles.thresholdItem}>
+                                        <View style={styles.thresholdInfo}>
+                                            <View style={styles.subjectHeader}>
+                                                <View style={[styles.colorDot, { backgroundColor: subject.color || COLORS.primary }]} />
+                                                <Text style={styles.subjectName}>{subject.name}</Text>
+                                                <Text style={styles.thresholdValue}>
+                                                    {status.emoji} {currentTarget}%
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.thresholdStatus}>{status.label}</Text>
+                                        </View>
+                                        <TouchableOpacity 
+                                            style={styles.editButton}
+                                            onPress={() => handleOpenThresholdEditor(subject)}
+                                        >
+                                            <Text style={styles.editButtonText}>Edit</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    {index < state.subjects.length - 1 && <View style={styles.divider} />}
+                                </View>
+                            );
+                        })}
+                    </View>
+                </View>
+
+                {/* Core Preferences Section (Landing Page) */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>PREFERENCES</Text>
                     <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Danger Threshold</Text>
-                        <Text style={styles.cardDescription}>Subjects below this % are flagged as risky.</Text>
-
-                        <View style={styles.optionsRow}>
-                            {THRESHOLD_OPTIONS.map((option) => (
-                                <TouchableOpacity
-                                    key={option}
-                                    style={[styles.optionButton, dangerThreshold === option && styles.optionButtonActive]}
-                                    onPress={() => updateSetting('dangerThreshold', option)}
-                                >
-                                    <Text style={[styles.optionText, dangerThreshold === option && styles.optionTextActive]}>
-                                        {option}%
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-
-                        {/* Custom Targets Sub-list */}
-                        {customTargets.length > 0 && (
-                            <View style={styles.customTargetsContainer}>
-                                <Text style={styles.customTargetsHeader}>Custom Subject Targets</Text>
-                                {customTargets.map(sub => (
-                                    <View key={sub.id} style={styles.customTargetRow}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: sub.color || COLORS.primary }} />
-                                            <Text style={styles.customTargetName}>{sub.name}</Text>
-                                        </View>
-                                        <Text style={styles.customTargetValue}>{sub.target}%</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-
-                        {/* Divider */}
-                        <View style={[styles.divider, { marginLeft: 0, marginVertical: SPACING.md }]} />
-
-                        {/* Landing Page */}
                         <View style={styles.settingRow}>
                             <View style={styles.settingInfo}>
                                 <Text style={styles.cardTitle}>Startup Screen</Text>
@@ -680,6 +733,87 @@ const SettingsScreen = ({ navigation }) => {
                 </View>
             </Modal>
 
+            {/* Threshold Editor Modal */}
+            <Modal visible={thresholdModalVisible} animationType="slide" transparent={true} onRequestClose={() => setThresholdModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                {editingSubject ? `Target: ${editingSubject.name}` : 'Default Target'}
+                            </Text>
+                            <TouchableOpacity onPress={() => setThresholdModalVisible(false)}>
+                                <Text style={styles.modalCloseText}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <Text style={styles.thresholdEditorDesc}>
+                            {editingSubject 
+                                ? 'Set a custom attendance goal for this subject.' 
+                                : 'Set the base requirement for all subjects.'}
+                        </Text>
+
+                        {/* Granular Stepper */}
+                        <View style={styles.stepperSection}>
+                            <TouchableOpacity 
+                                style={styles.stepperControlBtn} 
+                                onPress={() => setTempThreshold(Math.max(0, tempThreshold - 1))}
+                            >
+                                <Text style={styles.stepperControlText}>−</Text>
+                            </TouchableOpacity>
+                            
+                            <View style={styles.stepperValueContainer}>
+                                <Text style={styles.stepperValueText}>{tempThreshold}%</Text>
+                                <Text style={styles.stepperValueLabel}>Target</Text>
+                            </View>
+
+                            <TouchableOpacity 
+                                style={styles.stepperControlBtn} 
+                                onPress={() => setTempThreshold(Math.min(100, tempThreshold + 1))}
+                            >
+                                <Text style={styles.stepperControlText}>+</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.thresholdOptionsGrid}>
+                            {[70, 75, 80].map((option) => (
+                                <TouchableOpacity
+                                    key={option}
+                                    style={[
+                                        styles.thresholdOptionBtn,
+                                        tempThreshold === option && styles.thresholdOptionBtnActive
+                                    ]}
+                                    onPress={() => setTempThreshold(option)}
+                                >
+                                    <Text style={[
+                                        styles.thresholdOptionText,
+                                        tempThreshold === option && styles.thresholdOptionTextActive
+                                    ]}>
+                                        {option}%
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        <View style={styles.modalActions}>
+                            {editingSubject && editingSubject.target !== undefined && (
+                                <TouchableOpacity 
+                                    style={[styles.modalButton, styles.modalButtonCancel]} 
+                                    onPress={() => handleResetSubjectThreshold(editingSubject.id)}
+                                >
+                                    <Text style={styles.modalButtonTextCancel}>Reset to Default</Text>
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity 
+                                style={[styles.modalButton, styles.modalButtonConfirm]} 
+                                onPress={handleSaveThreshold}
+                            >
+                                <Text style={styles.modalButtonTextConfirm}>Save Target</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 };
@@ -722,6 +856,143 @@ const getStyles = () => StyleSheet.create({
     optionButtonActive: { backgroundColor: COLORS.primary },
     optionText: { fontSize: FONT_SIZES.sm, fontWeight: '500', color: COLORS.textSecondary },
     optionTextActive: { color: COLORS.textOnPrimary, fontWeight: '600' },
+    
+    // Threshold UI Styles
+    thresholdValueBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.inputBackground,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 8,
+        borderRadius: BORDER_RADIUS.md,
+        gap: 6,
+    },
+    thresholdValueText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: COLORS.primary,
+    },
+    dropdownIcon: {
+        fontSize: 10,
+        color: COLORS.textMuted,
+    },
+    thresholdItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: SPACING.md,
+    },
+    thresholdInfo: {
+        flex: 1,
+    },
+    subjectHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 2,
+    },
+    colorDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    subjectName: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+    },
+    thresholdValue: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '700',
+        color: COLORS.primary,
+        marginLeft: 4,
+    },
+    thresholdStatus: {
+        fontSize: 11,
+        color: COLORS.textSecondary,
+        marginLeft: 16, // Align with name after dot
+    },
+    editButton: {
+        backgroundColor: COLORS.inputBackground,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: BORDER_RADIUS.sm,
+    },
+    editButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+    },
+    thresholdEditorDesc: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textSecondary,
+        marginBottom: SPACING.lg,
+    },
+    thresholdOptionsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: SPACING.sm,
+        marginBottom: SPACING.xl,
+    },
+    thresholdOptionBtn: {
+        width: '30%',
+        aspectRatio: 1.8,
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    thresholdOptionBtnActive: {
+        backgroundColor: COLORS.primary,
+    },
+    thresholdOptionText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+    },
+    thresholdOptionTextActive: {
+        color: COLORS.white,
+    },
+
+    // Stepper UI in Modal
+    stepperSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: SPACING.xl,
+        gap: SPACING.lg,
+    },
+    stepperControlBtn: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: COLORS.inputBackground,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...SHADOWS.small,
+    },
+    stepperControlText: {
+        fontSize: 24,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+    },
+    stepperValueContainer: {
+        alignItems: 'center',
+        minWidth: 100,
+    },
+    stepperValueText: {
+        fontSize: 40,
+        fontWeight: '800',
+        color: COLORS.primary,
+    },
+    stepperValueLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.textMuted,
+        textTransform: 'uppercase',
+        marginTop: -4,
+    },
+
     customTargetsContainer: { marginTop: SPACING.md, backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md, padding: SPACING.sm },
     customTargetsHeader: { fontSize: FONT_SIZES.xs, fontWeight: '600', color: COLORS.textMuted, marginBottom: 8, textTransform: 'uppercase' },
     customTargetRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },

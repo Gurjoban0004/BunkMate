@@ -18,6 +18,7 @@ import NoClassesTodayView from './NoClassesTodayView';
  * otherwise shows Skip? / Fix toggle with corresponding views.
  */
 const PlannerScreen = ({ navigation }) => {
+    const styles = getStyles();
     const { state } = useApp();
     const [activeMode, setActiveMode] = useState('skip');
 
@@ -27,10 +28,13 @@ const PlannerScreen = ({ navigation }) => {
         [state]
     );
 
+    // Use devDate if available, otherwise real today
+    const activeDate = useMemo(() => state.devDate ? new Date(state.devDate) : new Date(), [state.devDate]);
+
     // Check if there are classes today
     const classesToday = useMemo(
-        () => hasClassesToday(subjects),
-        [subjects]
+        () => hasClassesToday(subjects, activeDate),
+        [subjects, activeDate]
     );
 
     const handleSubjectPress = (subject) => {
@@ -55,7 +59,7 @@ const PlannerScreen = ({ navigation }) => {
                 </View>
 
                 {/* Date */}
-                <DateHeader />
+                <DateHeader date={activeDate} />
 
                 {/* Mode Toggle Always Visible */}
                 <PlannerModeToggle
@@ -74,6 +78,7 @@ const PlannerScreen = ({ navigation }) => {
                         <SkipModeView
                             subjects={subjects}
                             onSubjectPress={handleSubjectPress}
+                            activeDate={activeDate}
                         />
                     )
                 )}
@@ -82,6 +87,7 @@ const PlannerScreen = ({ navigation }) => {
                     <FixModeView
                         subjects={subjects}
                         onSubjectPress={handleSubjectPress}
+                        defaultTarget={state.settings?.dangerThreshold || 75}
                     />
                 )}
 
@@ -91,7 +97,7 @@ const PlannerScreen = ({ navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

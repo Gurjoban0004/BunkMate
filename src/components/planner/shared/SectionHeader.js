@@ -7,6 +7,7 @@ import { COLORS, FONT_SIZES, SPACING } from '../../../theme/theme';
  * Props: title (string), count (optional number)
  */
 export default function SectionHeader({ title, count }) {
+    const styles = getStyles();
     return (
         <View style={styles.container}>
             <View style={styles.line} />
@@ -19,7 +20,7 @@ export default function SectionHeader({ title, count }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',

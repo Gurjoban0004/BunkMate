@@ -134,7 +134,7 @@ export function getSubjectPlannerData(subjectId, state) {
     const attended = stats.attendedUnits;
     const total = stats.totalUnits;
     const percentage = stats.percentage;
-    const target = subject.target || 75;
+    const target = subject.target || state.settings?.dangerThreshold || 75;
     const history = buildHistory(subjectId, state);
     const schedule = buildSchedule(subjectId, state);
 
