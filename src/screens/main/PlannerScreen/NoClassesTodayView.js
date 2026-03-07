@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
 import StatusDot from '../../../components/planner/shared/StatusDot';
 import PlannerProgressBar from '../../../components/planner/shared/PlannerProgressBar';
@@ -10,7 +10,7 @@ import { analyzePatterns, generateInsights } from '../../../utils/planner/patter
  * No classes today view — shows week report, subject movements, insights,
  * and next week preview. Displays when the user has no classes scheduled today.
  */
-export default function NoClassesTodayView({ subjects }) {
+export default function NoClassesTodayView({ subjects, onSubjectPress }) {
     // Overall stats
     const overallStats = useMemo(() => {
         if (subjects.length === 0) return { attended: 0, total: 0, percentage: 0 };
@@ -85,7 +85,12 @@ export default function NoClassesTodayView({ subjects }) {
                 {sortedSubjects.map(subject => {
                     const status = determineStatus(subject.percentage, subject.target);
                     return (
-                        <View key={subject.id} style={styles.subjectRow}>
+                        <TouchableOpacity
+                            key={subject.id}
+                            style={styles.subjectRow}
+                            onPress={() => onSubjectPress?.(subject)}
+                            activeOpacity={0.7}
+                        >
                             <View style={styles.subjectLeft}>
                                 <View style={[styles.colorDot, { backgroundColor: subject.color || COLORS.primary }]} />
                                 <Text style={styles.subjectName} numberOfLines={1}>{subject.name}</Text>
@@ -101,7 +106,7 @@ export default function NoClassesTodayView({ subjects }) {
                                     {subject.attended}/{subject.total}
                                 </Text>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     );
                 })}
             </View>

@@ -57,32 +57,32 @@ const PlannerScreen = ({ navigation }) => {
                 {/* Date */}
                 <DateHeader />
 
-                {/* Content based on whether there are classes today */}
-                {!classesToday ? (
-                    <NoClassesTodayView subjects={subjects} />
-                ) : (
-                    <>
-                        {/* Mode Toggle */}
-                        <PlannerModeToggle
-                            activeMode={activeMode}
-                            onModeChange={setActiveMode}
+                {/* Mode Toggle Always Visible */}
+                <PlannerModeToggle
+                    activeMode={activeMode}
+                    onModeChange={setActiveMode}
+                />
+
+                {/* Mode Views */}
+                {activeMode === 'skip' && (
+                    !classesToday ? (
+                        <NoClassesTodayView
+                            subjects={subjects}
+                            onSubjectPress={handleSubjectPress}
                         />
+                    ) : (
+                        <SkipModeView
+                            subjects={subjects}
+                            onSubjectPress={handleSubjectPress}
+                        />
+                    )
+                )}
 
-                        {/* Mode Views */}
-                        {activeMode === 'skip' && (
-                            <SkipModeView
-                                subjects={subjects}
-                                onSubjectPress={handleSubjectPress}
-                            />
-                        )}
-
-                        {activeMode === 'fix' && (
-                            <FixModeView
-                                subjects={subjects}
-                                onSubjectPress={handleSubjectPress}
-                            />
-                        )}
-                    </>
+                {activeMode === 'fix' && (
+                    <FixModeView
+                        subjects={subjects}
+                        onSubjectPress={handleSubjectPress}
+                    />
                 )}
 
                 <View style={{ height: 100 }} />

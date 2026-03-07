@@ -3,7 +3,7 @@
 **Platform Targets:** Android (APK via EAS) & iOS (PWA via Web)
 
 ## 1. PROJECT OVERVIEW
-Presence is a beautifully crafted, privacy-first college attendance tracker designed to be an entirely offline, local-storage-only application. Built with React Native (Expo), it avoids the overhead of a backend server, ensuring blazing-fast performance and total user data ownership. The app empowers students to seamlessly track their classes with features like a tailored "Speed Paint" setup for initial configuration and an intelligent "Bunk Planner" that automatically calculates safety buffers and recovery paths based on dynamic danger thresholds.
+Presence is a beautifully crafted, privacy-first college attendance tracker designed to be an entirely offline, local-storage-only application. Built with React Native (Expo), it avoids the overhead of a backend server, ensuring blazing-fast performance and total user data ownership. The app empowers students to seamlessly track their classes with features like a tailored "Speed Paint" setup for initial configuration and an intelligent "Planner" that incorporates a Smart Simulator, automatic pattern recognition, and recovery path generation.
 
 To eliminate friction, the app focuses heavily on intuitive UX—such as 2-hour class merging, pattern detection, and a clean, pastel-driven UI that prioritizes visual clarity over clutter. The architecture firmly relies on AsyncStorage intertwined with the React Context API to maintain a single source of truth, enabling advanced offline functionalities like timeline travel (Dev Mode) and base64-based backup/restore across platforms without sacrificing performance.
 
@@ -14,8 +14,11 @@ attendance-app/src/
 │   ├── common/          # Buttons, Cards, ErrorBoundary, Inputs
 │   ├── calculator/      # Bunk calculator specific UI components
 │   ├── subjects/        # Subject list components
-│   ├── planner/         # Shared planner components (DateHeader, PlannerModeToggle)
-│   └── today/           # Today screen components (ClassCard, Progress rings)
+│   ├── planner/         # Planner-specific views
+│   │   ├── SkipMode/    # Components for "Skip?" tab
+│   │   ├── FixMode/     # Components for "Fix" tab
+│   │   └── SubjectDetail/ # Smart Simulator, Needs, Recovery Paths
+│   └── today/           # Today screen components (ClassCard)
 ├── context/             # Global State Management
 │   ├── AppContext.js    # Single source of truth for user data and schedules
 │   └── AlertContext.js  # Global alert definitions handling cross-platform dialogs
@@ -23,6 +26,7 @@ attendance-app/src/
 │   └── presets.js       # Predefined class schedules and groups (e.g., CS4-G1)
 ├── dev/                 # Developer tools
 │   ├── DevModePanel.js  # Testing time travel and mocked states
+│   ├── PlannerDevTools.js # Simulator controls for Planner
 │   └── mockData/        # Mock scenarios for UI testing
 ├── navigation/          # React Navigation stacks & tabs
 │   ├── AppNavigator.js  # Root Switcher (Setup vs. Main Tabs vs. Web)
@@ -44,7 +48,11 @@ attendance-app/src/
     ├── backlog.js       # Historic backlog calculators
     ├── dateHelpers.js   # Date/time parsers and string formatters
     ├── streak.js        # Streak tracking logic
-    └── planner.js       # Planner specific derivations
+    └── planner/         # Planner specific derivations
+        ├── dataAdapter.js         # Transforms AppContext into Planner views
+        ├── scheduleProcessor.js   # Class schedules, next classes info
+        ├── patternRecognition.js  # Subject standing insights
+        └── recoveryPlanner.js     # Path generation for critical subjects
 ```
 
 ## 3. GLOBAL STATE MANAGEMENT (The Brains)
@@ -158,7 +166,8 @@ Inside `theme/theme.js`, explicit hardcoded colors are shunned in favor of struc
 
 ## 7. CRITICAL COMPONENT BEHAVIORS
 *   **ClassCard.js (`components/today/ClassCard.js`):** Generates active horizontal rows. Displays `2-HR CLASS` badges natively identifying parsed adjacent merges. Contains real-time action handling (Mark Present/Absent) encapsulating internal Haptic feedback triggers and animated scale interactions. Displays a grayed-out "✓ Included in setup" view overlay when intercepting `isPreCounted` signals dynamically disabling overlapping inputs for new accounts.
-*   **Planner Tab (`screens/main/PlannerScreen`):** Orchestrates a dynamic hub combining mode toggles (`PlannerModeToggle`) pushing between `SkipModeView` (safe to bunk) and `FixModeView` (in danger). When `hasClassesToday()` resolves false, overrides to a friendly `NoClassesTodayView`. The planner provides visual timeline sliders and contextual week calendars tracking future paths.
+*   **Planner Tab (`screens/main/PlannerScreen/`):** Orchestrates a dynamic hub combining mode toggles (`PlannerModeToggle`) pushing between `SkipModeView` (safe to bunk) and `FixModeView` (in danger). When `hasClassesToday()` resolves false (like on weekends), it automatically shows `NoClassesTodayView` giving an overall summary—*however, the Mode Toggle remains visible so users can still switch to the Fix tab manually to plan recoveries on weekends*.
+*   **SubjectDetail (Planner):** Contains the `WhatIfSimulator` (Smart Simulator) acting as a sandbox to test bunk/attend sequences globally synced backwards into UI elements estimating precise timeline recoveries.
 *   **Preset Loader (`data/presets.js`):** Bypasses manual configuration workflows safely mapping generic group timetable blocks (e.g., `CS4-G1`) mapping 6 daily slots immediately into system states without requiring individual slot/subject mapping by new users.
 
 ## 8. DEPLOYMENT & PLATFORM SPECIFICS
