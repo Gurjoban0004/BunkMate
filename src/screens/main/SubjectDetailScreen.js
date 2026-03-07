@@ -10,9 +10,10 @@ import Button from '../../components/common/Button';
 import AttendanceGraph from '../../components/subjects/AttendanceGraph';
 import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
+import ScreenHeader from '../../components/common/ScreenHeader';
 
 export default function SubjectDetailScreen({ route }) {
+    const styles = getStyles();
     const { subjectId } = route.params;
     const { state, dispatch } = useApp();
     const [editModal, setEditModal] = useState(null); // { date, record }
@@ -83,7 +84,7 @@ export default function SubjectDetailScreen({ route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <FloatingBackButton />
+            <ScreenHeader title={subject?.name || 'Subject'} />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -213,13 +214,13 @@ export default function SubjectDetailScreen({ route }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
-        padding: SPACING.screenPadding,
     },
     scrollContent: {
+        padding: SPACING.screenPadding,
         paddingBottom: SPACING.xxl,
     },
     errorText: {

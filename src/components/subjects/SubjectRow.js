@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
 
 const SubjectRow = ({ subject, status, threshold, onPress }) => {
+    const styles = getStyles();
     const { name, color, percentage, attendedUnits, totalUnits, bunkInfo } = subject;
 
     const getStatusColor = () => {
@@ -81,7 +82,7 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -89,8 +90,8 @@ const styles = StyleSheet.create({
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.cardGap,
         padding: SPACING.cardPadding,
-        borderRadius: BORDER_RADIUS.lg,
-        ...SHADOWS.small,
+        borderRadius: BORDER_RADIUS.xl,
+        ...SHADOWS.medium,
     },
     colorDot: {
         width: 12,

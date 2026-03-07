@@ -15,6 +15,7 @@ import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import EndGameScreen from '../screens/main/EndGameScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
+import { useApp } from '../context/AppContext';
 import { COLORS } from '../theme/theme';
 
 const Tab = createBottomTabNavigator();
@@ -180,8 +181,12 @@ function TabIcon({ label, focused }) {
 }
 
 export default function TabNavigator() {
+    const { state } = useApp();
+    const initialRoute = state.settings?.landingPage === 'planner' ? 'Planner' : 'Today';
+
     return (
         <Tab.Navigator
+            initialRouteName={initialRoute}
             screenOptions={({ route }) => ({
                 tabBarIcon: ({ focused }) => (
                     <TabIcon label={route.name} focused={focused} />

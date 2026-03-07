@@ -4,6 +4,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme
 import { getResultMessage } from '../../utils/calculator';
 
 const ResultCard = ({ maxBunks, recoveryNeeded, currentPercentage, targetPercentage, onRecoveryPress }) => {
+    const styles = getStyles();
     const isBelowTarget = currentPercentage < targetPercentage;
 
     if (isBelowTarget) {
@@ -54,7 +55,7 @@ const ResultCard = ({ maxBunks, recoveryNeeded, currentPercentage, targetPercent
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.lg,

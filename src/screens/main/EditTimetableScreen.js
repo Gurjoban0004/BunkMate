@@ -19,6 +19,7 @@ import { showAlert } from '../../utils/alert';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const EditTimetableScreen = ({ navigation }) => {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
     const [activeDay, setActiveDay] = useState('Monday');
 
@@ -380,7 +381,7 @@ const EditTimetableScreen = ({ navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

@@ -6,106 +6,112 @@ import {
     ScrollView,
     TouchableOpacity,
 } from 'react-native';
-import { COLORS, BORDER_RADIUS, FONT_SIZES, SPACING } from '../../theme/theme';
+import { COLORS, BORDER_RADIUS, FONT_SIZES, SPACING, SHADOWS } from '../../theme/theme';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const TimetableGrid = ({ state, onCellPress }) => {
+    const styles = getStyles();
     const timetable = state.timetable;
     const timeSlots = state.timeSlots || [];
 
     return (
-        <View style={styles.gridContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={true} bounces={false}>
-                <ScrollView bounces={false}>
-                    {/* Header Row */}
-                    <View style={styles.row}>
-                        <View style={[styles.cell, styles.headerCell, styles.cornerCell]} />
-                        {timeSlots.map(slot => (
-                            <View key={slot.id} style={[styles.cell, styles.headerCell]}>
-                                <Text style={styles.timeText}>{slot.start.substring(0, 5)}</Text>
-                                <Text style={styles.timeText}>{slot.end.substring(0, 5)}</Text>
-                            </View>
-                        ))}
-                    </View>
-
-                    {/* Day Rows */}
-                    {DAYS.map(day => {
-                        let skipNext = false;
-
-                        return (
-                            <View key={day} style={styles.row}>
-                                <View style={[styles.cell, styles.dayCell]}>
-                                    <Text style={styles.dayText}>{day.substring(0, 3)}</Text>
+        <View style={styles.shadowWrapper}>
+            <View style={styles.gridContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true} bounces={false}>
+                    <ScrollView bounces={false}>
+                        {/* Header Row */}
+                        <View style={styles.row}>
+                            <View style={[styles.cell, styles.headerCell, styles.cornerCell]} />
+                            {timeSlots.map(slot => (
+                                <View key={slot.id} style={[styles.cell, styles.headerCell]}>
+                                    <Text style={styles.timeText}>{slot.start.substring(0, 5)}</Text>
+                                    <Text style={styles.timeText}>{slot.end.substring(0, 5)}</Text>
                                 </View>
+                            ))}
+                        </View>
 
-                                {timeSlots.map((slot, index) => {
-                                    if (skipNext) {
-                                        skipNext = false;
-                                        return null;
-                                    }
+                        {/* Day Rows */}
+                        {DAYS.map(day => {
+                            let skipNext = false;
 
-                                    const classInfo = timetable[day]?.find(c => c.slotId === slot.id);
-                                    const subject = classInfo ? state.subjects.find(s => s.id === classInfo.subjectId) : null;
+                            return (
+                                <View key={day} style={styles.row}>
+                                    <View style={[styles.cell, styles.dayCell]}>
+                                        <Text style={styles.dayText}>{day.substring(0, 3)}</Text>
+                                    </View>
 
-                                    // Check if next slot has the same subject (2-hour class visually merged)
-                                    let isMerged = false;
-                                    if (subject) {
-                                        const nextSlot = timeSlots[index + 1];
-                                        if (nextSlot) {
-                                            const nextClass = timetable[day]?.find(c => c.slotId === nextSlot.id);
-                                            if (nextClass && nextClass.subjectId === subject.id) {
-                                                isMerged = true;
-                                                skipNext = true;
+                                    {timeSlots.map((slot, index) => {
+                                        if (skipNext) {
+                                            skipNext = false;
+                                            return null;
+                                        }
+
+                                        const classInfo = timetable[day]?.find(c => c.slotId === slot.id);
+                                        const subject = classInfo ? state.subjects.find(s => s.id === classInfo.subjectId) : null;
+
+                                        // Check if next slot has the same subject (2-hour class visually merged)
+                                        let isMerged = false;
+                                        if (subject) {
+                                            const nextSlot = timeSlots[index + 1];
+                                            if (nextSlot) {
+                                                const nextClass = timetable[day]?.find(c => c.slotId === nextSlot.id);
+                                                if (nextClass && nextClass.subjectId === subject.id) {
+                                                    isMerged = true;
+                                                    skipNext = true;
+                                                }
                                             }
                                         }
-                                    }
 
-                                    if (subject) {
+                                        if (subject) {
+                                            return (
+                                                <TouchableOpacity
+                                                    key={slot.id}
+                                                    style={[
+                                                        styles.cell,
+                                                        styles.filledCell,
+                                                        { backgroundColor: subject.color + '30', borderLeftColor: subject.color },
+                                                        isMerged && { width: 140 } // Double width
+                                                    ]}
+                                                    onPress={() => onCellPress && onCellPress(subject)}
+                                                    activeOpacity={0.7}
+                                                    disabled={!onCellPress}
+                                                >
+                                                    <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={2}>
+                                                        {subject.name}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        }
+
                                         return (
-                                            <TouchableOpacity
-                                                key={slot.id}
-                                                style={[
-                                                    styles.cell,
-                                                    styles.filledCell,
-                                                    { backgroundColor: subject.color + '30', borderLeftColor: subject.color },
-                                                    isMerged && { width: 140 } // Double width
-                                                ]}
-                                                onPress={() => onCellPress && onCellPress(subject)}
-                                                activeOpacity={0.7}
-                                                disabled={!onCellPress}
-                                            >
-                                                <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={2}>
-                                                    {subject.name}
-                                                </Text>
-                                            </TouchableOpacity>
+                                            <View key={slot.id} style={styles.cell}>
+                                                <Text style={styles.emptyText}>-</Text>
+                                            </View>
                                         );
-                                    }
-
-                                    return (
-                                        <View key={slot.id} style={styles.cell}>
-                                            <Text style={styles.emptyText}>-</Text>
-                                        </View>
-                                    );
-                                })}
-                            </View>
-                        );
-                    })}
+                                    })}
+                                </View>
+                            );
+                        })}
+                    </ScrollView>
                 </ScrollView>
-            </ScrollView>
+            </View>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
-    gridContainer: {
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        
-        
-        overflow: 'hidden',
+const getStyles = () => StyleSheet.create({
+    shadowWrapper: {
         marginHorizontal: SPACING.lg,
         marginTop: SPACING.md,
+        borderRadius: BORDER_RADIUS.xl,
+        backgroundColor: COLORS.cardBackground,
+        ...SHADOWS.medium,
+        marginBottom: SPACING.lg,
+    },
+    gridContainer: {
+        borderRadius: BORDER_RADIUS.xl,
+        overflow: 'hidden',
     },
     row: {
         flexDirection: 'row',

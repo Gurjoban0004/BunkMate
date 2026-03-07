@@ -20,6 +20,7 @@ import { formatMinutesToTime, parseTimeToMinutes } from '../../utils/dateHelpers
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function TimetableBuilderScreen({ navigation }) {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
 
     const [selectedBrush, setSelectedBrush] = useState(null); // subjectId or 'ERASER'
@@ -290,7 +291,7 @@ export default function TimetableBuilderScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

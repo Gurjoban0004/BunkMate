@@ -13,6 +13,7 @@ const GAP = 4;
  * @param {object} state
  */
 export default function CalendarView({ subjectId, state }) {
+    const styles = getStyles();
     const [monthOffset, setMonthOffset] = useState(0);
 
     const { month, year, calendarData, monthName, daysInMonth, firstDayOfWeek } = useMemo(() => {
@@ -67,12 +68,12 @@ export default function CalendarView({ subjectId, state }) {
         gridCells.push({ type: 'day', ...d, key: d.dateKey });
     });
 
-    const getStatusColor = (status) => {
+    const getBgColor = (status) => {
         switch (status) {
-            case 'present': return COLORS.success;
-            case 'absent': return COLORS.danger;
-            case 'holiday': return COLORS.primary;
-            case 'cancelled': return COLORS.textMuted;
+            case 'present': return COLORS.successLight;
+            case 'absent': return COLORS.dangerLight;
+            case 'holiday': return COLORS.primaryLight;
+            case 'cancelled': return COLORS.border;
             default: return 'transparent';
         }
     };
@@ -104,9 +105,12 @@ export default function CalendarView({ subjectId, state }) {
             {/* Calendar grid */}
             <View style={styles.grid}>
                 {gridCells.map((cell) => (
-                    <View key={cell.key} style={styles.cell}>
+                    <View key={cell.key} style={styles.cellOuter}>
                         {cell.type === 'day' ? (
-                            <>
+                            <View style={[
+                                styles.cellInner,
+                                cell.status !== 'none' && { backgroundColor: getBgColor(cell.status) }
+                            ]}>
                                 <Text style={[
                                     styles.dayText,
                                     cell.status === 'present' && styles.dayTextPresent,
@@ -114,10 +118,7 @@ export default function CalendarView({ subjectId, state }) {
                                 ]}>
                                     {cell.day}
                                 </Text>
-                                {cell.status !== 'none' && (
-                                    <View style={[styles.statusDot, { backgroundColor: getStatusColor(cell.status) }]} />
-                                )}
-                            </>
+                            </View>
                         ) : null}
                     </View>
                 ))}
@@ -126,15 +127,15 @@ export default function CalendarView({ subjectId, state }) {
             {/* Legend */}
             <View style={styles.legend}>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
-                    <Text style={styles.legendText}>Present</Text>
+                    <View style={[styles.legendBox, { backgroundColor: COLORS.successLight }]} />
+                    <Text style={styles.legendText}>Attended</Text>
                 </View>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.danger }]} />
-                    <Text style={styles.legendText}>Absent</Text>
+                    <View style={[styles.legendBox, { backgroundColor: COLORS.dangerLight }]} />
+                    <Text style={styles.legendText}>Skipped</Text>
                 </View>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.primary }]} />
+                    <View style={[styles.legendBox, { backgroundColor: COLORS.primaryLight }]} />
                     <Text style={styles.legendText}>Holiday</Text>
                 </View>
             </View>
@@ -142,7 +143,7 @@ export default function CalendarView({ subjectId, state }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         marginBottom: SPACING.md,
     },
@@ -183,12 +184,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
     },
-    cell: {
+    cellOuter: {
         width: `${100 / 7}%`,
-        height: CELL_SIZE + 8,
+        height: CELL_SIZE + 10,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: GAP,
+    },
+    cellInner: {
+        width: CELL_SIZE + 6,
+        height: CELL_SIZE + 6,
+        borderRadius: BORDER_RADIUS.sm,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     dayText: {
         ...TYPOGRAPHY.bodySmall,
@@ -203,12 +211,6 @@ const styles = StyleSheet.create({
         color: COLORS.dangerDark,
         fontWeight: '600',
     },
-    statusDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 2.5,
-        marginTop: 1,
-    },
     legend: {
         flexDirection: 'row',
         justifyContent: 'center',
@@ -220,14 +222,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: SPACING.xs,
     },
-    legendDot: {
-        width: 8,
-        height: 8,
+    legendBox: {
+        width: 14,
+        height: 14,
         borderRadius: 4,
     },
     legendText: {
         ...TYPOGRAPHY.caption,
         color: COLORS.textMuted,
-        fontSize: 10,
+        fontSize: 11,
+        fontWeight: '500',
     },
 });

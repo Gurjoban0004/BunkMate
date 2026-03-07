@@ -9,6 +9,7 @@ import { showAlert } from '../../utils/alert';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 export default function WelcomeScreen({ navigation }) {
+    const styles = getStyles();
     const [name, setName] = useState('');
     const [code, setCode] = useState('');
     const { dispatch } = useApp();
@@ -101,7 +102,7 @@ export default function WelcomeScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

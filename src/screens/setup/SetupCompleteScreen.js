@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../theme/theme';
 
 export default function SetupCompleteScreen() {
+    const styles = getStyles();
     const { dispatch } = useApp();
 
     const handleComplete = () => {
@@ -32,7 +33,7 @@ export default function SetupCompleteScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

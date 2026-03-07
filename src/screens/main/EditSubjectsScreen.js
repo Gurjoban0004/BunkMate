@@ -14,12 +14,13 @@ import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance } from '../../utils/attendance';
 import Button from '../../components/common/Button';
 import { showAlert } from '../../utils/alert';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
+import ScreenHeader from '../../components/common/ScreenHeader';
 
 // Import theme palette directly
 const THEME_COLORS = [...COLORS.subjectPalette];
 
 const EditSubjectsScreen = ({ navigation }) => {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSubject, setEditingSubject] = useState(null);
@@ -113,7 +114,7 @@ const EditSubjectsScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <FloatingBackButton />
+            <ScreenHeader title="Edit Subjects" />
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
@@ -255,7 +256,7 @@ const EditSubjectsScreen = ({ navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

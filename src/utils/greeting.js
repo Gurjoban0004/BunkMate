@@ -1,5 +1,6 @@
-export const getGreeting = (name) => {
-    const hour = new Date().getHours();
+export const getGreeting = (name, devDate = null) => {
+    const now = devDate ? new Date(devDate) : new Date();
+    const hour = now.getHours();
     let greeting;
     let emoji;
 

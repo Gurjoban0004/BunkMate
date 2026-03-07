@@ -5,6 +5,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 const TARGET_OPTIONS = [70, 75, 80, 85, 90];
 
 const TargetSelector = ({ selected, onSelect }) => {
+    const styles = getStyles();
     return (
         <View style={styles.container}>
             <Text style={styles.label}>Your target</Text>
@@ -32,7 +33,7 @@ const TargetSelector = ({ selected, onSelect }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.md,

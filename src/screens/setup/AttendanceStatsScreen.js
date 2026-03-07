@@ -12,6 +12,7 @@ import { getTodayKey, getNextDay } from '../../utils/dateHelpers';
 import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function AttendanceStatsScreen({ navigation, route }) {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
     const fromSettings = route?.params?.fromSettings || false;
 
@@ -212,7 +213,7 @@ export default function AttendanceStatsScreen({ navigation, route }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

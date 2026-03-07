@@ -32,6 +32,7 @@ export default function PlannerDevTools({
     onClose,
     scenarios,
 }) {
+    const styles = getStyles();
     const [selectedSubject, setSelectedSubject] = useState(null);
 
     const loadScenario = (scenarioName) => {
@@ -83,7 +84,7 @@ export default function PlannerDevTools({
 
                         {/* 2: Time Travel */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>⏰ Time Travel</Text>
+                            <Text style={styles.sectionTitle}>⏰ Time Travel & Autopilot</Text>
                             <Text style={styles.currentDate}>
                                 Current: {format(currentDate, 'EEEE, MMM dd, yyyy')}
                             </Text>
@@ -105,6 +106,20 @@ export default function PlannerDevTools({
                                     <Text style={styles.buttonText}>+7d</Text>
                                 </TouchableOpacity>
                             </View>
+
+                            <TouchableOpacity
+                                style={[styles.button, { backgroundColor: COLORS.secondary, marginTop: 8 }]}
+                                onPress={() => {
+                                    // Trigger manual autopilot run
+                                    const { runAutopilotCheck } = require('../context/AppContext');
+                                    // This is a bit tricky since we are in a component, 
+                                    // but we can pass it as a prop or use the dispatch
+                                    alert('Triggering Autopilot Check...');
+                                    onLoadScenario({ ...scenarios.CURRENT, _triggerAutopilot: true });
+                                }}
+                            >
+                                <Text style={styles.buttonText}>🤖 Force Autopilot Run</Text>
+                            </TouchableOpacity>
                         </View>
 
                         {/* 3: Subject Info */}
@@ -185,7 +200,7 @@ export default function PlannerDevTools({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: COLORS.overlay,

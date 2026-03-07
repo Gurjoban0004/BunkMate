@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const QuickActions = ({ nextClass, onRecoveryPress, onViewStatsPress, showRecovery }) => {
+    const styles = getStyles();
     return (
         <View style={styles.container}>
             <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
@@ -39,7 +40,7 @@ const QuickActions = ({ nextClass, onRecoveryPress, onViewStatsPress, showRecove
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.md,

@@ -29,6 +29,7 @@ import QuickActions from './QuickActions';
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const CalculatorView = ({ navigation }) => {
+    const styles = getStyles();
     const { state } = useApp();
 
     const [selectedSubjectId, setSelectedSubjectId] = useState(state.subjects[0]?.id);
@@ -271,12 +272,13 @@ const CalculatorView = ({ navigation }) => {
 };
 
 function getOrdinal(n) {
+    const styles = getStyles();
     const s = ['th', 'st', 'nd', 'rd'];
     const v = n % 100;
     return s[(v - 20) % 10] || s[v] || s[0];
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     greeting: {
         fontSize: FONT_SIZES.md,
         fontWeight: '600',

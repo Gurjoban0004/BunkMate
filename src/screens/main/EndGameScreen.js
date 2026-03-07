@@ -14,6 +14,7 @@ import { getEndGameStats } from '../../utils/planner';
 const WEEK_OPTIONS = [4, 6, 8, 10];
 
 const EndGameScreen = () => {
+    const styles = getStyles();
     const { state } = useApp();
     const [weeksLeft, setWeeksLeft] = useState(6);
 
@@ -152,7 +153,7 @@ const EndGameScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

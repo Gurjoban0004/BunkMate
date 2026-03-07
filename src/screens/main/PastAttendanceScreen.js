@@ -6,6 +6,7 @@ import {
     SectionList,
     TouchableOpacity,
     Alert,
+    ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
@@ -16,9 +17,12 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme
 import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function PastAttendanceScreen({ navigation }) {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
 
-    const unmarkedByDate = useMemo(() => getUnmarkedByDate(state), [state]);
+    const unmarkedByDate = useMemo(() => {
+        return getUnmarkedByDate(state, true);
+    }, [state]);
 
     const markClass = (date, subjectId, status, units) => {
         dispatch({
@@ -62,7 +66,39 @@ export default function PastAttendanceScreen({ navigation }) {
         return `${h12}:${String(m).padStart(2, '0')} ${suffix}`;
     };
 
-    if (unmarkedByDate.length === 0) {
+    // Calculate metrics for the Summary Card
+    const autoMarkedClasses = useMemo(() => {
+        const auto = [];
+        unmarkedByDate.forEach(group => {
+            group.classes.forEach(c => {
+                const record = state.attendanceRecords[c.date]?.[c.subjectId];
+                if (record?.autoMarked) {
+                    auto.push({ ...c, record });
+                }
+            });
+        });
+        return auto;
+    }, [unmarkedByDate, state.attendanceRecords]);
+
+    const presentCount = autoMarkedClasses.filter(c => c.record.status === 'present').length;
+    const totalAutoCount = autoMarkedClasses.length;
+    const presentPercentage = totalAutoCount > 0 ? Math.round((presentCount / totalAutoCount) * 100) : 0;
+
+    const handleApproveAll = () => {
+        dispatch({ type: 'CONFIRM_ALL_AUTO_MARK' });
+        navigation.goBack();
+    };
+
+    const handleApproveSingle = (date, subjectId) => {
+        dispatch({ type: 'CONFIRM_AUTO_MARK', payload: { date, subjectId } });
+    };
+
+    const handleSkipAll = () => {
+        dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' });
+        navigation.goBack();
+    };
+
+    if (unmarkedByDate.length === 0 && totalAutoCount === 0) {
         return (
             <SafeAreaView style={styles.container} edges={['bottom']}>
                 <FloatingBackButton />
@@ -74,6 +110,24 @@ export default function PastAttendanceScreen({ navigation }) {
                         title="Back to Today"
                         onPress={() => navigation.goBack()}
                         style={{ marginTop: SPACING.lg }}
+                    />
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    if (totalAutoCount > 0 && unmarkedByDate.length === 0) { // All auto-marked are now confirmed and no regular unmarked left
+        return (
+            <SafeAreaView style={styles.container} edges={['bottom']}>
+                <FloatingBackButton />
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyEmoji}>🎉</Text>
+                    <Text style={styles.emptyText}>All Reviewed!</Text>
+                    <Text style={styles.emptySubtext}>Your schedule is up to date.</Text>
+                    <Button
+                        title="Done — Return to Today"
+                        onPress={handleSkipAll}
+                        style={{ marginTop: SPACING.xl }}
                     />
                 </View>
             </SafeAreaView>
@@ -119,9 +173,88 @@ export default function PastAttendanceScreen({ navigation }) {
                         </View>
                     );
                 }}
+                ListHeaderComponent={
+                    totalAutoCount > 0 ? (
+                        <View style={styles.reviewHero}>
+                            <View style={styles.heroRow}>
+                                <Text style={styles.heroTitle}>🤖 Auto-marked {totalAutoCount} classes</Text>
+                                <TouchableOpacity onPress={handleSkipAll}>
+                                    <Text style={styles.skipText}>Skip All</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <Text style={styles.heroSubtitle}>Tap each card to confirm or adjust.</Text>
+                        </View>
+                    ) : null
+                }
                 renderItem={({ item }) => {
                     const record = state.attendanceRecords[item.date]?.[item.subjectId];
                     const isMarked = !!record;
+                    const isAutoMarked = record?.autoMarked;
+
+                    if (isAutoMarked) {
+                        // Needs Review Card
+                        return (
+                            <View style={styles.reviewCardItem}>
+                                <View style={styles.reviewCardHeader}>
+                                    <View style={styles.nameRow}>
+                                        <View style={[styles.colorDot, { backgroundColor: item.color || COLORS.primary }]} />
+                                        <Text style={styles.className}>{item.subjectName}</Text>
+                                    </View>
+                                    <View style={styles.autoMarkedBadge}>
+                                        <Text style={styles.autoMarkedText}>🤖 Autopilot</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.classTime}>
+                                    {formatTime(item.startTime)} — {formatTime(item.endTime)}
+                                </Text>
+
+                                <View style={styles.reviewCardBody}>
+                                    <View style={styles.statusSection}>
+                                        <Text style={styles.statusLabel}>Marked as</Text>
+                                        <View style={[styles.currentStatusBox, record.status === 'present' ? styles.statusPresent : styles.statusAbsent]}>
+                                            <Text style={[styles.statusBoxChar, record.status === 'present' ? styles.textPresent : styles.textAbsent]}>
+                                                {record.status === 'present' ? 'Present' : 'Absent'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    
+                                    <TouchableOpacity
+                                        style={styles.approveQuickBtn}
+                                        onPress={() => handleApproveSingle(item.date, item.subjectId)}
+                                    >
+                                        <Text style={styles.approveQuickText}>Confirm ✓</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={styles.reviewCardActions}>
+                                    <TouchableOpacity
+                                        style={[styles.reviewActionBtn, record.status === 'absent' && styles.actionBtnOutline]}
+                                        onPress={() => {
+                                            markClass(item.date, item.subjectId, 'present', item.units);
+                                            handleApproveSingle(item.date, item.subjectId);
+                                        }}
+                                    >
+                                        <Text style={[styles.reviewActionText, record.status === 'present' ? styles.textPresent : {color: COLORS.textPrimary}]}>
+                                            {record.status === 'present' ? 'Keep Present' : 'Change to Present'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.reviewActionBtn, record.status === 'present' && styles.actionBtnOutline]}
+                                        onPress={() => {
+                                            markClass(item.date, item.subjectId, 'absent', item.units);
+                                            handleApproveSingle(item.date, item.subjectId);
+                                        }}
+                                    >
+                                        <Text style={[styles.reviewActionText, record.status === 'absent' ? styles.textAbsent : {color: COLORS.textPrimary}]}>
+                                            {record.status === 'absent' ? 'Keep Absent' : 'Change to Absent'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        );
+                    }
+
+                    // Normal Unmarked Class
                     return (
                         <View style={[styles.classRow, isMarked && styles.classRowMarked]}>
                             <View style={styles.classInfo}>
@@ -134,9 +267,13 @@ export default function PastAttendanceScreen({ navigation }) {
                                 </Text>
                             </View>
                             {isMarked ? (
-                                <Text style={styles.markedLabel}>
-                                    {record.status === 'present' ? '✅' : '❌'} {record.status}
-                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingLeft: SPACING.sm }}>
+                                    <View style={styles.markedContainer}>
+                                        <Text style={styles.markedLabel}>
+                                            {record.status === 'present' ? '✅' : '❌'} {record.status}
+                                        </Text>
+                                    </View>
+                                </View>
                             ) : (
                                 <View style={styles.actionButtons}>
                                     <TouchableOpacity
@@ -186,7 +323,7 @@ export default function PastAttendanceScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
@@ -199,6 +336,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: SPACING.xl,
     },
     emptyEmoji: {
         fontSize: 64,
@@ -294,12 +432,10 @@ const styles = StyleSheet.create({
 
     },
     presentSmallBtn: {
-
-        backgroundColor: COLORS.successBg,
+        backgroundColor: COLORS.successLight,
     },
     absentSmallBtn: {
-
-        backgroundColor: COLORS.dangerBg,
+        backgroundColor: COLORS.dangerLight,
     },
     presentSmallText: {
         fontSize: 14,
@@ -313,5 +449,183 @@ const styles = StyleSheet.create({
     bulkActions: {
         flexDirection: 'row',
         gap: SPACING.sm,
+    },
+    markedContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    autoMarkedBadge: {
+        marginLeft: SPACING.sm,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        backgroundColor: COLORS.background,
+        borderRadius: BORDER_RADIUS.sm,
+    },
+    autoMarkedText: {
+        fontSize: 12,
+    },
+
+    // Gamified UI Styles
+    reviewHero: {
+        backgroundColor: COLORS.primaryLight,
+        padding: SPACING.lg,
+        borderRadius: BORDER_RADIUS.lg,
+        marginBottom: SPACING.lg,
+    },
+    heroRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.xs,
+    },
+    heroTitle: {
+        ...TYPOGRAPHY.headerSmall,
+        color: COLORS.primary,
+    },
+    heroSubtitle: {
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textSecondary,
+    },
+    skipText: {
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textSecondary,
+        textDecorationLine: 'underline',
+    },
+    reviewCardItem: {
+        backgroundColor: COLORS.cardBackground,
+        padding: SPACING.lg,
+        borderRadius: BORDER_RADIUS.lg,
+        marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.warning,
+        ...SHADOWS.medium,
+    },
+    reviewCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    reviewCardBody: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: SPACING.md,
+        marginBottom: SPACING.md,
+        backgroundColor: COLORS.background,
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+    },
+    statusSection: {
+        flex: 1,
+    },
+    statusLabel: {
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textSecondary,
+        marginBottom: 4,
+    },
+    currentStatusBox: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.full,
+    },
+    statusPresent: {
+        backgroundColor: COLORS.successLight,
+    },
+    statusAbsent: {
+        backgroundColor: COLORS.dangerLight,
+    },
+    statusBoxChar: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    textPresent: {
+        color: COLORS.success,
+    },
+    textAbsent: {
+        color: COLORS.danger,
+    },
+    approveQuickBtn: {
+        backgroundColor: COLORS.primary,
+        paddingVertical: 8,
+        paddingHorizontal: SPACING.lg,
+        borderRadius: BORDER_RADIUS.full,
+    },
+    approveQuickText: {
+        color: COLORS.textOnPrimary,
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    reviewCardActions: {
+        flexDirection: 'row',
+        gap: SPACING.sm,
+    },
+    reviewActionBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: BORDER_RADIUS.md,
+        alignItems: 'center',
+        backgroundColor: COLORS.inputBackground,
+    },
+    actionBtnOutline: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    reviewActionText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    undoBtn: {
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.lg,
+        borderRadius: BORDER_RADIUS.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.background,
+    },
+    undoBtnText: {
+        color: COLORS.textSecondary,
+        ...TYPOGRAPHY.caption,
+        textDecorationLine: 'underline',
+    },
+    approvedRow: {
+        backgroundColor: COLORS.background,
+        borderColor: COLORS.successLight,
+        borderWidth: 1,
+        opacity: 0.8,
+    },
+    approvedEmoji: {
+        marginRight: SPACING.xs,
+    },
+    approveAllBanner: {
+        backgroundColor: COLORS.primary,
+        paddingVertical: SPACING.md,
+        borderRadius: BORDER_RADIUS.lg,
+        alignItems: 'center',
+        marginBottom: SPACING.lg,
+        ...SHADOWS.medium,
+    },
+    approveAllText: {
+        color: COLORS.textOnPrimary,
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    summaryCard: {
+        backgroundColor: COLORS.cardBackground,
+        padding: SPACING.lg,
+        borderRadius: BORDER_RADIUS.lg,
+        marginBottom: SPACING.lg,
+        ...SHADOWS.small,
+    },
+    summaryTitle: {
+        ...TYPOGRAPHY.headerSmall,
+        marginBottom: SPACING.sm,
+    },
+    summaryStat: {
+        ...TYPOGRAPHY.body,
+        color: COLORS.textSecondary,
+        marginBottom: 4,
     },
 });

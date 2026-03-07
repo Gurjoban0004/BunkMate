@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES } from '../../theme/theme';
 
 const EmptyDay = () => {
+    const styles = getStyles();
     return (
         <View style={styles.container}>
             <Text style={styles.emoji}>🎉</Text>
@@ -14,7 +15,7 @@ const EmptyDay = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         alignItems: 'center',
         paddingVertical: SPACING.xxl,

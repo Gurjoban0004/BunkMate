@@ -14,6 +14,7 @@ export const useAlert = () => {
 
 export const AlertProvider = ({ children }) => {
     const [alertConfig, setAlertConfig] = useState(null);
+    const styles = getStyles();
 
     const showAlert = (title, message, buttons, options) => {
         setAlertConfig({ title, message, buttons, options });
@@ -92,7 +93,7 @@ export const AlertProvider = ({ children }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     overlay: {
         flex: 1,
         backgroundColor: COLORS.overlay,

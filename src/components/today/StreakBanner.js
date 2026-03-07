@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../theme/theme';
 
 const StreakBanner = ({ streak }) => {
+    const styles = getStyles();
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
@@ -56,7 +57,7 @@ const StreakBanner = ({ streak }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.md,

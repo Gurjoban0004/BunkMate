@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 
 const QuickStatsCard = ({ classCount, streak, overallPercentage }) => {
+    const styles = getStyles();
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Today's Stats</Text>
@@ -34,7 +35,7 @@ const QuickStatsCard = ({ classCount, streak, overallPercentage }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,

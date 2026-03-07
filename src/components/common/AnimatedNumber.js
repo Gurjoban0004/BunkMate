@@ -6,6 +6,7 @@ const AnimatedNumber = ({
     suffix = '%',
     style,
 }) => {
+    const styles = getStyles();
     return (
         <Animated.Text style={[styles.text, style]}>
             {value.toFixed(1)}{suffix}
@@ -13,7 +14,7 @@ const AnimatedNumber = ({
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     text: {
         fontVariant: ['tabular-nums'],
     },

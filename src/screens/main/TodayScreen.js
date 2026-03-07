@@ -10,13 +10,13 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
 import { getTodayClasses, getCurrentClassIndex, calculateOverallPercentage } from '../../utils/attendance';
 import { calculateOverallStreak } from '../../utils/streak';
 import { getUnmarkedCount } from '../../utils/backlog';
-import { getTodayKey, getTodayDayName } from '../../utils/dateHelpers';
+import { getTodayKey, getTodayDayName, isPastTime } from '../../utils/dateHelpers';
 import { getDayStatus } from '../../utils/planner';
 
 // Components
@@ -29,28 +29,61 @@ import EmptyDay from '../../components/today/EmptyDay';
 import HolidayCard from '../../components/today/HolidayCard';
 import AddExtraClassButton from '../../components/today/AddExtraClassButton';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
+import {
+    DisplayMedium,
+    HeadingMedium,
+    HeadingSmall,
+    BodyMedium,
+    BodySmall,
+    CaptionMedium
+} from '../../components/common/Typography';
 import { showAlert } from '../../utils/alert';
 
 const TodayScreen = ({ navigation }) => {
-    const { state, dispatch } = useApp();
+    const styles = getStyles();
+    const { state, dispatch, runAutopilotCheck } = useApp();
     const [refreshing, setRefreshing] = useState(false);
     const [showExtraModal, setShowExtraModal] = useState(false);
     const [selectedExtraSubject, setSelectedExtraSubject] = useState(null);
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Run autopilot check on mount or when state changes (debounced/throttled internally)
+    React.useEffect(() => {
+        if (state.settings?.autopilotEnabled) {
+            runAutopilotCheck();
+        }
+    }, [state.settings?.autopilotEnabled]);
+
+    // Get devDate logic if active
+    React.useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(state.devDate ? new Date(state.devDate) : new Date());
+        }, 60000); // UI updates every minute
+        return () => clearInterval(timer);
+    }, [state.devDate]);
+
+    // Autopilot settings
+    const autopilotEnabled = state.settings?.autopilotEnabled || false;
+    const autopilotReview = state.autopilotReview;
+    const autopilotDiscoveryDismissed = state.autopilotDiscoveryDismissed;
 
     // Get greeting
-    const greeting = getGreeting(state.userName || 'there');
+    const greeting = getGreeting(state.userName || 'there', state.devDate);
 
     // Get today's data
-    const today = new Date();
+    const today = state.devDate ? new Date(state.devDate) : new Date();
     const dateString = today.toLocaleDateString('en-US', {
         weekday: 'long',
         month: 'long',
         day: 'numeric',
     });
 
+    // Get today key for records
+    const todayKey = getTodayKey(state.devDate);
+
     // Get classes
-    const todayClasses = getTodayClasses(state);
-    const currentClassIndex = getCurrentClassIndex(todayClasses);
+    const todayClasses = getTodayClasses(state, state.devDate);
+    const currentClassIndex = getCurrentClassIndex(todayClasses, state.devDate);
 
     // Calculate stats
     const streak = calculateOverallStreak(state);
@@ -58,7 +91,6 @@ const TodayScreen = ({ navigation }) => {
     const classCount = todayClasses.length;
 
     // Check if today is holiday
-    const todayKey = getTodayKey();
     const isHoliday = (state.holidays || []).includes(todayKey) ||
         state.attendanceRecords[todayKey]?._holiday;
 
@@ -69,7 +101,7 @@ const TodayScreen = ({ navigation }) => {
     const unmarkedCount = useMemo(() => getUnmarkedCount(state), [state]);
 
     // Quick Answer: can I skip today?
-    const todayDayName = getTodayDayName();
+    const todayDayName = getTodayDayName(state.devDate);
     const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, 75), [state, todayDayName]);
 
     // Pull to refresh
@@ -165,6 +197,93 @@ const TodayScreen = ({ navigation }) => {
 
     const { now, upcoming, done } = categorizeClasses();
 
+    // ─── AUTOPILOT UI COMPONENTS ──────────────────────────────────────
+
+    const DiscoveryBanner = () => {
+        if (autopilotEnabled || autopilotDiscoveryDismissed) return null;
+
+        return (
+            <View style={styles.discoveryCard}>
+                <View style={styles.discoveryContent}>
+                    <Text style={styles.discoveryEmoji}>🤖</Text>
+                    <View style={styles.discoveryTextContainer}>
+                        <HeadingSmall style={styles.discoveryTitle}>Meet Autopilot</HeadingSmall>
+                        <BodySmall style={styles.discoverySubtitle}>
+                            Forget marking classes? Let the app do it automatically every night.
+                        </BodySmall>
+                    </View>
+                </View>
+                <View style={styles.discoveryActions}>
+                    <TouchableOpacity
+                        style={styles.discoveryDismissBtn}
+                        onPress={() => dispatch({ type: 'DISMISS_AUTOPILOT_DISCOVERY' })}
+                    >
+                        <CaptionMedium>Maybe Later</CaptionMedium>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.discoveryEnableBtn}
+                        onPress={() => navigation.navigate('Settings')}
+                    >
+                        <CaptionMedium color="textOnPrimary">Setup Now</CaptionMedium>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    };
+
+    const ReviewCard = () => {
+        if (!autopilotReview || autopilotReview.dismissed) return null;
+
+        return (
+            <View style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                    <HeadingSmall style={styles.reviewTitle}>🤖 Autopilot Ran</HeadingSmall>
+                    <BodySmall style={styles.reviewSubtitle}>
+                        Automatically marked {autopilotReview.count} missing class{autopilotReview.count > 1 ? 'es' : ''} for {autopilotReview.date}.
+                    </BodySmall>
+                </View>
+                <View style={styles.reviewActions}>
+                    <TouchableOpacity
+                        style={styles.reviewDismissBtn}
+                        onPress={() => dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' })}
+                    >
+                        <CaptionMedium>Dismiss</CaptionMedium>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.reviewViewBtn}
+                        onPress={() => {
+                            dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' });
+                            navigation.navigate('PastAttendance');
+                        }}
+                    >
+                        <CaptionMedium color="textOnPrimary">Review Classes</CaptionMedium>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    };
+
+    const format12Hour = (time24) => {
+        const [h, m] = time24.split(':');
+        let hours = parseInt(h, 10);
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        hours = hours % 12 || 12;
+        return `${hours}:${m}${ampm}`;
+    };
+
+    const AutopilotIndicator = () => {
+        if (!autopilotEnabled) return null;
+        const triggerTime = state.settings?.autopilotTime || '20:00';
+
+        return (
+            <View style={styles.indicatorContainer}>
+                <Text style={styles.indicatorText}>
+                    🤖 Autopilot runs at {format12Hour(triggerTime)} today
+                </Text>
+            </View>
+        );
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView
@@ -181,11 +300,26 @@ const TodayScreen = ({ navigation }) => {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.greeting}>
+                    <DisplayMedium style={styles.greeting}>
                         {greeting.text} {greeting.emoji}
-                    </Text>
-                    <Text style={styles.date}>{dateString}</Text>
+                    </DisplayMedium>
+                    <BodyMedium color="textSecondary" style={styles.date}>{dateString}</BodyMedium>
                 </View>
+
+                {/* Autopilot Discovery or Review */}
+                {autopilotReview && !autopilotReview.dismissed ? (
+                    <ReviewCard />
+                ) : (
+                    <>
+                        <DiscoveryBanner />
+                        {unmarkedCount > 0 && (
+                            <BacklogBanner
+                                count={unmarkedCount}
+                                onPress={handleBacklogPress}
+                            />
+                        )}
+                    </>
+                )}
 
                 {/* Quick Answer Card */}
                 {!isHoliday && todayClasses.length > 0 && (
@@ -193,14 +327,6 @@ const TodayScreen = ({ navigation }) => {
                         dayStatus={todaySkipStatus}
                         compact={true}
                         onPlannerPress={() => navigation.navigate('Planner')}
-                    />
-                )}
-
-                {/* Backlog Banner (if any unmarked) */}
-                {unmarkedCount > 0 && (
-                    <BacklogBanner
-                        count={unmarkedCount}
-                        onPress={handleBacklogPress}
                     />
                 )}
 
@@ -323,6 +449,8 @@ const TodayScreen = ({ navigation }) => {
                     </>
                 )}
 
+                <AutopilotIndicator />
+
                 {/* Bottom Padding */}
                 <View style={styles.bottomPadding} />
             </ScrollView>
@@ -363,7 +491,7 @@ const TodayScreen = ({ navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
@@ -438,6 +566,118 @@ const styles = StyleSheet.create({
     },
     bottomPadding: {
         height: 100,
+    },
+    // ─── AUTOPILOT STYLES ─────────────────────────────────
+    discoveryCard: {
+        backgroundColor: COLORS.cardBackground,
+        marginHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.md,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.lg,
+        ...SHADOWS.small,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.primary,
+    },
+    discoveryContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: SPACING.md,
+    },
+    discoveryEmoji: {
+        fontSize: 32,
+        marginRight: SPACING.sm,
+    },
+    discoveryTextContainer: {
+        flex: 1,
+    },
+    discoveryTitle: {
+        ...TYPOGRAPHY.headerSmall,
+        color: COLORS.textPrimary,
+        marginBottom: 2,
+    },
+    discoverySubtitle: {
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textSecondary,
+        lineHeight: 18,
+    },
+    discoveryActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: SPACING.sm,
+    },
+    discoveryDismissBtn: {
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 8,
+        borderRadius: BORDER_RADIUS.md,
+        backgroundColor: COLORS.inputBackground,
+    },
+    discoveryDismissText: {
+        ...TYPOGRAPHY.button,
+        color: COLORS.textSecondary,
+    },
+    discoveryEnableBtn: {
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 8,
+        borderRadius: BORDER_RADIUS.md,
+        backgroundColor: COLORS.primary,
+    },
+    discoveryEnableText: {
+        ...TYPOGRAPHY.button,
+        color: COLORS.textOnPrimary,
+    },
+    reviewCard: {
+        backgroundColor: COLORS.primaryLight,
+        marginHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.md,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.md,
+    },
+    reviewHeader: {
+        marginBottom: SPACING.md,
+    },
+    reviewTitle: {
+        ...TYPOGRAPHY.headerSmall,
+        color: COLORS.primary,
+        marginBottom: 4,
+    },
+    reviewSubtitle: {
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textSecondary,
+    },
+    reviewActions: {
+        flexDirection: 'row',
+        gap: SPACING.sm,
+    },
+    reviewDismissBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: BORDER_RADIUS.md,
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.5)',
+    },
+    reviewDismissText: {
+        ...TYPOGRAPHY.button,
+        color: COLORS.textSecondary,
+    },
+    reviewViewBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: BORDER_RADIUS.md,
+        alignItems: 'center',
+        backgroundColor: COLORS.primary,
+    },
+    reviewViewText: {
+        ...TYPOGRAPHY.button,
+        color: COLORS.textOnPrimary,
+    },
+    indicatorContainer: {
+        marginHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.md,
+        alignItems: 'center',
+    },
+    indicatorText: {
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textSecondary,
     },
     // Modal styles
     modalOverlay: {

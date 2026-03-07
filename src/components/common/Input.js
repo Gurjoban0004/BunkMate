@@ -24,6 +24,7 @@ export default function Input({
     spellCheck,
     ...props
 }) {
+    const styles = getStyles();
     if (Platform.OS === 'web') {
         // Map RN keyboardType to HTML input type
         const inputType = keyboardType === 'numeric' || keyboardType === 'number-pad'
@@ -97,7 +98,7 @@ export default function Input({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     input: {
         backgroundColor: COLORS.inputBackground,
         color: COLORS.textPrimary,

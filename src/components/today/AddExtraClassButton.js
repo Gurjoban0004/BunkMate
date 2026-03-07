@@ -3,6 +3,7 @@ import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const AddExtraClassButton = ({ onPress }) => {
+    const styles = getStyles();
     return (
         <TouchableOpacity
             style={styles.container}
@@ -15,7 +16,7 @@ const AddExtraClassButton = ({ onPress }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',

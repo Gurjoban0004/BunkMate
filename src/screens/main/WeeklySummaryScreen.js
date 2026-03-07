@@ -19,6 +19,7 @@ const DAY_STATUS_EMOJI = {
 };
 
 export default function WeeklySummaryScreen({ navigation }) {
+    const styles = getStyles();
     const { state } = useApp();
 
     const summary = useMemo(() => generateWeeklySummary(state), [state]);
@@ -31,6 +32,8 @@ export default function WeeklySummaryScreen({ navigation }) {
         <SafeAreaView style={styles.container} edges={['bottom']}>
             <FloatingBackButton />
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {/* Add top padding to account for floating button */}
+                <View style={styles.topSpacer} />
                 {/* Header */}
                 <Text style={styles.header}>Week in Review</Text>
                 <Text style={styles.weekRange}>{summary.weekRange}</Text>
@@ -121,11 +124,14 @@ export default function WeeklySummaryScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
         padding: SPACING.screenPadding,
+    },
+    topSpacer: {
+        height: 60, // Space for the floating back button
     },
     scrollContent: {
         paddingBottom: SPACING.xxl,

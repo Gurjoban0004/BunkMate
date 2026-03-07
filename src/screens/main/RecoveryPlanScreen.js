@@ -15,6 +15,7 @@ import { getRecoveryNeeded, getRecoverySteps, getClassesForDay } from '../../uti
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const RecoveryPlanScreen = ({ route }) => {
+    const styles = getStyles();
     const { state } = useApp();
     const { subjectId, subjectName, threshold = 75 } = route.params || {};
 
@@ -164,7 +165,7 @@ const RecoveryPlanScreen = ({ route }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

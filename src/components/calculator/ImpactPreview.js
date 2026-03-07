@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const ImpactPreview = ({ currentPercentage, projectedPercentage, bunkCount }) => {
+    const styles = getStyles();
     const change = projectedPercentage - currentPercentage;
     const isNegative = change < 0;
     const changeColor = isNegative ? COLORS.danger : COLORS.success;
@@ -75,7 +76,7 @@ const ImpactPreview = ({ currentPercentage, projectedPercentage, bunkCount }) =>
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.lg,

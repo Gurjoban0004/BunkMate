@@ -19,6 +19,7 @@ const ClassCard = ({
     isCurrentClass = false,
     isPreCounted = false,
 }) => {
+    const styles = getStyles();
     const { subjectId, subjectName, startTime, endTime, units } = classInfo;
 
     // Get subject data
@@ -35,6 +36,7 @@ const ClassCard = ({
     const todayKey = getTodayKey();
     const todayRecord = state.attendanceRecords[todayKey]?.[subjectId];
     const markedStatus = todayRecord?.status; // 'present', 'absent', or undefined
+    const isAutoMarked = todayRecord?.autoMarked;
 
     // Calculate danger threshold (from settings or default 75)
     const dangerThreshold = state.settings?.dangerThreshold || 75;
@@ -241,6 +243,11 @@ const ClassCard = ({
                             ]}>
                                 Marked {markedStatus === 'present' ? 'Present' : 'Absent'}
                             </Text>
+                            {isAutoMarked && (
+                                <View style={styles.autoMarkedBadge}>
+                                    <Text style={styles.autoMarkedText}>🤖</Text>
+                                </View>
+                            )}
                         </View>
 
                         <TouchableOpacity style={styles.undoButton} onPress={handleUndo}>
@@ -278,13 +285,14 @@ const ClassCard = ({
 
 // Helper function — returns real class count (not inflated units for 2-hr classes)
 const calculateClassesNeeded = (attended, total, target, units = 1) => {
+    const styles = getStyles();
     const targetDecimal = target / 100;
     const neededUnits = Math.ceil((targetDecimal * total - attended) / (1 - targetDecimal));
     // Divide by units to convert from "marks" to "physical classes"
     return Math.max(0, Math.ceil(Math.max(0, neededUnits) / units));
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: COLORS.cardBackground,
@@ -489,6 +497,16 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.sm,
         color: COLORS.primary,
         fontWeight: '600',
+    },
+    autoMarkedBadge: {
+        marginLeft: SPACING.sm,
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        backgroundColor: COLORS.background,
+        borderRadius: BORDER_RADIUS.sm,
+    },
+    autoMarkedText: {
+        fontSize: 12,
     },
 });
 

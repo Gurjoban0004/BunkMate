@@ -121,10 +121,10 @@ export function getClassesForDay(state, dayName) {
 }
 
 /**
- * Get today's classes, grouped by subject to handle multiple sessions per day.
+ * Get today's classes from the timetable based on current day name.
  */
-export function getTodayClasses(state) {
-    const dayName = getTodayDayName();
+export function getTodayClasses(state, devDate = null) {
+    const dayName = getTodayDayName(devDate);
     return getClassesForDay(state, dayName);
 }
 
@@ -196,28 +196,18 @@ export function calculateBunks(attended, total, targetPercent) {
 }
 
 /**
- * Get the index of the currently running class based on time.
- * Returns -1 if no class is currently happening.
+ * Find index of the class currently happening.
+ * Returns -1 if no class is happening now.
  */
-export function getCurrentClassIndex(classes) {
-    if (!classes || classes.length === 0) return -1;
-
-    const now = new Date();
+export function getCurrentClassIndex(todayClasses, devDate = null) {
+    const now = devDate ? new Date(devDate) : new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-    for (let i = 0; i < classes.length; i++) {
-        const classInfo = classes[i];
-        const [startH, startM] = classInfo.startTime.split(':').map(Number);
-        const [endH, endM] = classInfo.endTime.split(':').map(Number);
-        const startMinutes = startH * 60 + startM;
-        const endMinutes = endH * 60 + endM;
-
-        if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-            return i;
-        }
-    }
-
-    return -1;
+    return todayClasses.findIndex((c) => {
+        const start = parseTimeToMinutes(c.startTime);
+        const end = parseTimeToMinutes(c.endTime);
+        return currentMinutes >= start && currentMinutes < end;
+    });
 }
 
 /**

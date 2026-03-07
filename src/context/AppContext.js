@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import { getTodayKey, getNextDay, parseDate, isPastTime, subtractDays, getTodayDayName } from '../utils/dateHelpers';
 
 const AppContext = createContext();
 
@@ -35,7 +36,13 @@ const initialState = {
         notificationEnabled: true,
         notificationTime: '18:00',
         smartAlertsEnabled: true,
+        autopilotEnabled: false,
+        autopilotTime: '20:00',
+        autopilotDefault: 'present',
     },
+
+    autopilotReview: null, // { date: 'YYYY-MM-DD', count: >0, dismissed: false }
+    autopilotDiscoveryDismissed: false,
 
     // Track which warning notifications have been sent (avoid spam)
     notificationState: {},
@@ -130,14 +137,19 @@ function appReducer(state, action) {
         }
 
         case 'MARK_ATTENDANCE': {
-            const { date, subjectId, status, units, isExtra } = action.payload;
+            const { date, subjectId, status, units, isExtra, autoMarked } = action.payload;
             return {
                 ...state,
                 attendanceRecords: {
                     ...state.attendanceRecords,
                     [date]: {
                         ...(state.attendanceRecords[date] || {}),
-                        [subjectId]: { status, units, ...(isExtra ? { isExtra: true } : {}) },
+                        [subjectId]: {
+                            status,
+                            units: units || 1,
+                            ...(isExtra ? { isExtra: true } : {}),
+                            ...(autoMarked ? { autoMarked: true } : {}),
+                        },
                     },
                 },
             };
@@ -227,6 +239,74 @@ function appReducer(state, action) {
                 settings: { ...state.settings, ...action.payload },
             };
 
+        case 'UPDATE_AUTOPILOT_SETTINGS':
+            return {
+                ...state,
+                settings: {
+                    ...state.settings,
+                    ...action.payload,
+                },
+            };
+
+        case 'SET_AUTOPILOT_REVIEW':
+            return {
+                ...state,
+                autopilotReview: action.payload,
+            };
+
+        case 'DISMISS_AUTOPILOT_REVIEW':
+            return {
+                ...state,
+                autopilotReview: state.autopilotReview
+                    ? { ...state.autopilotReview, dismissed: true }
+                    : null,
+            };
+
+        case 'DISMISS_AUTOPILOT_DISCOVERY':
+            return {
+                ...state,
+                autopilotDiscoveryDismissed: true,
+            };
+
+        case 'CONFIRM_AUTO_MARK': {
+            const { date, subjectId } = action.payload;
+            const existing = state.attendanceRecords[date]?.[subjectId];
+            if (!existing) return state;
+
+            const { autoMarked, ...cleanedRecord } = existing;
+            return {
+                ...state,
+                attendanceRecords: {
+                    ...state.attendanceRecords,
+                    [date]: {
+                        ...state.attendanceRecords[date],
+                        [subjectId]: cleanedRecord,
+                    },
+                },
+            };
+        }
+
+        case 'CONFIRM_ALL_AUTO_MARK': {
+            const newRecords = { ...state.attendanceRecords };
+            Object.keys(newRecords).forEach(date => {
+                const dayRecord = { ...newRecords[date] };
+                let modified = false;
+                Object.keys(dayRecord).forEach(sid => {
+                    if (dayRecord[sid]?.autoMarked) {
+                        const { autoMarked, ...cleaned } = dayRecord[sid];
+                        dayRecord[sid] = cleaned;
+                        modified = true;
+                    }
+                });
+                if (modified) newRecords[date] = dayRecord;
+            });
+            return {
+                ...state,
+                attendanceRecords: newRecords,
+                autopilotReview: state.autopilotReview ? { ...state.autopilotReview, dismissed: true } : null,
+            };
+        }
+
         case 'UPDATE_NOTIFICATION_STATE':
             return {
                 ...state,
@@ -307,11 +387,19 @@ function appReducer(state, action) {
                 });
             }
 
+            // Migrate autopilot settings
+            const settings = { ...initialState.settings, ...(loaded.settings || {}) };
+            if (settings.autopilotEnabled === undefined) settings.autopilotEnabled = false;
+            if (!settings.autopilotTime) settings.autopilotTime = '20:00';
+            if (!settings.autopilotDefault) settings.autopilotDefault = 'present';
+
             return {
                 ...initialState,
                 ...loaded,
-                settings: { ...initialState.settings, ...(loaded.settings || {}) },
+                settings,
                 timetable: { ...initialState.timetable, ...(loaded.timetable || {}) },
+                autopilotReview: loaded.autopilotReview !== undefined ? loaded.autopilotReview : null,
+                autopilotDiscoveryDismissed: loaded.autopilotDiscoveryDismissed !== undefined ? loaded.autopilotDiscoveryDismissed : false,
             };
         }
 
@@ -364,8 +452,143 @@ export function AppProvider({ children }) {
         }
     }, [state, isLoading]);
 
+    // ─── AUTOPILOT LOGIC ──────────────────────────────────────────
+
+    const getUnmarkedClassesForDate = (dateStr) => {
+        // Skip days before tracking started
+        if (state.trackingStartDate && dateStr < state.trackingStartDate && !state.devDate) return [];
+
+        // Parse the target date properly to get the correct day name (Mon, Tue, etc.)
+        const parsedDate = parseDate(dateStr);
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = days[parsedDate.getDay()];
+
+        const dayClasses = state.timetable[dayName] || [];
+        const recordsForDate = state.attendanceRecords[dateStr] || {};
+
+        if (recordsForDate._holiday) return []; // Skip holidays
+
+        const unmarked = [];
+
+        dayClasses.forEach(({ slotId, subjectId }) => {
+            const slot = state.timeSlots.find((s) => s.id === slotId);
+            if (!slot) return;
+
+            if (!recordsForDate[subjectId]) {
+                unmarked.push({
+                    subjectId,
+                    slotId,
+                    startTime: slot.start,
+                    endTime: slot.end,
+                });
+            }
+        });
+
+        return unmarked;
+    };
+
+    const shouldAutoMarkClass = (classItem, dateStr) => {
+        const autopilotTime = state.settings.autopilotTime || '20:00';
+        const classEndTime = classItem.endTime;
+
+        const [autopilotHour, autopilotMin] = autopilotTime.split(':').map(Number);
+        const [classEndHour, classEndMin] = classEndTime.split(':').map(Number);
+
+        let triggerTime;
+        if (
+            classEndHour < autopilotHour ||
+            (classEndHour === autopilotHour && classEndMin <= autopilotMin)
+        ) {
+            triggerTime = autopilotTime;
+        } else {
+            let triggerHour = classEndHour + 2;
+            let triggerMin = classEndMin;
+            if (triggerHour >= 24) triggerHour -= 24;
+            triggerTime = `${String(triggerHour).padStart(2, '0')}:${String(triggerMin).padStart(2, '0')}`;
+        }
+
+        return isPastTime(dateStr, triggerTime, state.devDate);
+    };
+
+    const runAutopilotCheck = () => {
+        if (!state.settings.autopilotEnabled) return;
+
+        const nowObj = state.devDate ? new Date(state.devDate) : new Date();
+        const year = nowObj.getFullYear();
+        const month = String(nowObj.getMonth() + 1).padStart(2, '0');
+        const day = String(nowObj.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+
+        const yesterdayObj = subtractDays(nowObj, 1);
+        const yYear = yesterdayObj.getFullYear();
+        const yMonth = String(yesterdayObj.getMonth() + 1).padStart(2, '0');
+        const yDay = String(yesterdayObj.getDate()).padStart(2, '0');
+        const yesterdayStr = `${yYear}-${yMonth}-${yDay}`;
+
+        let autoMarkedCount = 0;
+        let reviewDate = null;
+
+        // Pre-check for duplicate review cards
+        const existingReview = state.autopilotReview;
+
+        // Check yesterday
+        const yesterdayUnmarked = getUnmarkedClassesForDate(yesterdayStr);
+        yesterdayUnmarked.forEach((classItem) => {
+            if (shouldAutoMarkClass(classItem, yesterdayStr)) {
+                dispatch({
+                    type: 'MARK_ATTENDANCE',
+                    payload: {
+                        date: yesterdayStr,
+                        subjectId: classItem.subjectId,
+                        status: state.settings.autopilotDefault,
+                        units: 1, // Assume 1 unit for auto-mark unless calculated differently
+                        autoMarked: true,
+                    },
+                });
+                autoMarkedCount++;
+                reviewDate = yesterdayStr;
+            }
+        });
+
+        // Check today
+        const todayUnmarked = getUnmarkedClassesForDate(todayStr);
+        todayUnmarked.forEach((classItem) => {
+            if (shouldAutoMarkClass(classItem, todayStr)) {
+                dispatch({
+                    type: 'MARK_ATTENDANCE',
+                    payload: {
+                        date: todayStr,
+                        subjectId: classItem.subjectId,
+                        status: state.settings.autopilotDefault,
+                        units: 1,
+                        autoMarked: true,
+                    },
+                });
+                autoMarkedCount++;
+                reviewDate = reviewDate || todayStr;
+            }
+        });
+
+        // If we marked new stuff, create/update review card
+        if (autoMarkedCount > 0 && reviewDate) {
+            // Check if we already have a review card for this exact date to prevent infinite loop of overriding
+            if (existingReview?.date !== reviewDate || existingReview?.dismissed) {
+                dispatch({
+                    type: 'SET_AUTOPILOT_REVIEW',
+                    payload: {
+                        date: reviewDate,
+                        count: autoMarkedCount,
+                        dismissed: false,
+                    },
+                });
+            }
+        }
+    };
+
+    // ──────────────────────────────────────────────────────────────
+
     return (
-        <AppContext.Provider value={{ state, dispatch, isLoading }}>
+        <AppContext.Provider value={{ state, dispatch, isLoading, runAutopilotCheck }}>
             {children}
         </AppContext.Provider>
     );

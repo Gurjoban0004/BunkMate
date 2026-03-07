@@ -7,6 +7,7 @@ import { MOCK_SCENARIOS } from './mockData/mockScenarios';
 import { COLORS, SHADOWS } from '../theme/theme';
 
 export default function DevModePanel() {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -15,6 +16,10 @@ export default function DevModePanel() {
     }
 
     const handleLoadScenario = (scenarioData) => {
+        if (scenarioData._triggerAutopilot) {
+            runAutopilotCheck();
+            return;
+        }
         dispatch({ type: 'LOAD_STATE', payload: scenarioData });
     };
 
@@ -64,7 +69,7 @@ export default function DevModePanel() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     floatingButton: {
         position: 'absolute',
         bottom: 80,

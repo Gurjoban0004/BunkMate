@@ -12,6 +12,7 @@ import WebHeader from './WebHeader';
 import { COLORS } from '../theme/theme';
 
 export default function WebNavigator() {
+    const styles = getStyles();
     const [history, setHistory] = useState([
         { name: 'Welcome', params: {} }
     ]);
@@ -119,7 +120,7 @@ export default function WebNavigator() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

@@ -17,9 +17,11 @@ import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 
 import WebHeader from './WebHeader';
+import { useApp } from '../context/AppContext';
 import { COLORS, TYPOGRAPHY } from '../theme/theme';
 
 function TabIcon({ label, focused }) {
+    const styles = getStyles();
     const icons = {
         Today: '📅',
         Subjects: '📚',
@@ -30,9 +32,13 @@ function TabIcon({ label, focused }) {
 }
 
 export default function WebTabNavigator() {
+    const styles = getStyles();
     const insets = useSafeAreaInsets();
+    const { state } = useApp();
 
-    const [currentTab, setCurrentTab] = useState('Today');
+    const defaultTab = state.settings?.landingPage === 'planner' ? 'Planner' : 'Today';
+
+    const [currentTab, setCurrentTab] = useState(defaultTab);
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }],
         Subjects: [{ name: 'SubjectsList', params: {} }],
@@ -216,7 +222,7 @@ export default function WebTabNavigator() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

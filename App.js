@@ -4,7 +4,7 @@ import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
-import { COLORS } from './src/theme/theme';
+import { COLORS, applyTheme } from './src/theme/theme';
 import { DEV_MODE, SKIP_SETUP, MOCK_SCENARIO } from './src/dev/config';
 import DevModePanel from './src/dev/DevModePanel';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
@@ -62,8 +62,12 @@ if (Platform.OS === 'web') {
 }
 
 function AppContent() {
-    const { state, dispatch, isLoading } = useApp();
+    const { state, dispatch, isLoading, runAutopilotCheck } = useApp();
     const [devReady, setDevReady] = useState(!DEV_MODE || !SKIP_SETUP);
+
+    // Process theme dynamically on every render
+    const currentTheme = state?.settings?.theme || 'light';
+    applyTheme(currentTheme);
 
     useEffect(() => {
         if (DEV_MODE && SKIP_SETUP && !isLoading && !devReady) {
@@ -78,6 +82,18 @@ function AppContent() {
         }
     }, [isLoading, DEV_MODE, SKIP_SETUP, state.setupComplete, devReady, dispatch]);
 
+    // Run Autopilot Check once the app is loaded and ready
+    useEffect(() => {
+        if (!isLoading && devReady && state.setupComplete && runAutopilotCheck) {
+            // Using a short timeout ensures the navigation state is settled
+            // before presenting any alerts or review cards.
+            const timer = setTimeout(() => {
+                runAutopilotCheck();
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoading, devReady, state.setupComplete, runAutopilotCheck]);
+
     if (isLoading || !devReady) {
         return (
             <View style={styles.loading}>
@@ -89,7 +105,7 @@ function AppContent() {
     return (
         <>
             <StatusBar style="dark" />
-            <AppNavigator />
+            <AppNavigator key={currentTheme} />
             <DevModePanel />
         </>
     );

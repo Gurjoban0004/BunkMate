@@ -16,6 +16,7 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES, SHADOWS } from 
 // Colors now fetched dynamically from COLORS.subjectPalette
 
 export default function SubjectListScreen({ navigation }) {
+    const styles = getStyles();
     const { dispatch } = useApp();
     const [subjects, setSubjects] = useState([]);
     const [inputValue, setInputValue] = useState('');
@@ -156,7 +157,7 @@ export default function SubjectListScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

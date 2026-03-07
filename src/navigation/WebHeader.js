@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native
 import { COLORS, SPACING, TYPOGRAPHY, SHADOWS, BORDER_RADIUS } from '../theme/theme';
 
 export default function WebHeader({ title, canGoBack, onGoBack }) {
+    const styles = getStyles();
     if (Platform.OS !== 'web' || !canGoBack) return null;
 
     return (
@@ -14,7 +15,7 @@ export default function WebHeader({ title, canGoBack, onGoBack }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     floatingHeader: {
         position: 'absolute',
         top: SPACING.lg,

@@ -1,5 +1,5 @@
-export function getTodayKey() {
-    const today = new Date();
+export function getTodayKey(devDate = null) {
+    const today = devDate ? new Date(devDate) : new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
@@ -13,7 +13,7 @@ export function getDateKey(date) {
     return `${year}-${month}-${day}`;
 }
 
-export function getTodayDayName() {
+export function getTodayDayName(devDate = null) {
     const days = [
         'Sunday',
         'Monday',
@@ -23,7 +23,8 @@ export function getTodayDayName() {
         'Friday',
         'Saturday',
     ];
-    return days[new Date().getDay()];
+    const now = devDate ? new Date(devDate) : new Date();
+    return days[now.getDay()];
 }
 
 export function formatDate(date = new Date()) {
@@ -88,4 +89,39 @@ export function getNextDay(dateKey) {
     const d = new Date(dateKey + 'T12:00:00'); // Use noon to avoid TZ issues
     d.setDate(d.getDate() + 1);
     return getDateKey(d);
+}
+
+/**
+ * Parses "YYYY-MM-DD" into a local Date object safely at noon.
+ */
+export function parseDate(dateString) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0);
+}
+
+/**
+ * Subtracts a number of days from a given Date object and returns a new Date.
+ */
+export function subtractDays(date, days) {
+    const result = new Date(date);
+    result.setDate(result.getDate() - days);
+    return result;
+}
+
+/**
+ * Checks if a specific "YYYY-MM-DD" + "HH:MM" has passed relative to 'now' (or devDate).
+ * @param {string} date "YYYY-MM-DD"
+ * @param {string} time "HH:MM"
+ * @param {string|null} devDate ISO string overrides 'now' if present
+ * @returns {boolean}
+ */
+export function isPastTime(date, time, devDate = null) {
+    const now = devDate ? new Date(devDate) : new Date();
+    const targetDate = parseDate(date); // Gets date at noon
+    const [hours, minutes] = time.split(':').map(Number);
+
+    // Set exact target time
+    targetDate.setHours(hours, minutes, 0, 0);
+
+    return now >= targetDate;
 }

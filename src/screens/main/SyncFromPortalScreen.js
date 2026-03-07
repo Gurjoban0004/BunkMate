@@ -15,6 +15,7 @@ import { showAlert } from '../../utils/alert';
  * attendance totals from the college portal to re-sync the app.
  */
 export default function SyncFromPortalScreen({ navigation }) {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
 
     // Build editable subject data
@@ -205,7 +206,7 @@ export default function SyncFromPortalScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

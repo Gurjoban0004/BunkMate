@@ -4,6 +4,7 @@ import Slider from '@react-native-community/slider';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const BunkSlider = ({ value, onValueChange, maxValue = 15, subjectColor }) => {
+    const styles = getStyles();
     const [localValue, setLocalValue] = useState(value);
 
     const handleValueChange = useCallback((val) => {
@@ -50,7 +51,7 @@ const BunkSlider = ({ value, onValueChange, maxValue = 15, subjectColor }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.md,

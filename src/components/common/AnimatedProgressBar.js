@@ -9,6 +9,7 @@ const AnimatedProgressBar = ({
     backgroundColor = COLORS.border,
     duration = 500,
 }) => {
+    const styles = getStyles();
     const widthAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -40,7 +41,7 @@ const AnimatedProgressBar = ({
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         borderRadius: BORDER_RADIUS.sm,
         overflow: 'hidden',

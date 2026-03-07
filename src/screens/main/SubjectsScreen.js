@@ -18,6 +18,7 @@ import CalendarView from '../../components/subjects/CalendarView';
 import TimetableGrid from '../../components/subjects/TimetableGrid';
 
 const SubjectsScreen = ({ navigation }) => {
+    const styles = getStyles();
     const { state } = useApp();
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
 
@@ -177,7 +178,7 @@ const SubjectsScreen = ({ navigation }) => {
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <Text style={[styles.sectionTitle, styles.sectionTitleEdge]}>
-                                        ⚖️ ON THE EDGE
+                                        ON THE EDGE
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeEdge]}>
                                         <Text style={styles.sectionBadgeText}>
@@ -240,7 +241,7 @@ const SubjectsScreen = ({ navigation }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

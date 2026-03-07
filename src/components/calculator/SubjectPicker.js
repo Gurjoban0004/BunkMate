@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const SubjectPicker = ({ subjects, selectedId, onSelect }) => {
+    const styles = getStyles();
     const [showDropdown, setShowDropdown] = useState(false);
     const selectedSubject = subjects.find(s => s.id === selectedId);
 
@@ -68,7 +69,7 @@ const SubjectPicker = ({ subjects, selectedId, onSelect }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     selector: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -9,6 +9,7 @@ export default function Button({
     disabled = false,
     style,
 }) {
+    const styles = getStyles();
     return (
         <TouchableOpacity
             style={[
@@ -34,7 +35,7 @@ export default function Button({
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     button: {
         paddingVertical: SPACING.md,
         paddingHorizontal: SPACING.lg,

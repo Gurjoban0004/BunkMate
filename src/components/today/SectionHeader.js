@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING } from '../../theme/theme';
 
 const SectionHeader = ({ title, classCount, onHolidayPress, showHoliday = true }) => {
+    const styles = getStyles();
     return (
         <View style={styles.container}>
             <View style={styles.left}>
@@ -26,7 +27,7 @@ const SectionHeader = ({ title, classCount, onHolidayPress, showHoliday = true }
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         justifyContent: 'space-between',

@@ -16,6 +16,7 @@ export default function KeyboardWrapper({
     contentContainerStyle,
     dismissOnTap = true,
 }) {
+    const styles = getStyles();
     if (Platform.OS === 'web') {
         // On web the browser handles the keyboard natively.
         // We still need a ScrollView for pages with lots of content.
@@ -61,7 +62,7 @@ export default function KeyboardWrapper({
     return <View style={styles.wrapper}>{scrollView}</View>;
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     wrapper: {
         flex: 1,
         backgroundColor: COLORS.background,

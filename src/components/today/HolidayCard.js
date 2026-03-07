@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const HolidayCard = ({ onUndo }) => {
+    const styles = getStyles();
     return (
         <View style={styles.container}>
             <Text style={styles.emoji}>🏖️</Text>
@@ -16,7 +17,7 @@ const HolidayCard = ({ onUndo }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.primaryLight,
         marginHorizontal: SPACING.lg,

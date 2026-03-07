@@ -15,6 +15,7 @@ import { formatMinutesToTime, parseTimeToMinutes } from '../../utils/dateHelpers
 
 // Helper to format total minutes to 12h string for display
 const formatMins = (totalMins) => {
+    const styles = getStyles();
     const hours24 = Math.floor(totalMins / 60);
     const mins = totalMins % 60;
     const period = hours24 >= 12 ? 'PM' : 'AM';
@@ -49,6 +50,7 @@ const TimeStepper = ({ value, min, max, onChange, label }) => (
 );
 
 export default function TimeSlotsScreen({ navigation }) {
+    const styles = getStyles();
     const { dispatch } = useApp();
 
     const [startMins, setStartMins] = useState(540); // 9:00 AM
@@ -190,7 +192,7 @@ export default function TimeSlotsScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

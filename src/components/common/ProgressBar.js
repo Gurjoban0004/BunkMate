@@ -3,6 +3,7 @@ import { View, StyleSheet, Animated } from 'react-native';
 import { COLORS, BORDER_RADIUS } from '../../theme/theme';
 
 export default function ProgressBar({ percentage, color, style }) {
+    const styles = getStyles();
     const fillColor =
         color ||
         (percentage >= 75
@@ -42,7 +43,7 @@ export default function ProgressBar({ percentage, color, style }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     track: {
         height: 8,
         backgroundColor: COLORS.border,

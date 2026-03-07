@@ -24,6 +24,7 @@ export default class ErrorBoundary extends React.Component {
     }
 
     render() {
+        const styles = getStyles();
         if (this.state.hasError) {
             return (
                 <View style={styles.container}>
@@ -43,7 +44,7 @@ export default class ErrorBoundary extends React.Component {
     }
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

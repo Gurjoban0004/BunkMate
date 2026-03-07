@@ -13,6 +13,7 @@ const CHART_HEIGHT = 150;
  * @param {number} days - number of days to show (default 14)
  */
 export default function AttendanceGraph({ subjectId, state, days = 14 }) {
+    const styles = getStyles();
     const data = useMemo(() => {
         const result = [];
         const today = new Date();
@@ -140,7 +141,7 @@ export default function AttendanceGraph({ subjectId, state, days = 14 }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         marginBottom: SPACING.md,
     },

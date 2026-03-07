@@ -21,6 +21,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 let subjectIdCounter = 1;
 
 function formatTime(time24) {
+    const styles = getStyles();
     const [h, m] = time24.split(':').map(Number);
     const suffix = h >= 12 ? 'PM' : 'AM';
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
@@ -28,6 +29,7 @@ function formatTime(time24) {
 }
 
 export default function TimetableScreen({ navigation }) {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
     const [selectedDay, setSelectedDay] = useState('Monday');
     const [timetable, setTimetable] = useState({
@@ -216,7 +218,7 @@ export default function TimetableScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,

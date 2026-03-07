@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, TYPOGRAPHY, SHADOWS, BORDER_RADIUS } from '../../theme/theme';
 
 function FloatingBackButtonNative({ onPress }) {
+    const styles = getStyles();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -33,26 +34,29 @@ function FloatingBackButtonNative({ onPress }) {
 }
 
 export default function FloatingBackButton({ onPress }) {
+    const styles = getStyles();
     // On web, our custom WebHeader will handle the back button.
     // We cannot call useNavigation() on web because NavigationContainer doesn't exist.
     if (Platform.OS === 'web') return null;
     return <FloatingBackButtonNative onPress={onPress} />;
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         position: 'absolute',
-        left: SPACING.lg,
+        left: SPACING.md,
         zIndex: 100,
-        backgroundColor: COLORS.cardBackground,
-        paddingHorizontal: SPACING.lg,
-        paddingVertical: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 8,
         borderRadius: BORDER_RADIUS.full,
-        ...SHADOWS.medium,
+        ...SHADOWS.small,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     text: {
-        fontSize: 15,
-        fontWeight: '700',
+        fontSize: 13,
+        fontWeight: '600',
         color: COLORS.primary,
     },
 });

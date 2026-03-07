@@ -2,7 +2,7 @@
 // All styling constants — NEVER hardcode colors/spacing in components
 import { Platform } from 'react-native';
 
-export const COLORS = {
+export const LIGHT_COLORS = {
     // ---------------------------------------------------------
     // 1. BACKGROUNDS (The Canvas)
     // ---------------------------------------------------------
@@ -23,20 +23,17 @@ export const COLORS = {
     // ---------------------------------------------------------
     // 3. SEMANTIC STATUS (The Communication)
     // ---------------------------------------------------------
-    // Success
-    success: '#6BCB77',          // On-track dots, progress bar fills
-    successLight: '#E8F5E9',     // Safe badge bg
-    successDark: '#2E7D32',      // Softer text contrast for badges
+    success: '#6BCB77',
+    successLight: '#E8F5E9',
+    successDark: '#2E7D32',
 
-    // Danger
-    danger: '#FF6B6B',           // Needs-work dots, bar fills
-    dangerLight: '#FFEBEE',      // Danger percentage badge bg
-    dangerDark: '#D32F2F',       // Clean, readable dark ruby
+    danger: '#FF6B6B',
+    dangerLight: '#FFEBEE',
+    dangerDark: '#D32F2F',
 
-    // Warning
-    warning: '#FFD93D',          // Warning dots, progress bar fills
-    warningLight: '#FFF8E1',     // Softer warning badge bg
-    warningDark: '#F57C00',      // Balanced dark orange
+    warning: '#FFD93D',
+    warningLight: '#FFF8E1',
+    warningDark: '#F57C00',
 
     // ---------------------------------------------------------
     // 4. TEXT (The Hierarchy)
@@ -54,19 +51,52 @@ export const COLORS = {
 
     // ---------------------------------------------------------
     // 6. SUBJECT COLORS (Strictly Decorative)
-    // No semantic reds, greens, or yellows to avoid confusion.
     // ---------------------------------------------------------
     subjectPalette: [
-        '#85C1E9', // Light Blue
-        '#F48FB1', // Soft Pink
-        '#B39DDB', // Deep Lavender
-        '#4ECDC4', // Teal
-        '#BB8FCE', // Lavender
-        '#45B7D1', // Sky Blue
-        '#DDA0DD', // Plum
-        '#98D8C8', // Mint
+        '#85C1E9', '#F48FB1', '#B39DDB', '#4ECDC4',
+        '#BB8FCE', '#45B7D1', '#DDA0DD', '#98D8C8',
     ],
 };
+
+export const DARK_COLORS = {
+    background: '#14141A',       // Deep muted dark tone
+    cardBackground: '#1F1F2A',   // Slightly elevated dark tone
+    inputBackground: '#2B2B38',  // Input surfaces
+    bgBunk: '#2A1A1E',           // Simulator background for Skip mode
+    bgAttend: '#1A2A1E',         // Simulator background for Fix mode
+
+    primary: '#9B92F2',          // Lighter pastel primary
+    primaryLight: '#393375',     // Stepper buttons bg dark
+    primaryDark: '#B1AAFA',      // Stepper button text lighter
+    textOnPrimary: '#FFFFFF',
+
+    success: '#5ABD69',
+    successLight: '#1C3E26',
+    successDark: '#8CED9B',
+
+    danger: '#ED5E5E',
+    dangerLight: '#4F1D1D',
+    dangerDark: '#FFAFAF',
+
+    warning: '#F2CD33',
+    warningLight: '#594A10',
+    warningDark: '#FFE67B',
+
+    textPrimary: '#F1F3F5',
+    textSecondary: '#9AA0A6',
+    textMuted: '#687076',
+
+    border: '#2C2D3A',
+    shadow: '#000000',
+    overlay: 'rgba(0, 0, 0, 0.7)',
+
+    subjectPalette: [
+        '#568EA6', '#B05E7B', '#7A64A0', '#34938D',
+        '#8B6899', '#2E8B9E', '#A46EAA', '#63A293',
+    ],
+};
+
+export const COLORS = { ...LIGHT_COLORS };
 
 export const SPACING = {
     xs: 4,
@@ -81,6 +111,106 @@ export const SPACING = {
 };
 
 export const TYPOGRAPHY = {
+    // Display Typography - For hero sections and major emphasis
+    displayLarge: {
+        fontSize: 40,
+        fontWeight: '800',
+        lineHeight: 48,
+        letterSpacing: -0.5,
+    },
+    displayMedium: {
+        fontSize: 32,
+        fontWeight: '700',
+        lineHeight: 40,
+        letterSpacing: -0.25,
+    },
+    displaySmall: {
+        fontSize: 28,
+        fontWeight: '700',
+        lineHeight: 36,
+    },
+
+    // Headings - For section titles and card headers
+    headingLarge: {
+        fontSize: 24,
+        fontWeight: '600',
+        lineHeight: 32,
+        letterSpacing: 0,
+    },
+    headingMedium: {
+        fontSize: 20,
+        fontWeight: '600',
+        lineHeight: 28,
+        letterSpacing: 0,
+    },
+    headingSmall: {
+        fontSize: 18,
+        fontWeight: '600',
+        lineHeight: 24,
+        letterSpacing: 0,
+    },
+
+    // Body Text - For main content
+    bodyLarge: {
+        fontSize: 18,
+        fontWeight: '400',
+        lineHeight: 26,
+        letterSpacing: 0,
+    },
+    bodyMedium: {
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 24,
+        letterSpacing: 0,
+    },
+    bodySmall: {
+        fontSize: 14,
+        fontWeight: '400',
+        lineHeight: 20,
+        letterSpacing: 0,
+    },
+
+    // UI Elements - For buttons, labels, and controls
+    labelLarge: {
+        fontSize: 16,
+        fontWeight: '600',
+        lineHeight: 20,
+        letterSpacing: 0.1,
+    },
+    labelMedium: {
+        fontSize: 14,
+        fontWeight: '600',
+        lineHeight: 18,
+        letterSpacing: 0.1,
+    },
+    labelSmall: {
+        fontSize: 12,
+        fontWeight: '600',
+        lineHeight: 16,
+        letterSpacing: 0.2,
+    },
+
+    // Supporting Text - For captions and helper text
+    captionLarge: {
+        fontSize: 14,
+        fontWeight: '400',
+        lineHeight: 18,
+        letterSpacing: 0.1,
+    },
+    captionMedium: {
+        fontSize: 12,
+        fontWeight: '400',
+        lineHeight: 16,
+        letterSpacing: 0.2,
+    },
+    captionSmall: {
+        fontSize: 10,
+        fontWeight: '400',
+        lineHeight: 14,
+        letterSpacing: 0.3,
+    },
+
+    // Legacy compatibility - will be deprecated
     headerLarge: { fontSize: 28, fontWeight: 'bold' },
     headerMedium: { fontSize: 22, fontWeight: '600' },
     headerSmall: { fontSize: 18, fontWeight: '600' },
@@ -92,6 +222,32 @@ export const TYPOGRAPHY = {
 
 // Semantic font size aliases used by new components
 export const FONT_SIZES = {
+    // Display sizes
+    displaySmall: 28,
+    displayMedium: 32,
+    displayLarge: 40,
+
+    // Heading sizes
+    headingSmall: 18,
+    headingMedium: 20,
+    headingLarge: 24,
+
+    // Body sizes
+    bodySmall: 14,
+    bodyMedium: 16,
+    bodyLarge: 18,
+
+    // Label sizes
+    labelSmall: 12,
+    labelMedium: 14,
+    labelLarge: 16,
+
+    // Caption sizes
+    captionSmall: 10,
+    captionMedium: 12,
+    captionLarge: 14,
+
+    // Legacy compatibility
     xs: 12,
     sm: 14,
     md: 16,
@@ -105,7 +261,7 @@ export const BORDER_RADIUS = {
     sm: 8,
     md: 12,
     lg: 20,
-    xl: 20,
+    xl: 24,
     full: 9999,
 };
 
@@ -137,5 +293,23 @@ export const SHADOWS = {
         shadowRadius: 8,
         elevation: 4,
     },
+};
+
+export const applyTheme = (themeStr) => {
+    const source = themeStr === 'dark' ? DARK_COLORS : LIGHT_COLORS;
+    for (const key in source) {
+        COLORS[key] = source[key];
+    }
+
+    // Update SHADOWS dependent on COLORS.shadow
+    if (Platform.OS === 'web') {
+        SHADOWS.small.boxShadow = `0px 1px 2px ${COLORS.shadow}0D`;
+        SHADOWS.medium.boxShadow = `0px 4px 12px ${COLORS.shadow}1A`;
+        SHADOWS.large.boxShadow = `0px 4px 8px ${COLORS.shadow}1A`;
+    } else {
+        SHADOWS.small.shadowColor = COLORS.shadow;
+        SHADOWS.medium.shadowColor = COLORS.shadow;
+        SHADOWS.large.shadowColor = COLORS.shadow;
+    }
 };
 

@@ -24,7 +24,7 @@ const DAY_NAME_TO_NUMBER = {
     Saturday: 6,
 };
 
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
  * Build a chronological history array for a subject from attendanceRecords.

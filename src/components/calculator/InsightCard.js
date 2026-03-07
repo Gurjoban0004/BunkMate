@@ -7,6 +7,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme
  * type: 'bestDay' | 'pattern' | 'trend' | 'comparison' | 'quickWin'
  */
 const InsightCard = ({ type, data }) => {
+    const styles = getStyles();
     if (!data) return null;
 
     const configs = {
@@ -55,7 +56,7 @@ const InsightCard = ({ type, data }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,

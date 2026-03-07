@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const StatsCard = ({ subject, stats, classesPerWeek, remainingClasses }) => {
+    const styles = getStyles();
     const isAtRisk = stats.percentage < 75;
     const statusLabel = stats.percentage >= 85 ? 'Safe' :
         stats.percentage >= 75 ? 'On Track' : 'At Risk';
@@ -73,7 +74,7 @@ const StatsCard = ({ subject, stats, classesPerWeek, remainingClasses }) => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,

@@ -12,6 +12,7 @@ import {
     KeyboardAvoidingView,
     Switch
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { clearAppState, saveAppState } from '../../storage/storage';
@@ -21,9 +22,17 @@ import { encodeBase64, decodeBase64 } from '../../utils/base64';
 const THRESHOLD_OPTIONS = [70, 75, 80, 85, 90];
 
 const SettingsScreen = ({ navigation }) => {
+    const styles = getStyles();
     const { state, dispatch } = useApp();
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState(state.userName || '');
+    const [showTimePicker, setShowTimePicker] = useState(false);
+
+    // Web Time Picker State
+    const [webTimePickerVisible, setWebTimePickerVisible] = useState(false);
+    const [webHour, setWebHour] = useState('08');
+    const [webMinute, setWebMinute] = useState('00');
+    const [webAmPm, setWebAmPm] = useState('PM');
 
     // Import Modal State
     const [importModalVisible, setImportModalVisible] = useState(false);
@@ -36,10 +45,93 @@ const SettingsScreen = ({ navigation }) => {
         notificationEnabled = true,
         smartAlertsEnabled = true,
         weeklySummaryEnabled = true,
+        theme = 'light',
+        landingPage = 'today',
+        autopilotEnabled = false,
+        autopilotTime = '20:00',
+        autopilotDefault = 'present',
     } = state.settings || {};
+
+    const customTargets = state.subjects ? state.subjects.filter(s => s.target && s.target !== dangerThreshold) : [];
 
     const updateSetting = (key, value) => {
         dispatch({ type: 'UPDATE_SETTINGS', payload: { [key]: value } });
+    };
+
+    const handleToggleAutopilot = () => {
+        dispatch({
+            type: 'UPDATE_AUTOPILOT_SETTINGS',
+            payload: { autopilotEnabled: !autopilotEnabled },
+        });
+    };
+
+    const handleTimeChange = (event, selectedDate) => {
+        if (Platform.OS === 'android') {
+            setShowTimePicker(false);
+        }
+        if (selectedDate) {
+            const hours = String(selectedDate.getHours()).padStart(2, '0');
+            const minutes = String(selectedDate.getMinutes()).padStart(2, '0');
+            dispatch({
+                type: 'UPDATE_AUTOPILOT_SETTINGS',
+                payload: { autopilotTime: `${hours}:${minutes}` },
+            });
+        }
+    };
+
+    const handleDefaultChange = (value) => {
+        dispatch({
+            type: 'UPDATE_AUTOPILOT_SETTINGS',
+            payload: { autopilotDefault: value },
+        });
+    };
+
+    const formatTime = (timeStr) => {
+        if (!timeStr) return '';
+        const [h, m] = timeStr.split(':');
+        let hours = parseInt(h, 10);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return `${hours}:${m} ${ampm}`;
+    };
+
+    const parseTimeToDate = (timeStr) => {
+        const [h, m] = (timeStr || '20:00').split(':');
+        const d = new Date();
+        d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+        return d;
+    };
+
+    const openWebTimePicker = () => {
+        let [h, m] = (autopilotTime || '20:00').split(':');
+        let hour = parseInt(h, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12 || 12;
+
+        setWebHour(String(hour).padStart(2, '0'));
+        setWebMinute(m);
+        setWebAmPm(ampm);
+        setWebTimePickerVisible(true);
+    };
+
+    const handleSaveWebTime = () => {
+        let h = parseInt(webHour, 10);
+        if (isNaN(h) || h < 1 || h > 12) h = 12;
+
+        let m = parseInt(webMinute, 10);
+        if (isNaN(m) || m < 0 || m > 59) m = 0;
+
+        if (h === 12 && webAmPm === 'AM') h = 0;
+        else if (h < 12 && webAmPm === 'PM') h += 12;
+
+        const hStr = String(h).padStart(2, '0');
+        const mStr = String(m).padStart(2, '0');
+
+        dispatch({
+            type: 'UPDATE_AUTOPILOT_SETTINGS',
+            payload: { autopilotTime: `${hStr}:${mStr}` },
+        });
+        setWebTimePickerVisible(false);
     };
 
     const handleSaveName = () => {
@@ -157,6 +249,186 @@ const SettingsScreen = ({ navigation }) => {
                                     </Text>
                                 </TouchableOpacity>
                             ))}
+                        </View>
+
+                        {/* Custom Targets Sub-list */}
+                        {customTargets.length > 0 && (
+                            <View style={styles.customTargetsContainer}>
+                                <Text style={styles.customTargetsHeader}>Custom Subject Targets</Text>
+                                {customTargets.map(sub => (
+                                    <View key={sub.id} style={styles.customTargetRow}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: sub.color || COLORS.primary }} />
+                                            <Text style={styles.customTargetName}>{sub.name}</Text>
+                                        </View>
+                                        <Text style={styles.customTargetValue}>{sub.target}%</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* Divider */}
+                        <View style={[styles.divider, { marginLeft: 0, marginVertical: SPACING.md }]} />
+
+                        {/* Landing Page */}
+                        <View style={styles.settingRow}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>Startup Screen</Text>
+                                <Text style={styles.cardDescription}>Default app open tab</Text>
+                            </View>
+                            <View style={styles.optionsGroupSmall}>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, landingPage === 'today' && styles.optionButtonActive]}
+                                    onPress={() => updateSetting('landingPage', 'today')}
+                                >
+                                    <Text style={[styles.optionText, landingPage === 'today' && styles.optionTextActive]}>Today</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, landingPage === 'planner' && styles.optionButtonActive]}
+                                    onPress={() => updateSetting('landingPage', 'planner')}
+                                >
+                                    <Text style={[styles.optionText, landingPage === 'planner' && styles.optionTextActive]}>Planner</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Autopilot Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>AUTOMATION</Text>
+
+                    <View style={styles.card}>
+                        <View style={styles.settingRow}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.settingLabel}>Autopilot Mode</Text>
+                                <Text style={styles.settingDescription}>
+                                    Automatically mark untouched attendance cards
+                                </Text>
+                            </View>
+                            <Switch
+                                value={autopilotEnabled}
+                                onValueChange={handleToggleAutopilot}
+                                trackColor={{ false: COLORS.border, true: COLORS.success }}
+                                thumbColor={COLORS.cardBackground}
+                            />
+                        </View>
+
+                        {autopilotEnabled && (
+                            <>
+                                <View style={[styles.divider, { marginVertical: SPACING.md, marginLeft: 0 }]} />
+
+                                <View style={styles.settingRow}>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.settingLabel}>Trigger Time</Text>
+                                        <Text style={styles.settingDescription}>
+                                            When should missing cards be auto-marked?
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.timeValueBox}
+                                        onPress={() => {
+                                            if (Platform.OS === 'web') {
+                                                openWebTimePicker();
+                                            } else {
+                                                setShowTimePicker(true);
+                                            }
+                                        }}
+                                    >
+                                        <Text style={styles.timeValueText}>
+                                            {formatTime(autopilotTime)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {showTimePicker && (
+                                    <View style={Platform.OS === 'ios' && styles.iosPickerContainer}>
+                                        <DateTimePicker
+                                            value={parseTimeToDate(autopilotTime)}
+                                            mode="time"
+                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                            onChange={handleTimeChange}
+                                        />
+                                        {Platform.OS === 'ios' && (
+                                            <TouchableOpacity
+                                                style={styles.pickerDoneBtn}
+                                                onPress={() => setShowTimePicker(false)}
+                                            >
+                                                <Text style={styles.pickerDoneText}>Done</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+
+                                <View style={[styles.divider, { marginVertical: SPACING.md, marginLeft: 0 }]} />
+
+                                <View style={styles.settingRow}>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.settingLabel}>Default Status</Text>
+                                        <Text style={styles.settingDescription}>
+                                            What should untouched cards be marked as?
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.radioGroup}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.radioOption,
+                                            autopilotDefault === 'present' && styles.radioOptionSelectedPresent
+                                        ]}
+                                        onPress={() => handleDefaultChange('present')}
+                                    >
+                                        <Text style={[
+                                            styles.radioText,
+                                            autopilotDefault === 'present' && styles.radioTextSelectedPresent
+                                        ]}>
+                                            Present
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.radioOption,
+                                            autopilotDefault === 'absent' && styles.radioOptionSelectedAbsent
+                                        ]}
+                                        onPress={() => handleDefaultChange('absent')}
+                                    >
+                                        <Text style={[
+                                            styles.radioText,
+                                            autopilotDefault === 'absent' && styles.radioTextSelectedAbsent
+                                        ]}>
+                                            Absent
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
+                    </View>
+                </View>
+
+                {/* Appearance Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>APPEARANCE</Text>
+                    <View style={styles.card}>
+                        <View style={styles.settingRow}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>Theme</Text>
+                                <Text style={styles.cardDescription}>Experimental pastel dark mode</Text>
+                            </View>
+                            <View style={styles.optionsGroupSmall}>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, theme === 'light' && styles.optionButtonActive]}
+                                    onPress={() => updateSetting('theme', 'light')}
+                                >
+                                    <Text style={[styles.optionText, theme === 'light' && styles.optionTextActive]}>Light</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, theme === 'dark' && styles.optionButtonActive]}
+                                    onPress={() => updateSetting('theme', 'dark')}
+                                >
+                                    <Text style={[styles.optionText, theme === 'dark' && styles.optionTextActive]}>Dark</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -352,11 +624,67 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
             </Modal>
+
+            {/* Custom Web Time Picker */}
+            <Modal visible={webTimePickerVisible} animationType="fade" transparent={true} onRequestClose={() => setWebTimePickerVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.timePickerModalContent}>
+                        <Text style={styles.modalTitle}>Set Autopilot Time</Text>
+
+                        <View style={styles.timeInputContainer}>
+                            <TextInput
+                                style={styles.customTimeInput}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                value={webHour}
+                                onChangeText={(val) => setWebHour(val.replace(/[^0-9]/g, ''))}
+                                placeholder="12"
+                                placeholderTextColor={COLORS.textMuted}
+                            />
+                            <Text style={styles.timeColon}>:</Text>
+                            <TextInput
+                                style={styles.customTimeInput}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                value={webMinute}
+                                onChangeText={(val) => setWebMinute(val.replace(/[^0-9]/g, ''))}
+                                placeholder="00"
+                                placeholderTextColor={COLORS.textMuted}
+                            />
+
+                            <View style={styles.amPmToggle}>
+                                <TouchableOpacity
+                                    style={[styles.amPmBtn, webAmPm === 'AM' && styles.amPmBtnActive]}
+                                    onPress={() => setWebAmPm('AM')}
+                                >
+                                    <Text style={[styles.amPmText, webAmPm === 'AM' && styles.amPmTextActive]}>AM</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.amPmBtn, webAmPm === 'PM' && styles.amPmBtnActive]}
+                                    onPress={() => setWebAmPm('PM')}
+                                >
+                                    <Text style={[styles.amPmText, webAmPm === 'PM' && styles.amPmTextActive]}>PM</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={[styles.modalButton, styles.modalButtonCancel]} onPress={() => setWebTimePickerVisible(false)}>
+                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.modalButton, styles.modalButtonConfirm]} onPress={handleSaveWebTime}>
+                                <Text style={styles.modalButtonTextConfirm}>Set Time</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
     scrollView: { flex: 1 },
     scrollContent: { paddingTop: SPACING.lg },
@@ -370,6 +698,15 @@ const styles = StyleSheet.create({
     divider: { height: 1, backgroundColor: COLORS.border, marginLeft: SPACING.md },
     cardTitle: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 4 },
     cardDescription: { fontSize: FONT_SIZES.xs, color: COLORS.textSecondary, marginBottom: SPACING.md },
+    timePickerModalContent: { backgroundColor: COLORS.cardBackground, padding: SPACING.xl, borderRadius: BORDER_RADIUS.lg, width: '90%', maxWidth: 400, ...SHADOWS.large },
+    timeInputContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: SPACING.xl },
+    customTimeInput: { width: 60, height: 60, backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, fontSize: 32, fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center' },
+    timeColon: { fontSize: 32, fontWeight: '700', color: COLORS.textPrimary, marginHorizontal: SPACING.sm },
+    amPmToggle: { flexDirection: 'column', marginLeft: SPACING.lg, borderRadius: BORDER_RADIUS.sm, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+    amPmBtn: { paddingVertical: 8, paddingHorizontal: SPACING.md, backgroundColor: COLORS.cardBackground },
+    amPmBtnActive: { backgroundColor: COLORS.primary },
+    amPmText: { fontSize: FONT_SIZES.sm, fontWeight: '600', color: COLORS.textSecondary },
+    amPmTextActive: { color: COLORS.textOnPrimary },
     settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     settingLabel: { fontSize: FONT_SIZES.md, fontWeight: '500', color: COLORS.textPrimary },
     settingInfo: { flex: 1, marginRight: SPACING.md },
@@ -385,6 +722,13 @@ const styles = StyleSheet.create({
     optionButtonActive: { backgroundColor: COLORS.primary },
     optionText: { fontSize: FONT_SIZES.sm, fontWeight: '500', color: COLORS.textSecondary },
     optionTextActive: { color: COLORS.textOnPrimary, fontWeight: '600' },
+    customTargetsContainer: { marginTop: SPACING.md, backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md, padding: SPACING.sm },
+    customTargetsHeader: { fontSize: FONT_SIZES.xs, fontWeight: '600', color: COLORS.textMuted, marginBottom: 8, textTransform: 'uppercase' },
+    customTargetRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+    customTargetName: { fontSize: FONT_SIZES.sm, color: COLORS.textPrimary, fontWeight: '500' },
+    customTargetValue: { fontSize: FONT_SIZES.sm, color: COLORS.primary, fontWeight: '700' },
+    optionsGroupSmall: { flexDirection: 'row', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: 4 },
+    smallOptionBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: BORDER_RADIUS.sm, alignItems: 'center' },
     timePickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
     timePickerLabel: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary },
     timeBadge: { backgroundColor: COLORS.primaryLight, paddingHorizontal: SPACING.md, paddingVertical: 6, borderRadius: BORDER_RADIUS.sm },
@@ -397,6 +741,71 @@ const styles = StyleSheet.create({
     appName: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.textMuted },
     version: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: 4 },
     bottomPadding: { height: 100 },
+
+    // Autopilot specific styles
+    timeValueBox: {
+        backgroundColor: COLORS.inputBackground,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 8,
+        borderRadius: BORDER_RADIUS.md,
+    },
+    timeValueText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: COLORS.primary,
+    },
+    iosPickerContainer: {
+        backgroundColor: COLORS.background,
+        padding: SPACING.md,
+        alignItems: 'center',
+    },
+    pickerDoneBtn: {
+        backgroundColor: COLORS.primaryLight,
+        paddingHorizontal: SPACING.lg,
+        paddingVertical: SPACING.sm,
+        borderRadius: BORDER_RADIUS.full,
+        marginTop: SPACING.sm,
+    },
+    pickerDoneText: {
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    radioGroup: {
+        flexDirection: 'row',
+        paddingHorizontal: SPACING.md,
+        paddingBottom: SPACING.md,
+        gap: SPACING.sm,
+        marginTop: SPACING.sm,
+    },
+    radioOption: {
+        flex: 1,
+        paddingVertical: SPACING.sm,
+        borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        alignItems: 'center',
+    },
+    radioOptionSelectedPresent: {
+        borderColor: COLORS.success,
+        backgroundColor: COLORS.successLight,
+    },
+    radioOptionSelectedAbsent: {
+        borderColor: COLORS.danger,
+        backgroundColor: COLORS.dangerLight,
+    },
+    radioText: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textSecondary,
+        fontWeight: '500',
+    },
+    radioTextSelectedPresent: {
+        color: COLORS.successDark,
+        fontWeight: '600',
+    },
+    radioTextSelectedAbsent: {
+        color: COLORS.dangerDark,
+        fontWeight: '600',
+    },
 
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
