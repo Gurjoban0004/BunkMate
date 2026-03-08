@@ -9,6 +9,7 @@ import { getNextClass, formatRelativeDate } from '../../../utils/planner/schedul
  * Skip vs Attend decision buttons with impact preview.
  */
 export default function NextClassDecision({ subjectData }) {
+    const styles = getStyles();
     const { attended, total, target } = subjectData;
 
     const skipImpact = calculateSkipImpact(attended, total);
@@ -69,7 +70,7 @@ export default function NextClassDecision({ subjectData }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,
@@ -91,6 +92,7 @@ const styles = StyleSheet.create({
     optionsRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: SPACING.xs,
     },
     option: {
         flex: 1,
@@ -99,32 +101,40 @@ const styles = StyleSheet.create({
         borderRadius: BORDER_RADIUS.sm,
     },
     skipOption: {
-        backgroundColor: COLORS.dangerLight,
+        backgroundColor: COLORS.bgSkip,
     },
     attendOption: {
-        backgroundColor: COLORS.successLight,
-    },
-    optionLabel: {
-        fontSize: FONT_SIZES.xs,
-        color: COLORS.textSecondary,
-        marginBottom: SPACING.xs,
-    },
-    optionPercentage: {
-        fontSize: FONT_SIZES.xl,
-        fontWeight: '700',
-    },
-    optionChange: {
-        fontSize: FONT_SIZES.xs,
-        fontWeight: '600',
-        marginTop: 2,
+        backgroundColor: COLORS.bgAttend,
     },
     vsDivider: {
-        width: 36,
+        backgroundColor: COLORS.cardBackground,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
         alignItems: 'center',
+        zIndex: 1,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     vsText: {
         fontSize: FONT_SIZES.xs,
+        fontWeight: '600',
         color: COLORS.textMuted,
+    },
+    optionLabel: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+        textTransform: 'uppercase',
+        marginBottom: SPACING.xs,
+    },
+    optionPercentage: {
+        fontSize: FONT_SIZES.lg,
+        fontWeight: 'bold',
+    },
+    optionChange: {
+        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
     },
 });

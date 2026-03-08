@@ -21,7 +21,7 @@ const QuickWins = ({ quickWins }) => {
                                 • Bring {win.subject} from {win.currentPercent.toFixed(0)}% → {win.targetPercent.toFixed(0)}%
                             </Text>
                             <Text style={styles.cardBullet}>
-                                • Unlock safe bunk slots
+                                • Unlock safe skip slots
                             </Text>
                         </View>
                     );

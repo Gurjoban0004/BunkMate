@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { getResultMessage } from '../../utils/calculator';
 
-const ResultCard = ({ maxBunks, recoveryNeeded, currentPercentage, targetPercentage, onRecoveryPress }) => {
+const ResultCard = ({ maxSkips, recoveryNeeded, currentPercentage, targetPercentage, onRecoveryPress }) => {
     const styles = getStyles();
     const isBelowTarget = currentPercentage < targetPercentage;
 
@@ -14,7 +14,7 @@ const ResultCard = ({ maxBunks, recoveryNeeded, currentPercentage, targetPercent
                 <Text style={styles.title}>To maintain {targetPercentage}%:</Text>
 
                 <View style={styles.resultBox}>
-                    <Text style={styles.dangerLabel}>Cannot bunk any!</Text>
+                    <Text style={styles.dangerLabel}>Cannot skip any!</Text>
                     <Text style={styles.dangerSubtext}>
                         You're at {currentPercentage.toFixed(1)}% (below {targetPercentage}%)
                     </Text>
@@ -35,7 +35,7 @@ const ResultCard = ({ maxBunks, recoveryNeeded, currentPercentage, targetPercent
         );
     }
 
-    const message = getResultMessage(maxBunks, 'safe');
+    const message = getResultMessage(maxSkips, 'safe');
 
     return (
         <View style={[styles.container, styles.safeContainer]}>
@@ -43,8 +43,8 @@ const ResultCard = ({ maxBunks, recoveryNeeded, currentPercentage, targetPercent
             <Text style={styles.title}>To maintain {targetPercentage}%:</Text>
 
             <View style={styles.resultBox}>
-                <Text style={styles.safeLabel}>You can bunk</Text>
-                <Text style={styles.bigNumber}>{maxBunks}</Text>
+                <Text style={styles.safeLabel}>You can skip</Text>
+                <Text style={styles.bigNumber}>{maxSkips}</Text>
                 <Text style={styles.bigNumberUnit}>classes</Text>
             </View>
 

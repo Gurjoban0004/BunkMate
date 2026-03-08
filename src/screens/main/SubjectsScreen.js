@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import { getSubjectAttendance, calculateBunks } from '../../utils/attendance';
+import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
 
 // Components
 import OverallStatsCard from '../../components/subjects/OverallStatsCard';
@@ -29,12 +29,12 @@ const SubjectsScreen = ({ navigation }) => {
         return state.subjects.map(subject => {
             const stats = getSubjectAttendance(subject.id, state);
             const target = subject.target || dangerThreshold;
-            const bunkInfo = calculateBunks(stats.attendedUnits, stats.totalUnits, target);
+            const skipInfo = calculateSkips(stats.attendedUnits, stats.totalUnits, target);
 
             return {
                 ...subject,
                 ...stats,
-                bunkInfo,
+                skipInfo,
                 resolvedTarget: target,
             };
         });

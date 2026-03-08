@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme/theme';
+import { logger } from '../../utils/logger';
 
 export default class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -15,7 +16,7 @@ export default class ErrorBoundary extends React.Component {
 
     componentDidCatch(error, errorInfo) {
         // You can also log the error to an error reporting service
-        console.error("ErrorBoundary caught an error:", error, errorInfo);
+        logger.error("ErrorBoundary caught an error:", error, errorInfo);
     }
 
     handleRestart = () => {

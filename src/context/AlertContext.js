@@ -116,11 +116,12 @@ const getStyles = () => StyleSheet.create({
     },
     message: {
         ...TYPOGRAPHY.body,
-        textAlign: 'center',
+        textAlign: 'left',
         color: COLORS.textSecondary,
         marginTop: SPACING.sm,
         marginBottom: SPACING.lg,
-        paddingHorizontal: SPACING.md,
+        paddingHorizontal: SPACING.lg,
+        lineHeight: 20,
     },
     buttonContainer: {
         flexDirection: 'row',

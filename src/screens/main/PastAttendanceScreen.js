@@ -29,6 +29,10 @@ export default function PastAttendanceScreen({ navigation }) {
             type: 'MARK_ATTENDANCE',
             payload: { date, subjectId, status, units },
         });
+        // If it was auto-marked, manual mark also confirms it
+        if (state.attendanceRecords[date]?.[subjectId]?.autoMarked) {
+            dispatch({ type: 'CONFIRM_AUTO_MARK', payload: { date, subjectId } });
+        }
     };
 
     const markAllPresent = () => {
@@ -85,6 +89,20 @@ export default function PastAttendanceScreen({ navigation }) {
     const presentPercentage = totalAutoCount > 0 ? Math.round((presentCount / totalAutoCount) * 100) : 0;
 
     const handleApproveAll = () => {
+        dispatch({ type: 'CONFIRM_ALL_AUTO_MARK' });
+        navigation.goBack();
+    };
+
+    const handleBulkUpdate = (status) => {
+        unmarkedByDate.forEach((group) => {
+            group.classes.forEach((c) => {
+                dispatch({
+                    type: 'MARK_ATTENDANCE',
+                    payload: { date: c.date, subjectId: c.subjectId, status, units: c.units },
+                });
+            });
+        });
+        // Also confirm any auto-marked ones if we are doing bulk update
         dispatch({ type: 'CONFIRM_ALL_AUTO_MARK' });
         navigation.goBack();
     };
@@ -177,12 +195,12 @@ export default function PastAttendanceScreen({ navigation }) {
                     totalAutoCount > 0 ? (
                         <View style={styles.reviewHero}>
                             <View style={styles.heroRow}>
-                                <Text style={styles.heroTitle}>🤖 Auto-marked {totalAutoCount} classes</Text>
-                                <TouchableOpacity onPress={handleSkipAll}>
-                                    <Text style={styles.skipText}>Skip All</Text>
+                                <Text style={styles.heroTitle}>🤖 Autopilot Review</Text>
+                                <TouchableOpacity onPress={handleApproveAll} style={styles.heroActionBtn}>
+                                    <Text style={styles.heroActionText}>Confirm All</Text>
                                 </TouchableOpacity>
                             </View>
-                            <Text style={styles.heroSubtitle}>Tap each card to confirm or adjust.</Text>
+                            <Text style={styles.heroSubtitle}>Automatically marked {totalAutoCount} classes. Tap cards to adjust.</Text>
                         </View>
                     ) : null
                 }
@@ -295,24 +313,27 @@ export default function PastAttendanceScreen({ navigation }) {
                 }}
                 ListFooterComponent={
                     <View style={styles.footer}>
-                        <View style={styles.bulkActions}>
-                            <Button
-                                title="Mark All Present"
-                                onPress={markAllPresent}
-                                style={{ flex: 1 }}
-                            />
-                            <Button
-                                title="Mark All Absent"
-                                variant="secondary"
-                                onPress={markAllAbsent}
-                                style={{ flex: 1 }}
-                            />
-                        </View>
+                        {unmarkedByDate.length > 0 && (
+                            <View style={styles.bulkActions}>
+                                <TouchableOpacity 
+                                    style={[styles.bulkBtn, styles.bulkBtnPresent]} 
+                                    onPress={() => handleBulkUpdate('present')}
+                                >
+                                    <Text style={styles.bulkBtnText}>All Present</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={[styles.bulkBtn, styles.bulkBtnAbsent]} 
+                                    onPress={() => handleBulkUpdate('absent')}
+                                >
+                                    <Text style={styles.bulkBtnText}>All Absent</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                         <Button
-                            title="Done — Return to Today"
+                            title="Done — Return"
                             variant="secondary"
                             onPress={() => navigation.goBack()}
-                            style={{ marginTop: SPACING.sm }}
+                            style={{ marginTop: SPACING.md }}
                         />
                     </View>
                 }
@@ -446,10 +467,6 @@ const getStyles = () => StyleSheet.create({
     footer: {
         marginTop: SPACING.lg,
     },
-    bulkActions: {
-        flexDirection: 'row',
-        gap: SPACING.sm,
-    },
     markedContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -469,18 +486,30 @@ const getStyles = () => StyleSheet.create({
     reviewHero: {
         backgroundColor: COLORS.primaryLight,
         padding: SPACING.lg,
-        borderRadius: BORDER_RADIUS.lg,
+        borderRadius: BORDER_RADIUS.md,
         marginBottom: SPACING.lg,
     },
     heroRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: SPACING.xs,
+        marginBottom: 4,
     },
     heroTitle: {
         ...TYPOGRAPHY.headerSmall,
+        fontWeight: '700',
         color: COLORS.primary,
+    },
+    heroActionBtn: {
+        backgroundColor: COLORS.primary,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: BORDER_RADIUS.sm,
+    },
+    heroActionText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     heroSubtitle: {
         ...TYPOGRAPHY.caption,
@@ -489,7 +518,31 @@ const getStyles = () => StyleSheet.create({
     skipText: {
         ...TYPOGRAPHY.caption,
         color: COLORS.textSecondary,
-        textDecorationLine: 'underline',
+        textDecorationLine: 'underline', 
+    },
+    bulkActions: {
+        flexDirection: 'row', 
+        gap: SPACING.md,
+        marginBottom: SPACING.sm,
+    },
+    bulkBtn: {
+        flex: 1,
+        height: 48,
+        borderRadius: BORDER_RADIUS.md,
+        justifyContent: 'center',
+        alignItems: 'center', 
+        ...SHADOWS.small,
+    },
+    bulkBtnPresent: {
+        backgroundColor: COLORS.success,
+    },
+    bulkBtnAbsent: {
+        backgroundColor: COLORS.danger,
+    },
+    bulkBtnText: {
+        fontSize: 14, 
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     reviewCardItem: {
         backgroundColor: COLORS.cardBackground,

@@ -33,7 +33,7 @@ const ClassCard = ({
     const totalUnits = stats?.totalUnits || 0;
 
     // Get today's record
-    const todayKey = getTodayKey();
+    const todayKey = getTodayKey(state.devDate);
     const todayRecord = state.attendanceRecords[todayKey]?.[subjectId];
     const markedStatus = todayRecord?.status; // 'present', 'absent', or undefined
     const isAutoMarked = todayRecord?.autoMarked;

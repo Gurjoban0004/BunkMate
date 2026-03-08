@@ -8,6 +8,7 @@ import StatusDot from './StatusDot';
  * Props: label ('Skip'|'Attend'), percentage, status, change (optional signed number)
  */
 export default function ImpactText({ label, percentage, status, change }) {
+    const styles = getStyles();
     const statusColors = {
         danger: COLORS.danger,
         warning: COLORS.warningDark,
@@ -34,7 +35,7 @@ export default function ImpactText({ label, percentage, status, change }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',

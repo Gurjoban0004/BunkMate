@@ -5,13 +5,14 @@ import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasse
 import { generateRecoveryPaths } from '../../../utils/planner/recoveryPlanner';
 
 /**
- * Interactive What-If Simulator with Bunk/Attend stepper and dynamic predictions.
+ * Interactive What-If Simulator with Skip/Attend stepper and dynamic predictions.
  */
 export default function WhatIfSimulator({ subjectData, initialMode = 'skip', simulationOffset = 0, setSimulationOffset }) {
+    const styles = getStyles();
     const { attended, total, target } = subjectData;
 
-    // 'bunk' (skip) or 'attend' (fix)
-    const [mode, setMode] = useState(initialMode === 'skip' ? 'bunk' : 'attend');
+    // 'skip' or 'attend' (fix)
+    const [mode, setMode] = useState(initialMode === 'skip' ? 'skip' : 'attend');
 
     const handleModeChange = (newMode) => {
         setMode(newMode);
@@ -19,12 +20,12 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     };
 
     // Animations
-    const bgAnim = useRef(new Animated.Value(mode === 'bunk' ? 0 : 1)).current;
+    const bgAnim = useRef(new Animated.Value(mode === 'skip' ? 0 : 1)).current;
 
     // Animate background when mode changes
     useEffect(() => {
         Animated.timing(bgAnim, {
-            toValue: mode === 'bunk' ? 0 : 1,
+            toValue: mode === 'skip' ? 0 : 1,
             duration: 400,
             useNativeDriver: false,
         }).start();
@@ -32,7 +33,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
 
     const backgroundColor = bgAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [COLORS.bgBunk || '#FFF5F5', COLORS.bgAttend || '#F5FFF7'],
+        outputRange: [COLORS.bgSkip || '#FFF5F5', COLORS.bgAttend || '#F5FFF7'],
     });
 
     const activeSteps = Math.abs(simulationOffset);
@@ -46,13 +47,13 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     const handleStep = (val) => {
         const newActive = Math.max(0, Math.min(20, activeSteps + val));
         if (setSimulationOffset) {
-            setSimulationOffset(mode === 'bunk' ? -newActive : newActive);
+            setSimulationOffset(mode === 'skip' ? -newActive : newActive);
         }
     };
 
     // Generate Dynamic Insight
     const getInsight = () => {
-        if (mode === 'bunk') {
+        if (mode === 'skip') {
             if (simulated.percentage < target) {
                 // How many to recover?
                 const recovery = calculateRecoveryClasses(simulated.attended, simulated.total, target);
@@ -134,10 +135,10 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 <Text style={styles.title}>Smart Simulator</Text>
                 <View style={styles.modeSwitch}>
                     <TouchableOpacity
-                        style={[styles.modeBtn, mode === 'bunk' && styles.modeBtnActive]}
-                        onPress={() => handleModeChange('bunk')}
+                        style={[styles.modeBtn, mode === 'skip' && styles.modeBtnActive]}
+                        onPress={() => handleModeChange('skip')}
                     >
-                        <Text style={[styles.modeBtnText, mode === 'bunk' && styles.modeBtnTextActive]}>BUNK</Text>
+                        <Text style={[styles.modeBtnText, mode === 'skip' && styles.modeBtnTextActive]}>SKIP</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.modeBtn, mode === 'attend' && styles.modeBtnActive]}
@@ -173,7 +174,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                     onPress={() => handleStep(-1)}
                     activeOpacity={0.7}
                 >
-                    <Text style={[styles.stepperActionText, { color: mode === 'bunk' ? COLORS.danger : COLORS.success }]}>-</Text>
+                    <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>-</Text>
                 </TouchableOpacity>
 
                 <View style={styles.stepperValueContainer}>
@@ -186,7 +187,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                     onPress={() => handleStep(1)}
                     activeOpacity={0.7}
                 >
-                    <Text style={[styles.stepperActionText, { color: mode === 'bunk' ? COLORS.danger : COLORS.success }]}>+</Text>
+                    <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>+</Text>
                 </TouchableOpacity>
             </View>
 
@@ -216,7 +217,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,

@@ -9,11 +9,11 @@ import { showAlert } from '../../utils/alert';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 export default function WelcomeScreen({ navigation }) {
-    const styles = getStyles();
     const [name, setName] = useState('');
     const [code, setCode] = useState('');
     const { dispatch } = useApp();
     const inputRef = useRef(null);
+    const styles = getStyles();
 
     // Focus input softly
     useEffect(() => {
@@ -96,6 +96,15 @@ export default function WelcomeScreen({ navigation }) {
                     >
                         <Text style={styles.continueText}>GET STARTED →</Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.loginLink}
+                        onPress={() => navigation.navigate('Login')}
+                    >
+                        <Text style={styles.loginLinkText}>
+                            Already have a login code? <Text style={styles.loginLinkBold}>Tap here</Text>
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </KeyboardWrapper>
         </SafeAreaView>
@@ -170,5 +179,19 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textOnPrimary,
         fontSize: FONT_SIZES.md,
         fontWeight: '700',
+    },
+    loginLink: {
+        marginTop: SPACING.md,
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+    },
+    loginLinkText: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textSecondary,
+        textAlign: 'center',
+    },
+    loginLinkBold: {
+        color: COLORS.primary,
+        fontWeight: '600',
     },
 });

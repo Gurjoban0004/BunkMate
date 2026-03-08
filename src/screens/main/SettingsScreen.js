@@ -12,12 +12,14 @@ import {
     KeyboardAvoidingView,
     Switch
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import { clearAppState, saveAppState } from '../../storage/storage';
+import { clearAppState, saveAppState, deleteUserAccount } from '../../storage/storage';
 import { showAlert } from '../../utils/alert';
 import { encodeBase64, decodeBase64 } from '../../utils/base64';
+import LoginCodeSection from '../../components/settings/LoginCodeSection';
 
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
@@ -165,6 +167,47 @@ const SettingsScreen = ({ navigation }) => {
         showAlert('Backup Code', 'Copy the following code:\n\n' + base64 + '\n\nSelect all text and copy.');
     };
 
+    const handleLogout = () => {
+        showAlert(
+            'Logout',
+            'Are you sure you want to logout?\n\nYour local data will be cleared, but your cloud data will remain safe.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Logout',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await clearAppState();
+                        await AsyncStorage.removeItem('userId');
+                        dispatch({ type: 'RESET_STATE' });
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleDeleteAccount = () => {
+        showAlert(
+            'Delete Account',
+            '⚠️ THIS CANNOT BE UNDONE\n\nThis will permanently delete:\n• All your cloud data\n• All local data\n\nAre you absolutely sure?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'DELETE EVERYTHING',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await deleteUserAccount();
+                            dispatch({ type: 'RESET_STATE' });
+                        } catch (e) {
+                            showAlert('Error', 'Failed to delete account. Please try again.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleImportData = () => {
         if (!importDataString.trim()) {
             showAlert('Error', 'Please enter a valid backup code.');
@@ -295,24 +338,21 @@ const SettingsScreen = ({ navigation }) => {
                             
                             return (
                                 <View key={subject.id}>
-                                    <View style={styles.thresholdItem}>
+                                    <TouchableOpacity 
+                                        style={styles.thresholdItem}
+                                        onPress={() => handleOpenThresholdEditor(subject)}
+                                    >
                                         <View style={styles.thresholdInfo}>
-                                            <View style={styles.subjectHeader}>
-                                                <View style={[styles.colorDot, { backgroundColor: subject.color || COLORS.primary }]} />
-                                                <Text style={styles.subjectName}>{subject.name}</Text>
-                                                <Text style={styles.thresholdValue}>
-                                                    {status.emoji} {currentTarget}%
-                                                </Text>
-                                            </View>
-                                            <Text style={styles.thresholdStatus}>{status.label}</Text>
+                                            <View style={[styles.colorDot, { backgroundColor: subject.color || COLORS.primary }]} />
+                                            <Text style={styles.subjectName} numberOfLines={1}>{subject.name}</Text>
                                         </View>
-                                        <TouchableOpacity 
-                                            style={styles.editButton}
-                                            onPress={() => handleOpenThresholdEditor(subject)}
-                                        >
-                                            <Text style={styles.editButtonText}>Edit</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                        <View style={styles.thresholdValueContainer}>
+                                            <Text style={styles.thresholdValue}>
+                                                {currentTarget}%
+                                            </Text>
+                                            <Text style={styles.dropdownIcon}>▼</Text>
+                                        </View>
+                                    </TouchableOpacity>
                                     {index < state.subjects.length - 1 && <View style={styles.divider} />}
                                 </View>
                             );
@@ -580,6 +620,22 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
+                {/* Login Code Section */}
+                <LoginCodeSection />
+
+                {/* Login with Different Code */}
+                <View style={styles.section}>
+                    <TouchableOpacity 
+                        style={styles.loginButton}
+                        onPress={() => navigation.navigate('Login')}
+                    >
+                        <Text style={styles.loginButtonText}>🔑 Login with Different Code</Text>
+                        <Text style={styles.loginButtonSubtext}>
+                            Switch to another account or sync from a different device
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
                 {/* Data Backup */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>BACKUP & RESTORE</Text>
@@ -596,6 +652,32 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
+                {/* Account Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>ACCOUNT</Text>
+                    <View style={styles.accountActions}>
+                        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                            <View style={styles.accountButtonContent}>
+                                <Text style={styles.logoutIcon}>↗</Text>
+                                <View style={styles.accountButtonTextContainer}>
+                                    <Text style={styles.accountButtonTitle}>Logout</Text>
+                                    <Text style={styles.accountButtonSubtitle}>Cloud data stays safe</Text>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+                            <View style={styles.accountButtonContent}>
+                                <Text style={styles.deleteIcon}>⚠</Text>
+                                <View style={styles.accountButtonTextContainer}>
+                                    <Text style={styles.accountButtonTitle}>Delete Account & Data</Text>
+                                    <Text style={styles.accountButtonSubtitle}>Permanent deletion</Text>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
                 {/* Danger Zone */}
                 <View style={styles.section}>
                     <TouchableOpacity style={[styles.card, styles.dangerCard]} onPress={() => setResetModalVisible(true)}>
@@ -605,7 +687,7 @@ const SettingsScreen = ({ navigation }) => {
 
                 {/* About Section */}
                 <View style={styles.aboutContainer}>
-                    <Text style={styles.appName}>BunkMate</Text>
+                    <Text style={styles.appName}>Presence</Text>
                     <Text style={styles.version}>v1.0.1</Text>
                 </View>
 
@@ -880,37 +962,35 @@ const getStyles = () => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: SPACING.md,
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.md,
     },
     thresholdInfo: {
-        flex: 1,
-    },
-    subjectHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
         gap: 8,
-        marginBottom: 2,
-    },
-    colorDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
     },
     subjectName: {
         fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
+        fontWeight: '500',
         color: COLORS.textPrimary,
+        flex: 1,
+    },
+    thresholdValueContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
     },
     thresholdValue: {
         fontSize: FONT_SIZES.sm,
         fontWeight: '700',
         color: COLORS.primary,
-        marginLeft: 4,
     },
-    thresholdStatus: {
-        fontSize: 11,
-        color: COLORS.textSecondary,
-        marginLeft: 16, // Align with name after dot
+    colorDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
     },
     editButton: {
         backgroundColor: COLORS.inputBackground,
@@ -1008,10 +1088,72 @@ const getStyles = () => StyleSheet.create({
     chevron: { fontSize: 20, color: COLORS.textMuted },
     dangerCard: { backgroundColor: COLORS.dangerLight, alignItems: 'center', paddingVertical: SPACING.md },
     dangerText: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.danger },
+    accountActions: { gap: SPACING.md, marginHorizontal: SPACING.lg },
+    logoutButton: {
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.lg,
+        borderWidth: 1.5,
+        borderColor: COLORS.warning,
+        ...SHADOWS.small,
+    },
+    deleteButton: {
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.lg,
+        borderWidth: 1.5,
+        borderColor: COLORS.danger,
+        ...SHADOWS.small,
+    },
+    accountButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: SPACING.md,
+        gap: SPACING.md,
+    },
+    logoutIcon: {
+        fontSize: 24,
+        color: COLORS.warning,
+    },
+    deleteIcon: {
+        fontSize: 24,
+        color: COLORS.danger,
+    },
+    accountButtonTextContainer: {
+        flex: 1,
+    },
+    accountButtonTitle: {
+        fontSize: FONT_SIZES.md,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+        marginBottom: 2,
+    },
+    accountButtonSubtitle: {
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textSecondary,
+    },
     aboutContainer: { alignItems: 'center', marginTop: SPACING.lg },
     appName: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.textMuted },
     version: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: 4 },
     bottomPadding: { height: 100 },
+    
+    // Login button styles
+    loginButton: {
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.lg,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
+        ...SHADOWS.small,
+    },
+    loginButtonText: {
+        fontSize: FONT_SIZES.md,
+        fontWeight: '600',
+        color: COLORS.primary,
+        marginBottom: SPACING.xs,
+    },
+    loginButtonSubtext: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textSecondary,
+    },
 
     // Autopilot specific styles
     timeValueBox: {

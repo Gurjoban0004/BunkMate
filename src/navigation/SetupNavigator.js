@@ -1,7 +1,9 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { useApp } from '../context/AppContext';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
+import LoginScreen from '../screens/setup/LoginScreen';
 import SubjectListScreen from '../screens/setup/SubjectListScreen';
 import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
 import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
@@ -12,8 +14,12 @@ import { COLORS } from '../theme/theme';
 const Stack = createStackNavigator();
 
 export default function SetupNavigator() {
+    const { state } = useApp();
+    const initialRoute = state.userId ? 'Welcome' : 'Login';
+
     return (
         <Stack.Navigator
+            initialRouteName={initialRoute}
             screenOptions={{
                 headerStyle: { backgroundColor: COLORS.background },
                 headerTintColor: COLORS.textPrimary,
@@ -47,6 +53,11 @@ export default function SetupNavigator() {
             }}
             detachInactiveScreens={Platform.OS === 'web'}
         >
+            <Stack.Screen
+                name="Login"
+                component={LoginScreen}
+                options={{ headerShown: false }}
+            />
             <Stack.Screen
                 name="Welcome"
                 component={WelcomeScreen}

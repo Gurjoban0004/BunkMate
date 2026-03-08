@@ -8,6 +8,7 @@ import { getNext7DaysClasses } from '../../../utils/planner/scheduleProcessor';
  * Shows how many classes this subject has each day, with a weekly total.
  */
 export default function Next7DaysView({ subjectData }) {
+    const styles = getStyles();
     const classes = useMemo(() => getNext7DaysClasses(subjectData), [subjectData]);
 
     // Build weekdays-only array (Mon-Fri), with class count per day
@@ -109,7 +110,7 @@ function formatTimeTo12h(time) {
     return `${hour12}${ampm}`;
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,

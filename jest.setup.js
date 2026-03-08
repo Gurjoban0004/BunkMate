@@ -24,6 +24,11 @@ global.console = {
   error: jest.fn(),
 };
 
+// Mock expo
+jest.mock('expo', () => ({
+  registerRootComponent: jest.fn(),
+}));
+
 // Mock window and navigator for network tests
 global.window = {
   addEventListener: jest.fn(),

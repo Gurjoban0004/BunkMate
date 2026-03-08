@@ -23,34 +23,34 @@ const formatMins = (totalMins) => {
     return `${hours12}:${String(mins).padStart(2, '0')} ${period}`;
 };
 
-// Simple Number Stepper for Time (5 min increments)
-const TimeStepper = ({ value, min, max, onChange, label }) => (
-    <View style={styles.stepperContainer}>
-        <Text style={styles.stepperLabel}>{label}</Text>
-        <View style={styles.stepperControls}>
-            <TouchableOpacity
-                style={styles.stepButton}
-                onPress={() => onChange(Math.max(min, value - 5))}
-            >
-                <Text style={styles.stepButtonText}>-</Text>
-            </TouchableOpacity>
-
-            <View style={styles.stepperValueContainer}>
-                <Text style={styles.stepperValue}>{formatMins(value)}</Text>
-            </View>
-
-            <TouchableOpacity
-                style={styles.stepButton}
-                onPress={() => onChange(Math.min(max, value + 5))}
-            >
-                <Text style={styles.stepButtonText}>+</Text>
-            </TouchableOpacity>
-        </View>
-    </View>
-);
-
 export default function TimeSlotsScreen({ navigation }) {
     const styles = getStyles();
+    
+    // Simple Number Stepper for Time (5 min increments)
+    const TimeStepper = ({ value, min, max, onChange, label }) => (
+        <View style={styles.stepperContainer}>
+            <Text style={styles.stepperLabel}>{label}</Text>
+            <View style={styles.stepperControls}>
+                <TouchableOpacity
+                    style={styles.stepButton}
+                    onPress={() => onChange(Math.max(min, value - 5))}
+                >
+                    <Text style={styles.stepButtonText}>-</Text>
+                </TouchableOpacity>
+
+                <View style={styles.stepperValueContainer}>
+                    <Text style={styles.stepperValue}>{formatMins(value)}</Text>
+                </View>
+
+                <TouchableOpacity
+                    style={styles.stepButton}
+                    onPress={() => onChange(Math.min(max, value + 5))}
+                >
+                    <Text style={styles.stepButtonText}>+</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
     const { dispatch } = useApp();
 
     const [startMins, setStartMins] = useState(540); // 9:00 AM

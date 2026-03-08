@@ -153,19 +153,27 @@ export function getSubjectUnits(subjectId, state) {
 }
 
 /**
- * Bunk Calculator: how many classes can be bunked or need to attend.
+ * Skip Calculator: how many classes can be skipped or need to attend.
  */
-export function calculateBunks(attended, total, targetPercent) {
+export function calculateSkips(attended, total, targetPercent) {
     const target = targetPercent / 100;
     const currentPercent = calculatePercentage(attended, total);
 
-    if (currentPercent >= targetPercent) {
-        // canBunk = (attended / target) - total
-        const canBunk = target > 0 ? Math.floor(attended / target - total) : 0;
+    if (total === 0) {
         return {
             status: 'safe',
-            count: Math.max(0, canBunk),
-            message: `You can bunk ${Math.max(0, canBunk)} more classes`,
+            count: 0,
+            message: 'No classes recorded yet',
+        };
+    }
+
+    if (currentPercent >= targetPercent) {
+        // canSkip = (attended / target) - total
+        const canSkip = target > 0 ? Math.floor(attended / target - total) : 0;
+        return {
+            status: 'safe',
+            count: Math.max(0, canSkip),
+            message: `You can skip ${Math.max(0, canSkip)} more classes`,
         };
     } else {
         // needAttend = (target * total - attended) / (1 - target)

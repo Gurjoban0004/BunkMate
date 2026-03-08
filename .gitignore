@@ -12,3 +12,9 @@ veda
 .idea/
 .DS_Store
 *.swp
+*.log
+
+# Environment variables - NEVER commit these!
+.env
+.env.local
+.env.*.local

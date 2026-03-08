@@ -28,16 +28,16 @@ describe('firebaseHelpers', () => {
 
   describe('generateLoginCode', () => {
     // Feature: firebase-cloud-sync, Property 1: Login Code Format Validation
-    test('generated login codes always match format PRES-XXXXXXXX with valid characters', () => {
+    test('generated login codes always match format PRES-XXXXXXX with valid characters', () => {
       fc.assert(
         fc.property(fc.integer({ min: 0, max: 1000 }), () => {
           const code = generateLoginCode();
           
-          // Check length (13 characters total)
-          expect(code.length).toBe(13);
+          // Check length (12 characters total)
+          expect(code.length).toBe(12);
           
-          // Check format: PRES-XXXXXXXX
-          expect(code).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
+          // Check format: PRES-XXXXXXX
+          expect(code).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/);
           
           // Check no ambiguous characters (0, O, 1, I, L)
           expect(code).not.toMatch(/[01IOL]/);
@@ -76,7 +76,7 @@ describe('firebaseHelpers', () => {
 
   describe('getUserId', () => {
     test('returns existing userId from AsyncStorage', async () => {
-      const existingId = 'PRES-ABC12345';
+      const existingId = 'PRES-ABC1234';
       AsyncStorage.getItem.mockResolvedValue(existingId);
       setDoc.mockResolvedValue();
 
@@ -94,7 +94,7 @@ describe('firebaseHelpers', () => {
 
       const userId = await getUserId();
 
-      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
+      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/);
       expect(AsyncStorage.setItem).toHaveBeenCalledWith('userId', userId);
       expect(setDoc).toHaveBeenCalled(); // Creates user document
     });
@@ -107,7 +107,7 @@ describe('firebaseHelpers', () => {
       const userId = await getUserId();
 
       // Should still return a valid userId
-      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
+      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/);
       expect(console.warn).toHaveBeenCalled();
     });
 
@@ -117,7 +117,7 @@ describe('firebaseHelpers', () => {
 
       const userId = await getUserId();
 
-      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
+      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/);
       expect(console.error).toHaveBeenCalled();
     });
 
@@ -152,7 +152,7 @@ describe('firebaseHelpers', () => {
 
   describe('loginWithCode', () => {
     test('successfully logs in with valid code', async () => {
-      const validCode = 'PRES-ABC12345';
+      const validCode = 'PRES-ABC1234';
       getDoc.mockResolvedValue({
         exists: () => true,
         data: () => ({ createdAt: new Date() })
@@ -168,7 +168,7 @@ describe('firebaseHelpers', () => {
     });
 
     test('throws error for invalid code', async () => {
-      const invalidCode = 'PRES-INVALID1';
+      const invalidCode = 'PRES-INVALID';
       getDoc.mockResolvedValue({
         exists: () => false
       });
@@ -177,7 +177,7 @@ describe('firebaseHelpers', () => {
     });
 
     test('throws error on network failure', async () => {
-      const code = 'PRES-ABC12345';
+      const code = 'PRES-ABC1234';
       getDoc.mockRejectedValue(new Error('Network error'));
 
       await expect(loginWithCode(code)).rejects.toThrow('Failed to login');

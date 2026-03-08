@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
+import { useApp } from '../../../context/AppContext';
 import StatusDot from '../../../components/planner/shared/StatusDot';
 import PlannerProgressBar from '../../../components/planner/shared/PlannerProgressBar';
 import { determineStatus } from '../../../utils/planner/attendanceCalculations';

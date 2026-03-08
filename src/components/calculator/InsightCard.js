@@ -13,7 +13,7 @@ const InsightCard = ({ type, data }) => {
     const configs = {
         bestDay: {
             emoji: '',
-            title: 'Best day to bunk',
+            title: 'Best day to skip',
         },
         pattern: {
             emoji: '📊',

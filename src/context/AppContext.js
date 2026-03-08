@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import { getTodayKey, getNextDay, parseDate, isPastTime, subtractDays, getTodayDayName } from '../utils/dateHelpers';
+import { initNetworkListener, getUserId, onNetworkStatusChange } from '../utils/firebaseHelpers';
+import { loadAppState, saveAppState, migrateToFirestore } from '../storage/storage';
 
 const AppContext = createContext();
 
@@ -8,6 +10,7 @@ const initialState = {
 
     // User Info
     userName: '',
+    userId: null,
 
     // User-defined time slots
     timeSlots: [],
@@ -411,6 +414,12 @@ function appReducer(state, action) {
                 devDate: action.payload,
             };
 
+        case 'SET_USER_ID':
+            return {
+                ...state,
+                userId: action.payload,
+            };
+
         default:
             return state;
     }
@@ -420,22 +429,47 @@ export function AppProvider({ children }) {
     const [state, dispatch] = useReducer(appReducer, initialState);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load persisted state on mount
+    // ─── INITIALIZATION ──────────────────────────────────────────
+
     useEffect(() => {
-        const load = async () => {
+        const initialize = async () => {
             try {
-                const { loadAppState } = await import('../storage/storage');
+                console.log('🚀 Initializing app context...');
+                
+                // 1. Setup network listener
+                initNetworkListener();
+
+                // 2. Get/create userId
+                const uid = await getUserId();
+                dispatch({ type: 'SET_USER_ID', payload: uid });
+
+                // 3. Load state from hybrid storage
                 const saved = await loadAppState();
                 if (saved && saved.setupComplete !== undefined) {
                     dispatch({ type: 'LOAD_STATE', payload: saved });
+                    
+                    // 4. Migrate to Firestore if needed
+                    await migrateToFirestore(saved);
                 }
+                
+                console.log('✅ Initialization complete');
             } catch (e) {
-                console.error('Failed to load state:', e);
+                console.error('❌ Failed to initialize app:', e);
             } finally {
                 setIsLoading(false);
             }
         };
-        load();
+        initialize();
+
+        // Handle network status changes for real-time sync
+        const unsubscribe = onNetworkStatusChange((isOnline) => {
+            if (isOnline && !isLoading) {
+                console.log('🔄 Back online, syncing state...');
+                saveAppState(state);
+            }
+        });
+
+        return () => unsubscribe();
     }, []);
 
     // Auto-save state on every change (skip initial load)
@@ -446,11 +480,7 @@ export function AppProvider({ children }) {
             return;
         }
         if (!isLoading) {
-            const save = async () => {
-                const { saveAppState } = await import('../storage/storage');
-                await saveAppState(state);
-            };
-            save();
+            saveAppState(state);
         }
     }, [state, isLoading]);
 
@@ -590,7 +620,15 @@ export function AppProvider({ children }) {
     // ──────────────────────────────────────────────────────────────
 
     return (
-        <AppContext.Provider value={{ state, dispatch, isLoading, runAutopilotCheck }}>
+        <AppContext.Provider
+            value={{
+                state,
+                dispatch,
+                isLoading,
+                userId: state.userId,
+                runAutopilotCheck,
+            }}
+        >
             {children}
         </AppContext.Provider>
     );

@@ -24,7 +24,7 @@ const StatusSummary = ({ priorityList, threshold, onBunkModePress }) => {
                 {onBunkModePress && (
                     <TouchableOpacity style={styles.linkButton} onPress={onBunkModePress}>
                         <Text style={[styles.linkText, { color: COLORS.primary }]}>
-                            Switch to Bunk Mode to see how many classes you can skip! →
+                            Switch to Skip Mode to see how many classes you can skip! →
                         </Text>
                     </TouchableOpacity>
                 )}

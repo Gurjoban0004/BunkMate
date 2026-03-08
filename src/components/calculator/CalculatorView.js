@@ -5,11 +5,11 @@ import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance } from '../../utils/attendance';
 import {
     calculateImpact,
-    calculateMaxBunks,
+    calculateMaxSkips,
     calculateRecovery,
     detectPattern,
     calculateTrend,
-    findBestBunkDay,
+    findBestSkipDay,
     compareSubjects,
     getPersonalizedMessage,
     getTrendInfo,
@@ -19,7 +19,7 @@ import {
 
 import SubjectPicker from './SubjectPicker';
 import StatsCard from './StatsCard';
-import BunkStepper from './BunkStepper';
+import SkipStepper from './SkipStepper';
 import ImpactPreview from './ImpactPreview';
 import TargetSelector from './TargetSelector';
 import ResultCard from './ResultCard';
@@ -67,15 +67,15 @@ const CalculatorView = ({ navigation }) => {
         [selectedSubjectId, state]
     );
 
-    // Impact preview when bunking X classes
+    // Impact preview when skipping X classes
     const projectedPercentage = useMemo(
         () => stats ? calculateImpact(stats.attendedUnits, stats.totalUnits, sliderValue) : 0,
         [stats, sliderValue]
     );
 
-    // Max bunks for target
-    const maxBunks = useMemo(
-        () => stats ? calculateMaxBunks(stats.attendedUnits, stats.totalUnits, targetPercentage) : 0,
+    // Max skips for target
+    const maxSkips = useMemo(
+        () => stats ? calculateMaxSkips(stats.attendedUnits, stats.totalUnits, targetPercentage) : 0,
         [stats, targetPercentage]
     );
 
@@ -98,7 +98,7 @@ const CalculatorView = ({ navigation }) => {
         if (!pattern) return null;
         return {
             primary: `You skip ${selectedSubject?.name} on ${pattern.patternDay}s`,
-            secondary: `${pattern.bunkCount} of ${pattern.totalBunks} bunks were on ${pattern.patternDay}`,
+            secondary: `${pattern.skipCount} of ${pattern.totalSkips} skips were on ${pattern.patternDay}`,
             tip: `Try attending ${pattern.patternDay}s to improve!`,
         };
     }, [selectedSubjectId, state, selectedSubject]);
@@ -120,7 +120,7 @@ const CalculatorView = ({ navigation }) => {
 
     const bestDayInsight = useMemo(() => {
         if (!selectedSubjectId) return null;
-        const result = findBestBunkDay(selectedSubjectId, state);
+        const result = findBestSkipDay(selectedSubjectId, state);
         if (!result) return null;
         return {
             primary: result.bestDay,
@@ -181,11 +181,11 @@ const CalculatorView = ({ navigation }) => {
                 remainingClasses={remainingClasses}
             />
 
-            {/* Bunk Stepper */}
-            <BunkStepper
+            {/* Skip Stepper */}
+            <SkipStepper
                 value={sliderValue}
                 onValueChange={setSliderValue}
-                maxValue={Math.max(15, maxBunks + 5)}
+                maxValue={Math.max(15, maxSkips + 5)}
                 subjectColor={selectedSubject.color}
             />
 
@@ -193,7 +193,7 @@ const CalculatorView = ({ navigation }) => {
             <ImpactPreview
                 currentPercentage={stats.percentage}
                 projectedPercentage={projectedPercentage}
-                bunkCount={sliderValue}
+                skipCount={sliderValue}
             />
 
             {/* Target Selector */}
@@ -204,7 +204,7 @@ const CalculatorView = ({ navigation }) => {
 
             {/* Result Card */}
             <ResultCard
-                maxBunks={maxBunks}
+                maxSkips={maxSkips}
                 recoveryNeeded={recoveryNeeded}
                 currentPercentage={stats.percentage}
                 targetPercentage={targetPercentage}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 
+import LoginScreen from '../screens/setup/LoginScreen';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import SubjectListScreen from '../screens/setup/SubjectListScreen';
 import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
@@ -10,6 +11,7 @@ import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 
 import WebHeader from './WebHeader';
 import { COLORS } from '../theme/theme';
+import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 
 export default function WebNavigator() {
     const styles = getStyles();
@@ -97,15 +99,25 @@ export default function WebNavigator() {
             route: { params: currentRoute.params }
         };
 
+        let screen;
         switch (currentRoute.name) {
-            case 'Welcome': return <WelcomeScreen {...props} />;
-            case 'TimeSlots': return <TimeSlotsScreen {...props} />;
-            case 'SubjectList': return <SubjectListScreen {...props} />;
-            case 'TimetableBuilder': return <TimetableBuilderScreen {...props} />;
-            case 'AttendanceStats': return <AttendanceStatsScreen {...props} />;
-            case 'SetupComplete': return <SetupCompleteScreen {...props} />;
-            default: return <WelcomeScreen {...props} />;
+            case 'Login': screen = <LoginScreen {...props} />; break;
+            case 'Welcome': screen = <WelcomeScreen {...props} />; break;
+            case 'TimeSlots': screen = <TimeSlotsScreen {...props} />; break;
+            case 'SubjectList': screen = <SubjectListScreen {...props} />; break;
+            case 'TimetableBuilder': screen = <TimetableBuilderScreen {...props} />; break;
+            case 'AttendanceStats': screen = <AttendanceStatsScreen {...props} />; break;
+            case 'SetupComplete': screen = <SetupCompleteScreen {...props} />; break;
+            default: screen = <WelcomeScreen {...props} />; break;
         }
+
+        return (
+            <NavigationContext.Provider value={mockNavigation}>
+                <NavigationRouteContext.Provider value={props.route}>
+                    {screen}
+                </NavigationRouteContext.Provider>
+            </NavigationContext.Provider>
+        );
     };
 
     return (

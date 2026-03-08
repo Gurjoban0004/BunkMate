@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Open the app in a new flow after a delay so user can read
         setTimeout(() => {
             window.location.href = '/app';
-        }, 3000);
+        }, 800);
     });
 
     // ===== Android Button — Download APK =====

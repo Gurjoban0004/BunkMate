@@ -7,6 +7,7 @@ import { COLORS, FONT_SIZES, BORDER_RADIUS } from '../../../theme/theme';
  * Props: percentage, target (optional, shows marker), height (default 8), color (optional)
  */
 export default function PlannerProgressBar({ percentage, target, height = 10, color }) {
+    const styles = getStyles();
     const safePercent = Math.min(100, Math.max(0, percentage || 0));
 
     const barColor = color ||
@@ -42,7 +43,7 @@ export default function PlannerProgressBar({ percentage, target, height = 10, co
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         width: '100%',
     },

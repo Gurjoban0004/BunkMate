@@ -9,7 +9,7 @@ export const LIGHT_COLORS = {
     background: '#F7F8FA',       // Main screen background (warmer)
     cardBackground: '#FFFFFF',   // Card surfaces, tab bar, modals
     inputBackground: '#F0F2F4',  // Text inputs, mode toggle track (darker for contrast)
-    bgBunk: '#FFF5F5',           // Simulator background for Skip mode
+    bgSkip: '#FFF5F5',           // Simulator background for Skip mode
     bgAttend: '#F0FFF4',         // Simulator background for Fix mode (richer green)
 
     // ---------------------------------------------------------
@@ -71,7 +71,7 @@ export const DARK_COLORS = {
     background: '#0F0F14',       // Deep space - main screen
     cardBackground: '#1A1A24',   // Elevated surface - cards, modals
     inputBackground: '#252532',  // Recessed surface - inputs, toggles
-    bgBunk: '#1F1418',           // Subtle danger tint - skip mode
+    bgSkip: '#1F1418',           // Subtle danger tint - skip mode
     bgAttend: '#141F18',         // Subtle success tint - fix mode
 
     // ---------------------------------------------------------

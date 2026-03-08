@@ -19,6 +19,7 @@ import PatternsInsights from '../../../components/planner/SubjectDetail/Patterns
  * Receives subjectId via route params.
  */
 export default function PlannerSubjectDetail({ route }) {
+    const styles = getStyles();
     const { subjectId, initialMode = 'skip' } = route.params;
     const { state } = useApp();
 
@@ -89,12 +90,13 @@ export default function PlannerSubjectDetail({ route }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
     },
     scrollContent: {
         padding: SPACING.lg,
+        paddingTop: SPACING.xxl + SPACING.lg, // Added extra padding for floating back button
     },
 });

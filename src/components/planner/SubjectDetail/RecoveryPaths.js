@@ -4,6 +4,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../th
 import { generateRecoveryPaths, generateRewards } from '../../../utils/planner/recoveryPlanner';
 
 export default function RecoveryPaths({ subjectData }) {
+    const styles = getStyles();
     const [expanded, setExpanded] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -121,23 +122,27 @@ export default function RecoveryPaths({ subjectData }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.md,
         marginBottom: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
-        borderWidth: 1,
-        ...SHADOWS.medium,
+        ...SHADOWS.small,
+        borderLeftWidth: 4,
     },
     question: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
+        fontSize: FONT_SIZES.xs,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
         marginBottom: SPACING.sm,
     },
     answerRow: {
-        marginBottom: SPACING.xs,
+        flexDirection: 'row',
+        alignItems: 'center', 
+        marginBottom: 2,
     },
     answerTitle: {
         fontSize: FONT_SIZES.lg,
@@ -145,28 +150,29 @@ const styles = StyleSheet.create({
     },
     answerSubtitle: {
         fontSize: FONT_SIZES.sm,
-        marginBottom: SPACING.xs,
+        color: COLORS.textSecondary,
+        lineHeight: 20,
     },
     expandedContent: {
-        marginTop: SPACING.sm,
+        marginTop: SPACING.lg,
+        paddingTop: SPACING.md,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.05)',
     },
     pathRow: {
-        paddingVertical: SPACING.md,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.06)',
+        marginBottom: SPACING.md,
     },
     firstPathRow: {
-        borderTopWidth: 0,
-        paddingTop: SPACING.sm,
+        marginBottom: SPACING.lg,
     },
     pathHeader: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 12,
         marginBottom: SPACING.sm,
     },
     pathTargetEmoji: {
         fontSize: 24,
-        marginRight: SPACING.sm,
     },
     pathTarget: {
         fontSize: FONT_SIZES.md,
@@ -176,35 +182,34 @@ const styles = StyleSheet.create({
     pathClasses: {
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
-        marginTop: 2,
+        fontWeight: '500', 
     },
     nextClassesLabel: {
-        fontSize: FONT_SIZES.xs,
-        fontWeight: '600',
+        fontSize: 10,
+        fontWeight: '600', 
         color: COLORS.textMuted,
-        marginBottom: SPACING.xs,
+        textTransform: 'uppercase',
+        marginBottom: 6,
+        marginLeft: 4,
     },
     classesPreview: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: SPACING.xs,
-        marginBottom: SPACING.sm,
+        gap: 6,
     },
     classChip: {
-        backgroundColor: COLORS.background,
-        paddingHorizontal: SPACING.sm,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: BORDER_RADIUS.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+        borderRadius: 4,
     },
     classChipText: {
-        fontSize: 11,
-        color: COLORS.textSecondary,
+        fontSize: 10,
         fontWeight: '600',
+        color: COLORS.textSecondary,
     },
     moreText: {
-        fontSize: 11,
+        fontSize: 10,
         color: COLORS.textMuted,
         alignSelf: 'center',
     },

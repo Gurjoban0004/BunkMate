@@ -4,7 +4,7 @@ import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme
 
 const SubjectRow = ({ subject, status, threshold, onPress }) => {
     const styles = getStyles();
-    const { name, color, percentage, attendedUnits, totalUnits, bunkInfo } = subject;
+    const { name, color, percentage, attendedUnits, totalUnits, skipInfo } = subject;
 
     const getStatusColor = () => {
         switch (status) {
@@ -16,13 +16,15 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
     };
 
     const getActionText = () => {
+        if (!skipInfo) return 'Calculating...';
+
         if (status === 'danger') {
-            return `Attend ${bunkInfo.count}`;
+            return `Attend ${skipInfo.count}`;
         }
         if (status === 'edge') {
-            return "Can't bunk";
+            return "Can't skip";
         }
-        return `Can bunk ${bunkInfo.count}`;
+        return `Can skip ${skipInfo.count}`;
     };
 
     const statusColor = getStatusColor();

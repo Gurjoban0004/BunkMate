@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { logger } from './logger';
 
 /**
  * Request permission for local notifications.
@@ -27,7 +28,7 @@ export async function scheduleDailyReminder(time24 = '18:00') {
 
     const granted = await requestNotificationPermission();
     if (!granted) {
-        console.warn('Notification permission not granted');
+        logger.warn('Notification permission not granted');
         return null;
     }
 
@@ -99,6 +100,7 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
         const stats = getSubjectAttendance(subject.id, state);
         if (!stats || stats.totalUnits === 0) continue;
 
+        const target = subject.target || state.settings?.dangerThreshold || 75;
         const pct = stats.percentage;
         const nState = state.notificationState?.[subject.id] || {};
         const today = new Date().toISOString().split('T')[0];
@@ -110,10 +112,10 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
         let title = '';
         let body = '';
 
-        if (pct < 75 && !nState.belowThresholdNotified) {
-            // Below 75% warning
+        if (pct < target && !nState.belowThresholdNotified) {
+            // Below threshold warning
             shouldNotify = true;
-            title = `${subject.name} below 75%!`;
+            title = `${subject.name} below ${target}%!`;
             body = `Your attendance is at ${pct}%. Attend more classes to recover!`;
             dispatch({
                 type: 'UPDATE_NOTIFICATION_STATE',
@@ -122,11 +124,11 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
                     data: { ...nState, belowThresholdNotified: true, lastNotifiedDate: today },
                 },
             });
-        } else if (pct >= 75 && pct <= 77 && !nState.dangerZoneNotified) {
-            // Danger zone warning (close to dropping below 75%)
+        } else if (pct >= target && pct <= target + 2 && !nState.dangerZoneNotified) {
+            // Danger zone warning (close to dropping below target)
             shouldNotify = true;
             title = `😰 ${subject.name} in danger zone!`;
-            body = `Your attendance is at ${pct}%. One bunk could drop you below 75%!`;
+            body = `Your attendance is at ${pct}%. One skip could drop you below ${target}%!`;
             dispatch({
                 type: 'UPDATE_NOTIFICATION_STATE',
                 payload: {
@@ -137,7 +139,7 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
         }
 
         // Reset flags when attendance recovers above thresholds
-        if (pct >= 80 && (nState.belowThresholdNotified || nState.dangerZoneNotified)) {
+        if (pct >= target + 5 && (nState.belowThresholdNotified || nState.dangerZoneNotified)) {
             dispatch({
                 type: 'UPDATE_NOTIFICATION_STATE',
                 payload: {

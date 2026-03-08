@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { getSubjectAttendance, calculateBunks } from '../../utils/attendance';
+import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
 import { calculateSubjectStreak, getStreakMessage } from '../../utils/streak';
 import ProgressBar from '../../components/common/ProgressBar';
 import Card from '../../components/common/Card';
@@ -11,6 +11,7 @@ import AttendanceGraph from '../../components/subjects/AttendanceGraph';
 import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function SubjectDetailScreen({ route }) {
     const styles = getStyles();
@@ -20,10 +21,11 @@ export default function SubjectDetailScreen({ route }) {
 
     const subject = state.subjects.find((s) => s.id === subjectId);
     const subjectColor = subject?.color || COLORS.primary;
+    const target = subject?.target || state.settings?.dangerThreshold || 75;
     const stats = useMemo(() => getSubjectAttendance(subjectId, state), [subjectId, state]);
-    const bunk = useMemo(
-        () => (stats ? calculateBunks(stats.attendedUnits, stats.totalUnits, 75) : null),
-        [stats]
+    const skip = useMemo(
+        () => (stats ? calculateSkips(stats.attendedUnits, stats.totalUnits, target) : null),
+        [stats, target]
     );
 
     // Streak
@@ -38,7 +40,7 @@ export default function SubjectDetailScreen({ route }) {
         );
     }
 
-    const isGood = stats.percentage >= 75;
+    const isGood = stats.percentage >= target;
 
     // Recent records with edit support (last 2 weeks)
     const recentRecords = useMemo(() => {
@@ -84,6 +86,7 @@ export default function SubjectDetailScreen({ route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
+            <FloatingBackButton />
             <ScreenHeader title={subject?.name || 'Subject'} />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
@@ -109,20 +112,20 @@ export default function SubjectDetailScreen({ route }) {
                     </Card>
                 )}
 
-                {/* Bunk calculation */}
-                {bunk && (
-                    <Card style={[styles.bunkCard, bunk.status === 'safe' ? styles.bunkSafe : styles.bunkDanger]}>
-                        {bunk.status === 'safe' ? (
+                {/* Skip calculation */}
+                {skip && (
+                    <Card style={[styles.skipCard, skip.status === 'safe' ? styles.skipSafe : styles.skipDanger]}>
+                        {skip.status === 'safe' ? (
                             <>
-                                <Text style={styles.bunkLabel}>You can bunk</Text>
-                                <Text style={[styles.bunkNumber, styles.textGreen]}>{bunk.count}</Text>
-                                <Text style={styles.bunkLabel}>more classes and stay at 75%</Text>
+                                <Text style={styles.skipLabel}>You can skip</Text>
+                                <Text style={[styles.skipNumber, styles.textGreen]}>{skip.count}</Text>
+                                <Text style={styles.skipLabel}>more classes and stay at {target}%</Text>
                             </>
                         ) : (
                             <>
-                                <Text style={styles.bunkLabel}>You need to attend</Text>
-                                <Text style={[styles.bunkNumber, styles.textRed]}>{bunk.count}</Text>
-                                <Text style={styles.bunkLabel}>classes to reach 75%</Text>
+                                <Text style={styles.skipLabel}>You need to attend</Text>
+                                <Text style={[styles.skipNumber, styles.textRed]}>{skip.count}</Text>
+                                <Text style={styles.skipLabel}>classes to reach {target}%</Text>
                             </>
                         )}
                     </Card>
@@ -222,6 +225,7 @@ const getStyles = () => StyleSheet.create({
     scrollContent: {
         padding: SPACING.screenPadding,
         paddingBottom: SPACING.xxl,
+        paddingTop: SPACING.xxl + SPACING.lg, // Extra padding for back button
     },
     errorText: {
         ...TYPOGRAPHY.body,
@@ -268,27 +272,30 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.warning,
         fontWeight: '600',
     },
-    bunkCard: {
+    skipCard: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: SPACING.md,
-        borderLeftWidth: 4,
+        justifyContent: 'center',
+        paddingVertical: SPACING.lg,
+        gap: 8,
     },
-    bunkSafe: {
-        borderLeftColor: COLORS.success,
+    skipSafe: {
         backgroundColor: COLORS.successLight,
+        borderColor: COLORS.success,
+        borderWidth: 1,
     },
-    bunkDanger: {
-        borderLeftColor: COLORS.danger,
+    skipDanger: {
         backgroundColor: COLORS.dangerLight,
+        borderColor: COLORS.danger,
+        borderWidth: 1,
     },
-    bunkLabel: {
+    skipLabel: {
         ...TYPOGRAPHY.body,
         color: COLORS.textSecondary,
     },
-    bunkNumber: {
-        fontSize: 40,
-        fontWeight: 'bold',
-        marginVertical: SPACING.xs,
+    skipNumber: {
+        fontSize: 20,
+        fontWeight: 'bold', 
     },
     graphCard: {
         marginBottom: SPACING.md,

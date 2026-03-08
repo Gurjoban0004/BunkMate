@@ -9,7 +9,6 @@ import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
 import { getTodayKey, getNextDay } from '../../utils/dateHelpers';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function AttendanceStatsScreen({ navigation, route }) {
     const styles = getStyles();
@@ -52,7 +51,7 @@ export default function AttendanceStatsScreen({ navigation, route }) {
     };
 
     const finishSetup = (updates, trackingDate, isTodayIncluded) => {
-        const todayStr = getTodayKey();
+        const todayStr = getTodayKey(state.devDate);
         dispatch({ type: 'SET_INITIAL_ATTENDANCE', payload: updates });
         dispatch({
             type: 'SET_TRACKING_CONFIG',
@@ -90,7 +89,7 @@ export default function AttendanceStatsScreen({ navigation, route }) {
             initialAttended: parseInt(sub.attended) || 0,
         }));
 
-        const todayStr = getTodayKey();
+        const todayStr = getTodayKey(state.devDate);
         const trackingStartDate = trackingOption === 'yesterday' ? todayStr : getNextDay(todayStr);
 
         finishSetup(updates, trackingStartDate, trackingOption === 'today');
@@ -111,7 +110,6 @@ export default function AttendanceStatsScreen({ navigation, route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-            <FloatingBackButton />
             <KeyboardWrapper contentContainerStyle={styles.scrollContent}>
 
                 <View style={styles.headerBox}>

@@ -10,6 +10,7 @@ import { determineStatus } from '../../../utils/planner/attendanceCalculations';
  * Shows big percentage, counts, progress bar.
  */
 export default function StatusHeader({ subjectData }) {
+    const styles = getStyles();
     const { name, color, attended, total, percentage, target } = subjectData;
     const status = determineStatus(percentage, target);
 
@@ -37,7 +38,7 @@ export default function StatusHeader({ subjectData }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,

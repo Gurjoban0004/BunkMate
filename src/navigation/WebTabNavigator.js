@@ -19,6 +19,7 @@ import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import WebHeader from './WebHeader';
 import { useApp } from '../context/AppContext';
 import { COLORS, TYPOGRAPHY } from '../theme/theme';
+import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 
 function TabIcon({ label, focused }) {
     const styles = getStyles();
@@ -159,21 +160,30 @@ export default function WebTabNavigator() {
             route: { params: currentRoute.params }
         };
 
+        let screen;
         switch (currentRoute.name) {
-            case 'TodayMain': return <TodayScreen {...props} />;
-            case 'PastAttendance': return <PastAttendanceScreen {...props} />;
-            case 'WeeklySummary': return <WeeklySummaryScreen {...props} />;
-            case 'SubjectsList': return <SubjectsScreen {...props} />;
-            case 'SubjectDetail': return <SubjectDetailScreen {...props} />;
-            case 'PlannerMain': return <PlannerScreen {...props} />;
-            case 'PlannerSubjectDetail': return <PlannerSubjectDetail {...props} />;
-            case 'SettingsMain': return <SettingsScreen {...props} />;
-            case 'EditTimetable': return <EditTimetableScreen {...props} />;
-            case 'EditSubjects': return <EditSubjectsScreen {...props} />;
-            case 'AttendanceStats': return <AttendanceStatsScreen {...props} />;
-            case 'SyncFromPortal': return <SyncFromPortalScreen {...props} />;
-            default: return <TodayScreen {...props} />;
+            case 'TodayMain': screen = <TodayScreen {...props} />; break;
+            case 'PastAttendance': screen = <PastAttendanceScreen {...props} />; break;
+            case 'WeeklySummary': screen = <WeeklySummaryScreen {...props} />; break;
+            case 'SubjectsList': screen = <SubjectsScreen {...props} />; break;
+            case 'SubjectDetail': screen = <SubjectDetailScreen {...props} />; break;
+            case 'PlannerMain': screen = <PlannerScreen {...props} />; break;
+            case 'PlannerSubjectDetail': screen = <PlannerSubjectDetail {...props} />; break;
+            case 'SettingsMain': screen = <SettingsScreen {...props} />; break;
+            case 'EditTimetable': screen = <EditTimetableScreen {...props} />; break;
+            case 'EditSubjects': screen = <EditSubjectsScreen {...props} />; break;
+            case 'AttendanceStats': screen = <AttendanceStatsScreen {...props} />; break;
+            case 'SyncFromPortal': screen = <SyncFromPortalScreen {...props} />; break;
+            default: screen = <TodayScreen {...props} />; break;
         }
+
+        return (
+            <NavigationContext.Provider value={mockNavigation}>
+                <NavigationRouteContext.Provider value={props.route}>
+                    {screen}
+                </NavigationRouteContext.Provider>
+            </NavigationContext.Provider>
+        );
     };
 
     // Determine title for WebHeader based on current route

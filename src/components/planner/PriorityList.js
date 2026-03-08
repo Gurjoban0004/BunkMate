@@ -56,7 +56,7 @@ const PriorityList = ({ priorityList, threshold, onRecoveryPress }) => {
                             <Text style={styles.safeName}>{subject.name}</Text>
                             <Text style={styles.safePercent}>{subject.percentage.toFixed(0)}%</Text>
                             <Text style={styles.safeBuffer}>
-                                Buffer: {subject.safeBunks}
+                                Buffer: {subject.safeSkips}
                             </Text>
                         </View>
                     ))}
@@ -115,7 +115,7 @@ const SubjectCard = ({ subject, rank, variant, threshold, onRecoveryPress }) => 
             ) : (
                 <View style={styles.cardDetails}>
                     <Text style={styles.detailText}>
-                        Buffer: {subject.safeBunks} bunk{subject.safeBunks !== 1 ? 's' : ''} available
+                        Buffer: {subject.safeBunks} skip{subject.safeBunks !== 1 ? 's' : ''} available
                     </Text>
                     <Text style={styles.detailText}>Status: On the edge</Text>
                 </View>

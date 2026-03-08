@@ -2,13 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
-const ImpactPreview = ({ currentPercentage, projectedPercentage, bunkCount }) => {
+const ImpactPreview = ({ currentPercentage, projectedPercentage, skipCount }) => {
     const styles = getStyles();
     const change = projectedPercentage - currentPercentage;
     const isNegative = change < 0;
     const changeColor = isNegative ? COLORS.danger : COLORS.success;
 
-    if (bunkCount === 0) {
+    if (skipCount === 0) {
         return (
             <View style={styles.container}>
                 <Text style={styles.emptyText}>
@@ -21,7 +21,7 @@ const ImpactPreview = ({ currentPercentage, projectedPercentage, bunkCount }) =>
     return (
         <View style={styles.container}>
             <Text style={styles.title}>
-                If you bunk {bunkCount} class{bunkCount !== 1 ? 'es' : ''}:
+                If you skip {skipCount} class{skipCount !== 1 ? 'es' : ''}:
             </Text>
 
             {/* Before / After comparison */}

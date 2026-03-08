@@ -149,8 +149,8 @@ export function getPriorityList(state, threshold = 75) {
                 ? Math.ceil(recoveryNeeded / weeklyClasses)
                 : Infinity;
 
-            // Safe bunks available (if above threshold)
-            const safeBunks = buffer > 0
+            // Safe skips available (if above threshold)
+            const safeSkips = buffer > 0
                 ? Math.floor((stats.attendedUnits - (threshold / 100) * stats.totalUnits) / (threshold / 100))
                 : 0;
 
@@ -161,7 +161,7 @@ export function getPriorityList(state, threshold = 75) {
                 recoveryNeeded,
                 weeklyClasses,
                 weeksToRecover,
-                safeBunks,
+                safeSkips,
                 priority: buffer < 0 ? 'critical' : buffer <= 3 ? 'warning' : 'safe',
             };
         })

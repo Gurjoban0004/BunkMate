@@ -1,21 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { logger } from './logger';
 
 // Character set for login code generation (excludes confusing characters: 0, O, 1, I, L)
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /**
- * Generate a random login code in format PRES-XXXXXXXX
+ * Generate a random login code in format PRES-XXXXXXX
  * Uses non-ambiguous characters to prevent user confusion
- * @returns {string} Login code in format PRES-XXXXXXXX (13 characters total)
+ * @returns {string} Login code in format PRES-XXXXXXX (12 characters total)
  */
 export const generateLoginCode = () => {
   const prefix = 'PRES';
   let randomPart = '';
   
-  // Generate 8 random characters
-  for (let i = 0; i < 8; i++) {
+  // Generate 7 random characters
+  for (let i = 0; i < 7; i++) {
     const randomIndex = Math.floor(Math.random() * CODE_CHARS.length);
     randomPart += CODE_CHARS[randomIndex];
   }
@@ -44,9 +45,9 @@ export const getUserId = async () => {
           version: '1.0.0'
         }, { merge: true });
         
-        console.log('✅ Logged in as:', existingUserId);
+        logger.info('✅', 'Logged in as:', existingUserId);
       } catch (error) {
-        console.warn('⚠️ Failed to update lastActive:', error);
+        logger.warn('⚠️ Failed to update lastActive:', error);
         // Continue anyway - local userId is valid
       }
       
@@ -68,25 +69,25 @@ export const getUserId = async () => {
         version: '1.0.0'
       });
       
-      console.log('✅ New user created:', newUserId);
+      logger.info('✅', 'New user created:', newUserId);
     } catch (error) {
-      console.warn('⚠️ Failed to create Firestore user document:', error);
+      logger.warn('⚠️ Failed to create Firestore user document:', error);
       // Continue anyway - local userId is saved
     }
     
     return newUserId;
     
   } catch (error) {
-    console.error('❌ Error in getUserId:', error);
+    logger.error('❌ Error in getUserId:', error);
     
     // Fallback: Generate temporary ID and store in AsyncStorage
     const tempUserId = generateLoginCode();
     try {
       await AsyncStorage.setItem('userId', tempUserId);
-      console.log('⚠️ Using temporary ID:', tempUserId);
+      logger.warn('⚠️ Using temporary ID:', tempUserId);
       return tempUserId;
     } catch (storageError) {
-      console.error('❌ Critical: Cannot save userId to AsyncStorage:', storageError);
+      logger.error('❌ Critical: Cannot save userId to AsyncStorage:', storageError);
       // Return temporary ID even if storage fails
       return tempUserId;
     }
@@ -172,28 +173,28 @@ export const initNetworkListener = () => {
   
   const handleOnline = () => {
     isOnline = true;
-    console.log('📡 Back online');
+    logger.info('📡', 'Back online');
     
     // Notify all registered listeners
     networkListeners.forEach(callback => {
       try {
         callback(true);
       } catch (error) {
-        console.error('❌ Error in network listener callback:', error);
+        logger.error('❌ Error in network listener callback:', error);
       }
     });
   };
   
   const handleOffline = () => {
     isOnline = false;
-    console.log('📡 Gone offline');
+    logger.info('📡', 'Gone offline');
     
     // Notify all registered listeners
     networkListeners.forEach(callback => {
       try {
         callback(false);
       } catch (error) {
-        console.error('❌ Error in network listener callback:', error);
+        logger.error('❌ Error in network listener callback:', error);
       }
     });
   };
@@ -202,7 +203,7 @@ export const initNetworkListener = () => {
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
   
-  console.log('✅ Network listener initialized');
+  logger.info('✅', 'Network listener initialized');
 };
 
 /**

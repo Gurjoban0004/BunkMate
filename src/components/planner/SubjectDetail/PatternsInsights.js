@@ -7,6 +7,7 @@ import { analyzePatterns, generateInsights } from '../../../utils/planner/patter
  * Pattern insights and behavioral data for a subject.
  */
 export default function PatternsInsights({ subjectData }) {
+    const styles = getStyles();
     const patterns = useMemo(() => analyzePatterns(subjectData), [subjectData]);
     const insights = useMemo(
         () => generateInsights(patterns, subjectData),
@@ -118,7 +119,7 @@ export default function PatternsInsights({ subjectData }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,
@@ -133,14 +134,13 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.md,
     },
     insightsSection: {
-        marginBottom: SPACING.md,
+        marginBottom: SPACING.lg,
+        gap: 8,
     },
     insightChip: {
         backgroundColor: COLORS.background,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.xs + 2,
+        padding: SPACING.sm,
         borderRadius: BORDER_RADIUS.sm,
-        marginBottom: SPACING.xs,
     },
     warningChip: {
         backgroundColor: COLORS.warningLight,
@@ -156,63 +156,62 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.md,
     },
     sectionLabel: {
-        fontSize: FONT_SIZES.xs,
+        fontSize: 10,
         fontWeight: '600',
         color: COLORS.textMuted,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
         marginBottom: SPACING.sm,
     },
     daysGrid: {
-        gap: SPACING.xs,
+        flexDirection: 'row',        flexWrap: 'wrap',
+        gap: 12,
     },
     dayItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: SPACING.sm,
+        gap: 8,
+        width: '45%',
     },
     dayName: {
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
-        width: 30,
+        width: 32,
     },
     miniBar: {
         flex: 1,
         height: 6,
         backgroundColor: COLORS.border,
         borderRadius: 3,
+        overflow: 'hidden',
     },
     miniBarFill: {
-        height: 6,
+        height: '100%',
         borderRadius: 3,
     },
     dayPercentage: {
-        fontSize: FONT_SIZES.xs,
-        color: COLORS.textSecondary,
-        width: 35,
+        fontSize: 11,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
+        width: 32,
         textAlign: 'right',
     },
     streakSection: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         marginBottom: SPACING.md,
     },
     streakText: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '700',
-    },
+        fontSize: FONT_SIZES.md,
+        fontWeight: '700',    },
     last5Section: {
-        marginBottom: SPACING.md,
+        marginTop: SPACING.sm,
     },
     last5Row: {
         flexDirection: 'row',
-        gap: SPACING.sm,
+        gap: 6,
     },
     last5Dot: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
     },
     trendSection: {
         flexDirection: 'row',

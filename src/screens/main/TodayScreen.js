@@ -28,6 +28,7 @@ import BacklogBanner from '../../components/today/BacklogBanner';
 import EmptyDay from '../../components/today/EmptyDay';
 import HolidayCard from '../../components/today/HolidayCard';
 import AddExtraClassButton from '../../components/today/AddExtraClassButton';
+import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
 import {
     DisplayMedium,
@@ -56,6 +57,7 @@ const TodayScreen = ({ navigation }) => {
 
     // Get devDate logic if active
     React.useEffect(() => {
+        setCurrentTime(state.devDate ? new Date(state.devDate) : new Date());
         const timer = setInterval(() => {
             setCurrentTime(state.devDate ? new Date(state.devDate) : new Date());
         }, 60000); // UI updates every minute
@@ -168,7 +170,7 @@ const TodayScreen = ({ navigation }) => {
     // Categorize classes
     const categorizeClasses = () => {
         if (currentClassIndex === -1) {
-            const now = new Date();
+            const now = currentTime;
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
             // If it's before the first class
@@ -306,6 +308,9 @@ const TodayScreen = ({ navigation }) => {
                     </DisplayMedium>
                     <BodyMedium color="textSecondary" style={styles.date}>{dateString}</BodyMedium>
                 </View>
+
+                {/* Deletion Warning Banner */}
+                <DeletionWarningBanner />
 
                 {/* Autopilot Discovery or Review */}
                 {autopilotReview && !autopilotReview.dismissed ? (
@@ -501,12 +506,12 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.md,
-        paddingBottom: SPACING.lg,
+        paddingTop: SPACING.lg,
+        paddingBottom: SPACING.xl,
     },
     header: {
         paddingHorizontal: SPACING.screenPadding,
-        paddingBottom: SPACING.md,
+        paddingBottom: SPACING.lg,
     },
     setupDayCard: {
         marginHorizontal: SPACING.screenPadding,
@@ -541,7 +546,7 @@ const getStyles = () => StyleSheet.create({
         marginTop: 4,
     },
     sectionContainer: {
-        marginTop: SPACING.sm,
+        marginTop: SPACING.md,
     },
     sectionLabel: {
         fontSize: FONT_SIZES.xs,

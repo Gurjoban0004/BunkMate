@@ -11,6 +11,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance } from '../../utils/attendance';
 import { getRecoveryNeeded, getRecoverySteps, getClassesForDay } from '../../utils/planner';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -66,6 +67,7 @@ const RecoveryPlanScreen = ({ route }) => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <FloatingBackButton />
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
@@ -174,8 +176,9 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.lg,
-        paddingHorizontal: SPACING.lg,
+        padding: SPACING.screenPadding,
+        paddingBottom: SPACING.xxl,
+        paddingTop: SPACING.xxl + SPACING.lg, // Extra padding for back button
     },
     emptyText: {
         fontSize: FONT_SIZES.md,

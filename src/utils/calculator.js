@@ -4,25 +4,25 @@ import { getClassesForDay } from './planner';
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * Calculate new percentage after bunking X classes.
+ * Calculate new percentage after skipping X classes.
  */
-export function calculateImpact(attended, total, bunkCount) {
-    if (total + bunkCount === 0) return 0;
-    const newPercentage = (attended / (total + bunkCount)) * 100;
+export function calculateImpact(attended, total, skipCount) {
+    if (total + skipCount === 0) return 0;
+    const newPercentage = (attended / (total + skipCount)) * 100;
     return Math.round(newPercentage * 10) / 10;
 }
 
 /**
- * Max classes that can be bunked while staying at or above target%.
+ * Max classes that can be skipped while staying at or above target%.
  */
-export function calculateMaxBunks(attended, total, targetPercent) {
+export function calculateMaxSkips(attended, total, targetPercent) {
     const target = targetPercent / 100;
     if (total === 0) return 0;
     const currentPercent = attended / total;
     if (currentPercent < target) return 0;
 
-    const maxBunks = Math.floor((attended - target * total) / target);
-    return Math.max(0, maxBunks);
+    const maxSkips = Math.floor((attended - target * total) / target);
+    return Math.max(0, maxSkips);
 }
 
 /**
@@ -38,13 +38,13 @@ export function calculateRecovery(attended, total, targetPercent) {
 }
 
 /**
- * Detect which day of the week the user bunks a subject most.
- * Returns { patternDay, bunkCount, totalBunks, percentage } or null.
+ * Detect which day of the week the user skips a subject most.
+ * Returns { patternDay, skipCount, totalSkips, percentage } or null.
  */
 export function detectPattern(subjectId, state) {
     const dayCounts = {};
     DAY_NAMES.forEach(d => { dayCounts[d] = 0; });
-    let totalBunks = 0;
+    let totalSkips = 0;
 
     // Check which days this subject falls on
     const subjectDays = {};
@@ -58,7 +58,7 @@ export function detectPattern(subjectId, state) {
         });
     });
 
-    // Count bunks per day
+    // Count skips per day
     const trackingStartDate = state.trackingStartDate;
     Object.entries(state.attendanceRecords).forEach(([dateKey, dayRecord]) => {
         if (trackingStartDate && dateKey < trackingStartDate) return;
@@ -71,14 +71,14 @@ export function detectPattern(subjectId, state) {
             const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayIndex];
             if (DAY_NAMES.includes(dayName)) {
                 dayCounts[dayName] = (dayCounts[dayName] || 0) + 1;
-                totalBunks++;
+                totalSkips++;
             }
         }
     });
 
-    if (totalBunks < 2) return null;
+    if (totalSkips < 2) return null;
 
-    // Find the day with most bunks
+    // Find the day with most skips
     let maxDay = null;
     let maxCount = 0;
     Object.entries(dayCounts).forEach(([day, count]) => {
@@ -88,13 +88,13 @@ export function detectPattern(subjectId, state) {
         }
     });
 
-    const percentage = Math.round((maxCount / totalBunks) * 100);
+    const percentage = Math.round((maxCount / totalSkips) * 100);
     if (percentage < 40) return null; // No strong pattern
 
     return {
         patternDay: maxDay,
-        bunkCount: maxCount,
-        totalBunks,
+        skipCount: maxCount,
+        totalSkips,
         percentage,
     };
 }
@@ -148,10 +148,10 @@ export function calculateTrend(subjectId, state) {
 }
 
 /**
- * Find the safest day to bunk a subject, considering all subjects on that day.
+ * Find the safest day to skip a subject, considering all subjects on that day.
  * Returns { bestDay, reason } or null.
  */
-export function findBestBunkDay(subjectId, state, threshold = 75) {
+export function findBestSkipDay(subjectId, state, threshold = 75) {
     const target = threshold / 100;
     let bestDay = null;
     let bestScore = -Infinity;
@@ -229,14 +229,14 @@ export function getPersonalizedMessage(percentage, subjectName) {
 }
 
 /**
- * Get contextual bunk result message.
+ * Get contextual skip result message.
  */
 export function getResultMessage(count, status) {
     if (status === 'safe') {
         if (count >= 5) return 'Nice cushion! You have room to breathe';
-        if (count >= 2) return 'A few bunks available, use them wisely!';
-        if (count === 1) return 'Tight! Only 1 bunk — save it for emergencies';
-        return 'No bunks available. Time to be regular!';
+        if (count >= 2) return 'A few skips available, use them wisely!';
+        if (count === 1) return 'Tight! Only 1 skip — save it for emergencies';
+        return 'No skips available. Time to be regular!';
     }
     return `Focus mode: Attend ${count} classes to recover`;
 }
