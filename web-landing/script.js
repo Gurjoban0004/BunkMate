@@ -43,10 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
             block: 'start'
         });
 
-        // Open the app in a new flow after a delay so user can read
+        // Open the app after a longer delay so user can read instructions
         setTimeout(() => {
             window.location.href = '/app';
-        }, 800);
+        }, 3000); // Increased from 800ms to 3 seconds
     });
 
     // ===== Android Button — Download APK =====
