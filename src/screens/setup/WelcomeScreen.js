@@ -34,8 +34,12 @@ export default function WelcomeScreen({ navigation }) {
             const preset = PRESETS[trimmedCode];
             if (preset) {
                 dispatch({ type: 'SET_USER_NAME', payload: name.trim() });
-                dispatch({ type: 'LOAD_PRESET', payload: preset });
-                // AppNavigator switches automatically when setupComplete = true
+                // Load preset data but don't mark setup as complete yet
+                dispatch({ type: 'SET_TIME_SLOTS', payload: preset.timeSlots });
+                dispatch({ type: 'SET_SUBJECTS', payload: preset.subjects });
+                dispatch({ type: 'SET_TIMETABLE', payload: preset.timetable });
+                // Navigate to AttendanceStats so they can enter their current attendance
+                navigation.navigate('AttendanceStats');
             } else {
                 showAlert('Invalid Code', 'The class code you entered is invalid. Please try again or leave blank.');
             }

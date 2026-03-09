@@ -23,6 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const androidToggle = document.getElementById('android-toggle');
     const androidBody = document.getElementById('android-body');
     const androidChevron = document.getElementById('android-chevron');
+    const codeBanner = document.getElementById('code-banner');
+    const codesGrid = document.getElementById('codes-grid');
+    const bannerChevron = codeBanner.querySelector('.banner-chevron');
 
     const APK_URL = '/releases/presence-latest.apk';
 
@@ -34,6 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
         androidBody.classList.add('open');
         androidChevron.classList.add('open');
     }
+
+    // ===== Class Codes Toggle =====
+    codeBanner.addEventListener('click', () => {
+        codesGrid.classList.toggle('open');
+        bannerChevron.classList.toggle('open');
+    });
 
     // ===== iOS Button — Navigate to app =====
     btnIOS.addEventListener('click', () => {
