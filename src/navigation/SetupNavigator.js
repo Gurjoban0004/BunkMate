@@ -21,10 +21,23 @@ export default function SetupNavigator() {
         <Stack.Navigator
             initialRouteName={initialRoute}
             screenOptions={{
-                headerStyle: { backgroundColor: COLORS.background },
-                headerTintColor: COLORS.textPrimary,
+                headerStyle: { 
+                    backgroundColor: COLORS.background,
+                    elevation: 0,
+                    shadowOpacity: 0,
+                    borderBottomWidth: 0,
+                },
+                headerTintColor: COLORS.primary,
                 headerShadowVisible: false,
                 headerBackTitleVisible: false,
+                headerTitleStyle: {
+                    fontSize: 18,
+                    fontWeight: '600',
+                },
+                headerLeftContainerStyle: {
+                    paddingLeft: 8,
+                },
+                headerTitleAlign: 'center',
                 // ─── Web fix ───────────────────────────────────────────────
                 // On web, the default card-based transition leaves animating
                 // overlay divs in the DOM that have no pointer-events style.
@@ -66,22 +79,34 @@ export default function SetupNavigator() {
             <Stack.Screen
                 name="TimeSlots"
                 component={TimeSlotsScreen}
-                options={{ title: 'Time Slots' }}
+                options={{ 
+                    title: '',
+                    headerTransparent: true,
+                }}
             />
             <Stack.Screen
                 name="SubjectList"
                 component={SubjectListScreen}
-                options={{ title: 'Your Subjects' }}
+                options={{ 
+                    title: '',
+                    headerTransparent: true,
+                }}
             />
             <Stack.Screen
                 name="TimetableBuilder"
                 component={TimetableBuilderScreen}
-                options={{ title: 'Build Timetable' }}
+                options={{ 
+                    title: '',
+                    headerTransparent: true,
+                }}
             />
             <Stack.Screen
                 name="AttendanceStats"
                 component={AttendanceStatsScreen}
-                options={{ title: 'Stats (Optional)' }}
+                options={{ 
+                    title: '',
+                    headerTransparent: true,
+                }}
             />
             <Stack.Screen
                 name="SetupComplete"
