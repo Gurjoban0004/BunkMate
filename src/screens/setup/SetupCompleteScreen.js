@@ -18,7 +18,6 @@ export default function SetupCompleteScreen() {
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.content}>
-                    <Text style={styles.emoji}>🎉</Text>
                     <Text style={styles.title}>You're All Set!</Text>
                     <Text style={styles.subtitle}>
                         Start tracking your attendance today.

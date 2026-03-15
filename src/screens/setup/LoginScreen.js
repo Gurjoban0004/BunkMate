@@ -50,8 +50,10 @@ export default function LoginScreen({ navigation }) {
       // 3. Try to load state for this user
       const savedState = await loadAppState();
       
-      if (savedState && savedState.setupComplete) {
+      if (savedState && (savedState.setupComplete || (savedState.subjects && savedState.subjects.length > 0))) {
         // User already has data, load it and AppNavigator will handle the rest
+        // Ensure setupComplete is true so AppNavigator renders TabNavigator
+        savedState.setupComplete = true;
         dispatch({ type: 'LOAD_STATE', payload: savedState });
       } else {
         // New account or no data for this semester, go to welcome/setup

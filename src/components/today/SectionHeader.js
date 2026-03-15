@@ -20,7 +20,7 @@ const SectionHeader = ({ title, classCount, onHolidayPress, showHoliday = true }
                     style={styles.holidayButton}
                     onPress={onHolidayPress}
                 >
-                    <Text style={styles.holidayText}>Mark Holiday 🏖️</Text>
+                    <Text style={styles.holidayText}>Mark Holiday</Text>
                 </TouchableOpacity>
             )}
         </View>

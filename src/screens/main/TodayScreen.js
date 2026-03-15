@@ -131,7 +131,7 @@ const TodayScreen = ({ navigation }) => {
 
     const handleHolidayPress = () => {
         showAlert(
-            '🏖️ Mark as Holiday',
+            'Mark as Holiday',
             'Mark today as a holiday? No classes will be counted.',
             [
                 { text: 'Cancel', style: 'cancel' },

@@ -58,7 +58,6 @@ export default function WelcomeScreen({ navigation }) {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.content}>
-                        <Text style={styles.emoji}>🎓</Text>
                         <Text style={styles.title}>Presence</Text>
                         <Text style={styles.subtitle}>Attendance, solved.</Text>
 

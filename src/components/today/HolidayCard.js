@@ -6,7 +6,6 @@ const HolidayCard = ({ onUndo }) => {
     const styles = getStyles();
     return (
         <View style={styles.container}>
-            <Text style={styles.emoji}>🏖️</Text>
             <Text style={styles.title}>Holiday</Text>
             <Text style={styles.subtitle}>No classes today - Enjoy!</Text>
 

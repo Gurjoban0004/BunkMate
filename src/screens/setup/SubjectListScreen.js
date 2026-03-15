@@ -133,7 +133,6 @@ export default function SubjectListScreen({ navigation }) {
 
                     {subjects.length === 0 && (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyEmoji}>📝</Text>
                             <Text style={styles.emptyText}>Start typing to build your subject list</Text>
                         </View>
                     )}

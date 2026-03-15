@@ -310,7 +310,7 @@ const SettingsScreen = ({ navigation }) => {
 
                 {/* Attendance Thresholds Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>🎯 ATTENDANCE THRESHOLDS</Text>
+                    <Text style={styles.sectionTitle}>ATTENDANCE THRESHOLDS</Text>
                     
                     {/* Default Threshold Card */}
                     <View style={styles.card}>
@@ -627,9 +627,22 @@ const SettingsScreen = ({ navigation }) => {
                 <View style={styles.section}>
                     <TouchableOpacity 
                         style={styles.loginButton}
-                        onPress={() => navigation.navigate('Login')}
+                        onPress={() => {
+                            showAlert(
+                                'Switch Account',
+                                'Are you sure you want to switch accounts?\nThis will clear your local app data so you can log in fresh.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Switch', style: 'default', onPress: async () => {
+                                        await clearAppState();
+                                        await AsyncStorage.removeItem('userId');
+                                        dispatch({ type: 'RESET_STATE' });
+                                    }}
+                                ]
+                            );
+                        }}
                     >
-                        <Text style={styles.loginButtonText}>🔑 Login with Different Code</Text>
+                        <Text style={styles.loginButtonText}>Login with Different Code</Text>
                         <Text style={styles.loginButtonSubtext}>
                             Switch to another account or sync from a different device
                         </Text>
@@ -658,7 +671,6 @@ const SettingsScreen = ({ navigation }) => {
                     <View style={styles.accountActions}>
                         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                             <View style={styles.accountButtonContent}>
-                                <Text style={styles.logoutIcon}>↗</Text>
                                 <View style={styles.accountButtonTextContainer}>
                                     <Text style={styles.accountButtonTitle}>Logout</Text>
                                     <Text style={styles.accountButtonSubtitle}>Cloud data stays safe</Text>
@@ -668,7 +680,6 @@ const SettingsScreen = ({ navigation }) => {
                         
                         <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
                             <View style={styles.accountButtonContent}>
-                                <Text style={styles.deleteIcon}>⚠</Text>
                                 <View style={styles.accountButtonTextContainer}>
                                     <Text style={styles.accountButtonTitle}>Delete Account & Data</Text>
                                     <Text style={styles.accountButtonSubtitle}>Permanent deletion</Text>
@@ -734,7 +745,7 @@ const SettingsScreen = ({ navigation }) => {
                 <View style={styles.modalOverlay}>
                     <View style={styles.resetModalContent}>
                         <View style={styles.resetDragHandle} />
-                        <Text style={styles.resetEmoji}>⚠️</Text>
+                        {/* Removed Giant Emoji Here */}
                         <Text style={styles.resetTitle}>Reset Semester</Text>
                         <Text style={styles.resetDescription}>
                             This will permanently delete all your attendance data, subjects, timetable, and settings.
