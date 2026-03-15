@@ -116,12 +116,6 @@ export async function loadAppState() {
             }
         }
 
-        console.log('--- loadAppState DEBUG ---');
-        console.log('Final localState returned:', localState ? 'EXISTS' : 'NULL');
-        if (localState) {
-            console.log('localState keys:', Object.keys(localState));
-        }
-
         return localState;
     } catch (e) {
         logger.error('❌ Failed to load state:', e);

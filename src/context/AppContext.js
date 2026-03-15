@@ -476,13 +476,16 @@ export function AppProvider({ children }) {
     }, []);
 
     // Auto-save state on every change (skip initial load)
+    // IMPORTANT: Do NOT auto-save when userId is null (e.g. after RESET_STATE / logout).
+    // Saving an empty state would overwrite the cloud data with a newer timestamp,
+    // preventing it from being restored on the next login.
     const isFirstRender = React.useRef(true);
     useEffect(() => {
         if (isFirstRender.current) {
             isFirstRender.current = false;
             return;
         }
-        if (!isLoading) {
+        if (!isLoading && state.userId) {
             saveAppState(state);
         }
     }, [state, isLoading]);
