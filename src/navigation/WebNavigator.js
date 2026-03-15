@@ -88,10 +88,9 @@ export default function WebNavigator() {
                 setHistory(prev => (prev.length > 1 ? prev.slice(0, -1) : prev));
             }
         },
+        canGoBack: () => history.length > 1,
         setOptions: () => { }, // no-op
     }), [history.length]);
-
-    const handleBack = useCallback(() => mockNavigation.goBack(), [mockNavigation]);
 
     const renderScreen = () => {
         const props = {
@@ -122,11 +121,6 @@ export default function WebNavigator() {
 
     return (
         <View style={styles.container}>
-            <WebHeader
-                title={currentRoute.name.replace(/([A-Z])/g, ' $1').trim()}
-                canGoBack={history.length > 1}
-                onGoBack={handleBack}
-            />
             {renderScreen()}
         </View>
     );

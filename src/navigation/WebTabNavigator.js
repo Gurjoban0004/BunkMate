@@ -16,7 +16,7 @@ import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 
-import WebHeader from './WebHeader';
+
 import { useApp } from '../context/AppContext';
 import { COLORS, TYPOGRAPHY } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
@@ -149,10 +149,9 @@ export default function WebTabNavigator() {
                 return prev;
             });
         },
+        canGoBack: () => stacks[currentTab].length > 1,
         setOptions: () => { }, // no-op
     }), [currentTab, stacks]);
-
-    const handleBack = useCallback(() => mockNavigation.goBack(), [mockNavigation]);
 
     const renderScreen = () => {
         const props = {
@@ -186,23 +185,8 @@ export default function WebTabNavigator() {
         );
     };
 
-    // Determine title for WebHeader based on current route
-    const getHeaderTitle = () => {
-        const name = currentRoute.name;
-        if (name.endsWith('Main') || name.endsWith('List')) {
-            return currentTab;
-        }
-        return name.replace(/([A-Z])/g, ' $1').trim();
-    };
-
     return (
         <View style={styles.container}>
-            <WebHeader
-                title={getHeaderTitle()}
-                canGoBack={activeStack.length > 1}
-                onGoBack={handleBack}
-            />
-
             <View style={styles.content}>
                 {renderScreen()}
             </View>

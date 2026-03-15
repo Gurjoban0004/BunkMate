@@ -44,9 +44,6 @@ function ScreenHeaderNative({ title, onPress, showBack = true }) {
 }
 
 export default function ScreenHeader({ title, onPress, showBack = true }) {
-    // On web, our custom WebHeader will handle the back button.
-    // We cannot call useNavigation() on web because NavigationContainer doesn't exist.
-    if (Platform.OS === 'web') return null;
     return <ScreenHeaderNative title={title} onPress={onPress} showBack={showBack} />;
 }
 

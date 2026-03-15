@@ -86,7 +86,6 @@ export default function SubjectDetailScreen({ route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <FloatingBackButton />
             <ScreenHeader title={subject?.name || 'Subject'} />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
@@ -116,17 +115,17 @@ export default function SubjectDetailScreen({ route }) {
                 {skip && (
                     <Card style={[styles.skipCard, skip.status === 'safe' ? styles.skipSafe : styles.skipDanger]}>
                         {skip.status === 'safe' ? (
-                            <>
-                                <Text style={styles.skipLabel}>You can skip</Text>
+                            <Text style={[styles.skipLabel, { textAlign: 'center', flexWrap: 'wrap' }]}>
+                                You can skip{' '}
                                 <Text style={[styles.skipNumber, styles.textGreen]}>{skip.count}</Text>
-                                <Text style={styles.skipLabel}>more classes and stay at {target}%</Text>
-                            </>
+                                {' '}more classes and stay at {target}%
+                            </Text>
                         ) : (
-                            <>
-                                <Text style={styles.skipLabel}>You need to attend</Text>
+                            <Text style={[styles.skipLabel, { textAlign: 'center', flexWrap: 'wrap' }]}>
+                                You need to attend{' '}
                                 <Text style={[styles.skipNumber, styles.textRed]}>{skip.count}</Text>
-                                <Text style={styles.skipLabel}>classes to reach {target}%</Text>
-                            </>
+                                {' '}classes to reach {target}%
+                            </Text>
                         )}
                     </Card>
                 )}

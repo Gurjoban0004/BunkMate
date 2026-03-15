@@ -15,7 +15,6 @@ import { getSubjectAttendance } from '../../utils/attendance';
 import Button from '../../components/common/Button';
 import { showAlert } from '../../utils/alert';
 import ScreenHeader from '../../components/common/ScreenHeader';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 // Import theme palette directly
 const THEME_COLORS = [...COLORS.subjectPalette];
@@ -114,11 +113,9 @@ const EditSubjectsScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <FloatingBackButton />
+        <SafeAreaView style={styles.container} edges={['bottom']}>
             <ScreenHeader title="Edit Subjects" />
-            <ScrollView
-                style={styles.scrollView}
+            <ScrollView style={styles.list}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >

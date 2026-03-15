@@ -35,9 +35,6 @@ function FloatingBackButtonNative({ onPress }) {
 
 export default function FloatingBackButton({ onPress }) {
     const styles = getStyles();
-    // On web, our custom WebHeader will handle the back button.
-    // We cannot call useNavigation() on web because NavigationContainer doesn't exist.
-    if (Platform.OS === 'web') return null;
     return <FloatingBackButtonNative onPress={onPress} />;
 }
 
