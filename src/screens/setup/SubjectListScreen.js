@@ -86,9 +86,9 @@ export default function SubjectListScreen({ navigation }) {
                 style={styles.container}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
+                <FloatingBackButton />
                 {/* Header */}
                 <View style={styles.header}>
-                    <FloatingBackButton />
                     <Text style={styles.title}>What subjects do you have?</Text>
                     <Text style={styles.subtitle}>(Type and hit enter)</Text>
                 </View>
@@ -165,7 +165,7 @@ const getStyles = () => StyleSheet.create({
     },
     header: {
         paddingHorizontal: SPACING.xl,
-        paddingTop: SPACING.xl,
+        paddingTop: SPACING.xs,
         paddingBottom: SPACING.md,
     },
     title: {
