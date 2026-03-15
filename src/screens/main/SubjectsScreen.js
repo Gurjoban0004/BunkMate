@@ -38,7 +38,9 @@ const SubjectsScreen = ({ navigation }) => {
                 resolvedTarget: target,
             };
         });
-    }, [state, dangerThreshold]);
+    // Only recalculate when the data that actually affects attendance changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.subjects, state.attendanceRecords, state.holidays, state.trackingStartDate, dangerThreshold]);
 
     // Categorize subjects
     const categorizedSubjects = useMemo(() => {

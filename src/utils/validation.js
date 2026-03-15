@@ -13,7 +13,11 @@ export function validateAttendance(attended, total) {
  */
 export function validateTimeSlot(start, end) {
     if (!start || !end) return false;
-    return start < end;
+    const parseTime = (t) => {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    };
+    return parseTime(start) < parseTime(end);
 }
 
 /**

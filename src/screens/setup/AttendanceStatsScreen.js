@@ -64,12 +64,9 @@ export default function AttendanceStatsScreen({ navigation, route }) {
         });
 
         if (fromSettings) {
-            // When accessed from Settings, just save and go back
-            dispatch({ type: 'SET_INITIAL_ATTENDANCE', payload: updates });
             showAlert('Saved', 'Your past attendance has been updated.');
             navigation.goBack();
         } else {
-            // During setup, proceed to the celebratory screen
             navigation.navigate('SetupComplete');
         }
     };
@@ -104,7 +101,7 @@ export default function AttendanceStatsScreen({ navigation, route }) {
             initialAttended: 0,
         }));
 
-        const todayStr = getTodayKey();
+        const todayStr = getTodayKey(state.devDate);
         // Set trackingStart to today so any classes scheduled today appear in the backlog/Today screen
         finishSetup(updates, todayStr, false);
     };

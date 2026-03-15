@@ -2,6 +2,18 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { logger } from './logger';
 
+// Set the global notification handler once at module load time.
+// This must be called before any notification is scheduled or received.
+if (Platform.OS !== 'web') {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+        }),
+    });
+}
+
 /**
  * Request permission for local notifications.
  * Returns true if granted.
@@ -33,14 +45,6 @@ export async function scheduleDailyReminder(time24 = '18:00') {
     }
 
     const [hours, minutes] = time24.split(':').map(Number);
-
-    Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-        }),
-    });
 
     const id = await Notifications.scheduleNotificationAsync({
         content: {
@@ -88,14 +92,6 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
 
     const granted = await requestNotificationPermission();
     if (!granted) return;
-
-    Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-        }),
-    });
 
     for (const subject of state.subjects) {
         const stats = getSubjectAttendance(subject.id, state);
@@ -145,7 +141,8 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
                 type: 'UPDATE_NOTIFICATION_STATE',
                 payload: {
                     subjectId: subject.id,
-                    data: { belowThresholdNotified: false, dangerZoneNotified: false, lastNotifiedDate: null },
+                    // Keep lastNotifiedDate so we don't re-notify the same day after recovery
+                    data: { ...nState, belowThresholdNotified: false, dangerZoneNotified: false },
                 },
             });
         }
@@ -153,7 +150,7 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
         if (shouldNotify) {
             await Notifications.scheduleNotificationAsync({
                 content: { title, body, sound: true },
-                trigger: null, // Send immediately
+                trigger: { seconds: 1 }, // Near-immediate but goes through proper channel
             });
         }
     }

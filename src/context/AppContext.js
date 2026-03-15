@@ -379,7 +379,8 @@ function appReducer(state, action) {
             return { ...initialState };
 
         case 'LOAD_STATE': {
-            const loaded = action.payload;
+            // Never mutate action.payload — work on a shallow copy
+            const loaded = { ...action.payload };
 
             // Migrate old hardcoded colors to the new theme palette
             if (loaded.subjects && loaded.subjects.length > 0) {
@@ -432,6 +433,16 @@ export function AppProvider({ children }) {
     // Ref so network listener always sees current state without stale closure
     const stateRef = React.useRef(state);
     useEffect(() => { stateRef.current = state; }, [state]);
+    // Track whether a reset was just dispatched to prevent saving empty state
+    const justResetRef = React.useRef(false);
+
+    // Wrap dispatch to intercept RESET_STATE
+    const safeDispatch = React.useCallback((action) => {
+        if (action.type === 'RESET_STATE') {
+            justResetRef.current = true;
+        }
+        dispatch(action);
+    }, []);
 
     // ─── INITIALIZATION ──────────────────────────────────────────
 
@@ -445,12 +456,12 @@ export function AppProvider({ children }) {
 
                 // 2. Get/create userId
                 const uid = await getUserId();
-                dispatch({ type: 'SET_USER_ID', payload: uid });
+                safeDispatch({ type: 'SET_USER_ID', payload: uid });
 
                 // 3. Load state from hybrid storage
                 const saved = await loadAppState();
                 if (saved && saved.setupComplete !== undefined) {
-                    dispatch({ type: 'LOAD_STATE', payload: saved });
+                    safeDispatch({ type: 'LOAD_STATE', payload: saved });
                     
                     // 4. Migrate to Firestore if needed
                     await migrateToFirestore(saved);
@@ -486,6 +497,11 @@ export function AppProvider({ children }) {
             isFirstRender.current = false;
             return;
         }
+        // If a reset was just dispatched, skip this save cycle and clear the flag
+        if (justResetRef.current) {
+            justResetRef.current = false;
+            return;
+        }
         if (!isLoading && state.userId) {
             saveAppState(state);
         }
@@ -493,66 +509,12 @@ export function AppProvider({ children }) {
 
     // ─── AUTOPILOT LOGIC ──────────────────────────────────────────
 
-    const getUnmarkedClassesForDate = (dateStr) => {
-        // Skip days before tracking started
-        if (state.trackingStartDate && dateStr < state.trackingStartDate && !state.devDate) return [];
+    const runAutopilotCheck = useCallback(() => {
+        // Always read from ref to avoid stale closure
+        const currentState = stateRef.current;
+        if (!currentState.settings.autopilotEnabled) return;
 
-        // Parse the target date properly to get the correct day name (Mon, Tue, etc.)
-        const parsedDate = parseDate(dateStr);
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const dayName = days[parsedDate.getDay()];
-
-        const dayClasses = state.timetable[dayName] || [];
-        const recordsForDate = state.attendanceRecords[dateStr] || {};
-
-        if (recordsForDate._holiday) return []; // Skip holidays
-
-        const unmarked = [];
-
-        dayClasses.forEach(({ slotId, subjectId }) => {
-            const slot = state.timeSlots.find((s) => s.id === slotId);
-            if (!slot) return;
-
-            if (!recordsForDate[subjectId]) {
-                unmarked.push({
-                    subjectId,
-                    slotId,
-                    startTime: slot.start,
-                    endTime: slot.end,
-                });
-            }
-        });
-
-        return unmarked;
-    };
-
-    const shouldAutoMarkClass = (classItem, dateStr) => {
-        const autopilotTime = state.settings.autopilotTime || '20:00';
-        const classEndTime = classItem.endTime;
-
-        const [autopilotHour, autopilotMin] = autopilotTime.split(':').map(Number);
-        const [classEndHour, classEndMin] = classEndTime.split(':').map(Number);
-
-        let triggerTime;
-        if (
-            classEndHour < autopilotHour ||
-            (classEndHour === autopilotHour && classEndMin <= autopilotMin)
-        ) {
-            triggerTime = autopilotTime;
-        } else {
-            let triggerHour = classEndHour + 2;
-            let triggerMin = classEndMin;
-            if (triggerHour >= 24) triggerHour -= 24;
-            triggerTime = `${String(triggerHour).padStart(2, '0')}:${String(triggerMin).padStart(2, '0')}`;
-        }
-
-        return isPastTime(dateStr, triggerTime, state.devDate);
-    };
-
-    const runAutopilotCheck = () => {
-        if (!state.settings.autopilotEnabled) return;
-
-        const nowObj = state.devDate ? new Date(state.devDate) : new Date();
+        const nowObj = currentState.devDate ? new Date(currentState.devDate) : new Date();
         const year = nowObj.getFullYear();
         const month = String(nowObj.getMonth() + 1).padStart(2, '0');
         const day = String(nowObj.getDate()).padStart(2, '0');
@@ -567,62 +529,86 @@ export function AppProvider({ children }) {
         let autoMarkedCount = 0;
         let reviewDate = null;
 
-        // Pre-check for duplicate review cards
-        const existingReview = state.autopilotReview;
+        const existingReview = currentState.autopilotReview;
 
-        // Check yesterday
-        const yesterdayUnmarked = getUnmarkedClassesForDate(yesterdayStr);
-        yesterdayUnmarked.forEach((classItem) => {
-            if (shouldAutoMarkClass(classItem, yesterdayStr)) {
-                dispatch({
-                    type: 'MARK_ATTENDANCE',
-                    payload: {
-                        date: yesterdayStr,
-                        subjectId: classItem.subjectId,
-                        status: state.settings.autopilotDefault,
-                        units: 1, // Assume 1 unit for auto-mark unless calculated differently
-                        autoMarked: true,
-                    },
-                });
-                autoMarkedCount++;
-                reviewDate = yesterdayStr;
+        const getUnmarkedForDate = (dateStr) => {
+            if (currentState.trackingStartDate && dateStr < currentState.trackingStartDate && !currentState.devDate) return [];
+            const parsedDate = parseDate(dateStr);
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = days[parsedDate.getDay()];
+            const dayClasses = currentState.timetable[dayName] || [];
+            const recordsForDate = currentState.attendanceRecords[dateStr] || {};
+            if (recordsForDate._holiday) return [];
+            const unmarked = [];
+            dayClasses.forEach(({ slotId, subjectId }) => {
+                const slot = currentState.timeSlots.find((s) => s.id === slotId);
+                if (!slot) return;
+                if (!recordsForDate[subjectId]) {
+                    // Count consecutive slots for this subject to get real units
+                    const daySlots = dayClasses.filter(s => s.subjectId === subjectId);
+                    unmarked.push({
+                        subjectId,
+                        slotId,
+                        startTime: slot.start,
+                        endTime: slot.end,
+                        units: daySlots.length || 1,
+                    });
+                }
+            });
+            // Deduplicate by subjectId (multiple slots same subject = 1 entry with correct units)
+            const seen = new Set();
+            return unmarked.filter(c => {
+                if (seen.has(c.subjectId)) return false;
+                seen.add(c.subjectId);
+                return true;
+            });
+        };
+
+        const shouldMark = (classItem, dateStr) => {
+            const autopilotTime = currentState.settings.autopilotTime || '20:00';
+            const classEndTime = classItem.endTime;
+            const [autopilotHour, autopilotMin] = autopilotTime.split(':').map(Number);
+            const [classEndHour, classEndMin] = classEndTime.split(':').map(Number);
+            let triggerTime;
+            if (classEndHour < autopilotHour || (classEndHour === autopilotHour && classEndMin <= autopilotMin)) {
+                triggerTime = autopilotTime;
+            } else {
+                let triggerHour = classEndHour + 2;
+                let triggerMin = classEndMin;
+                if (triggerHour >= 24) triggerHour -= 24;
+                triggerTime = `${String(triggerHour).padStart(2, '0')}:${String(triggerMin).padStart(2, '0')}`;
             }
+            return isPastTime(dateStr, triggerTime, currentState.devDate);
+        };
+
+        [yesterdayStr, todayStr].forEach((dateStr) => {
+            getUnmarkedForDate(dateStr).forEach((classItem) => {
+                if (shouldMark(classItem, dateStr)) {
+                    safeDispatch({
+                        type: 'MARK_ATTENDANCE',
+                        payload: {
+                            date: dateStr,
+                            subjectId: classItem.subjectId,
+                            status: currentState.settings.autopilotDefault,
+                            units: classItem.units,
+                            autoMarked: true,
+                        },
+                    });
+                    autoMarkedCount++;
+                    if (!reviewDate) reviewDate = dateStr;
+                }
+            });
         });
 
-        // Check today
-        const todayUnmarked = getUnmarkedClassesForDate(todayStr);
-        todayUnmarked.forEach((classItem) => {
-            if (shouldAutoMarkClass(classItem, todayStr)) {
-                dispatch({
-                    type: 'MARK_ATTENDANCE',
-                    payload: {
-                        date: todayStr,
-                        subjectId: classItem.subjectId,
-                        status: state.settings.autopilotDefault,
-                        units: 1,
-                        autoMarked: true,
-                    },
-                });
-                autoMarkedCount++;
-                reviewDate = reviewDate || todayStr;
-            }
-        });
-
-        // If we marked new stuff, create/update review card
         if (autoMarkedCount > 0 && reviewDate) {
-            // Check if we already have a review card for this exact date to prevent infinite loop of overriding
             if (existingReview?.date !== reviewDate || existingReview?.dismissed) {
-                dispatch({
+                safeDispatch({
                     type: 'SET_AUTOPILOT_REVIEW',
-                    payload: {
-                        date: reviewDate,
-                        count: autoMarkedCount,
-                        dismissed: false,
-                    },
+                    payload: { date: reviewDate, count: autoMarkedCount, dismissed: false },
                 });
             }
         }
-    };
+    }, []); // empty deps — always reads from stateRef
 
     // ──────────────────────────────────────────────────────────────
 
@@ -630,7 +616,7 @@ export function AppProvider({ children }) {
         <AppContext.Provider
             value={{
                 state,
-                dispatch,
+                dispatch: safeDispatch,
                 isLoading,
                 userId: state.userId,
                 runAutopilotCheck,

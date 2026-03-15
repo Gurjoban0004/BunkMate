@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 
 const STORAGE_KEY = '@bunkmate_state';
 const STATE_VERSION = 1;
-const SYNC_TIMEOUT = 5000; // 5 seconds timeout for cloud operations
+const SYNC_TIMEOUT = 10000; // 10 seconds timeout for cloud operations
 
 /**
  * Compare local and cloud data to determine which is newer
@@ -67,6 +67,9 @@ export async function saveAppState(state) {
  */
 export async function loadAppState() {
     try {
+        // Read userId once upfront to avoid race conditions between two separate reads
+        const currentUserId = await AsyncStorage.getItem('userId');
+
         // 1. Load from AsyncStorage first (fast, reliable)
         const localValue = await AsyncStorage.getItem(STORAGE_KEY);
         let localState = localValue ? JSON.parse(localValue) : null;
@@ -77,37 +80,33 @@ export async function loadAppState() {
         }
 
         // Security / Bug Fix: Never load a local state belonging to a different user
-        const currentUserId = await AsyncStorage.getItem('userId');
         if (localState && localState.userId && currentUserId && localState.userId !== currentUserId) {
             logger.info('🔄', 'Local state belongs to a different user, discarding.');
             localState = null;
         }
 
         // 2. If online, try to load from Firestore and compare
-        if (checkOnlineStatus()) {
+        if (checkOnlineStatus() && currentUserId) {
             try {
-                const userId = await AsyncStorage.getItem('userId');
-                if (userId) {
-                    const semesterId = getCurrentSemesterId();
-                    const semesterRef = doc(db, 'users', userId, 'semesters', semesterId);
-                    
-                    // Implement timeout for cloud fetch
-                    const cloudFetchPromise = getDoc(semesterRef);
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Cloud fetch timeout')), SYNC_TIMEOUT)
-                    );
+                const semesterId = getCurrentSemesterId();
+                const semesterRef = doc(db, 'users', currentUserId, 'semesters', semesterId);
+                
+                // Implement timeout for cloud fetch
+                const cloudFetchPromise = getDoc(semesterRef);
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Cloud fetch timeout')), SYNC_TIMEOUT)
+                );
 
-                    const cloudDoc = await Promise.race([cloudFetchPromise, timeoutPromise]);
+                const cloudDoc = await Promise.race([cloudFetchPromise, timeoutPromise]);
+                
+                if (cloudDoc && cloudDoc.exists()) {
+                    const cloudState = cloudDoc.data();
                     
-                    if (cloudDoc && cloudDoc.exists()) {
-                        const cloudState = cloudDoc.data();
-                        
-                        if (shouldUseCloudData(localState, cloudState)) {
-                            logger.info('🔄', 'Cloud data is newer, updating local storage');
-                            localState = cloudState;
-                            // Update local storage in background
-                            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(localState));
-                        }
+                    if (shouldUseCloudData(localState, cloudState)) {
+                        logger.info('🔄', 'Cloud data is newer, updating local storage');
+                        localState = cloudState;
+                        // Update local storage in background
+                        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(localState));
                     }
                 }
             } catch (cloudError) {
@@ -151,7 +150,7 @@ export async function migrateToFirestore(state) {
 
             await setDoc(semesterRef, migratedState);
             
-            // Update local state with migrated flag
+            // Update local state with migrated flag only after successful cloud write
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migratedState));
             logger.info('✅', 'Migration complete');
         } else {
@@ -162,9 +161,10 @@ export async function migrateToFirestore(state) {
         }
     } catch (error) {
         logger.error('❌ Migration failed:', error);
-        // Set migrated flag anyway to prevent retry loops on permanent failures
+        // Do NOT set _migrated: true on failure — allow retry on next launch
+        // Only set a failure flag to avoid spamming logs, but keep retrying
         try {
-            const failedState = { ...state, _migrated: true };
+            const failedState = { ...state, _migrationAttempted: true };
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(failedState));
         } catch (sErr) { /* ignore */ }
     }

@@ -10,7 +10,6 @@ import {
     TouchableOpacity,
     Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
@@ -48,13 +47,6 @@ const TodayScreen = ({ navigation }) => {
     const [showExtraModal, setShowExtraModal] = useState(false);
     const [selectedExtraSubject, setSelectedExtraSubject] = useState(null);
     const [currentTime, setCurrentTime] = useState(new Date());
-
-    // Run autopilot check on mount or when state changes (debounced/throttled internally)
-    React.useEffect(() => {
-        if (state.settings?.autopilotEnabled) {
-            runAutopilotCheck();
-        }
-    }, [state.settings?.autopilotEnabled]);
 
     // Get devDate logic if active
     React.useEffect(() => {
@@ -170,32 +162,45 @@ const TodayScreen = ({ navigation }) => {
 
     // Categorize classes
     const categorizeClasses = () => {
-        if (currentClassIndex === -1) {
-            const now = currentTime;
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const now = currentTime;
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-            if (todayClasses.length === 0) {
-                return { now: null, upcoming: [], done: [] };
-            }
-
-            // Partition into done (end time passed) and upcoming (start time not yet reached)
-            const done = todayClasses.filter(c => {
-                const [eh, em] = c.endTime.split(':').map(Number);
-                return currentMinutes >= eh * 60 + em;
-            });
-            const upcoming = todayClasses.filter(c => {
-                const [sh, sm] = c.startTime.split(':').map(Number);
-                return currentMinutes < sh * 60 + sm;
-            });
-
-            return { now: null, upcoming, done };
+        if (todayClasses.length === 0) {
+            return { now: null, upcoming: [], done: [] };
         }
 
-        const now = todayClasses[currentClassIndex];
-        const upcoming = todayClasses.slice(currentClassIndex + 1);
-        const done = todayClasses.slice(0, currentClassIndex);
+        if (currentClassIndex !== -1) {
+            // A class is actively in progress right now
+            return {
+                now: todayClasses[currentClassIndex],
+                upcoming: todayClasses.slice(currentClassIndex + 1),
+                done: todayClasses.slice(0, currentClassIndex),
+            };
+        }
 
-        return { now, upcoming, done };
+        // No class in progress — partition by time
+        // A class is "done" if its end time has passed
+        // A class is "upcoming" if its start time hasn't been reached yet
+        // A class is "now" if it started but getCurrentClassIndex missed it (edge case guard)
+        const done = [];
+        const upcoming = [];
+        let inProgress = null;
+
+        todayClasses.forEach(c => {
+            const startMins = c.startTime.split(':').map(Number).reduce((h, m) => h * 60 + m);
+            const endMins = c.endTime.split(':').map(Number).reduce((h, m) => h * 60 + m);
+
+            if (currentMinutes >= endMins) {
+                done.push(c);
+            } else if (currentMinutes >= startMins && currentMinutes < endMins) {
+                // In progress but not caught by getCurrentClassIndex — treat as "now"
+                inProgress = c;
+            } else {
+                upcoming.push(c);
+            }
+        });
+
+        return { now: inProgress, upcoming, done };
     };
 
     const { now, upcoming, done } = categorizeClasses();

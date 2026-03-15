@@ -121,10 +121,17 @@ const SettingsScreen = ({ navigation }) => {
 
     const handleSaveWebTime = () => {
         let h = parseInt(webHour, 10);
-        if (isNaN(h) || h < 1 || h > 12) h = 12;
-
         let m = parseInt(webMinute, 10);
-        if (isNaN(m) || m < 0 || m > 59) m = 0;
+
+        // Clamp with feedback
+        if (isNaN(h) || h < 1 || h > 12) {
+            h = 12;
+            setWebHour('12');
+        }
+        if (isNaN(m) || m < 0 || m > 59) {
+            m = 0;
+            setWebMinute('00');
+        }
 
         if (h === 12 && webAmPm === 'AM') h = 0;
         else if (h < 12 && webAmPm === 'PM') h += 12;
@@ -219,7 +226,15 @@ const SettingsScreen = ({ navigation }) => {
             if (!decodedStr) throw new Error('Invalid Base64');
             const stateObj = JSON.parse(decodedStr);
 
-            if (stateObj && stateObj.subjects && stateObj.timeSlots) {
+            // Deep validation: check required fields and structure
+            const isValid =
+                stateObj &&
+                Array.isArray(stateObj.subjects) &&
+                Array.isArray(stateObj.timeSlots) &&
+                stateObj.subjects.every(s => s.id && s.name) &&
+                stateObj.timeSlots.every(t => t.id && t.start && t.end);
+
+            if (isValid) {
                 dispatch({ type: 'LOAD_STATE', payload: stateObj });
                 saveAppState(stateObj);
                 setImportModalVisible(false);
@@ -235,6 +250,7 @@ const SettingsScreen = ({ navigation }) => {
 
     const handleResetSemester = async () => {
         await clearAppState();
+        await AsyncStorage.removeItem('userId');
         dispatch({ type: 'RESET_STATE' });
         setResetModalVisible(false);
     };
@@ -260,7 +276,7 @@ const SettingsScreen = ({ navigation }) => {
     const handleResetSubjectThreshold = (subjectId) => {
         dispatch({
             type: 'UPDATE_SUBJECT',
-            payload: { id: subjectId, target: undefined } // Remove custom target
+            payload: { id: subjectId, target: null } // null = use global default
         });
         setThresholdModalVisible(false);
     };

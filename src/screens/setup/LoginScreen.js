@@ -41,13 +41,13 @@ export default function LoginScreen({ navigation }) {
     setError(null);
     
     try {
-      // 0. Clear any stale local data to avoid race conditions when switching accounts
-      await clearAppState();
-      
-      // 1. Validate code with Firebase
+      // 1. Validate code with Firebase FIRST — before touching any local data
       const authenticatedUserId = await loginWithCode(code);
-      
-      // 2. Fetch the cloud state FIRST, before touching the local React state!
+
+      // 2. Only clear stale local data AFTER successful authentication
+      await clearAppState();
+
+      // 3. Fetch the cloud state
       const savedState = await loadAppState();
 
       if (savedState && (savedState.setupComplete || (savedState.subjects && savedState.subjects.length > 0))) {

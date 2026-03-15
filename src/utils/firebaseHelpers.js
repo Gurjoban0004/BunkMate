@@ -104,6 +104,12 @@ export const getUserId = async () => {
  */
 export const loginWithCode = async (code) => {
   try {
+    // Validate code format before hitting Firestore
+    const CODE_REGEX = /^PRES-[A-Z0-9]{7}$/;
+    if (!code || !CODE_REGEX.test(code)) {
+      throw new Error('Invalid login code');
+    }
+
     // Validate code exists in Firestore
     const userRef = doc(db, 'users', code);
     const userDoc = await getDoc(userRef);

@@ -30,10 +30,18 @@ export function calculateOverallStreak(state) {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const MAX_LOOKBACK_DAYS = 180;
     let daysChecked = 0;
+    const todayKey = getDateKey(new Date());
 
     while ((!startDate || currentDate >= startDate) && daysChecked < MAX_LOOKBACK_DAYS) {
         daysChecked++;
         const dateKey = getDateKey(currentDate);
+
+        // Skip today and future dates — they may not be fully marked yet
+        if (dateKey >= todayKey) {
+            currentDate.setDate(currentDate.getDate() - 1);
+            continue;
+        }
+
         const dayRecords = records[dateKey];
         const dayName = dayNames[currentDate.getDay()];
 
@@ -110,10 +118,18 @@ export function calculateSubjectStreak(subjectId, state) {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const MAX_LOOKBACK_DAYS = 180;
     let daysChecked = 0;
+    const todayKeySubject = getDateKey(new Date());
 
     while ((!startDate || currentDate >= startDate) && daysChecked < MAX_LOOKBACK_DAYS) {
         daysChecked++;
         const dateKey = getDateKey(currentDate);
+
+        // Skip today and future dates
+        if (dateKey >= todayKeySubject) {
+            currentDate.setDate(currentDate.getDate() - 1);
+            continue;
+        }
+
         const dayRecords = records[dateKey];
         const dayName = dayNames[currentDate.getDay()];
 

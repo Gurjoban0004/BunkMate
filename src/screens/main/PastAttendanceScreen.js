@@ -25,12 +25,14 @@ export default function PastAttendanceScreen({ navigation }) {
     }, [state]);
 
     const markClass = (date, subjectId, status, units) => {
+        // Check autoMarked BEFORE dispatching, since dispatch is async
+        const wasAutoMarked = state.attendanceRecords[date]?.[subjectId]?.autoMarked;
         dispatch({
             type: 'MARK_ATTENDANCE',
             payload: { date, subjectId, status, units },
         });
         // If it was auto-marked, manual mark also confirms it
-        if (state.attendanceRecords[date]?.[subjectId]?.autoMarked) {
+        if (wasAutoMarked) {
             dispatch({ type: 'CONFIRM_AUTO_MARK', payload: { date, subjectId } });
         }
     };

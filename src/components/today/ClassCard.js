@@ -83,8 +83,9 @@ const ClassCard = ({
 
     // Handle undo
     const handleUndo = () => {
-        onMark(subjectId, null, units); // null status removes the record
+        setPreviousPercentage(percentage); // reset so change indicator is clean
         setShowChange(false);
+        onMark(subjectId, null, units); // null status removes the record
     };
 
     // Calculate what classes needed to reach threshold
@@ -283,9 +284,10 @@ const ClassCard = ({
 
 // Helper function — returns real class count (not inflated units for 2-hr classes)
 const calculateClassesNeeded = (attended, total, target, units = 1) => {
-    const styles = getStyles();
     const targetDecimal = target / 100;
-    const neededUnits = Math.ceil((targetDecimal * total - attended) / (1 - targetDecimal));
+    if (targetDecimal >= 1) return Infinity;
+    const divisor = 1 - targetDecimal;
+    const neededUnits = Math.ceil((targetDecimal * total - attended) / divisor);
     // Divide by units to convert from "marks" to "physical classes"
     return Math.max(0, Math.ceil(Math.max(0, neededUnits) / units));
 };

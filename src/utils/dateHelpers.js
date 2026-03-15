@@ -101,10 +101,12 @@ export function parseDate(dateString) {
 
 /**
  * Subtracts a number of days from a given Date object and returns a new Date.
+ * Uses noon to avoid DST transition issues.
  */
 export function subtractDays(date, days) {
     const result = new Date(date);
     result.setDate(result.getDate() - days);
+    result.setHours(12, 0, 0, 0);
     return result;
 }
 
