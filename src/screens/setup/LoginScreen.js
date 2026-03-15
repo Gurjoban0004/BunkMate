@@ -42,21 +42,19 @@ export default function LoginScreen({ navigation }) {
     
     try {
       // 1. Validate code with Firebase
-      const userId = await loginWithCode(code);
+      const authenticatedUserId = await loginWithCode(code);
       
-      // 2. Set userId in context
-      dispatch({ type: 'SET_USER_ID', payload: userId });
-      
-      // 3. Try to load state for this user
+      // 2. Fetch the cloud state FIRST, before touching the local React state!
       const savedState = await loadAppState();
-      
+
       if (savedState && (savedState.setupComplete || (savedState.subjects && savedState.subjects.length > 0))) {
-        // User already has data, load it and AppNavigator will handle the rest
-        // Ensure setupComplete is true so AppNavigator renders TabNavigator
+        // User has data. Let's merge the correct userId into it, then fully replace the local state.
         savedState.setupComplete = true;
+        savedState.userId = authenticatedUserId;
         dispatch({ type: 'LOAD_STATE', payload: savedState });
       } else {
-        // New account or no data for this semester, go to welcome/setup
+        // New account or no data. Safe to set empty state to the new ID.
+        dispatch({ type: 'SET_USER_ID', payload: authenticatedUserId });
         navigation.navigate('Welcome');
       }
     } catch (err) {

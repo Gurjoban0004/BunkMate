@@ -43,21 +43,18 @@ export async function saveAppState(state) {
         logger.info('✅', 'State saved to local storage');
 
         // 2. If online, save to Firestore for current semester
-        if (checkOnlineStatus()) {
-            const userId = await AsyncStorage.getItem('userId');
-            if (userId) {
-                const semesterId = getCurrentSemesterId();
-                const semesterRef = doc(db, 'users', userId, 'semesters', semesterId);
+        if (checkOnlineStatus() && state.userId) {
+            const semesterId = getCurrentSemesterId();
+            const semesterRef = doc(db, 'users', state.userId, 'semesters', semesterId);
 
-                // Save to cloud with _cloudTimestamp
-                // Use setDoc with merge to preserve other fields if any
-                setDoc(semesterRef, {
-                    ...stateWithTimestamp,
-                    _cloudTimestamp: serverTimestamp()
-                }, { merge: true })
-                .then(() => logger.info('✅', `State synced to cloud (${semesterId})`))
-                .catch(err => logger.warn('⚠️ Cloud sync failed (will retry later):', err));
-            }
+            // Save to cloud with _cloudTimestamp
+            // Use setDoc with merge to preserve other fields if any
+            setDoc(semesterRef, {
+                ...stateWithTimestamp,
+                _cloudTimestamp: serverTimestamp()
+            }, { merge: true })
+            .then(() => logger.info('✅', `State synced to cloud (${semesterId})`))
+            .catch(err => logger.warn('⚠️ Cloud sync failed (will retry later):', err));
         }
     } catch (e) {
         logger.error('❌ Failed to save state:', e);
@@ -77,6 +74,13 @@ export async function loadAppState() {
         // Simple migration logic if state version differs
         if (localState && localState._version !== STATE_VERSION) {
             localState._version = STATE_VERSION;
+        }
+
+        // Security / Bug Fix: Never load a local state belonging to a different user
+        const currentUserId = await AsyncStorage.getItem('userId');
+        if (localState && localState.userId && currentUserId && localState.userId !== currentUserId) {
+            logger.info('🔄', 'Local state belongs to a different user, discarding.');
+            localState = null;
         }
 
         // 2. If online, try to load from Firestore and compare
@@ -110,6 +114,12 @@ export async function loadAppState() {
                 logger.warn('⚠️ Could not fetch cloud data, using local:', cloudError.message);
                 // Fallback to localState already handled
             }
+        }
+
+        console.log('--- loadAppState DEBUG ---');
+        console.log('Final localState returned:', localState ? 'EXISTS' : 'NULL');
+        if (localState) {
+            console.log('localState keys:', Object.keys(localState));
         }
 
         return localState;
