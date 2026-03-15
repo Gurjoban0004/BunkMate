@@ -19,6 +19,8 @@ if (Platform.OS !== 'web') {
  * Returns true if granted.
  */
 export async function requestNotificationPermission() {
+    if (Platform.OS === 'web') return false;
+    
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 

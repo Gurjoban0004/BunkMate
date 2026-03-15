@@ -50,6 +50,11 @@ if (Platform.OS === 'web') {
            React Native Web sets user-select:none globally. Safari uses this
            as a signal to reject focus on tapped elements. We override just
            for inputs so they behave like normal web text fields.           */
+        html, body {
+            overscroll-behavior-y: none;
+            touch-action: pan-y;
+        }
+           
         input, textarea, [contenteditable] {
             -webkit-user-select: text !important;
             user-select: text !important;

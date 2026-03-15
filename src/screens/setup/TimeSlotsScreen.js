@@ -116,7 +116,7 @@ export default function TimeSlotsScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-            {Platform.OS === 'web' && <FloatingBackButton />}
+            <FloatingBackButton />
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.content}>
                     <Text style={styles.header}>Your Class Timings</Text>

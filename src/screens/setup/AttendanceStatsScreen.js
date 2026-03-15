@@ -108,7 +108,7 @@ export default function AttendanceStatsScreen({ navigation, route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-            {Platform.OS === 'web' && <FloatingBackButton />}
+            <FloatingBackButton />
             <KeyboardWrapper contentContainerStyle={styles.scrollContent}>
 
                 <View style={styles.headerBox}>

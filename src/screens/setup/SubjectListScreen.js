@@ -88,7 +88,7 @@ export default function SubjectListScreen({ navigation }) {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    {Platform.OS === 'web' && <FloatingBackButton />}
+                    <FloatingBackButton />
                     <Text style={styles.title}>What subjects do you have?</Text>
                     <Text style={styles.subtitle}>(Type and hit enter)</Text>
                 </View>

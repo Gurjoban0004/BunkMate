@@ -480,7 +480,11 @@ export function AppProvider({ children }) {
         const unsubscribe = onNetworkStatusChange((isOnline) => {
             if (isOnline) {
                 logger.info('🔄', 'Back online, syncing state...');
-                saveAppState(stateRef.current);
+                // Sync cloud state first to avoid "last write wins" overwriting fresh cloud data
+                loadAppState().then((saved) => {
+                    if (saved) safeDispatch({ type: 'LOAD_STATE', payload: saved });
+                    saveAppState(stateRef.current);
+                });
             }
         });
 

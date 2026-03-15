@@ -20,7 +20,7 @@ export default function FloatingBackButton({ onPress }) {
         }).start();
     }, []);
 
-    if (!navigation.canGoBack()) return null;
+    if (Platform.OS !== 'web' || !navigation.canGoBack()) return null;
 
     return (
         <Animated.View style={[styles.wrapper, { opacity: fadeAnim }]}>

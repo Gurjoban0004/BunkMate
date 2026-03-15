@@ -94,7 +94,7 @@ export default function TimetableBuilderScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-            {Platform.OS === 'web' && <FloatingBackButton />}
+            <FloatingBackButton />
             <View style={styles.headerBox}>
                 <Text style={styles.header}>Paint Timetable</Text>
                 <Text style={styles.subtitle}>Select a subject below, then tap the grid to fill it.</Text>
