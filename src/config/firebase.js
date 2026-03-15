@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, initializeFirestore, enableIndexedDbPersistence, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { logger } from '../utils/logger';
 
@@ -33,21 +33,11 @@ let db;
 
 if (Platform.OS === 'web') {
   // Web platform: Use IndexedDB persistence
-  db = getFirestore(app);
-  
-  // Enable offline persistence for web
-  enableIndexedDbPersistence(db)
-    .catch((err) => {
-      if (err.code === 'failed-precondition') {
-        // Multiple tabs open, persistence can only be enabled in one tab at a time
-        logger.warn('⚠️ Multiple tabs open. Persistence enabled in first tab only.');
-      } else if (err.code === 'unimplemented') {
-        // The current browser doesn't support persistence
-        logger.warn('⚠️ Browser does not support offline persistence.');
-      } else {
-        logger.error('❌ Error enabling persistence:', err);
-      }
-    });
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
 } else {
   // React Native platform: Use unlimited cache size
   db = initializeFirestore(app, {

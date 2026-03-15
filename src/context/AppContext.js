@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, useState, useC
 import { getTodayKey, getNextDay, parseDate, isPastTime, subtractDays, getTodayDayName } from '../utils/dateHelpers';
 import { initNetworkListener, getUserId, onNetworkStatusChange } from '../utils/firebaseHelpers';
 import { loadAppState, saveAppState, migrateToFirestore } from '../storage/storage';
+import { logger } from '../utils/logger';
 
 const AppContext = createContext();
 
@@ -160,14 +161,14 @@ function appReducer(state, action) {
         }
 
         case 'REMOVE_ATTENDANCE': {
-            const { date, subjectId } = action.payload;
-            const newDayRecord = { ...(state.attendanceRecords[date] || {}) };
-            delete newDayRecord[subjectId];
+            const { date: removeDate, subjectId: removeSubjectId } = action.payload;
+            const newDayRecord = { ...(state.attendanceRecords[removeDate] || {}) };
+            delete newDayRecord[removeSubjectId];
             return {
                 ...state,
                 attendanceRecords: {
                     ...state.attendanceRecords,
-                    [date]: newDayRecord,
+                    [removeDate]: newDayRecord,
                 },
             };
         }
@@ -213,7 +214,7 @@ function appReducer(state, action) {
 
         case 'LOAD_PRESET': {
             const preset = action.payload;
-            const today = new Date().toISOString().split('T')[0];
+            const today = getTodayKey();
             return {
                 ...state,
                 setupComplete: true,
@@ -437,7 +438,7 @@ export function AppProvider({ children }) {
     useEffect(() => {
         const initialize = async () => {
             try {
-                console.log('🚀 Initializing app context...');
+                logger.info('🚀', 'Initializing app context...');
                 
                 // 1. Setup network listener
                 initNetworkListener();
@@ -455,9 +456,9 @@ export function AppProvider({ children }) {
                     await migrateToFirestore(saved);
                 }
                 
-                console.log('✅ Initialization complete');
+                logger.info('✅', 'Initialization complete');
             } catch (e) {
-                console.error('❌ Failed to initialize app:', e);
+                logger.error('❌ Failed to initialize app:', e);
             } finally {
                 setIsLoading(false);
             }
@@ -467,7 +468,7 @@ export function AppProvider({ children }) {
         // Handle network status changes for real-time sync
         const unsubscribe = onNetworkStatusChange((isOnline) => {
             if (isOnline) {
-                console.log('🔄 Back online, syncing state...');
+                logger.info('🔄', 'Back online, syncing state...');
                 saveAppState(stateRef.current);
             }
         });

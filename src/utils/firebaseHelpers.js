@@ -121,7 +121,7 @@ export const loginWithCode = async (code) => {
       version: '1.0.0'
     }, { merge: true });
     
-    console.log('✅ Logged in as:', code);
+    logger.info('✅', 'Logged in as:', code);
     
     return code;
     
@@ -129,7 +129,7 @@ export const loginWithCode = async (code) => {
     if (error.message === 'Invalid login code') {
       throw error;
     }
-    console.error('❌ Error in loginWithCode:', error);
+    logger.error('❌ Error in loginWithCode:', error);
     throw new Error('Failed to login. Please check your connection and try again.');
   }
 };

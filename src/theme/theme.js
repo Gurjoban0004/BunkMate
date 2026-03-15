@@ -240,12 +240,12 @@ export const TYPOGRAPHY = {
         letterSpacing: 0.3,
     },
 
-    // Legacy compatibility - will be deprecated
+    // Legacy compatibility — old names preserved with 'label' suffix where needed
     headerLarge: { fontSize: 28, fontWeight: 'bold' },
     headerMedium: { fontSize: 22, fontWeight: '600' },
     headerSmall: { fontSize: 18, fontWeight: '600' },
     body: { fontSize: 16, fontWeight: 'normal' },
-    bodySmall: { fontSize: 14, fontWeight: 'normal' },
+    label: { fontSize: 14, fontWeight: '600' },
     caption: { fontSize: 12, fontWeight: 'normal' },
     button: { fontSize: 16, fontWeight: '600' },
 };

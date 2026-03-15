@@ -12,7 +12,7 @@ import {
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { loginWithCode } from '../../utils/firebaseHelpers';
-import { loadAppState } from '../../storage/storage';
+import { loadAppState, clearAppState } from '../../storage/storage';
 import { logger } from '../../utils/logger';
 import { showAlert } from '../../utils/alert';
 
@@ -41,6 +41,9 @@ export default function LoginScreen({ navigation }) {
     setError(null);
     
     try {
+      // 0. Clear any stale local data to avoid race conditions when switching accounts
+      await clearAppState();
+      
       // 1. Validate code with Firebase
       const authenticatedUserId = await loginWithCode(code);
       
@@ -172,11 +175,11 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   inputError: {
-    borderColor: COLORS.error,
+    borderColor: COLORS.danger,
   },
   errorText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.error,
+    color: COLORS.danger,
     marginTop: SPACING.sm,
   },
   loginButton: {

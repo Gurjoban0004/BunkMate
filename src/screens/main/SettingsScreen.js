@@ -1035,7 +1035,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textPrimary,
     },
     thresholdOptionTextActive: {
-        color: COLORS.white,
+        color: COLORS.textOnPrimary,
     },
 
     // Stepper UI in Modal
@@ -1138,6 +1138,26 @@ const getStyles = () => StyleSheet.create({
     appName: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.textMuted },
     version: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: 4 },
     bottomPadding: { height: 100 },
+
+    // Login with Different Code card styles
+    loginButtonCard: {
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.lg,
+        borderWidth: 1.5,
+        borderColor: COLORS.primary,
+        padding: SPACING.md,
+        ...SHADOWS.small,
+    },
+    loginButtonCardTitle: {
+        fontSize: FONT_SIZES.md,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+        marginBottom: 2,
+    },
+    loginButtonCardDesc: {
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textSecondary,
+    },
     
     // Login button styles
     loginButton: {
