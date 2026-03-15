@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -9,6 +9,7 @@ import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
 import { getTodayKey, getNextDay } from '../../utils/dateHelpers';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function AttendanceStatsScreen({ navigation, route }) {
     const styles = getStyles();
@@ -110,6 +111,7 @@ export default function AttendanceStatsScreen({ navigation, route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+            {Platform.OS === 'web' && <FloatingBackButton />}
             <KeyboardWrapper contentContainerStyle={styles.scrollContent}>
 
                 <View style={styles.headerBox}>

@@ -623,32 +623,6 @@ const SettingsScreen = ({ navigation }) => {
                 {/* Login Code Section */}
                 <LoginCodeSection />
 
-                {/* Login with Different Code */}
-                <View style={styles.section}>
-                    <TouchableOpacity 
-                        style={styles.loginButton}
-                        onPress={() => {
-                            showAlert(
-                                'Switch Account',
-                                'Are you sure you want to switch accounts?\nThis will clear your local app data so you can log in fresh.',
-                                [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Switch', style: 'default', onPress: async () => {
-                                        await clearAppState();
-                                        await AsyncStorage.removeItem('userId');
-                                        dispatch({ type: 'RESET_STATE' });
-                                    }}
-                                ]
-                            );
-                        }}
-                    >
-                        <Text style={styles.loginButtonText}>Login with Different Code</Text>
-                        <Text style={styles.loginButtonSubtext}>
-                            Switch to another account or sync from a different device
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
                 {/* Data Backup */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>BACKUP & RESTORE</Text>
@@ -669,6 +643,25 @@ const SettingsScreen = ({ navigation }) => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>ACCOUNT</Text>
                     <View style={styles.accountActions}>
+                        <TouchableOpacity style={[styles.loginButtonCard]} onPress={() => {
+                            showAlert(
+                                'Switch Account',
+                                'Are you sure you want to switch accounts?\nThis will clear your local app data so you can log in fresh.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    { text: 'Switch', style: 'default', onPress: async () => {
+                                        await clearAppState();
+                                        await AsyncStorage.removeItem('userId');
+                                        dispatch({ type: 'RESET_STATE' });
+                                    }}
+                                ]
+                            );
+                        }}>
+                            <View>
+                                <Text style={styles.loginButtonCardTitle}>Login with Different Code</Text>
+                                <Text style={styles.loginButtonCardDesc}>Switch to another account or sync from a different device</Text>
+                            </View>
+                        </TouchableOpacity>
                         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                             <View style={styles.accountButtonContent}>
                                 <View style={styles.accountButtonTextContainer}>

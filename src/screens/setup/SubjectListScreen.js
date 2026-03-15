@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 // Colors now fetched dynamically from COLORS.subjectPalette
 
@@ -87,6 +88,7 @@ export default function SubjectListScreen({ navigation }) {
             >
                 {/* Header */}
                 <View style={styles.header}>
+                    {Platform.OS === 'web' && <FloatingBackButton />}
                     <Text style={styles.title}>What subjects do you have?</Text>
                     <Text style={styles.subtitle}>(Type and hit enter)</Text>
                 </View>

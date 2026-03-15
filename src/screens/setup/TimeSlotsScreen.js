@@ -5,6 +5,7 @@ import {
     StyleSheet,
     TouchableOpacity,
     ScrollView,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
@@ -12,6 +13,7 @@ import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
 import { formatMinutesToTime, parseTimeToMinutes } from '../../utils/dateHelpers';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 // Helper to format total minutes to 12h string for display
 const formatMins = (totalMins) => {
@@ -114,6 +116,7 @@ export default function TimeSlotsScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+            {Platform.OS === 'web' && <FloatingBackButton />}
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.content}>
                     <Text style={styles.header}>Your Class Timings</Text>

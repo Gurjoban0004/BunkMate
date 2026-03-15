@@ -16,6 +16,7 @@ import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
 import { showAlert } from '../../utils/alert';
 import { formatMinutesToTime, parseTimeToMinutes } from '../../utils/dateHelpers';
+import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -93,6 +94,7 @@ export default function TimetableBuilderScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+            {Platform.OS === 'web' && <FloatingBackButton />}
             <View style={styles.headerBox}>
                 <Text style={styles.header}>Paint Timetable</Text>
                 <Text style={styles.subtitle}>Select a subject below, then tap the grid to fill it.</Text>
