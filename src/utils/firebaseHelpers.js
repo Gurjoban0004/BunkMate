@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { Platform } from 'react-native';
 import { db } from '../config/firebase';
 import { logger } from './logger';
 
@@ -158,51 +159,51 @@ export const getCurrentSemesterId = () => {
 };
 
 // Network status tracking
-let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+// On web, use navigator.onLine; on native default to true (online)
+let isOnline = Platform.OS === 'web'
+  ? (typeof navigator !== 'undefined' ? navigator.onLine : true)
+  : true;
 const networkListeners = [];
+
+const notifyListeners = (status) => {
+  networkListeners.forEach(callback => {
+    try {
+      callback(status);
+    } catch (error) {
+      logger.error('❌ Error in network listener callback:', error);
+    }
+  });
+};
 
 /**
  * Initialize network status listeners
- * Sets up event listeners for online/offline events
+ * On web: uses window online/offline events
+ * On native: no-op (NetInfo can be wired in separately if needed)
  */
 export const initNetworkListener = () => {
-  if (typeof window === 'undefined') {
-    // Not in a browser environment
+  if (Platform.OS !== 'web') {
+    // Native platforms — skip web-only window events
+    logger.info('📡', 'Network listener skipped on native (use NetInfo if needed)');
     return;
   }
-  
+
+  if (typeof window === 'undefined') return;
+
   const handleOnline = () => {
     isOnline = true;
     logger.info('📡', 'Back online');
-    
-    // Notify all registered listeners
-    networkListeners.forEach(callback => {
-      try {
-        callback(true);
-      } catch (error) {
-        logger.error('❌ Error in network listener callback:', error);
-      }
-    });
+    notifyListeners(true);
   };
-  
+
   const handleOffline = () => {
     isOnline = false;
     logger.info('📡', 'Gone offline');
-    
-    // Notify all registered listeners
-    networkListeners.forEach(callback => {
-      try {
-        callback(false);
-      } catch (error) {
-        logger.error('❌ Error in network listener callback:', error);
-      }
-    });
+    notifyListeners(false);
   };
-  
-  // Add event listeners
+
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
-  
+
   logger.info('✅', 'Network listener initialized');
 };
 

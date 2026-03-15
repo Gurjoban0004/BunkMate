@@ -18,7 +18,7 @@ import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 
 
 import { useApp } from '../context/AppContext';
-import { COLORS, TYPOGRAPHY } from '../theme/theme';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 
 function TabIcon({ label, focused }) {
@@ -49,6 +49,12 @@ export default function WebTabNavigator() {
 
     const activeStack = stacks[currentTab];
     const currentRoute = activeStack[activeStack.length - 1];
+
+    // Refs so navigation callbacks always see current values without stale closures
+    const stacksRef = React.useRef(stacks);
+    const currentTabRef = React.useRef(currentTab);
+    stacksRef.current = stacks; // Update synchronously
+    currentTabRef.current = currentTab; // Update synchronously
 
     useEffect(() => {
         if (Platform.OS === 'web') {
@@ -89,69 +95,71 @@ export default function WebTabNavigator() {
             if (['Today', 'Subjects', 'Planner', 'Settings'].includes(screenOrTabName)) {
                 setCurrentTab(screenOrTabName);
                 if (Platform.OS === 'web') {
-                    window.history.pushState({ tab: screenOrTabName, index: stacks[screenOrTabName].length - 1 }, '', `?tab=${screenOrTabName}`);
+                    window.history.pushState({ tab: screenOrTabName, index: stacksRef.current[screenOrTabName].length - 1 }, '', `?tab=${screenOrTabName}`);
                 }
             } else {
                 setStacks(prev => {
-                    const newStack = [...prev[currentTab], { name: screenOrTabName, params }];
+                    const tab = currentTabRef.current;
+                    const newStack = [...prev[tab], { name: screenOrTabName, params }];
                     if (Platform.OS === 'web') {
-                        window.history.pushState({ tab: currentTab, index: newStack.length - 1 }, '', `?tab=${currentTab}&screen=${screenOrTabName}`);
+                        window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}`);
                     }
-                    return { ...prev, [currentTab]: newStack };
+                    return { ...prev, [tab]: newStack };
                 });
             }
         },
         push: (screenOrTabName, params = {}) => {
             setStacks(prev => {
-                const newStack = [...prev[currentTab], { name: screenOrTabName, params }];
+                const tab = currentTabRef.current;
+                const newStack = [...prev[tab], { name: screenOrTabName, params }];
                 if (Platform.OS === 'web') {
-                    window.history.pushState({ tab: currentTab, index: newStack.length - 1 }, '', `?tab=${currentTab}&screen=${screenOrTabName}`);
+                    window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}`);
                 }
-                return { ...prev, [currentTab]: newStack };
+                return { ...prev, [tab]: newStack };
             });
         },
         replace: (screenName, params = {}) => {
             setStacks(prev => {
-                const newStack = [...prev[currentTab].slice(0, -1), { name: screenName, params }];
+                const tab = currentTabRef.current;
+                const newStack = [...prev[tab].slice(0, -1), { name: screenName, params }];
                 if (Platform.OS === 'web') {
-                    window.history.replaceState({ tab: currentTab, index: newStack.length - 1 }, '', `?tab=${currentTab}&screen=${screenName}`);
+                    window.history.replaceState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenName}`);
                 }
-                return { ...prev, [currentTab]: newStack };
+                return { ...prev, [tab]: newStack };
             });
         },
         reset: (stateConfig) => {
-            // Simplified reset handling for custom web navigator
             setStacks(prev => {
+                const tab = currentTabRef.current;
                 const routes = stateConfig.routes || [{ name: 'TodayMain', params: {} }];
                 if (Platform.OS === 'web') {
-                    window.history.pushState({ tab: currentTab, index: routes.length - 1 }, '', `?tab=${currentTab}&screen=${routes[routes.length - 1].name}`);
+                    window.history.pushState({ tab, index: routes.length - 1 }, '', `?tab=${tab}&screen=${routes[routes.length - 1].name}`);
                 }
-                return { ...prev, [currentTab]: routes };
+                return { ...prev, [tab]: routes };
             });
         },
         goBack: () => {
             setStacks(prev => {
-                const currentTabStack = prev[currentTab];
+                const tab = currentTabRef.current;
+                const currentTabStack = prev[tab];
                 if (currentTabStack.length > 1) {
                     const newStack = currentTabStack.slice(0, -1);
                     if (Platform.OS === 'web') {
                         const previousRoute = newStack[newStack.length - 1];
-                        // Use pushState here so we don't mess up browser history too badly,
-                        // or better yet, just replaceState so the URL matches current visual state
                         window.history.replaceState(
-                            { tab: currentTab, index: newStack.length - 1 },
+                            { tab, index: newStack.length - 1 },
                             '',
-                            `?tab=${currentTab}&screen=${previousRoute.name}`
+                            `?tab=${tab}&screen=${previousRoute.name}`
                         );
                     }
-                    return { ...prev, [currentTab]: newStack };
+                    return { ...prev, [tab]: newStack };
                 }
                 return prev;
             });
         },
-        canGoBack: () => stacks[currentTab].length > 1,
+        canGoBack: () => stacksRef.current[currentTabRef.current].length > 1,
         setOptions: () => { }, // no-op
-    }), [currentTab, stacks]);
+    }), []); // stable reference — uses refs internally
 
     const renderScreen = () => {
         const props = {
@@ -191,7 +199,7 @@ export default function WebTabNavigator() {
                 {renderScreen()}
             </View>
 
-            <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 4) }]}>
+            <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'web' && typeof window !== 'undefined' && window.navigator?.standalone ? 20 : 4) }]}>
                 {['Today', 'Subjects', 'Planner', 'Settings'].map((tabName) => {
                     const focused = currentTab === tabName;
                     return (

@@ -24,6 +24,21 @@ if (Platform.OS === 'web') {
     // Dynamically import so it doesn't affect native bundles at all
     const { enableScreens } = require('react-native-screens');
     enableScreens(false);
+
+    // Register service worker for PWA offline support
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+    }
+
+    // Inject manifest link if not already present
+    if (!document.querySelector('link[rel="manifest"]')) {
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = '/manifest.json';
+        document.head.appendChild(link);
+    }
 }
 
 if (Platform.OS === 'web') {

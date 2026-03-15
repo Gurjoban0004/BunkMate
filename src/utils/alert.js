@@ -12,9 +12,11 @@ export const showAlert = (title, message, buttons, options) => {
         if (globalWebAlert) {
             globalWebAlert(title, message, buttons, options);
         } else {
-            // Fallback just in case context isn't mounted yet
+            // Fallback just in case context isn't mounted yet (web only)
             const fallbackMessage = message ? `${title}\n\n${message}` : title;
-            const confirmed = window.confirm(fallbackMessage);
+            const confirmed = typeof window !== 'undefined' && window.confirm
+                ? window.confirm(fallbackMessage)
+                : false;
 
             if (buttons && buttons.length > 0) {
                 // Approximate confirm/cancel behavior based on standard window.confirm

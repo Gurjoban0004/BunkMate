@@ -40,7 +40,6 @@ export function generateTodayRecommendations(subjects) {
             priority: skipStatus === 'danger' ? 1 : skipStatus === 'warning' ? 2 : 3,
         };
     });
-
     // Sort by priority (risky first)
     analysis.sort((a, b) => a.priority - b.priority);
 
@@ -83,25 +82,16 @@ export function generateWeekStrategy(subject) {
 
     if (next7Days.length === 0) return null;
 
-    const scenarios = next7Days.map((classInfo, index) => {
-        let tempAttended = subject.attended;
-        let tempTotal = subject.total;
-
-        // Simulate attending all classes up to this one, skipping others
-        for (let i = 0; i <= index; i++) {
-            if (i === index) {
-                tempAttended++; // Attend this one
-            }
-            tempTotal++;
-        }
+    const scenarios = next7Days.map((classInfo) => {
+        // Simulate attending this one class (independent scenario per class)
+        const newAttended = subject.attended + 1;
+        const newTotal = subject.total + 1;
+        const percentage = newTotal > 0 ? (newAttended / newTotal) * 100 : 0;
 
         return {
             classInfo,
-            percentage: tempTotal > 0 ? (tempAttended / tempTotal) * 100 : 0,
-            status: determineStatus(
-                tempTotal > 0 ? (tempAttended / tempTotal) * 100 : 0,
-                subject.target || 75
-            ),
+            percentage,
+            status: determineStatus(percentage, subject.target || 75),
         };
     });
 

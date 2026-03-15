@@ -8,7 +8,7 @@ try {
 }
 
 export const triggerHaptic = (type = 'medium') => {
-    if (Platform.OS === 'ios' && Haptics) {
+    if (Platform.OS !== 'web' && Haptics) {
         switch (type) {
             case 'light':
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

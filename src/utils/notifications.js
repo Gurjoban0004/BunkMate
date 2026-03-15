@@ -49,9 +49,10 @@ export async function scheduleDailyReminder(time24 = '18:00') {
             sound: true,
         },
         trigger: {
-            type: 'daily',
+            type: 'calendar',
             hour: hours,
             minute: minutes,
+            repeats: true,
         },
     });
 

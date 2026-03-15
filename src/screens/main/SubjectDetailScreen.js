@@ -11,7 +11,6 @@ import AttendanceGraph from '../../components/subjects/AttendanceGraph';
 import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 export default function SubjectDetailScreen({ route }) {
     const styles = getStyles();
@@ -76,9 +75,10 @@ export default function SubjectDetailScreen({ route }) {
         setEditModal(null);
     };
 
-    // Format date nicely
+    // Format date nicely — use parseDate to avoid timezone shift on Android/Safari
     const formatRecordDate = (dateStr) => {
-        const d = new Date(dateStr + 'T00:00:00');
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const d = new Date(year, month - 1, day, 12, 0, 0);
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return `${months[d.getMonth()]} ${d.getDate()}, ${days[d.getDay()]}`;

@@ -9,7 +9,6 @@ import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 
-import WebHeader from './WebHeader';
 import { COLORS } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 
@@ -20,6 +19,9 @@ export default function WebNavigator() {
     ]);
 
     const currentRoute = history[history.length - 1];
+    // Ref so navigation callbacks always see current history without stale closure
+    const historyRef = React.useRef(history);
+    historyRef.current = history; // Update synchronously so canGoBack is accurate during child render
 
     useEffect(() => {
         if (Platform.OS === 'web') {
@@ -82,13 +84,12 @@ export default function WebNavigator() {
             }
         },
         goBack: () => {
-            if (Platform.OS === 'web' && history.length > 1) {
-                window.history.back();
-            } else {
-                setHistory(prev => (prev.length > 1 ? prev.slice(0, -1) : prev));
+            if (historyRef.current.length > 1) {
+                setHistory(prev => prev.slice(0, -1));
+                if (Platform.OS === 'web') window.history.back();
             }
         },
-        canGoBack: () => history.length > 1,
+        canGoBack: () => historyRef.current.length > 1,
         setOptions: () => { }, // no-op
     }), [history.length]);
 
@@ -132,3 +133,4 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.background,
     },
 });
+

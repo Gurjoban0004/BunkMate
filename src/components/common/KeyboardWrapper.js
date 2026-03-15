@@ -76,6 +76,6 @@ const getStyles = () => StyleSheet.create({
         paddingBottom: 20,
     },
     keyboardSpacer: {
-        height: 300,
+        height: 100,
     },
 });

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation } from 'react
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
 const PriorityList = ({ priorityList, threshold, onRecoveryPress }) => {
+    const styles = getStyles();
     const [showSafe, setShowSafe] = useState(false);
 
     const critical = priorityList.filter((s) => s.priority === 'critical');
@@ -67,6 +68,7 @@ const PriorityList = ({ priorityList, threshold, onRecoveryPress }) => {
 };
 
 const SubjectCard = ({ subject, rank, variant, threshold, onRecoveryPress }) => {
+    const styles = getStyles();
     const borderColor = variant === 'critical' ? COLORS.danger : COLORS.warning;
     const bgTint = variant === 'critical' ? COLORS.dangerLight : COLORS.warningLight;
     const emoji = variant === 'critical' ? '🔴' : '🟡';
@@ -124,7 +126,7 @@ const SubjectCard = ({ subject, rank, variant, threshold, onRecoveryPress }) => 
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         paddingHorizontal: SPACING.lg,
         marginBottom: SPACING.md,

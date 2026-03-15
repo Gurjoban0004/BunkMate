@@ -8,6 +8,7 @@ import {
     RefreshControl,
     Modal,
     TouchableOpacity,
+    Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
@@ -173,22 +174,21 @@ const TodayScreen = ({ navigation }) => {
             const now = currentTime;
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-            // If it's before the first class
-            if (todayClasses.length > 0) {
-                const [firstStartH, firstStartM] = todayClasses[0].startTime.split(':').map(Number);
-                if (currentMinutes < firstStartH * 60 + firstStartM) {
-                    return { now: null, upcoming: todayClasses, done: [] };
-                }
-
-                // If it's after the last class
-                const lastClass = todayClasses[todayClasses.length - 1];
-                const [lastEndH, lastEndM] = lastClass.endTime.split(':').map(Number);
-                if (currentMinutes >= lastEndH * 60 + lastEndM) {
-                    return { now: null, upcoming: [], done: todayClasses };
-                }
+            if (todayClasses.length === 0) {
+                return { now: null, upcoming: [], done: [] };
             }
 
-            return { now: null, upcoming: todayClasses, done: [] };
+            // Partition into done (end time passed) and upcoming (start time not yet reached)
+            const done = todayClasses.filter(c => {
+                const [eh, em] = c.endTime.split(':').map(Number);
+                return currentMinutes >= eh * 60 + em;
+            });
+            const upcoming = todayClasses.filter(c => {
+                const [sh, sm] = c.startTime.split(':').map(Number);
+                return currentMinutes < sh * 60 + sm;
+            });
+
+            return { now: null, upcoming, done };
         }
 
         const now = todayClasses[currentClassIndex];
@@ -465,7 +465,7 @@ const TodayScreen = ({ navigation }) => {
             <Modal
                 visible={showExtraModal}
                 transparent={true}
-                animationType="slide"
+                animationType={Platform.OS === 'web' ? 'fade' : 'slide'}
                 onRequestClose={() => setShowExtraModal(false)}
             >
                 <View style={styles.modalOverlay}>

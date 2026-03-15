@@ -67,45 +67,45 @@ export function simulateAttendance(attended, total, offset) {
 }
 
 /**
- * Calculate classes needed to reach target.
- * Returns null if impossible within 100 classes.
+ * Calculate classes needed to reach target using closed-form formula.
+ * Derivation: (attended + n) / (total + n) >= target → n >= (target*total - attended) / (1 - target)
+ * Returns null only if target is 100% and student has missed at least one class.
  */
 export function calculateRecoveryClasses(attended, total, targetPercentage) {
-    let tempAttended = attended;
-    let tempTotal = total;
-    let classesNeeded = 0;
-    const maxIterations = 100;
+    const target = targetPercentage / 100;
 
-    while (
-        calculatePlannerPercentage(tempAttended, tempTotal) < targetPercentage &&
-        classesNeeded < maxIterations
-    ) {
-        tempAttended++;
-        tempTotal++;
-        classesNeeded++;
+    // Handle 100% target edge case
+    if (target >= 1) {
+        if (attended < total) return null; // Impossible — already missed classes
+        return { classesNeeded: 0, resultPercentage: 100, newAttended: attended, newTotal: total };
     }
 
-    if (classesNeeded >= maxIterations) {
-        return null; // Impossible in reasonable range
+    const current = total === 0 ? 0 : attended / total;
+    if (current * 100 >= targetPercentage) {
+        return { classesNeeded: 0, resultPercentage: parseFloat((current * 100).toFixed(1)), newAttended: attended, newTotal: total };
     }
+
+    const classesNeeded = Math.ceil((target * total - attended) / (1 - target));
+    const newAttended = attended + classesNeeded;
+    const newTotal = total + classesNeeded;
 
     return {
         classesNeeded,
-        resultPercentage: calculatePlannerPercentage(tempAttended, tempTotal),
-        newAttended: tempAttended,
-        newTotal: tempTotal,
+        resultPercentage: parseFloat(((newAttended / newTotal) * 100).toFixed(1)),
+        newAttended,
+        newTotal,
     };
 }
 
 /**
- * Calculate absolute skip allowance — how many consecutive classes you can skip right now while staying above target.
+ * Calculate absolute skip allowance using closed-form formula.
+ * Derivation: attended / (total + n) >= target → n <= attended/target - total
  */
 export function calculateSkipAllowance(targetPercentage, currentAttended, currentTotal) {
-    let maxSafeSkips = 0;
+    const target = targetPercentage / 100;
+    if (target <= 0) return { skips: Infinity, outOf: Infinity, ratio: '∞', simplified: '∞' };
 
-    while (calculatePlannerPercentage(currentAttended, currentTotal + maxSafeSkips + 1) >= targetPercentage) {
-        maxSafeSkips++;
-    }
+    const maxSafeSkips = Math.max(0, Math.floor(currentAttended / target - currentTotal));
 
     return {
         skips: maxSafeSkips,

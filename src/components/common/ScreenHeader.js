@@ -10,6 +10,7 @@ function ScreenHeaderNative({ title, onPress, showBack = true }) {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const isWeb = Platform.OS === 'web';
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
@@ -22,8 +23,12 @@ function ScreenHeaderNative({ title, onPress, showBack = true }) {
     const canGoBack = showBack && navigation.canGoBack();
 
     return (
-        <Animated.View style={[styles.container, { paddingTop: insets.top }]}>
-            <View style={styles.content}>
+        <Animated.View style={[
+            styles.container,
+            { paddingTop: isWeb ? 0 : insets.top },
+            isWeb && styles.containerWeb,
+        ]}>
+            <View style={[styles.content, isWeb && styles.contentWeb]}>
                 {canGoBack && (
                     <TouchableOpacity
                         style={styles.backButton}
@@ -34,7 +39,10 @@ function ScreenHeaderNative({ title, onPress, showBack = true }) {
                     </TouchableOpacity>
                 )}
                 {title && (
-                    <HeadingSmall style={[styles.title, { marginLeft: canGoBack ? SPACING.sm : 0 }]}>
+                    <HeadingSmall style={[
+                        styles.title,
+                        { marginLeft: canGoBack ? SPACING.sm : 0 },
+                    ]}>
                         {title}
                     </HeadingSmall>
                 )}
@@ -54,12 +62,20 @@ const getStyles = () => StyleSheet.create({
         borderBottomColor: COLORS.border,
         zIndex: 100,
     },
+    containerWeb: {
+        borderBottomWidth: 0,
+    },
     content: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: SPACING.screenPadding,
         paddingVertical: SPACING.md,
-        minHeight: 56, // Consistent header height
+        minHeight: 56,
+    },
+    contentWeb: {
+        justifyContent: 'center',
+        paddingVertical: 4,
+        minHeight: 36,
     },
     backButton: {
         width: 40,
@@ -82,3 +98,4 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
 });
+

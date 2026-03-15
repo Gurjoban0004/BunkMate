@@ -7,7 +7,7 @@ import {
     Animated,
     Platform,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { triggerHaptic } from '../../utils/haptics';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
 import { getSubjectAttendance } from '../../utils/attendance';
 import { getTodayKey, formatTimeRange } from '../../utils/dateHelpers';
@@ -53,10 +53,8 @@ const ClassCard = ({
 
     // Handle mark attendance
     const handleMark = (status) => {
-        // Haptic feedback
-        if (Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        }
+        // Haptic feedback (handled cross-platform by wrapper)
+        triggerHaptic('medium');
 
         // Button press animation
         Animated.sequence([

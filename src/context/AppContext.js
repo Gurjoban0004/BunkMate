@@ -428,6 +428,9 @@ function appReducer(state, action) {
 export function AppProvider({ children }) {
     const [state, dispatch] = useReducer(appReducer, initialState);
     const [isLoading, setIsLoading] = useState(true);
+    // Ref so network listener always sees current state without stale closure
+    const stateRef = React.useRef(state);
+    useEffect(() => { stateRef.current = state; }, [state]);
 
     // ─── INITIALIZATION ──────────────────────────────────────────
 
@@ -463,9 +466,9 @@ export function AppProvider({ children }) {
 
         // Handle network status changes for real-time sync
         const unsubscribe = onNetworkStatusChange((isOnline) => {
-            if (isOnline && !isLoading) {
+            if (isOnline) {
                 console.log('🔄 Back online, syncing state...');
-                saveAppState(state);
+                saveAppState(stateRef.current);
             }
         });
 

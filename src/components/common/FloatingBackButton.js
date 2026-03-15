@@ -1,13 +1,15 @@
 import React, { useRef, useEffect } from 'react';
-import { TouchableOpacity, Text, StyleSheet, Platform, Animated } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, Animated, View, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, TYPOGRAPHY, SHADOWS, BORDER_RADIUS } from '../../theme/theme';
 
-function FloatingBackButtonNative({ onPress }) {
+/**
+ * Inline back button — sits in normal document flow (NOT absolute positioned).
+ * Used by screens that do not have a ScreenHeader (e.g. Planner).
+ */
+export default function FloatingBackButton({ onPress }) {
     const styles = getStyles();
     const navigation = useNavigation();
-    const insets = useSafeAreaInsets();
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -21,9 +23,9 @@ function FloatingBackButtonNative({ onPress }) {
     if (!navigation.canGoBack()) return null;
 
     return (
-        <Animated.View style={{ opacity: fadeAnim }}>
+        <Animated.View style={[styles.wrapper, { opacity: fadeAnim }]}>
             <TouchableOpacity
-                style={[styles.container, { top: Math.max(insets.top, SPACING.md) + SPACING.sm }]}
+                style={styles.container}
                 onPress={onPress || (() => navigation.goBack())}
                 activeOpacity={0.7}
             >
@@ -33,17 +35,15 @@ function FloatingBackButtonNative({ onPress }) {
     );
 }
 
-export default function FloatingBackButton({ onPress }) {
-    const styles = getStyles();
-    return <FloatingBackButtonNative onPress={onPress} />;
-}
-
 const getStyles = () => StyleSheet.create({
+    wrapper: {
+        paddingHorizontal: SPACING.screenPadding,
+        paddingTop: SPACING.md,
+        paddingBottom: SPACING.xs,
+    },
     container: {
-        position: 'absolute',
-        left: SPACING.md,
-        zIndex: 100,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        alignSelf: 'flex-start',
+        backgroundColor: COLORS.cardBackground,
         paddingHorizontal: SPACING.md,
         paddingVertical: 8,
         borderRadius: BORDER_RADIUS.full,

@@ -28,8 +28,11 @@ export function calculateOverallStreak(state) {
     let currentDate = new Date(sortedDates[sortedDates.length - 1] + 'T12:00:00');
     const startDate = trackingStartDate ? new Date(trackingStartDate + 'T12:00:00') : null;
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const MAX_LOOKBACK_DAYS = 180;
+    let daysChecked = 0;
 
-    while (!startDate || currentDate >= startDate) {
+    while ((!startDate || currentDate >= startDate) && daysChecked < MAX_LOOKBACK_DAYS) {
+        daysChecked++;
         const dateKey = getDateKey(currentDate);
         const dayRecords = records[dateKey];
         const dayName = dayNames[currentDate.getDay()];
@@ -105,8 +108,11 @@ export function calculateSubjectStreak(subjectId, state) {
     let currentDate = new Date(sortedDates[sortedDates.length - 1] + 'T12:00:00');
     const startDate = trackingStartDate ? new Date(trackingStartDate + 'T12:00:00') : null;
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const MAX_LOOKBACK_DAYS = 180;
+    let daysChecked = 0;
 
-    while (!startDate || currentDate >= startDate) {
+    while ((!startDate || currentDate >= startDate) && daysChecked < MAX_LOOKBACK_DAYS) {
+        daysChecked++;
         const dateKey = getDateKey(currentDate);
         const dayRecords = records[dateKey];
         const dayName = dayNames[currentDate.getDay()];

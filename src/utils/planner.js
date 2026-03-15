@@ -150,8 +150,9 @@ export function getPriorityList(state, threshold = 75) {
                 : Infinity;
 
             // Safe skips available (if above threshold)
+            const target = threshold / 100;
             const safeSkips = buffer > 0
-                ? Math.floor((stats.attendedUnits - (threshold / 100) * stats.totalUnits) / (threshold / 100))
+                ? Math.max(0, Math.floor(stats.attendedUnits / target - stats.totalUnits))
                 : 0;
 
             return {

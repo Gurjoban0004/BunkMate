@@ -14,27 +14,25 @@ export function calculateImpact(attended, total, skipCount) {
 
 /**
  * Max classes that can be skipped while staying at or above target%.
+ * Derivation: attended / (total + n) >= target → n <= attended/target - total
  */
 export function calculateMaxSkips(attended, total, targetPercent) {
     const target = targetPercent / 100;
-    if (total === 0) return 0;
-    const currentPercent = attended / total;
-    if (currentPercent < target) return 0;
-
-    const maxSkips = Math.floor((attended - target * total) / target);
-    return Math.max(0, maxSkips);
+    if (total === 0 || target <= 0) return 0;
+    if (attended / total < target) return 0;
+    return Math.max(0, Math.floor(attended / target - total));
 }
 
 /**
  * How many consecutive classes needed to reach target% from below.
+ * Derivation: (attended + n) / (total + n) >= target → n >= (target*total - attended) / (1 - target)
  */
 export function calculateRecovery(attended, total, targetPercent) {
     const target = targetPercent / 100;
+    if (target >= 1) return attended < total ? Infinity : 0;
     const currentPercent = total === 0 ? 0 : attended / total;
     if (currentPercent >= target) return 0;
-
-    const needed = Math.ceil((target * total - attended) / (1 - target));
-    return Math.max(0, needed);
+    return Math.max(0, Math.ceil((target * total - attended) / (1 - target)));
 }
 
 /**

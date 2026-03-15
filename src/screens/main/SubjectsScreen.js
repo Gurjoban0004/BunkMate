@@ -75,7 +75,7 @@ const SubjectsScreen = ({ navigation }) => {
         return {
             attended: totalAttended,
             total: totalUnitsVal,
-            percentage: pct.toFixed(1),
+            percentage: parseFloat(pct.toFixed(1)),
             dangerCount: categorizedSubjects.danger.length,
             safeCount: categorizedSubjects.safe.length,
         };

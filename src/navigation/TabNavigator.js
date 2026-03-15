@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text, View } from 'react-native';
+import { Text, View, Platform } from 'react-native';
 import TodayScreen from '../screens/main/TodayScreen';
 import SubjectsScreen from '../screens/main/SubjectsScreen';
 import SubjectDetailScreen from '../screens/main/SubjectDetailScreen';
@@ -196,8 +196,8 @@ export default function TabNavigator() {
                     borderTopColor: COLORS.border,
                     borderTopWidth: 1,
                     paddingTop: 6,
-                    paddingBottom: 4,
-                    height: 60,
+                    paddingBottom: Platform.OS === 'android' ? 8 : 4,
+                    height: Platform.OS === 'android' ? 65 : 60,
                     shadowColor: COLORS.shadow,
                     shadowOffset: { width: 0, height: -2 },
                     shadowOpacity: 0.06,
