@@ -96,7 +96,7 @@ function AppContent() {
             if (!state.setupComplete) {
                 const { MOCK_SCENARIOS } = require('./src/dev/mockData/mockScenarios');
                 const mockData = MOCK_SCENARIOS[MOCK_SCENARIO] || MOCK_SCENARIOS.NORMAL;
-                dispatch({ type: 'LOAD_STATE', payload: mockData });
+                dispatch({ type: 'LOAD_STATE', payload: { ...mockData, userId: 'DEV-MODE', isAuthenticated: true } });
             }
             setDevReady(true);
         } else if (!DEV_MODE || !SKIP_SETUP) {

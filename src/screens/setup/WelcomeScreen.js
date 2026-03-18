@@ -6,12 +6,13 @@ import Input from '../../components/common/Input';
 import { useApp } from '../../context/AppContext';
 import { PRESETS } from '../../data/presets';
 import { showAlert } from '../../utils/alert';
+import { getUserId } from '../../utils/firebaseHelpers';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 export default function WelcomeScreen({ navigation }) {
     const [name, setName] = useState('');
     const [code, setCode] = useState('');
-    const { dispatch } = useApp();
+    const { state, dispatch } = useApp();
     const inputRef = useRef(null);
     const styles = getStyles();
 
@@ -25,10 +26,21 @@ export default function WelcomeScreen({ navigation }) {
         }
     }, []);
 
-    const handleContinue = () => {
+    const handleContinue = async () => {
         if (!name.trim()) return;
 
         const trimmedCode = code.trim().toUpperCase();
+
+        // If not yet authenticated (new user), generate a userId now
+        if (!state.isAuthenticated || !state.userId) {
+            try {
+                const newUserId = await getUserId();
+                dispatch({ type: 'SET_USER_ID', payload: newUserId });
+                dispatch({ type: 'SET_AUTHENTICATED', payload: true });
+            } catch (e) {
+                // getUserId has its own fallback, so this is a safety net
+            }
+        }
 
         if (trimmedCode) {
             const preset = PRESETS[trimmedCode];

@@ -338,12 +338,14 @@ export const applyTheme = (themeStr) => {
             SHADOWS.medium.boxShadow = `0px 4px 12px rgba(0, 0, 0, 0.4)`;
             SHADOWS.large.boxShadow = `0px 8px 24px rgba(0, 0, 0, 0.5)`;
         } else {
-            SHADOWS.small.shadowColor = '#000000';
-            SHADOWS.small.shadowOpacity = 0.3;
-            SHADOWS.medium.shadowColor = '#000000';
-            SHADOWS.medium.shadowOpacity = 0.4;
-            SHADOWS.large.shadowColor = '#000000';
-            SHADOWS.large.shadowOpacity = 0.5;
+            // On Android, elevation adds a white Material scrim over dark surfaces.
+            // Zero it out in dark mode and rely on border for depth instead.
+            SHADOWS.small.elevation = 0;
+            SHADOWS.small.shadowOpacity = 0;
+            SHADOWS.medium.elevation = 0;
+            SHADOWS.medium.shadowOpacity = 0;
+            SHADOWS.large.elevation = 0;
+            SHADOWS.large.shadowOpacity = 0;
         }
     } else {
         // Reset to light mode values
@@ -352,11 +354,11 @@ export const applyTheme = (themeStr) => {
             SHADOWS.medium.boxShadow = `0px 4px 12px ${COLORS.shadow}1A`;
             SHADOWS.large.boxShadow = `0px 4px 8px ${COLORS.shadow}1A`;
         } else {
-            SHADOWS.small.shadowColor = COLORS.shadow;
+            SHADOWS.small.elevation = 1;
             SHADOWS.small.shadowOpacity = 0.05;
-            SHADOWS.medium.shadowColor = COLORS.shadow;
+            SHADOWS.medium.elevation = 3;
             SHADOWS.medium.shadowOpacity = 0.12;
-            SHADOWS.large.shadowColor = COLORS.shadow;
+            SHADOWS.large.elevation = 4;
             SHADOWS.large.shadowOpacity = 0.1;
         }
     }

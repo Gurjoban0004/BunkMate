@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import { getTodayKey, getNextDay, parseDate, isPastTime, subtractDays, getTodayDayName } from '../utils/dateHelpers';
-import { initNetworkListener, getUserId, onNetworkStatusChange } from '../utils/firebaseHelpers';
+import { initNetworkListener, onNetworkStatusChange } from '../utils/firebaseHelpers';
 import { loadAppState, saveAppState, migrateToFirestore } from '../storage/storage';
 import { logger } from '../utils/logger';
 
@@ -8,6 +8,7 @@ const AppContext = createContext();
 
 const initialState = {
     setupComplete: false,
+    isAuthenticated: false, // true once user has logged in or completed setup
 
     // User Info
     userName: '',
@@ -228,7 +229,7 @@ function appReducer(state, action) {
         }
 
         case 'COMPLETE_SETUP':
-            return { ...state, setupComplete: true, ...(action.payload || {}) };
+            return { ...state, setupComplete: true, isAuthenticated: true, ...(action.payload || {}) };
 
         case 'SET_TRACKING_CONFIG':
             return {
@@ -407,6 +408,8 @@ function appReducer(state, action) {
                 timetable: { ...initialState.timetable, ...(loaded.timetable || {}) },
                 autopilotReview: loaded.autopilotReview !== undefined ? loaded.autopilotReview : null,
                 autopilotDiscoveryDismissed: loaded.autopilotDiscoveryDismissed !== undefined ? loaded.autopilotDiscoveryDismissed : false,
+                // Always mark as authenticated when loading a saved state with a userId
+                isAuthenticated: !!(loaded.userId),
             };
         }
 
@@ -420,6 +423,12 @@ function appReducer(state, action) {
             return {
                 ...state,
                 userId: action.payload,
+            };
+
+        case 'SET_AUTHENTICATED':
+            return {
+                ...state,
+                isAuthenticated: action.payload,
             };
 
         default:
@@ -454,18 +463,17 @@ export function AppProvider({ children }) {
                 // 1. Setup network listener
                 initNetworkListener();
 
-                // 2. Get/create userId
-                const uid = await getUserId();
-                safeDispatch({ type: 'SET_USER_ID', payload: uid });
-
-                // 3. Load state from hybrid storage
+                // 2. Load state from hybrid storage — this is the source of truth
                 const saved = await loadAppState();
-                if (saved && saved.setupComplete !== undefined) {
+                if (saved && saved.userId) {
+                    // User has a saved session — restore it
                     safeDispatch({ type: 'LOAD_STATE', payload: saved });
                     
-                // 4. Migrate to Firestore in background — do NOT await
-                migrateToFirestore(saved).catch(e => logger.warn('⚠️ Migration failed:', e));
+                    // Migrate to Firestore in background — do NOT await
+                    migrateToFirestore(saved).catch(e => logger.warn('⚠️ Migration failed:', e));
                 }
+                // If no saved state or no userId → stay at initialState (isAuthenticated: false)
+                // → AppNavigator will show Login screen
                 
                 logger.info('✅', 'Initialization complete');
             } catch (e) {
@@ -478,7 +486,7 @@ export function AppProvider({ children }) {
 
         // Handle network status changes for real-time sync
         const unsubscribe = onNetworkStatusChange((isOnline) => {
-            if (isOnline) {
+            if (isOnline && stateRef.current.isAuthenticated) {
                 logger.info('🔄', 'Back online, syncing state...');
                 // Sync cloud state first to avoid "last write wins" overwriting fresh cloud data
                 loadAppState().then((saved) => {
@@ -506,7 +514,7 @@ export function AppProvider({ children }) {
             justResetRef.current = false;
             return;
         }
-        if (!isLoading && state.userId) {
+        if (!isLoading && state.userId && state.isAuthenticated) {
             saveAppState(state);
         }
     }, [state, isLoading]);

@@ -25,12 +25,13 @@ export default function AppNavigator() {
 
     if (Platform.OS === 'web') {
         // Completely bypass React Navigation's wrapper architectures on Web
+        if (!state.isAuthenticated) return <WebNavigator />;
         return state.setupComplete ? <WebTabNavigator /> : <WebNavigator />;
     }
 
     return (
         <NavigationContainer>
-            {state.setupComplete ? <TabNavigator /> : <SetupNavigator />}
+            {state.isAuthenticated && state.setupComplete ? <TabNavigator /> : <SetupNavigator />}
         </NavigationContainer>
     );
 }

@@ -547,8 +547,8 @@ const SettingsScreen = ({ navigation }) => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>NOTIFICATIONS</Text>
 
-                        <View style={styles.card}>
-                            <View style={styles.settingRow}>
+                        <View style={styles.cardGroup}>
+                            <View style={[styles.settingRow, styles.groupItem]}>
                                 <View style={styles.settingInfo}>
                                     <Text style={styles.settingLabel}>Daily Reminder</Text>
                                     <Text style={styles.settingDescription}>
@@ -564,17 +564,20 @@ const SettingsScreen = ({ navigation }) => {
                             </View>
 
                             {notificationEnabled && (
-                                <TouchableOpacity style={styles.timePickerRow}>
-                                    <Text style={styles.timePickerLabel}>Remind me at</Text>
-                                    <View style={styles.timeBadge}>
-                                        <Text style={styles.timeText}>6:00 PM</Text>
-                                    </View>
-                                </TouchableOpacity>
+                                <>
+                                    <View style={styles.divider} />
+                                    <TouchableOpacity style={styles.timePickerRow}>
+                                        <Text style={styles.timePickerLabel}>Remind me at</Text>
+                                        <View style={styles.timeBadge}>
+                                            <Text style={styles.timeText}>6:00 PM</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                </>
                             )}
-                        </View>
 
-                        <View style={styles.card}>
-                            <View style={styles.settingRow}>
+                            <View style={styles.divider} />
+
+                            <View style={[styles.settingRow, styles.groupItem]}>
                                 <View style={styles.settingInfo}>
                                     <Text style={styles.settingLabel}>Smart Alerts</Text>
                                     <Text style={styles.settingDescription}>
@@ -588,10 +591,10 @@ const SettingsScreen = ({ navigation }) => {
                                     thumbColor={smartAlertsEnabled ? COLORS.primary : COLORS.textMuted}
                                 />
                             </View>
-                        </View>
 
-                        <View style={styles.card}>
-                            <View style={styles.settingRow}>
+                            <View style={styles.divider} />
+
+                            <View style={[styles.settingRow, styles.groupItem]}>
                                 <View style={styles.settingInfo}>
                                     <Text style={styles.settingLabel}>Weekly Summary</Text>
                                     <Text style={styles.settingDescription}>

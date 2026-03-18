@@ -15,7 +15,8 @@ const Stack = createStackNavigator();
 
 export default function SetupNavigator() {
     const { state } = useApp();
-    const initialRoute = state.userId ? 'Welcome' : 'Login';
+    // If not authenticated → Login. If authenticated but setup incomplete → Welcome.
+    const initialRoute = state.isAuthenticated ? 'Welcome' : 'Login';
 
     return (
         <Stack.Navigator

@@ -16,7 +16,8 @@ import { NavigationContext, NavigationRouteContext } from '@react-navigation/nat
 export default function WebNavigator() {
     const styles = getStyles();
     const { state } = useApp();
-    const initialRoute = state.userId ? 'Welcome' : 'Login';
+    // If not authenticated → Login. If authenticated but setup incomplete → Welcome.
+    const initialRoute = state.isAuthenticated ? 'Welcome' : 'Login';
     const [history, setHistory] = useState([
         { name: initialRoute, params: {} }
     ]);
@@ -29,17 +30,17 @@ export default function WebNavigator() {
     useEffect(() => {
         if (Platform.OS === 'web') {
             const handlePopState = (event) => {
-                const state = event.state;
-                if (state && typeof state.index === 'number') {
+                const popState = event.state;
+                if (popState && typeof popState.index === 'number') {
                     setHistory(prev => {
-                        if (state.index < prev.length) {
-                            return prev.slice(0, state.index + 1);
+                        if (popState.index < prev.length) {
+                            return prev.slice(0, popState.index + 1);
                         }
                         return prev;
                     });
                 } else {
                     // Fallback to initial route
-                    setHistory([{ name: 'Welcome', params: {} }]);
+                    setHistory([{ name: initialRoute, params: {} }]);
                 }
             };
 
@@ -80,7 +81,7 @@ export default function WebNavigator() {
             });
         },
         reset: (stateConfig) => {
-            const routes = stateConfig.routes || [{ name: 'Welcome', params: {} }];
+            const routes = stateConfig.routes || [{ name: initialRoute, params: {} }];
             setHistory(routes);
             if (Platform.OS === 'web') {
                 window.history.pushState({ index: routes.length - 1 }, '', `?screen=${routes[routes.length - 1].name}`);

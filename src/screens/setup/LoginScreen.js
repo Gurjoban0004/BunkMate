@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -36,10 +36,10 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (code.length !== 12) return;
-    
+
     setIsVerifying(true);
     setError(null);
-    
+
     try {
       // 1. Validate code with Firebase FIRST — before touching any local data
       const authenticatedUserId = await loginWithCode(code);
@@ -47,17 +47,24 @@ export default function LoginScreen({ navigation }) {
       // 2. Only clear stale local data AFTER successful authentication
       await clearAppState();
 
-      // 3. Fetch the cloud state
+      // 3. Fetch the cloud state for this user
       const savedState = await loadAppState();
 
       if (savedState && (savedState.setupComplete || (savedState.subjects && savedState.subjects.length > 0))) {
-        // User has data. Let's merge the correct userId into it, then fully replace the local state.
-        savedState.setupComplete = true;
-        savedState.userId = authenticatedUserId;
-        dispatch({ type: 'LOAD_STATE', payload: savedState });
+        // User has existing data — restore it and mark as authenticated
+        dispatch({
+          type: 'LOAD_STATE',
+          payload: {
+            ...savedState,
+            userId: authenticatedUserId,
+            isAuthenticated: true,
+            setupComplete: true,
+          },
+        });
       } else {
-        // New account or no data. Safe to set empty state to the new ID.
+        // New account or no data — set userId, mark authenticated, then go to setup
         dispatch({ type: 'SET_USER_ID', payload: authenticatedUserId });
+        dispatch({ type: 'SET_AUTHENTICATED', payload: true });
         navigation.navigate('Welcome');
       }
     } catch (err) {

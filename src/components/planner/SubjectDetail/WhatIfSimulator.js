@@ -110,7 +110,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
             if (simulated.percentage >= target && currentPercentage < target) {
                 return {
                     icon: <Text style={{ fontSize: 16 }}>✅</Text>,
-                    text: `Attending ${attendSteps} gets you back safely to ${target}%.`,
+                    text: `Attending ${activeSteps} gets you back safely to ${target}%.`,
                     color: COLORS.successDark
                 };
             } else {

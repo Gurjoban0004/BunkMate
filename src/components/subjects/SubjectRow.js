@@ -5,7 +5,6 @@ import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme
 const SubjectRow = ({ subject, status, threshold, onPress }) => {
     const styles = getStyles();
     const { name, color, percentage, attendedUnits, totalUnits, skipInfo } = subject;
-
     const getStatusColor = () => {
         switch (status) {
             case 'danger': return COLORS.danger;
@@ -93,6 +92,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.cardGap,
         padding: SPACING.cardPadding,
         borderRadius: BORDER_RADIUS.xl,
+        borderWidth: 1,
+        borderColor: COLORS.border,
         ...SHADOWS.medium,
     },
     colorDot: {
