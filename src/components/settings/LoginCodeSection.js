@@ -11,7 +11,13 @@ export default function LoginCodeSection() {
 
   const handleCopy = () => {
     if (!userId) return;
-    Clipboard.setString(userId);
+    if (Platform.OS === 'web') {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(userId).catch(() => {});
+      }
+    } else {
+      Clipboard.setString(userId);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -19,9 +25,20 @@ export default function LoginCodeSection() {
   const handleShare = async () => {
     if (!userId) return;
     try {
-      await Share.share({
-        message: `My Presence login code: ${userId}\n\nUse this to login on another device.`,
-      });
+      if (Platform.OS === 'web' && navigator.share) {
+        await navigator.share({ text: `My Presence login code: ${userId}\n\nUse this to login on another device.` });
+      } else if (Platform.OS === 'web') {
+        // Fallback: copy to clipboard on web if Web Share API not available
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(userId);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }
+      } else {
+        await Share.share({
+          message: `My Presence login code: ${userId}\n\nUse this to login on another device.`,
+        });
+      }
     } catch (error) {
       logger.error('Error sharing code:', error);
     }
@@ -83,7 +100,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   card: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.cardBackground,
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
     borderWidth: 1,
@@ -123,7 +140,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   copyButton: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.inputBackground,
     borderWidth: 1,
     borderColor: COLORS.primary,
   },

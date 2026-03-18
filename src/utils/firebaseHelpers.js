@@ -38,20 +38,16 @@ export const getUserId = async () => {
     const existingUserId = await AsyncStorage.getItem('userId');
     
     if (existingUserId) {
-      // Update lastActive timestamp for existing user
-      try {
-        const userRef = doc(db, 'users', existingUserId);
-        await setDoc(userRef, {
-          lastActive: serverTimestamp(),
-          version: '1.0.0'
-        }, { merge: true });
-        
-        logger.info('✅', 'Logged in as:', existingUserId);
-      } catch (error) {
+      // Update lastActive in background — do NOT await, so startup is never blocked
+      const userRef = doc(db, 'users', existingUserId);
+      setDoc(userRef, {
+        lastActive: serverTimestamp(),
+        version: '1.0.0'
+      }, { merge: true }).catch(error => {
         logger.warn('⚠️ Failed to update lastActive:', error);
-        // Continue anyway - local userId is valid
-      }
+      });
       
+      logger.info('✅', 'Logged in as:', existingUserId);
       return existingUserId;
     }
     
@@ -61,20 +57,17 @@ export const getUserId = async () => {
     // Save to AsyncStorage
     await AsyncStorage.setItem('userId', newUserId);
     
-    // Create Firestore user document
-    try {
-      const userRef = doc(db, 'users', newUserId);
-      await setDoc(userRef, {
-        createdAt: serverTimestamp(),
-        lastActive: serverTimestamp(),
-        version: '1.0.0'
-      });
-      
+    // Create Firestore user document in background — do NOT await
+    const userRef = doc(db, 'users', newUserId);
+    setDoc(userRef, {
+      createdAt: serverTimestamp(),
+      lastActive: serverTimestamp(),
+      version: '1.0.0'
+    }).then(() => {
       logger.info('✅', 'New user created:', newUserId);
-    } catch (error) {
+    }).catch(error => {
       logger.warn('⚠️ Failed to create Firestore user document:', error);
-      // Continue anyway - local userId is saved
-    }
+    });
     
     return newUserId;
     

@@ -159,9 +159,7 @@ export default function WebTabNavigator() {
         },
         canGoBack: () => stacksRef.current[currentTabRef.current].length > 1,
         setOptions: () => { }, // no-op
-    }), []); // stable reference — uses refs internally
-
-    const renderScreen = () => {
+    }), []); // stable reference — uses refs internally    const renderScreen = () => {
         const props = {
             navigation: mockNavigation,
             route: { params: currentRoute.params }

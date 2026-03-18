@@ -10,12 +10,15 @@ import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 
 import { COLORS } from '../theme/theme';
+import { useApp } from '../context/AppContext';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 
 export default function WebNavigator() {
     const styles = getStyles();
+    const { state } = useApp();
+    const initialRoute = state.userId ? 'Welcome' : 'Login';
     const [history, setHistory] = useState([
-        { name: 'Welcome', params: {} }
+        { name: initialRoute, params: {} }
     ]);
 
     const currentRoute = history[history.length - 1];

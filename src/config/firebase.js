@@ -18,10 +18,9 @@ const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'mes
 const missingKeys = requiredKeys.filter(key => !firebaseConfig[key]);
 
 if (missingKeys.length > 0) {
-  throw new Error(
+  logger.warn(
     `Missing Firebase configuration keys: ${missingKeys.join(', ')}. ` +
-    'Please create a .env file with your Firebase credentials. ' +
-    'See .env.example for the required format.'
+    'Set EXPO_PUBLIC_FIREBASE_* environment variables in EAS or your .env file.'
   );
 }
 

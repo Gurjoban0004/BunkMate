@@ -463,8 +463,8 @@ export function AppProvider({ children }) {
                 if (saved && saved.setupComplete !== undefined) {
                     safeDispatch({ type: 'LOAD_STATE', payload: saved });
                     
-                    // 4. Migrate to Firestore if needed
-                    await migrateToFirestore(saved);
+                // 4. Migrate to Firestore in background — do NOT await
+                migrateToFirestore(saved).catch(e => logger.warn('⚠️ Migration failed:', e));
                 }
                 
                 logger.info('✅', 'Initialization complete');

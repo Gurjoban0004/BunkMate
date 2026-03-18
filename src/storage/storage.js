@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 
 const STORAGE_KEY = '@bunkmate_state';
 const STATE_VERSION = 1;
-const SYNC_TIMEOUT = 10000; // 10 seconds timeout for cloud operations
+const SYNC_TIMEOUT = 5000; // 5 seconds timeout for cloud operations
 
 /**
  * Compare local and cloud data to determine which is newer
@@ -136,8 +136,12 @@ export async function migrateToFirestore(state) {
         const semesterId = getCurrentSemesterId();
         const semesterRef = doc(db, 'users', userId, 'semesters', semesterId);
 
+        const mkTimeout = () => new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Migration timeout')), SYNC_TIMEOUT)
+        );
+
         // Check if cloud data already exists to avoid overwriting newer data
-        const cloudDoc = await getDoc(semesterRef);
+        const cloudDoc = await Promise.race([getDoc(semesterRef), mkTimeout()]);
         
         if (!cloudDoc.exists()) {
             logger.info('🚀', 'Migrating local data to Firestore...');
@@ -148,7 +152,7 @@ export async function migrateToFirestore(state) {
                 _cloudTimestamp: serverTimestamp()
             };
 
-            await setDoc(semesterRef, migratedState);
+            await Promise.race([setDoc(semesterRef, migratedState), mkTimeout()]);
             
             // Update local state with migrated flag only after successful cloud write
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migratedState));

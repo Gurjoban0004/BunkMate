@@ -207,69 +207,8 @@ const TodayScreen = ({ navigation }) => {
 
     // ─── AUTOPILOT UI COMPONENTS ──────────────────────────────────────
 
-    const DiscoveryBanner = () => {
-        if (autopilotEnabled || autopilotDiscoveryDismissed) return null;
-
-        return (
-            <View style={styles.discoveryCard}>
-                <View style={styles.discoveryContent}>
-                    <Text style={styles.discoveryEmoji}>🤖</Text>
-                    <View style={styles.discoveryTextContainer}>
-                        <HeadingSmall style={styles.discoveryTitle}>Meet Autopilot</HeadingSmall>
-                        <BodySmall style={styles.discoverySubtitle}>
-                            Forget marking classes? Let the app do it automatically every night.
-                        </BodySmall>
-                    </View>
-                </View>
-                <View style={styles.discoveryActions}>
-                    <TouchableOpacity
-                        style={styles.discoveryDismissBtn}
-                        onPress={() => dispatch({ type: 'DISMISS_AUTOPILOT_DISCOVERY' })}
-                    >
-                        <CaptionMedium>Maybe Later</CaptionMedium>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.discoveryEnableBtn}
-                        onPress={() => navigation.navigate('Settings')}
-                    >
-                        <CaptionMedium color="textOnPrimary">Setup Now</CaptionMedium>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        );
-    };
-
-    const ReviewCard = () => {
-        if (!autopilotReview || autopilotReview.dismissed) return null;
-
-        return (
-            <View style={styles.reviewCard}>
-                <View style={styles.reviewHeader}>
-                    <HeadingSmall style={styles.reviewTitle}>🤖 Autopilot Ran</HeadingSmall>
-                    <BodySmall style={styles.reviewSubtitle}>
-                        Automatically marked {autopilotReview.count} missing class{autopilotReview.count > 1 ? 'es' : ''} for {autopilotReview.date}.
-                    </BodySmall>
-                </View>
-                <View style={styles.reviewActions}>
-                    <TouchableOpacity
-                        style={styles.reviewDismissBtn}
-                        onPress={() => dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' })}
-                    >
-                        <CaptionMedium>Dismiss</CaptionMedium>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.reviewViewBtn}
-                        onPress={() => {
-                            dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' });
-                            navigation.navigate('PastAttendance');
-                        }}
-                    >
-                        <CaptionMedium color="textOnPrimary">Review Classes</CaptionMedium>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        );
-    };
+    const showDiscovery = !autopilotEnabled && !autopilotDiscoveryDismissed;
+    const showReview = autopilotReview && !autopilotReview.dismissed;
 
     const format12Hour = (time24) => {
         const [h, m] = time24.split(':');
@@ -277,19 +216,6 @@ const TodayScreen = ({ navigation }) => {
         const ampm = hours >= 12 ? 'pm' : 'am';
         hours = hours % 12 || 12;
         return `${hours}:${m}${ampm}`;
-    };
-
-    const AutopilotIndicator = () => {
-        if (!autopilotEnabled) return null;
-        const triggerTime = state.settings?.autopilotTime || '20:00';
-
-        return (
-            <View style={styles.indicatorContainer}>
-                <Text style={styles.indicatorText}>
-                    🤖 Autopilot runs at {format12Hour(triggerTime)} today
-                </Text>
-            </View>
-        );
     };
 
     return (
@@ -318,11 +244,61 @@ const TodayScreen = ({ navigation }) => {
                 <DeletionWarningBanner />
 
                 {/* Autopilot Discovery or Review */}
-                {autopilotReview && !autopilotReview.dismissed ? (
-                    <ReviewCard />
+                {showReview ? (
+                    <View style={styles.reviewCard}>
+                        <View style={styles.reviewHeader}>
+                            <HeadingSmall style={styles.reviewTitle}>🤖 Autopilot Ran</HeadingSmall>
+                            <BodySmall style={styles.reviewSubtitle}>
+                                Automatically marked {autopilotReview.count} missing class{autopilotReview.count > 1 ? 'es' : ''} for {autopilotReview.date}.
+                            </BodySmall>
+                        </View>
+                        <View style={styles.reviewActions}>
+                            <TouchableOpacity
+                                style={styles.reviewDismissBtn}
+                                onPress={() => dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' })}
+                            >
+                                <CaptionMedium>Dismiss</CaptionMedium>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.reviewViewBtn}
+                                onPress={() => {
+                                    dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' });
+                                    navigation.navigate('PastAttendance');
+                                }}
+                            >
+                                <CaptionMedium color="textOnPrimary">Review Classes</CaptionMedium>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 ) : (
                     <>
-                        <DiscoveryBanner />
+                        {showDiscovery && (
+                            <View style={styles.discoveryCard}>
+                                <View style={styles.discoveryContent}>
+                                    <Text style={styles.discoveryEmoji}>🤖</Text>
+                                    <View style={styles.discoveryTextContainer}>
+                                        <HeadingSmall style={styles.discoveryTitle}>Meet Autopilot</HeadingSmall>
+                                        <BodySmall style={styles.discoverySubtitle}>
+                                            Forget marking classes? Let the app do it automatically every night.
+                                        </BodySmall>
+                                    </View>
+                                </View>
+                                <View style={styles.discoveryActions}>
+                                    <TouchableOpacity
+                                        style={styles.discoveryDismissBtn}
+                                        onPress={() => dispatch({ type: 'DISMISS_AUTOPILOT_DISCOVERY' })}
+                                    >
+                                        <CaptionMedium>Maybe Later</CaptionMedium>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.discoveryEnableBtn}
+                                        onPress={() => navigation.navigate('Settings')}
+                                    >
+                                        <CaptionMedium color="textOnPrimary">Setup Now</CaptionMedium>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
                         {unmarkedCount > 0 && (
                             <BacklogBanner
                                 count={unmarkedCount}
@@ -460,8 +436,13 @@ const TodayScreen = ({ navigation }) => {
                     </>
                 )}
 
-                <AutopilotIndicator />
-
+                {autopilotEnabled && (
+                    <View style={styles.indicatorContainer}>
+                        <Text style={styles.indicatorText}>
+                            🤖 Autopilot runs at {format12Hour(state.settings?.autopilotTime || '20:00')} today
+                        </Text>
+                    </View>
+                )}
                 {/* Bottom Padding */}
                 <View style={styles.bottomPadding} />
             </ScrollView>

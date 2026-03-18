@@ -1,65 +1,71 @@
 {
-    "expo": {
-        "name": "Presence",
-        "slug": "presence",
-        "version": "1.0.1",
-        "orientation": "portrait",
-        "icon": "./assets/icon.png",
-        "userInterfaceStyle": "automatic",
-        "newArchEnabled": true,
-        "splash": {
-            "image": "./assets/splash-icon.png",
-            "resizeMode": "contain",
-            "backgroundColor": "#1A1A2E"
-        },
-        "ios": {
-            "supportsTablet": false,
-            "bundleIdentifier": "com.presence.app",
-            "infoPlist": {
-                "UIBackgroundModes": [
-                    "remote-notification"
-                ]
-            }
-        },
-        "android": {
-            "package": "com.presence.app",
-            "versionCode": 2,
-            "adaptiveIcon": {
-                "foregroundImage": "./assets/adaptive-icon.png",
-                "backgroundColor": "#1A1A2E"
-            },
-            "permissions": [
-                "RECEIVE_BOOT_COMPLETED",
-                "VIBRATE",
-                "POST_NOTIFICATIONS",
-                "INTERNET",
-                "ACCESS_NETWORK_STATE"
-            ]
-        },
-        "web": {
-            "favicon": "./assets/favicon.png",
-            "name": "Presence",
-            "shortName": "Presence",
-            "themeColor": "#6C63FF",
-            "backgroundColor": "#1A1A2E",
-            "description": "Smart Attendance Tracker",
-            "display": "standalone",
-            "startUrl": "/",
-            "bundler": "metro",
-            "splash": {
-                "image": "./assets/splash-icon.png",
-                "resizeMode": "contain",
-                "backgroundColor": "#1A1A2E"
-            }
-        },
-        "plugins": [
-            [
-                "expo-notifications",
-                {
-                    "icon": "./assets/icon.png",
-                    "color": "#6C63FF"
-                }
-            ]
+  "expo": {
+    "name": "Presence",
+    "slug": "presence",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1A2E"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.presence.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
         ]
+      }
+    },
+    "android": {
+      "package": "com.presence.app",
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1A1A2E"
+      },
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "Presence",
+      "shortName": "Presence",
+      "themeColor": "#6C63FF",
+      "backgroundColor": "#1A1A2E",
+      "description": "Smart Attendance Tracker",
+      "display": "standalone",
+      "startUrl": "/",
+      "bundler": "metro",
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#1A1A2E"
+      }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6C63FF"
+        }
+      ],
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ee79b872-6146-48c5-961e-806e5e54186a"
+      }
     }
+  }
 }

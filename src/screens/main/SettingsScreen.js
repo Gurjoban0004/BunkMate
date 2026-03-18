@@ -782,7 +782,7 @@ const SettingsScreen = ({ navigation }) => {
 
             {/* Custom Web Time Picker */}
             <Modal visible={webTimePickerVisible} animationType="fade" transparent={true} onRequestClose={() => setWebTimePickerVisible(false)}>
-                <View style={styles.modalOverlay}>
+                <View style={[styles.modalOverlay, styles.centeredOverlay]}>
                     <View style={styles.timePickerModalContent}>
                         <Text style={styles.modalTitle}>Set Autopilot Time</Text>
 
@@ -1262,6 +1262,7 @@ const getStyles = () => StyleSheet.create({
 
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    centeredOverlay: { justifyContent: 'center', alignItems: 'center' },
     modalContent: { backgroundColor: COLORS.cardBackground, borderTopLeftRadius: BORDER_RADIUS.xl, borderTopRightRadius: BORDER_RADIUS.xl, padding: SPACING.xl, paddingBottom: Platform.OS === 'ios' ? 40 : SPACING.xl },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
     modalTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700', color: COLORS.textPrimary },
