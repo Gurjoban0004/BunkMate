@@ -10,13 +10,29 @@ import { getSubjectAttendance } from '../../utils/attendance';
 import FloatingBackButton from '../../components/common/FloatingBackButton';
 import { showAlert } from '../../utils/alert';
 
+const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+
 /**
  * Sync from Portal screen — allows students to enter their current
  * attendance totals from the college portal to re-sync the app.
  */
 export default function SyncFromPortalScreen({ navigation }) {
     const styles = getStyles();
-    const { state, dispatch } = useApp();
+    const { state, dispatch, erpLastGlobalSyncAt, erpCalendarSyncStatus, triggerErpSync, isErpSyncing } = useApp();
+
+    // Stale data detection — warn if last sync > 10 minutes ago
+    const isStale = useMemo(() => {
+        if (!erpLastGlobalSyncAt) return false;
+        return Date.now() - new Date(erpLastGlobalSyncAt).getTime() > STALE_THRESHOLD_MS;
+    }, [erpLastGlobalSyncAt]);
+
+    const lastSyncLabel = useMemo(() => {
+        if (!erpLastGlobalSyncAt) return null;
+        const mins = Math.round((Date.now() - new Date(erpLastGlobalSyncAt).getTime()) / 60000);
+        if (mins < 1) return 'just now';
+        if (mins === 1) return '1 min ago';
+        return `${mins} min ago`;
+    }, [erpLastGlobalSyncAt]);
 
     // Build editable subject data
     const subjectsWithStats = useMemo(() => {
@@ -91,7 +107,7 @@ export default function SyncFromPortalScreen({ navigation }) {
         }));
 
         dispatch({
-            type: 'RESYNC_ATTENDANCE',
+            type: 'ERP_OVERWRITE_ATTENDANCE',
             payload: { updates },
         });
 
@@ -124,6 +140,52 @@ export default function SyncFromPortalScreen({ navigation }) {
                             Enter your current totals from the college portal below.
                             This will update your attendance and start fresh tracking from today.
                         </Text>
+                    </View>
+
+                    {/* Stale data warning */}
+                    {isStale && (
+                        <TouchableOpacity
+                            style={styles.staleBanner}
+                            onPress={() => triggerErpSync(true)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.staleBannerText}>
+                                ⚠️ Data may be outdated — last synced {lastSyncLabel}. Tap to refresh.
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Calendar sync failure warning */}
+                    {erpCalendarSyncStatus === 'failed' && (
+                        <View style={styles.calendarWarnBanner}>
+                            <Text style={styles.calendarWarnText}>
+                                📅 Calendar sync failed — day-by-day data may be incomplete.
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Auto-Sync from ERP Card */}
+                    <TouchableOpacity
+                        style={styles.erpCard}
+                        onPress={() => navigation.navigate('ERPConnect')}
+                        activeOpacity={0.8}
+                    >
+                        <View style={styles.erpCardContent}>
+                            <Text style={styles.erpCardEmoji}>⚡</Text>
+                            <View style={styles.erpCardText}>
+                                <Text style={styles.erpCardTitle}>Auto-Sync from ERP</Text>
+                                <Text style={styles.erpCardSub}>
+                                    Connect your college portal to fetch attendance automatically
+                                </Text>
+                            </View>
+                            <Text style={styles.erpCardArrow}>›</Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.orDivider}>
+                        <View style={styles.orLine} />
+                        <Text style={styles.orText}>OR ENTER MANUALLY</Text>
+                        <View style={styles.orLine} />
                     </View>
 
                     {/* Subject cards */}
@@ -335,5 +397,85 @@ const getStyles = () => StyleSheet.create({
         fontSize: FONT_SIZES.md,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+    erpCard: {
+        backgroundColor: COLORS.primaryLight,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.md,
+        marginBottom: SPACING.lg,
+        borderWidth: 1.5,
+        borderColor: COLORS.primary,
+    },
+    erpCardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    erpCardEmoji: {
+        fontSize: 28,
+        marginRight: SPACING.md,
+    },
+    erpCardText: {
+        flex: 1,
+    },
+    erpCardTitle: {
+        fontSize: FONT_SIZES.md,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
+        marginBottom: 2,
+    },
+    erpCardSub: {
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textSecondary,
+        lineHeight: 18,
+    },
+    erpCardArrow: {
+        fontSize: 24,
+        color: COLORS.primary,
+        fontWeight: '300',
+    },
+    orDivider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: SPACING.lg,
+    },
+    orLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: COLORS.border,
+    },
+    orText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        letterSpacing: 0.5,
+        marginHorizontal: SPACING.md,
+    },
+    staleBanner: {
+        backgroundColor: COLORS.warningLight || '#fff3cd',
+        borderRadius: BORDER_RADIUS.sm,
+        padding: SPACING.sm,
+        marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.warning || '#ffc107',
+    },
+    staleBannerText: {
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textPrimary,
+        textAlign: 'center',
+        fontWeight: '500',
+    },
+    calendarWarnBanner: {
+        backgroundColor: COLORS.dangerLight || '#f8d7da',
+        borderRadius: BORDER_RADIUS.sm,
+        padding: SPACING.sm,
+        marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.danger || '#f5c6cb',
+    },
+    calendarWarnText: {
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textPrimary,
+        textAlign: 'center',
+        fontWeight: '500',
     },
 });

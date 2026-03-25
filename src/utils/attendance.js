@@ -24,11 +24,9 @@ export function getSubjectAttendance(subjectId, state) {
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
     const trackingStartDate = state.trackingStartDate;
+    const isErpMode = state.settings?.attendanceMode === 'erp';
 
     Object.entries(records).forEach(([dateKey, dayRecord]) => {
-        // Skip records before tracking started
-        if (trackingStartDate && dateKey < trackingStartDate) return;
-
         // Skip holidays
         if (dayRecord._holiday) return;
         if (holidays.includes(dateKey)) return;
@@ -37,6 +35,13 @@ export function getSubjectAttendance(subjectId, state) {
         if (record) {
             // Skip cancelled individual classes
             if (record.status === 'cancelled') return;
+
+            // In ERP mode, ERP calendar data is ignored for stats calculations since
+            // it's already included in subject.initialTotal. We only add 'manual' (predicted) marks.
+            if (isErpMode && record.source !== 'manual') return;
+
+            // In manual mode, we only count records from trackingStartDate onwards
+            if (!isErpMode && trackingStartDate && dateKey < trackingStartDate) return;
 
             recordedTotal += record.units;
             if (record.status === 'present') {
@@ -95,6 +100,7 @@ export function getClassesForDay(state, dayName) {
         if (
             lastClass &&
             lastClass.subjectId === slot.subjectId &&
+            (currentStartMins - lastEndMins) >= 0 &&
             (currentStartMins - lastEndMins) <= 30
         ) {
             // Extend end time only if this slot ends later
@@ -180,7 +186,6 @@ export function calculateSkips(attended, total, targetPercent) {
         const divisor = 1 - target;
         if (divisor <= 0) {
             // Target is 100% or more, you'll never reach it if you've missed even one class
-            // But if total is 0, technically you're at 0%
             return {
                 status: 'danger',
                 count: Infinity,
@@ -188,17 +193,14 @@ export function calculateSkips(attended, total, targetPercent) {
             };
         }
 
-        let needAttend = 0;
-        if (target === 1) {
-            needAttend = Infinity;
-        } else {
-            needAttend = Math.ceil((target * total - attended) / divisor);
-        }
+        const needAttend = Math.ceil((target * total - attended) / divisor);
 
         return {
             status: 'danger',
             count: Math.max(0, needAttend),
-            message: `You need to attend ${Math.max(0, needAttend)} more classes`,
+            message: needAttend > 9999
+                ? `You can't realistically reach ${targetPercent}% anymore`
+                : `You need to attend ${Math.max(0, needAttend)} more classes`,
         };
     }
 }

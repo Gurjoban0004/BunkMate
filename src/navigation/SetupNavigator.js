@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useApp } from '../context/AppContext';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import LoginScreen from '../screens/setup/LoginScreen';
+import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
 import SubjectListScreen from '../screens/setup/SubjectListScreen';
 import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
 import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
@@ -15,8 +16,8 @@ const Stack = createStackNavigator();
 
 export default function SetupNavigator() {
     const { state } = useApp();
-    // If not authenticated → Login. If authenticated but setup incomplete → Welcome.
-    const initialRoute = state.isAuthenticated ? 'Welcome' : 'Login';
+    // Always start on Welcome — it has both Login (ERP) and manual setup options
+    const initialRoute = 'Welcome';
 
     return (
         <Stack.Navigator
@@ -68,13 +69,18 @@ export default function SetupNavigator() {
             detachInactiveScreens={Platform.OS === 'web'}
         >
             <Stack.Screen
+                name="Welcome"
+                component={WelcomeScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
                 name="Login"
                 component={LoginScreen}
                 options={{ headerShown: false }}
             />
             <Stack.Screen
-                name="Welcome"
-                component={WelcomeScreen}
+                name="ERPSetup"
+                component={ERPSetupScreen}
                 options={{ headerShown: false }}
             />
             <Stack.Screen

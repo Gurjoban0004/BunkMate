@@ -63,6 +63,31 @@ const SettingsScreen = ({ navigation }) => {
         dispatch({ type: 'UPDATE_SETTINGS', payload: { [key]: value } });
     };
 
+    const handleModeSwitch = (mode) => {
+        const currentMode = state.settings?.attendanceMode || 'erp';
+        if (mode === currentMode) return;
+
+        if (mode === 'manual') {
+            showAlert(
+                'Switch to Manual Mode?',
+                'This will disable background portal sync and autopilot. You will need to mark your own attendance.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Switch to Manual', onPress: () => updateSetting('attendanceMode', 'manual') }
+                ]
+            );
+        } else {
+            showAlert(
+                'Switch to ERP Mode?',
+                'The university portal will become the source of truth. Manual attendance marks will be permanently overwritten each time the app syncs.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Switch to ERP', onPress: () => updateSetting('attendanceMode', 'erp') }
+                ]
+            );
+        }
+    };
+
     const handleToggleAutopilot = () => {
         dispatch({
             type: 'UPDATE_AUTOPILOT_SETTINGS',
@@ -175,9 +200,11 @@ const SettingsScreen = ({ navigation }) => {
     };
 
     const handleLogout = () => {
+        // BUG-19 fix: Show login code so user can copy it before logging out
+        const loginCode = state.userId || 'unknown';
         showAlert(
             'Logout',
-            'Are you sure you want to logout?\n\nYour local data will be cleared, but your cloud data will remain safe.',
+            `Your login code is:\n\n${loginCode}\n\nSave this code to log back in later. Your cloud data will remain safe.`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -250,7 +277,7 @@ const SettingsScreen = ({ navigation }) => {
 
     const handleResetSemester = async () => {
         await clearAppState();
-        await AsyncStorage.removeItem('userId');
+        // BUG-08 fix: Do NOT remove userId — user keeps their login code
         dispatch({ type: 'RESET_STATE' });
         setResetModalVisible(false);
     };
@@ -379,8 +406,29 @@ const SettingsScreen = ({ navigation }) => {
                 {/* Core Preferences Section (Landing Page) */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>PREFERENCES</Text>
-                    <View style={styles.card}>
-                        <View style={styles.settingRow}>
+                    <View style={styles.cardGroup}>
+                        <View style={[styles.settingRow, styles.groupItem]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>App Mode</Text>
+                                <Text style={styles.cardDescription}>ERP sync vs Manual tracking</Text>
+                            </View>
+                            <View style={styles.optionsGroupSmall}>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, (state.settings?.attendanceMode !== 'manual') && styles.optionButtonActive]}
+                                    onPress={() => handleModeSwitch('erp')}
+                                >
+                                    <Text style={[styles.optionText, (state.settings?.attendanceMode !== 'manual') && styles.optionTextActive]}>ERP</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, state.settings?.attendanceMode === 'manual' && styles.optionButtonActive]}
+                                    onPress={() => handleModeSwitch('manual')}
+                                >
+                                    <Text style={[styles.optionText, state.settings?.attendanceMode === 'manual' && styles.optionTextActive]}>Manual</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                        <View style={styles.divider} />
+                        <View style={[styles.settingRow, styles.groupItem]}>
                             <View style={styles.settingInfo}>
                                 <Text style={styles.cardTitle}>Startup Screen</Text>
                                 <Text style={styles.cardDescription}>Default app open tab</Text>
@@ -569,7 +617,7 @@ const SettingsScreen = ({ navigation }) => {
                                     <TouchableOpacity style={styles.timePickerRow}>
                                         <Text style={styles.timePickerLabel}>Remind me at</Text>
                                         <View style={styles.timeBadge}>
-                                            <Text style={styles.timeText}>6:00 PM</Text>
+                                            <Text style={styles.timeText}>{formatTime(state.settings?.notificationTime || '18:00')}</Text>
                                         </View>
                                     </TouchableOpacity>
                                 </>

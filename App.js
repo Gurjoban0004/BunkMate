@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -8,6 +8,7 @@ import { COLORS, applyTheme } from './src/theme/theme';
 import { DEV_MODE, SKIP_SETUP, MOCK_SCENARIO } from './src/dev/config';
 import DevModePanel from './src/dev/DevModePanel';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
+import BrandLoader from './src/components/common/BrandLoader';
 import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { setGlobalWebAlert } from './src/utils/alert';
 
@@ -102,7 +103,7 @@ function AppContent() {
         } else if (!DEV_MODE || !SKIP_SETUP) {
             if (!devReady) setDevReady(true);
         }
-    }, [isLoading, DEV_MODE, SKIP_SETUP, state.setupComplete, devReady, dispatch]);
+    }, [isLoading, state.setupComplete, devReady]); // DEV_MODE, SKIP_SETUP are constants; dispatch is stable
 
     // Run Autopilot Check once the app is loaded and ready
     useEffect(() => {
@@ -117,11 +118,7 @@ function AppContent() {
     }, [isLoading, devReady, state.setupComplete, runAutopilotCheck]);
 
     if (isLoading || !devReady) {
-        return (
-            <View style={styles.loading}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-            </View>
-        );
+        return <BrandLoader />;
     }
 
     return (

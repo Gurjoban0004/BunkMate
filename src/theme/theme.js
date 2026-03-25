@@ -1,4 +1,370 @@
-// Presence Design System — Light Pastel Theme
+// // Presence Design System — Light Pastel Theme
+// // All styling constants — NEVER hardcode colors/spacing in components
+// import { Platform } from 'react-native';
+
+// export const LIGHT_COLORS = {
+//     // ---------------------------------------------------------
+//     // 1. BACKGROUNDS (The Canvas)
+//     // ---------------------------------------------------------
+//     background: '#F7F8FA',       // Main screen background (warmer)
+//     cardBackground: '#FFFFFF',   // Card surfaces, tab bar, modals
+//     inputBackground: '#F0F2F4',  // Text inputs, mode toggle track (darker for contrast)
+//     bgSkip: '#FFF5F5',           // Simulator background for Skip mode
+//     bgAttend: '#F0FFF4',         // Simulator background for Fix mode (richer green)
+
+//     // ---------------------------------------------------------
+//     // 2. PRIMARY BRAND (The Identity)
+//     // ---------------------------------------------------------
+//     primary: '#8B80F9',          // Active tabs, toggle text, percentage values
+//     primaryLight: '#EEEDFF',     // Stepper buttons bg, active tab icon pill (lighter)
+//     primaryDark: '#6358D4',      // Stepper button text (richer)
+//     textOnPrimary: '#FFFFFF',    // Text on primary-colored surfaces
+
+//     // ---------------------------------------------------------
+//     // 3. SEMANTIC STATUS (The Communication)
+//     // ---------------------------------------------------------
+//     success: '#5AC46A',          // Softer pastel green
+//     successLight: '#E6F7E9',     // Fresher background
+//     successDark: '#2A6B35',      // Richer text
+
+//     danger: '#F25F5F',           // Softer coral red
+//     dangerLight: '#FFEEEE',      // Softer pink background
+//     dangerDark: '#C93A3A',       // Richer text
+
+//     warning: '#F5D03A',          // Softer gold
+//     warningLight: '#FFFAEB',     // Warmer cream background
+//     warningDark: '#D4940A',      // Richer gold text
+
+//     // ---------------------------------------------------------
+//     // 4. TEXT (The Hierarchy)
+//     // ---------------------------------------------------------
+//     textPrimary: '#1F2937',      // Richer black for headers
+//     textSecondary: '#6B7280',    // Better gray for hierarchy
+//     textMuted: '#9CA3AF',        // Captions, hints, inactive tab labels
+
+//     // ---------------------------------------------------------
+//     // 5. STRUCTURAL (Consolidated Grays)
+//     // ---------------------------------------------------------
+//     border: '#E5E7EB',           // Borders, dividers, AND empty progress tracks
+//     shadow: '#000000',           // Shadow colors
+//     overlay: 'rgba(0, 0, 0, 0.5)', // Modal overlays
+
+//     // ---------------------------------------------------------
+//     // 6. SUBJECT COLORS (Refined Pastel)
+//     // ---------------------------------------------------------
+//     subjectPalette: [
+//         '#7CB9E8', // Sky blue
+//         '#F2A3B8', // Rose pink
+//         '#B8A9D9', // Lavender
+//         '#4DD4C4', // Teal
+//         '#C9A3D9', // Orchid
+//         '#4CC4D9', // Cyan
+//         '#E0B0E0', // Mauve
+//         '#8ED4C4', // Mint
+//     ],
+// };
+
+// export const DARK_COLORS = {
+//     // ---------------------------------------------------------
+//     // 1. BACKGROUNDS (The Canvas)
+//     // ---------------------------------------------------------
+//     background: '#0F0F14',       // Deep space - main screen
+//     cardBackground: '#1A1A24',   // Elevated surface - cards, modals
+//     inputBackground: '#252532',  // Recessed surface - inputs, toggles
+//     bgSkip: '#1F1418',           // Subtle danger tint - skip mode
+//     bgAttend: '#141F18',         // Subtle success tint - fix mode
+
+//     // ---------------------------------------------------------
+//     // 2. PRIMARY BRAND (The Identity)
+//     // ---------------------------------------------------------
+//     primary: '#A89CFF',          // Soft purple glow - active elements
+//     primaryLight: '#2A2650',     // Muted purple - button backgrounds
+//     primaryDark: '#C4BDFF',      // Light purple - hover/active states
+//     textOnPrimary: '#FFFFFF',    // White on primary buttons
+
+//     // ---------------------------------------------------------
+//     // 3. SEMANTIC STATUS (The Communication)
+//     // ---------------------------------------------------------
+//     success: '#6ECB7B',          // Soft green - present, safe
+//     successLight: '#1A2E20',     // Dark green tint - success backgrounds
+//     successDark: '#A8E5B3',      // Light green - success emphasis
+
+//     danger: '#F07575',           // Soft coral - absent, danger
+//     dangerLight: '#2D1A1A',      // Dark red tint - danger backgrounds
+//     dangerDark: '#FFBDBD',       // Light pink - danger emphasis
+
+//     warning: '#E8C547',          // Soft gold - warnings
+//     warningLight: '#2E2815',     // Dark amber tint - warning backgrounds
+//     warningDark: '#FFE799',      // Light cream - warning emphasis
+
+//     // ---------------------------------------------------------
+//     // 4. TEXT (The Hierarchy)
+//     // ---------------------------------------------------------
+//     textPrimary: '#EAECEF',      // Off-white - main content
+//     textSecondary: '#8E949B',    // Muted gray - secondary info
+//     textMuted: '#5C6268',        // Dark gray - captions, hints
+
+//     // ---------------------------------------------------------
+//     // 5. STRUCTURAL (The Framework)
+//     // ---------------------------------------------------------
+//     border: '#2A2B38',           // Subtle borders, dividers
+//     shadow: '#000000',           // Shadow base
+//     overlay: 'rgba(0, 0, 0, 0.75)', // Modal overlay
+
+//     // ---------------------------------------------------------
+//     // 6. SUBJECT COLORS (Pastel Glow)
+//     // ---------------------------------------------------------
+//     subjectPalette: [
+//         '#7EB8D0',   // Soft sky blue
+//         '#D48BA3',   // Soft rose pink
+//         '#A892C9',   // Soft lavender
+//         '#5FBFB5',   // Soft teal
+//         '#B08FC2',   // Soft orchid
+//         '#5BB0C4',   // Soft cyan
+//         '#C99BD0',   // Soft mauve
+//         '#8CC5B5',   // Soft mint
+//     ],
+// };
+
+// export const COLORS = { ...LIGHT_COLORS };
+
+// export const SPACING = {
+//     xs: 4,
+//     sm: 8,
+//     md: 16,
+//     lg: 24,
+//     xl: 32,
+//     xxl: 48,
+//     screenPadding: 20,
+//     cardPadding: 20,
+//     cardGap: 16,
+// };
+
+// export const TYPOGRAPHY = {
+//     // Display Typography - For hero sections and major emphasis
+//     displayLarge: {
+//         fontSize: 40,
+//         fontWeight: '800',
+//         lineHeight: 48,
+//         letterSpacing: -0.5,
+//     },
+//     displayMedium: {
+//         fontSize: 32,
+//         fontWeight: '700',
+//         lineHeight: 40,
+//         letterSpacing: -0.25,
+//     },
+//     displaySmall: {
+//         fontSize: 28,
+//         fontWeight: '700',
+//         lineHeight: 36,
+//     },
+
+//     // Headings - For section titles and card headers
+//     headingLarge: {
+//         fontSize: 24,
+//         fontWeight: '600',
+//         lineHeight: 32,
+//         letterSpacing: 0,
+//     },
+//     headingMedium: {
+//         fontSize: 20,
+//         fontWeight: '600',
+//         lineHeight: 28,
+//         letterSpacing: 0,
+//     },
+//     headingSmall: {
+//         fontSize: 18,
+//         fontWeight: '600',
+//         lineHeight: 24,
+//         letterSpacing: 0,
+//     },
+
+//     // Body Text - For main content
+//     bodyLarge: {
+//         fontSize: 18,
+//         fontWeight: '400',
+//         lineHeight: 26,
+//         letterSpacing: 0,
+//     },
+//     bodyMedium: {
+//         fontSize: 16,
+//         fontWeight: '400',
+//         lineHeight: 24,
+//         letterSpacing: 0,
+//     },
+//     bodySmall: {
+//         fontSize: 14,
+//         fontWeight: '400',
+//         lineHeight: 20,
+//         letterSpacing: 0,
+//     },
+
+//     // UI Elements - For buttons, labels, and controls
+//     labelLarge: {
+//         fontSize: 16,
+//         fontWeight: '600',
+//         lineHeight: 20,
+//         letterSpacing: 0.1,
+//     },
+//     labelMedium: {
+//         fontSize: 14,
+//         fontWeight: '600',
+//         lineHeight: 18,
+//         letterSpacing: 0.1,
+//     },
+//     labelSmall: {
+//         fontSize: 12,
+//         fontWeight: '600',
+//         lineHeight: 16,
+//         letterSpacing: 0.2,
+//     },
+
+//     // Supporting Text - For captions and helper text
+//     captionLarge: {
+//         fontSize: 14,
+//         fontWeight: '400',
+//         lineHeight: 18,
+//         letterSpacing: 0.1,
+//     },
+//     captionMedium: {
+//         fontSize: 12,
+//         fontWeight: '400',
+//         lineHeight: 16,
+//         letterSpacing: 0.2,
+//     },
+//     captionSmall: {
+//         fontSize: 10,
+//         fontWeight: '400',
+//         lineHeight: 14,
+//         letterSpacing: 0.3,
+//     },
+
+//     // Legacy compatibility — old names preserved with 'label' suffix where needed
+//     headerLarge: { fontSize: 28, fontWeight: 'bold' },
+//     headerMedium: { fontSize: 22, fontWeight: '600' },
+//     headerSmall: { fontSize: 18, fontWeight: '600' },
+//     body: { fontSize: 16, fontWeight: 'normal' },
+//     label: { fontSize: 14, fontWeight: '600' },
+//     caption: { fontSize: 12, fontWeight: 'normal' },
+//     button: { fontSize: 16, fontWeight: '600' },
+// };
+
+// // Semantic font size aliases used by new components
+// export const FONT_SIZES = {
+//     // Display sizes
+//     displaySmall: 28,
+//     displayMedium: 32,
+//     displayLarge: 40,
+
+//     // Heading sizes
+//     headingSmall: 18,
+//     headingMedium: 20,
+//     headingLarge: 24,
+
+//     // Body sizes
+//     bodySmall: 14,
+//     bodyMedium: 16,
+//     bodyLarge: 18,
+
+//     // Label sizes
+//     labelSmall: 12,
+//     labelMedium: 14,
+//     labelLarge: 16,
+
+//     // Caption sizes
+//     captionSmall: 10,
+//     captionMedium: 12,
+//     captionLarge: 14,
+
+//     // Legacy compatibility
+//     xs: 12,
+//     sm: 14,
+//     md: 16,
+//     lg: 18,
+//     xl: 22,
+//     xxl: 28,
+// };
+
+// // Standardized Border Radius
+// export const BORDER_RADIUS = {
+//     sm: 8,
+//     md: 12,
+//     lg: 20,
+//     xl: 24,
+//     full: 9999,
+// };
+
+// export const SHADOWS = {
+//     small: Platform.OS === 'web' ? {
+//         boxShadow: `0px 1px 2px ${COLORS.shadow}0D`, // 0.05 opacity
+//     } : {
+//         shadowColor: COLORS.shadow,
+//         shadowOffset: { width: 0, height: 1 },
+//         shadowOpacity: 0.05,
+//         shadowRadius: 2,
+//         elevation: 1,
+//     },
+//     medium: Platform.OS === 'web' ? {
+//         boxShadow: `0px 4px 12px ${COLORS.shadow}1A`, // 0.1 opacity
+//     } : {
+//         shadowColor: COLORS.shadow,
+//         shadowOffset: { width: 0, height: 3 },
+//         shadowOpacity: 0.12,
+//         shadowRadius: 8,
+//         elevation: 3,
+//     },
+//     large: Platform.OS === 'web' ? {
+//         boxShadow: `0px 4px 8px ${COLORS.shadow}1A`, // 0.1 opacity
+//     } : {
+//         shadowColor: COLORS.shadow,
+//         shadowOffset: { width: 0, height: 4 },
+//         shadowOpacity: 0.1,
+//         shadowRadius: 8,
+//         elevation: 4,
+//     },
+// };
+
+// export const applyTheme = (themeStr) => {
+//     const source = themeStr === 'dark' ? DARK_COLORS : LIGHT_COLORS;
+//     for (const key in source) {
+//         COLORS[key] = source[key];
+//     }
+
+//     // Shadows need to be stronger in dark mode
+//     if (themeStr === 'dark') {
+//         if (Platform.OS === 'web') {
+//             SHADOWS.small.boxShadow = `0px 2px 4px rgba(0, 0, 0, 0.3)`;
+//             SHADOWS.medium.boxShadow = `0px 4px 12px rgba(0, 0, 0, 0.4)`;
+//             SHADOWS.large.boxShadow = `0px 8px 24px rgba(0, 0, 0, 0.5)`;
+//         } else {
+//             // On Android, elevation adds a white Material scrim over dark surfaces.
+//             // Zero it out in dark mode and rely on border for depth instead.
+//             SHADOWS.small.elevation = 0;
+//             SHADOWS.small.shadowOpacity = 0;
+//             SHADOWS.medium.elevation = 0;
+//             SHADOWS.medium.shadowOpacity = 0;
+//             SHADOWS.large.elevation = 0;
+//             SHADOWS.large.shadowOpacity = 0;
+//         }
+//     } else {
+//         // Reset to light mode values
+//         if (Platform.OS === 'web') {
+//             SHADOWS.small.boxShadow = `0px 1px 2px ${COLORS.shadow}0D`;
+//             SHADOWS.medium.boxShadow = `0px 4px 12px ${COLORS.shadow}1A`;
+//             SHADOWS.large.boxShadow = `0px 4px 8px ${COLORS.shadow}1A`;
+//         } else {
+//             SHADOWS.small.elevation = 1;
+//             SHADOWS.small.shadowOpacity = 0.05;
+//             SHADOWS.medium.elevation = 3;
+//             SHADOWS.medium.shadowOpacity = 0.12;
+//             SHADOWS.large.elevation = 4;
+//             SHADOWS.large.shadowOpacity = 0.1;
+//         }
+//     }
+// };
+
+// Presence Design System — Sky Blue Theme
 // All styling constants — NEVER hardcode colors/spacing in components
 import { Platform } from 'react-native';
 
@@ -6,123 +372,127 @@ export const LIGHT_COLORS = {
     // ---------------------------------------------------------
     // 1. BACKGROUNDS (The Canvas)
     // ---------------------------------------------------------
-    background: '#F7F8FA',       // Main screen background (warmer)
-    cardBackground: '#FFFFFF',   // Card surfaces, tab bar, modals
-    inputBackground: '#F0F2F4',  // Text inputs, mode toggle track (darker for contrast)
-    bgSkip: '#FFF5F5',           // Simulator background for Skip mode
-    bgAttend: '#F0FFF4',         // Simulator background for Fix mode (richer green)
+    background: '#F8FAFC',       // Cool gray-white
+    cardBackground: '#FFFFFF',   // Pure white cards
+    inputBackground: '#F1F5F9',  // Soft gray inputs
+    bgSkip: '#FEF2F2',           // Danger tint (skip mode)
+    bgAttend: '#F0FDF4',         // Success tint (attend mode)
 
     // ---------------------------------------------------------
-    // 2. PRIMARY BRAND (The Identity)
+    // 2. PRIMARY BRAND (Sky Blue - Your Choice!)
     // ---------------------------------------------------------
-    primary: '#8B80F9',          // Active tabs, toggle text, percentage values
-    primaryLight: '#EEEDFF',     // Stepper buttons bg, active tab icon pill (lighter)
-    primaryDark: '#6358D4',      // Stepper button text (richer)
-    textOnPrimary: '#FFFFFF',    // Text on primary-colored surfaces
+    primary: '#8EB9FE',          // Main sky blue ⭐
+    primaryLight: '#E8F1FF',     // Soft blue tint (backgrounds, pills)
+    primaryDark: '#5B9BF2',      // Deeper blue (hover, emphasis)
+    textOnPrimary: '#FFFFFF',    // White text on primary
 
     // ---------------------------------------------------------
-    // 3. SEMANTIC STATUS (The Communication)
+    // 3. SEMANTIC STATUS (Clear, distinct from primary)
     // ---------------------------------------------------------
-    success: '#5AC46A',          // Softer pastel green
-    successLight: '#E6F7E9',     // Fresher background
-    successDark: '#2A6B35',      // Richer text
+    success: '#34D399',          // Emerald green
+    successLight: '#ECFDF5',     // Mint background
+    successDark: '#059669',      // Deep green text
 
-    danger: '#F25F5F',           // Softer coral red
-    dangerLight: '#FFEEEE',      // Softer pink background
-    dangerDark: '#C93A3A',       // Richer text
+    danger: '#F87171',           // Soft coral red
+    dangerLight: '#FEF2F2',      // Pink background
+    dangerDark: '#DC2626',       // Deep red text
 
-    warning: '#F5D03A',          // Softer gold
-    warningLight: '#FFFAEB',     // Warmer cream background
-    warningDark: '#D4940A',      // Richer gold text
-
-    // ---------------------------------------------------------
-    // 4. TEXT (The Hierarchy)
-    // ---------------------------------------------------------
-    textPrimary: '#1F2937',      // Richer black for headers
-    textSecondary: '#6B7280',    // Better gray for hierarchy
-    textMuted: '#9CA3AF',        // Captions, hints, inactive tab labels
+    warning: '#FBBF24',          // Warm amber
+    warningLight: '#FFFBEB',     // Cream background
+    warningDark: '#D97706',      // Deep amber text
 
     // ---------------------------------------------------------
-    // 5. STRUCTURAL (Consolidated Grays)
+    // 4. TEXT (Neutral grays)
     // ---------------------------------------------------------
-    border: '#E5E7EB',           // Borders, dividers, AND empty progress tracks
-    shadow: '#000000',           // Shadow colors
-    overlay: 'rgba(0, 0, 0, 0.5)', // Modal overlays
+    textPrimary: '#0F172A',      // Near black
+    textSecondary: '#64748B',    // Medium gray
+    textMuted: '#94A3B8',        // Light gray
 
     // ---------------------------------------------------------
-    // 6. SUBJECT COLORS (Refined Pastel)
+    // 5. STRUCTURAL
+    // ---------------------------------------------------------
+    border: '#E2E8F0',           // Light gray border
+    shadow: '#0F172A',           // Dark shadow base
+    overlay: 'rgba(15, 23, 42, 0.5)', // Slate overlay
+
+    // ---------------------------------------------------------
+    // 6. SUBJECT COLORS (10 colors, no purple)
     // ---------------------------------------------------------
     subjectPalette: [
-        '#7CB9E8', // Sky blue
-        '#F2A3B8', // Rose pink
-        '#B8A9D9', // Lavender
-        '#4DD4C4', // Teal
-        '#C9A3D9', // Orchid
-        '#4CC4D9', // Cyan
-        '#E0B0E0', // Mauve
-        '#8ED4C4', // Mint
+        '#F472B6',   // Pink
+        '#34D399',   // Emerald
+        '#FBBF24',   // Amber
+        '#FB7185',   // Rose
+        '#2DD4BF',   // Teal
+        '#F97316',   // Orange
+        '#A3E635',   // Lime
+        '#38BDF8',   // Cyan
+        '#FACC15',   // Yellow
+        '#FB923C',   // Light Orange
     ],
 };
 
 export const DARK_COLORS = {
     // ---------------------------------------------------------
-    // 1. BACKGROUNDS (The Canvas)
+    // 1. BACKGROUNDS (Deep, cozy)
     // ---------------------------------------------------------
-    background: '#0F0F14',       // Deep space - main screen
-    cardBackground: '#1A1A24',   // Elevated surface - cards, modals
-    inputBackground: '#252532',  // Recessed surface - inputs, toggles
-    bgSkip: '#1F1418',           // Subtle danger tint - skip mode
-    bgAttend: '#141F18',         // Subtle success tint - fix mode
+    background: '#0B1120',       // Deep navy-black
+    cardBackground: '#141D2E',   // Elevated navy
+    inputBackground: '#1E293B',  // Slate input
+    bgSkip: '#2D1F1F',           // Subtle danger tint
+    bgAttend: '#1A2E22',         // Subtle success tint
 
     // ---------------------------------------------------------
-    // 2. PRIMARY BRAND (The Identity)
+    // 2. PRIMARY BRAND (Sky Blue - glows on dark!)
     // ---------------------------------------------------------
-    primary: '#A89CFF',          // Soft purple glow - active elements
-    primaryLight: '#2A2650',     // Muted purple - button backgrounds
-    primaryDark: '#C4BDFF',      // Light purple - hover/active states
-    textOnPrimary: '#FFFFFF',    // White on primary buttons
+    primary: '#8EB9FE',          // Same sky blue ⭐
+    primaryLight: '#1E3A5F',     // Dark blue tint
+    primaryDark: '#B8D4FF',      // Lighter blue for emphasis
+    textOnPrimary: '#0B1120',    // Dark text on bright blue
 
     // ---------------------------------------------------------
-    // 3. SEMANTIC STATUS (The Communication)
+    // 3. SEMANTIC STATUS (Softer for dark mode)
     // ---------------------------------------------------------
-    success: '#6ECB7B',          // Soft green - present, safe
-    successLight: '#1A2E20',     // Dark green tint - success backgrounds
-    successDark: '#A8E5B3',      // Light green - success emphasis
+    success: '#6EE7B7',          // Soft mint
+    successLight: '#14332A',     // Dark green tint
+    successDark: '#A7F3D0',      // Light mint
 
-    danger: '#F07575',           // Soft coral - absent, danger
-    dangerLight: '#2D1A1A',      // Dark red tint - danger backgrounds
-    dangerDark: '#FFBDBD',       // Light pink - danger emphasis
+    danger: '#FCA5A5',           // Soft coral
+    dangerLight: '#2D1F1F',      // Dark red tint
+    dangerDark: '#FECACA',       // Light pink
 
-    warning: '#E8C547',          // Soft gold - warnings
-    warningLight: '#2E2815',     // Dark amber tint - warning backgrounds
-    warningDark: '#FFE799',      // Light cream - warning emphasis
-
-    // ---------------------------------------------------------
-    // 4. TEXT (The Hierarchy)
-    // ---------------------------------------------------------
-    textPrimary: '#EAECEF',      // Off-white - main content
-    textSecondary: '#8E949B',    // Muted gray - secondary info
-    textMuted: '#5C6268',        // Dark gray - captions, hints
+    warning: '#FCD34D',          // Soft gold
+    warningLight: '#2D2814',     // Dark amber tint
+    warningDark: '#FDE68A',      // Light cream
 
     // ---------------------------------------------------------
-    // 5. STRUCTURAL (The Framework)
+    // 4. TEXT (Off-white, easy on eyes)
     // ---------------------------------------------------------
-    border: '#2A2B38',           // Subtle borders, dividers
-    shadow: '#000000',           // Shadow base
-    overlay: 'rgba(0, 0, 0, 0.75)', // Modal overlay
+    textPrimary: '#E2E8F0',      // Soft white
+    textSecondary: '#94A3B8',    // Medium gray
+    textMuted: '#64748B',        // Darker gray
 
     // ---------------------------------------------------------
-    // 6. SUBJECT COLORS (Pastel Glow)
+    // 5. STRUCTURAL
+    // ---------------------------------------------------------
+    border: '#2D3A4F',           // Subtle navy border
+    shadow: '#000000',           // Pure black shadow
+    overlay: 'rgba(0, 0, 0, 0.75)', // Dark overlay
+
+    // ---------------------------------------------------------
+    // 6. SUBJECT COLORS (Glowing versions for dark mode)
     // ---------------------------------------------------------
     subjectPalette: [
-        '#7EB8D0',   // Soft sky blue
-        '#D48BA3',   // Soft rose pink
-        '#A892C9',   // Soft lavender
-        '#5FBFB5',   // Soft teal
-        '#B08FC2',   // Soft orchid
-        '#5BB0C4',   // Soft cyan
-        '#C99BD0',   // Soft mauve
-        '#8CC5B5',   // Soft mint
+        '#F9A8D4',   // Light Pink
+        '#6EE7B7',   // Light Emerald
+        '#FCD34D',   // Light Amber
+        '#FDA4AF',   // Light Rose
+        '#5EEAD4',   // Light Teal
+        '#FDBA74',   // Light Orange
+        '#BEF264',   // Light Lime
+        '#7DD3FC',   // Light Cyan
+        '#FDE047',   // Light Yellow
+        '#FED7AA',   // Light Peach
     ],
 };
 
@@ -240,7 +610,7 @@ export const TYPOGRAPHY = {
         letterSpacing: 0.3,
     },
 
-    // Legacy compatibility — old names preserved with 'label' suffix where needed
+    // Legacy compatibility
     headerLarge: { fontSize: 28, fontWeight: 'bold' },
     headerMedium: { fontSize: 22, fontWeight: '600' },
     headerSmall: { fontSize: 18, fontWeight: '600' },
@@ -250,7 +620,7 @@ export const TYPOGRAPHY = {
     button: { fontSize: 16, fontWeight: '600' },
 };
 
-// Semantic font size aliases used by new components
+// Semantic font size aliases
 export const FONT_SIZES = {
     // Display sizes
     displaySmall: 28,
@@ -297,30 +667,30 @@ export const BORDER_RADIUS = {
 
 export const SHADOWS = {
     small: Platform.OS === 'web' ? {
-        boxShadow: `0px 1px 2px ${COLORS.shadow}0D`, // 0.05 opacity
+        boxShadow: '0px 1px 2px rgba(15, 23, 42, 0.05)',
     } : {
-        shadowColor: COLORS.shadow,
+        shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
     },
     medium: Platform.OS === 'web' ? {
-        boxShadow: `0px 4px 12px ${COLORS.shadow}1A`, // 0.1 opacity
+        boxShadow: '0px 4px 12px rgba(15, 23, 42, 0.1)',
     } : {
-        shadowColor: COLORS.shadow,
+        shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.12,
         shadowRadius: 8,
         elevation: 3,
     },
     large: Platform.OS === 'web' ? {
-        boxShadow: `0px 4px 8px ${COLORS.shadow}1A`, // 0.1 opacity
+        boxShadow: '0px 8px 24px rgba(15, 23, 42, 0.12)',
     } : {
-        shadowColor: COLORS.shadow,
+        shadowColor: '#0F172A',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
         elevation: 4,
     },
 };
@@ -331,15 +701,14 @@ export const applyTheme = (themeStr) => {
         COLORS[key] = source[key];
     }
 
-    // Shadows need to be stronger in dark mode
+    // Shadows need adjustment for dark mode
     if (themeStr === 'dark') {
         if (Platform.OS === 'web') {
-            SHADOWS.small.boxShadow = `0px 2px 4px rgba(0, 0, 0, 0.3)`;
-            SHADOWS.medium.boxShadow = `0px 4px 12px rgba(0, 0, 0, 0.4)`;
-            SHADOWS.large.boxShadow = `0px 8px 24px rgba(0, 0, 0, 0.5)`;
+            SHADOWS.small.boxShadow = '0px 2px 4px rgba(0, 0, 0, 0.3)';
+            SHADOWS.medium.boxShadow = '0px 4px 12px rgba(0, 0, 0, 0.4)';
+            SHADOWS.large.boxShadow = '0px 8px 24px rgba(0, 0, 0, 0.5)';
         } else {
-            // On Android, elevation adds a white Material scrim over dark surfaces.
-            // Zero it out in dark mode and rely on border for depth instead.
+            // Zero elevation in dark mode (avoids white Material scrim)
             SHADOWS.small.elevation = 0;
             SHADOWS.small.shadowOpacity = 0;
             SHADOWS.medium.elevation = 0;
@@ -350,17 +719,16 @@ export const applyTheme = (themeStr) => {
     } else {
         // Reset to light mode values
         if (Platform.OS === 'web') {
-            SHADOWS.small.boxShadow = `0px 1px 2px ${COLORS.shadow}0D`;
-            SHADOWS.medium.boxShadow = `0px 4px 12px ${COLORS.shadow}1A`;
-            SHADOWS.large.boxShadow = `0px 4px 8px ${COLORS.shadow}1A`;
+            SHADOWS.small.boxShadow = '0px 1px 2px rgba(15, 23, 42, 0.05)';
+            SHADOWS.medium.boxShadow = '0px 4px 12px rgba(15, 23, 42, 0.1)';
+            SHADOWS.large.boxShadow = '0px 8px 24px rgba(15, 23, 42, 0.12)';
         } else {
             SHADOWS.small.elevation = 1;
             SHADOWS.small.shadowOpacity = 0.05;
             SHADOWS.medium.elevation = 3;
             SHADOWS.medium.shadowOpacity = 0.12;
             SHADOWS.large.elevation = 4;
-            SHADOWS.large.shadowOpacity = 0.1;
+            SHADOWS.large.shadowOpacity = 0.15;
         }
     }
 };
-

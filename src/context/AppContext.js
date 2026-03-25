@@ -1,8 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
-import { getTodayKey, getNextDay, parseDate, isPastTime, subtractDays, getTodayDayName } from '../utils/dateHelpers';
+import { getTodayKey, parseDate, isPastTime, subtractDays } from '../utils/dateHelpers';
 import { initNetworkListener, onNetworkStatusChange } from '../utils/firebaseHelpers';
 import { loadAppState, saveAppState, migrateToFirestore } from '../storage/storage';
 import { logger } from '../utils/logger';
+import { COLORS as THEME_COLORS } from '../theme/theme';
+import { useErpAutoSync } from '../hooks/useErpAutoSync';
+import { getErpPersistentToken } from '../storage/erpTokenStorage';
+import { erpCheckSession } from '../services/erpService';
 
 const AppContext = createContext();
 
@@ -45,6 +49,9 @@ const initialState = {
         autopilotEnabled: false,
         autopilotTime: '20:00',
         autopilotDefault: 'present',
+        erpConnected: false,
+        lastErpSync: null,
+        attendanceMode: 'erp', // 'erp' | 'manual'
     },
 
     autopilotReview: null, // { date: 'YYYY-MM-DD', count: >0, dismissed: false }
@@ -60,6 +67,19 @@ const initialState = {
 
     // Dev Mode
     devDate: null,                // Simulated date for time travel
+
+    // ERP session expiry — set when ERP rejects session and OTP is needed
+    erpSessionExpired: null,      // { authUserId, studentName, persistentToken } | null
+
+    // ERP sync metadata — drives UI freshness indicators
+    erpSync: {
+        status:             'idle',  // 'idle' | 'syncing' | 'error'
+        lastGlobalSyncAt:   null,    // ISO string — last successful full sync
+        lastSyncAttemptAt:  null,    // ISO string — last attempt (success or failure)
+        syncDuration:       null,    // ms — duration of last completed sync
+        calendarSyncStatus: 'idle',  // 'idle' | 'loading' | 'ok' | 'failed'
+        changedSubjectIds:  [],      // subject IDs updated in the last sync cycle
+    },
 };
 
 function appReducer(state, action) {
@@ -146,6 +166,12 @@ function appReducer(state, action) {
             const { date, subjectId, status, units, isExtra, autoMarked } = action.payload;
             return {
                 ...state,
+                // Also mark the subject as manually sourced (will be overwritten on next ERP sync)
+                subjects: state.subjects.map(sub =>
+                    sub.id === subjectId && sub.source !== 'erp'
+                        ? { ...sub, source: 'manual', lastUpdated: new Date().toISOString() }
+                        : sub
+                ),
                 attendanceRecords: {
                     ...state.attendanceRecords,
                     [date]: {
@@ -153,6 +179,7 @@ function appReducer(state, action) {
                         [subjectId]: {
                             status,
                             units: units || 1,
+                            source: 'manual',
                             ...(isExtra ? { isExtra: true } : {}),
                             ...(autoMarked ? { autoMarked: true } : {}),
                         },
@@ -342,37 +369,80 @@ function appReducer(state, action) {
             };
         }
 
-        case 'RESYNC_ATTENDANCE': {
-            // Portal re-sync: update initial values and clear tracked records for each subject
+        case 'ERP_OVERWRITE_ATTENDANCE': {
+            // ERP is source of truth — updates subject summary data (initialAttended/initialTotal).
+            // Does NOT touch attendanceRecords — ERP_OVERWRITE_CALENDAR handles that separately.
+            // Only subjects present in the updates array are modified; others are untouched.
+            // Also persists erpSubjectId (subject code) for stable identity on future syncs.
             const { updates } = action.payload;
-            const updatedSubjectIds = new Set(updates.map(u => u.subjectId));
-            const today = new Date().toISOString().split('T')[0];
-
-            // Clear attendance records for synced subjects
-            const cleanedRecords = { ...state.attendanceRecords };
-            Object.keys(cleanedRecords).forEach(dateKey => {
-                const dayRecord = { ...cleanedRecords[dateKey] };
-                updatedSubjectIds.forEach(sid => {
-                    delete dayRecord[sid];
-                });
-                cleanedRecords[dateKey] = dayRecord;
-            });
+            const now = new Date().toISOString();
 
             return {
                 ...state,
                 subjects: state.subjects.map(sub => {
                     const update = updates.find(u => u.subjectId === sub.id);
-                    if (update) {
-                        return {
-                            ...sub,
-                            initialAttended: update.newAttended,
-                            initialTotal: update.newTotal,
-                        };
-                    }
-                    return sub;
+                    if (!update) return sub;
+                    return {
+                        ...sub,
+                        initialAttended: update.newAttended,
+                        initialTotal:    update.newTotal,
+                        source:          'erp',
+                        lastUpdated:     now,
+                        // Persist stable subject code if ERP provided one and subject doesn't have it yet
+                        ...(update.erpSubjectId && !sub.erpSubjectId
+                            ? { erpSubjectId: update.erpSubjectId }
+                            : {}),
+                    };
                 }),
-                attendanceRecords: cleanedRecords,
-                trackingStartDate: today,
+            };
+        }
+
+        case 'ERP_OVERWRITE_CALENDAR': {
+            // ERP calendar completely replaces all attendance records.
+            // Manual entries are discarded — ERP is the source of truth.
+            // Holidays are preserved — they are user-set and not part of ERP data.
+            const { records, trackingStartDate: newTrackingStart } = action.payload;
+
+            // Re-apply holidays on top of ERP records so they aren't lost
+            const mergedWithHolidays = { ...records };
+            (state.holidays || []).forEach(dateKey => {
+                mergedWithHolidays[dateKey] = { _holiday: true };
+            });
+
+            return {
+                ...state,
+                attendanceRecords: mergedWithHolidays,
+                trackingStartDate: newTrackingStart || state.trackingStartDate,
+            };
+        }
+
+        case 'LOAD_CALENDAR_RECORDS': {
+            // Import ERP calendar data into attendance records
+            // Manual records always take priority over ERP-imported ones
+            const { records, trackingStartDate: newTrackingStart } = action.payload;
+
+            // Merge: ERP data first, then overlay existing manual records
+            const mergedRecords = {};
+
+            // Add all ERP dates
+            for (const [dateKey, dayData] of Object.entries(records)) {
+                mergedRecords[dateKey] = { ...dayData };
+            }
+
+            // Overlay existing manual records (they take priority)
+            for (const [dateKey, dayData] of Object.entries(state.attendanceRecords)) {
+                if (!mergedRecords[dateKey]) {
+                    mergedRecords[dateKey] = { ...dayData };
+                } else {
+                    // Merge: existing manual entries override ERP entries
+                    mergedRecords[dateKey] = { ...mergedRecords[dateKey], ...dayData };
+                }
+            }
+
+            return {
+                ...state,
+                attendanceRecords: mergedRecords,
+                trackingStartDate: newTrackingStart || state.trackingStartDate,
             };
         }
 
@@ -385,10 +455,9 @@ function appReducer(state, action) {
 
             // Migrate old hardcoded colors to the new theme palette
             if (loaded.subjects && loaded.subjects.length > 0) {
-                const { COLORS } = require('../theme/theme');
                 loaded.subjects = loaded.subjects.map((sub, i) => {
-                    if (!COLORS.subjectPalette.includes(sub.color)) {
-                        return { ...sub, color: COLORS.subjectPalette[i % COLORS.subjectPalette.length] };
+                    if (!THEME_COLORS.subjectPalette.includes(sub.color)) {
+                        return { ...sub, color: THEME_COLORS.subjectPalette[i % THEME_COLORS.subjectPalette.length] };
                     }
                     return sub;
                 });
@@ -400,6 +469,7 @@ function appReducer(state, action) {
             if (settings.autopilotEnabled === undefined) settings.autopilotEnabled = false;
             if (!settings.autopilotTime) settings.autopilotTime = '20:00';
             if (!settings.autopilotDefault) settings.autopilotDefault = 'present';
+            if (!settings.attendanceMode) settings.attendanceMode = 'erp';
 
             return {
                 ...initialState,
@@ -408,6 +478,10 @@ function appReducer(state, action) {
                 timetable: { ...initialState.timetable, ...(loaded.timetable || {}) },
                 autopilotReview: loaded.autopilotReview !== undefined ? loaded.autopilotReview : null,
                 autopilotDiscoveryDismissed: loaded.autopilotDiscoveryDismissed !== undefined ? loaded.autopilotDiscoveryDismissed : false,
+                // Always reset sync status on load — it's transient UI state
+                erpSync: { ...initialState.erpSync, lastGlobalSyncAt: loaded.erpSync?.lastGlobalSyncAt || null },
+                // Always clear pending OTP state on load — stale authUserId is useless after restart
+                erpSessionExpired: null,
                 // Always mark as authenticated when loading a saved state with a userId
                 isAuthenticated: !!(loaded.userId),
             };
@@ -431,6 +505,31 @@ function appReducer(state, action) {
                 isAuthenticated: action.payload,
             };
 
+        case 'ERP_SESSION_EXPIRED':
+            // Store the pending re-auth info so the UI can show an OTP prompt
+            return {
+                ...state,
+                erpSessionExpired: {
+                    authUserId:      action.payload.authUserId,
+                    studentName:     action.payload.studentName,
+                    persistentToken: action.payload.persistentToken,
+                },
+            };
+
+        case 'ERP_SESSION_RESTORED':
+            return {
+                ...state,
+                erpSessionExpired: null,
+            };
+
+        case 'ERP_SYNC_STATE': {
+            // Update ERP sync metadata — drives UI freshness indicators
+            return {
+                ...state,
+                erpSync: { ...state.erpSync, ...action.payload },
+            };
+        }
+
         default:
             return state;
     }
@@ -444,12 +543,15 @@ export function AppProvider({ children }) {
     useEffect(() => { stateRef.current = state; }, [state]);
     // Track whether a reset was just dispatched to prevent saving empty state
     const justResetRef = React.useRef(false);
+    // Track last action type — skip saves for transient-only ERP sync state updates
+    const lastActionTypeRef = React.useRef(null);
 
     // Wrap dispatch to intercept RESET_STATE
     const safeDispatch = React.useCallback((action) => {
         if (action.type === 'RESET_STATE') {
             justResetRef.current = true;
         }
+        lastActionTypeRef.current = action.type;
         dispatch(action);
     }, []);
 
@@ -471,6 +573,36 @@ export function AppProvider({ children }) {
                     
                     // Migrate to Firestore in background — do NOT await
                     migrateToFirestore(saved).catch(e => logger.warn('⚠️ Migration failed:', e));
+
+                    // ── ERP persistent session check ──────────────
+                    // If ERP was connected, check if we can skip the login screen
+                    // by using the stored persistent token to initiate a fresh session.
+                    if (saved.settings?.erpConnected) {
+                        const persistentToken = await getErpPersistentToken();
+                        if (persistentToken) {
+                            try {
+                                const result = await erpCheckSession(persistentToken);
+                                if (result.reason === 'otp_required') {
+                                    // Credentials valid — ERP sent OTP to student's phone.
+                                    // Store the pending re-auth so UI can show OTP screen only.
+                                    safeDispatch({
+                                        type: 'ERP_SESSION_EXPIRED',
+                                        payload: {
+                                            authUserId:   result.authUserId,
+                                            studentName:  result.studentName || '',
+                                            persistentToken,
+                                        },
+                                    });
+                                } else if (result.reason === 'credentials_rejected') {
+                                    // Password changed — mark ERP disconnected
+                                    safeDispatch({ type: 'UPDATE_SETTINGS', payload: { erpConnected: false } });
+                                }
+                                // 'no_token' / 'invalid_token' → do nothing, auto-sync will handle
+                            } catch (e) {
+                                logger.warn('⚠️ ERP session check failed:', e.message);
+                            }
+                        }
+                    }
                 }
                 // If no saved state or no userId → stay at initialState (isAuthenticated: false)
                 // → AppNavigator will show Login screen
@@ -514,6 +646,11 @@ export function AppProvider({ children }) {
             justResetRef.current = false;
             return;
         }
+        // Skip saves triggered purely by transient ERP sync state — it's stripped
+        // from the persisted payload anyway, so writing is wasteful
+        if (lastActionTypeRef.current === 'ERP_SYNC_STATE') {
+            return;
+        }
         if (!isLoading && state.userId && state.isAuthenticated) {
             saveAppState(state);
         }
@@ -525,6 +662,7 @@ export function AppProvider({ children }) {
         // Always read from ref to avoid stale closure
         const currentState = stateRef.current;
         if (!currentState.settings.autopilotEnabled) return;
+        if (currentState.settings.attendanceMode === 'erp') return; // No autopilot in ERP mode
 
         const nowObj = currentState.devDate ? new Date(currentState.devDate) : new Date();
         const year = nowObj.getFullYear();
@@ -551,29 +689,32 @@ export function AppProvider({ children }) {
             const dayClasses = currentState.timetable[dayName] || [];
             const recordsForDate = currentState.attendanceRecords[dateStr] || {};
             if (recordsForDate._holiday) return [];
+            // BUG-12 fix: Track which subjects are already marked (even partially)
+            // and count only unmarked slots per subject
+            const subjectSlotCounts = {}; // subjectId -> { total, marked }
+            dayClasses.forEach(({ subjectId }) => {
+                if (!subjectSlotCounts[subjectId]) {
+                    subjectSlotCounts[subjectId] = { total: 0, marked: !!recordsForDate[subjectId] };
+                }
+                subjectSlotCounts[subjectId].total++;
+            });
             const unmarked = [];
+            const seen = new Set();
             dayClasses.forEach(({ slotId, subjectId }) => {
+                if (seen.has(subjectId)) return;
                 const slot = currentState.timeSlots.find((s) => s.id === slotId);
                 if (!slot) return;
-                if (!recordsForDate[subjectId]) {
-                    // Count consecutive slots for this subject to get real units
-                    const daySlots = dayClasses.filter(s => s.subjectId === subjectId);
-                    unmarked.push({
-                        subjectId,
-                        slotId,
-                        startTime: slot.start,
-                        endTime: slot.end,
-                        units: daySlots.length || 1,
-                    });
-                }
+                if (recordsForDate[subjectId]) return; // Already marked
+                seen.add(subjectId);
+                unmarked.push({
+                    subjectId,
+                    slotId,
+                    startTime: slot.start,
+                    endTime: slot.end,
+                    units: subjectSlotCounts[subjectId].total || 1,
+                });
             });
-            // Deduplicate by subjectId (multiple slots same subject = 1 entry with correct units)
-            const seen = new Set();
-            return unmarked.filter(c => {
-                if (seen.has(c.subjectId)) return false;
-                seen.add(c.subjectId);
-                return true;
-            });
+            return unmarked;
         };
 
         const shouldMark = (classItem, dateStr) => {
@@ -622,6 +763,18 @@ export function AppProvider({ children }) {
         }
     }, []); // empty deps — always reads from stateRef
 
+    // ─── ERP AUTO-SYNC ────────────────────────────────────────────
+    const { isSyncing: isErpSyncing, lastSyncedAt: erpLastSynced, syncError: erpSyncError, triggerSync: triggerErpSync } = useErpAutoSync(state, safeDispatch);
+
+    // Run ERP auto-sync once the app finishes loading and user is authenticated
+    useEffect(() => {
+        if (!isLoading && state.isAuthenticated && state.settings?.erpConnected) {
+            // Small delay so navigation settles before background work starts
+            const timer = setTimeout(() => triggerErpSync(), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoading, state.isAuthenticated, state.settings?.erpConnected]);
+
     // ──────────────────────────────────────────────────────────────
 
     return (
@@ -632,6 +785,16 @@ export function AppProvider({ children }) {
                 isLoading,
                 userId: state.userId,
                 runAutopilotCheck,
+                triggerErpSync,
+                isErpSyncing,
+                erpLastSynced,
+                erpSyncError,
+                erpSessionExpired: state.erpSessionExpired,
+                // ERP sync metadata for UI freshness indicators
+                erpSyncStatus:          state.erpSync?.status          || 'idle',
+                erpLastGlobalSyncAt:    state.erpSync?.lastGlobalSyncAt || null,
+                erpCalendarSyncStatus:  state.erpSync?.calendarSyncStatus || 'idle',
+                erpChangedSubjectIds:   state.erpSync?.changedSubjectIds  || [],
             }}
         >
             {children}

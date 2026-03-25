@@ -4,7 +4,7 @@ import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme
 
 const SubjectRow = ({ subject, status, threshold, onPress }) => {
     const styles = getStyles();
-    const { name, color, percentage, attendedUnits, totalUnits, skipInfo } = subject;
+    const { name, color, percentage, attendedUnits, totalUnits, skipInfo, source, lastUpdated } = subject;
     const getStatusColor = () => {
         switch (status) {
             case 'danger': return COLORS.danger;
@@ -28,6 +28,11 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
 
     const statusColor = getStatusColor();
 
+    // Source badge: show only when ERP is connected (source is set)
+    const isErpSynced = source === 'erp';
+    const isManual = source === 'manual';
+    const showSourceBadge = isErpSynced || isManual;
+
     return (
         <TouchableOpacity
             style={styles.container}
@@ -40,7 +45,7 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
             {/* Content */}
             <View style={styles.content}>
                 <View style={styles.topRow}>
-                    <Text style={styles.name}>{name}</Text>
+                    <Text style={styles.name} numberOfLines={1}>{name}</Text>
                     <Text style={[styles.percentage, { color: statusColor }]}>
                         {percentage.toFixed(1)}%
                     </Text>
@@ -75,6 +80,23 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
                         </Text>
                     </View>
                 </View>
+
+                {/* Source badge row */}
+                {showSourceBadge && (
+                    <View style={styles.sourceBadgeRow}>
+                        <View style={[
+                            styles.sourceBadge,
+                            isErpSynced ? styles.sourceBadgeErp : styles.sourceBadgeManual,
+                        ]}>
+                            <Text style={[
+                                styles.sourceBadgeText,
+                                isErpSynced ? styles.sourceBadgeTextErp : styles.sourceBadgeTextManual,
+                            ]}>
+                                {isErpSynced ? '✓ Synced from ERP' : '⏳ Manual (pending sync)'}
+                            </Text>
+                        </View>
+                    </View>
+                )}
             </View>
 
             {/* Chevron */}
@@ -170,6 +192,31 @@ const getStyles = () => StyleSheet.create({
         fontSize: 24,
         color: COLORS.textMuted,
         marginLeft: SPACING.sm,
+    },
+    sourceBadgeRow: {
+        marginTop: SPACING.xs,
+        flexDirection: 'row',
+    },
+    sourceBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    sourceBadgeErp: {
+        backgroundColor: COLORS.successLight || '#d4edda',
+    },
+    sourceBadgeManual: {
+        backgroundColor: COLORS.warningLight || '#fff3cd',
+    },
+    sourceBadgeText: {
+        fontSize: 9,
+        fontWeight: '600',
+    },
+    sourceBadgeTextErp: {
+        color: COLORS.success || '#28a745',
+    },
+    sourceBadgeTextManual: {
+        color: COLORS.warning || '#856404',
     },
 });
 

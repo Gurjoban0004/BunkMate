@@ -25,13 +25,20 @@ export function shouldUseCloudData(localState, cloudState) {
 }
 
 /**
- * Save app state to both local storage and Firestore (if online)
+ * Save app state to both local storage and Firestore (if online).
+ * Strips transient ERP sync metadata before persisting — it's UI-only state
+ * that resets on every load anyway, and saving it causes unnecessary writes.
  * @param {Object} state - Current application state
  */
 export async function saveAppState(state) {
     const timestamp = new Date().toISOString();
+
+    // Strip transient fields that should never be persisted
+    // eslint-disable-next-line no-unused-vars
+    const { erpSync, ...persistableState } = state;
+
     const stateWithTimestamp = {
-        ...state,
+        ...persistableState,
         _version: STATE_VERSION,
         _lastModified: timestamp
     };

@@ -42,7 +42,7 @@ import { showAlert } from '../../utils/alert';
 
 const TodayScreen = ({ navigation }) => {
     const styles = getStyles();
-    const { state, dispatch, runAutopilotCheck } = useApp();
+    const { state, dispatch, runAutopilotCheck, triggerErpSync, isErpSyncing } = useApp();
     const [refreshing, setRefreshing] = useState(false);
     const [showExtraModal, setShowExtraModal] = useState(false);
     const [selectedExtraSubject, setSelectedExtraSubject] = useState(null);
@@ -58,6 +58,7 @@ const TodayScreen = ({ navigation }) => {
     }, [state.devDate]);
 
     // Autopilot settings
+    const isErpMode = state.settings?.attendanceMode === 'erp';
     const autopilotEnabled = state.settings?.autopilotEnabled || false;
     const autopilotReview = state.autopilotReview;
     const autopilotDiscoveryDismissed = state.autopilotDiscoveryDismissed;
@@ -100,11 +101,14 @@ const TodayScreen = ({ navigation }) => {
     const dangerThreshold = state.settings?.dangerThreshold || 75;
     const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, dangerThreshold), [state, todayDayName, dangerThreshold]);
 
-    // Pull to refresh
+    // Pull to refresh — also triggers ERP sync if connected
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 500);
-    }, []);
+        if (state.settings?.erpConnected && triggerErpSync) {
+            triggerErpSync(true); // force = true, bypass 15-min cooldown
+        }
+        setTimeout(() => setRefreshing(false), 800);
+    }, [state.settings?.erpConnected, triggerErpSync]);
 
     // Handlers
     const handleMarkAttendance = (subjectId, status, units) => {
@@ -207,8 +211,8 @@ const TodayScreen = ({ navigation }) => {
 
     // ─── AUTOPILOT UI COMPONENTS ──────────────────────────────────────
 
-    const showDiscovery = !autopilotEnabled && !autopilotDiscoveryDismissed;
-    const showReview = autopilotReview && !autopilotReview.dismissed;
+    const showDiscovery = !isErpMode && !autopilotEnabled && !autopilotDiscoveryDismissed;
+    const showReview = !isErpMode && autopilotReview && !autopilotReview.dismissed;
 
     const format12Hour = (time24) => {
         const [h, m] = time24.split(':');
@@ -238,6 +242,11 @@ const TodayScreen = ({ navigation }) => {
                         {greeting.text} {greeting.emoji}
                     </DisplayMedium>
                     <BodyMedium color="textSecondary" style={styles.date}>{dateString}</BodyMedium>
+                    {isErpSyncing && (
+                        <BodySmall color="textMuted" style={{ marginTop: 4 }}>
+                            🔄 Syncing from portal...
+                        </BodySmall>
+                    )}
                 </View>
 
                 {/* Deletion Warning Banner */}
@@ -436,7 +445,7 @@ const TodayScreen = ({ navigation }) => {
                     </>
                 )}
 
-                {autopilotEnabled && (
+                {!isErpMode && autopilotEnabled && (
                     <View style={styles.indicatorContainer}>
                         <Text style={styles.indicatorText}>
                             🤖 Autopilot runs at {format12Hour(state.settings?.autopilotTime || '20:00')} today

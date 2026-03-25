@@ -60,7 +60,11 @@ export default function TimetableBuilderScreen({ navigation }) {
     };
 
     const handleFinish = () => {
-        navigation.navigate('AttendanceStats');
+        if (state.settings?.erpConnected) {
+            navigation.navigate('SetupComplete');
+        } else {
+            navigation.navigate('AttendanceStats');
+        }
     };
 
     const handleCreateSubject = () => {

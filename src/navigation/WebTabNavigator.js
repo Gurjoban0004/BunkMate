@@ -15,7 +15,7 @@ import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
-
+import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 
 import { useApp } from '../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/theme';
@@ -181,6 +181,7 @@ export default function WebTabNavigator() {
             case 'EditSubjects': screen = <EditSubjectsScreen {...props} />; break;
             case 'AttendanceStats': screen = <AttendanceStatsScreen {...props} />; break;
             case 'SyncFromPortal': screen = <SyncFromPortalScreen {...props} />; break;
+            case 'ERPConnect': screen = <ERPConnectScreen {...props} />; break;
             default: screen = <TodayScreen {...props} />; break;
         }
 

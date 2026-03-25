@@ -53,7 +53,7 @@ export default function TimeSlotsScreen({ navigation }) {
             </View>
         </View>
     );
-    const { dispatch } = useApp();
+    const { state, dispatch } = useApp();
 
     const [startMins, setStartMins] = useState(540); // 9:00 AM
     const [endMins, setEndMins] = useState(960);     // 4:00 PM
@@ -111,7 +111,13 @@ export default function TimeSlotsScreen({ navigation }) {
             type: 'SET_TIME_SLOTS',
             payload: generatedSlots,
         });
-        navigation.navigate('SubjectList');
+
+        // Skip manual subject list if we already have subjects (e.g., from ERP)
+        if (state.subjects && state.subjects.length > 0) {
+            navigation.navigate('TimetableBuilder');
+        } else {
+            navigation.navigate('SubjectList');
+        }
     };
 
     return (

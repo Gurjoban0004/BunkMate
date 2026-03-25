@@ -3,13 +3,24 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../../components/common/Button';
 import { useApp } from '../../context/AppContext';
+import { getUserId } from '../../utils/firebaseHelpers';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../theme/theme';
 
 export default function SetupCompleteScreen() {
     const styles = getStyles();
-    const { dispatch } = useApp();
+    const { state, dispatch } = useApp();
 
-    const handleComplete = () => {
+    const handleComplete = async () => {
+        // For manual setup path: generate userId if not already set
+        if (!state.userId) {
+            try {
+                const newUserId = await getUserId();
+                dispatch({ type: 'SET_USER_ID', payload: newUserId });
+                dispatch({ type: 'SET_AUTHENTICATED', payload: true });
+            } catch (e) {
+                // getUserId has its own fallback
+            }
+        }
         dispatch({ type: 'COMPLETE_SETUP' });
         // Navigation will switch automatically when setupComplete becomes true
     };

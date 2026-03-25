@@ -15,6 +15,7 @@ import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import EndGameScreen from '../screens/main/EndGameScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
+import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import { useApp } from '../context/AppContext';
 import { COLORS } from '../theme/theme';
 
@@ -138,6 +139,11 @@ function SettingsStackScreen() {
                 name="SyncFromPortal"
                 component={SyncFromPortalScreen}
                 options={{ title: 'Sync from Portal' }}
+            />
+            <SettingsStack.Screen
+                name="ERPConnect"
+                component={ERPConnectScreen}
+                options={{ title: 'Connect ERP' }}
             />
         </SettingsStack.Navigator>
     );

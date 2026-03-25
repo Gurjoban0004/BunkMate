@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 
 import LoginScreen from '../screens/setup/LoginScreen';
+import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import SubjectListScreen from '../screens/setup/SubjectListScreen';
 import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
@@ -16,8 +17,8 @@ import { NavigationContext, NavigationRouteContext } from '@react-navigation/nat
 export default function WebNavigator() {
     const styles = getStyles();
     const { state } = useApp();
-    // If not authenticated → Login. If authenticated but setup incomplete → Welcome.
-    const initialRoute = state.isAuthenticated ? 'Welcome' : 'Login';
+    // Always start on Welcome — it has both Login (ERP) and manual setup options
+    const initialRoute = 'Welcome';
     const [history, setHistory] = useState([
         { name: initialRoute, params: {} }
     ]);
@@ -55,6 +56,8 @@ export default function WebNavigator() {
     const mockNavigation = useMemo(() => ({
         navigate: (screenName, params = {}) => {
             setHistory(prev => {
+                // BUG-15 fix: skip if already on this screen
+                if (prev[prev.length - 1]?.name === screenName) return prev;
                 const newStack = [...prev, { name: screenName, params }];
                 if (Platform.OS === 'web') {
                     window.history.pushState({ index: newStack.length - 1 }, '', `?screen=${screenName}`);
@@ -95,7 +98,7 @@ export default function WebNavigator() {
         },
         canGoBack: () => historyRef.current.length > 1,
         setOptions: () => { }, // no-op
-    }), [history.length]);
+    }), []); // BUG-05 fix: stable reference, uses setHistory functional updates
 
     const renderScreen = () => {
         const props = {
@@ -106,6 +109,7 @@ export default function WebNavigator() {
         let screen;
         switch (currentRoute.name) {
             case 'Login': screen = <LoginScreen {...props} />; break;
+            case 'ERPSetup': screen = <ERPSetupScreen {...props} />; break;
             case 'Welcome': screen = <WelcomeScreen {...props} />; break;
             case 'TimeSlots': screen = <TimeSlotsScreen {...props} />; break;
             case 'SubjectList': screen = <SubjectListScreen {...props} />; break;

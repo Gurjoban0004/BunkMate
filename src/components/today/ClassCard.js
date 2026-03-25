@@ -37,6 +37,9 @@ const ClassCard = ({
     const todayRecord = state.attendanceRecords[todayKey]?.[subjectId];
     const markedStatus = todayRecord?.status; // 'present', 'absent', or undefined
     const isAutoMarked = todayRecord?.autoMarked;
+    const isErpMode = state.settings?.attendanceMode === 'erp';
+    const isSyncedFromErp = isErpMode && todayRecord?.source === 'erp';
+    const isPredicted = isErpMode && todayRecord?.source === 'manual';
 
     // Calculate danger threshold (from settings or default 75)
     const dangerThreshold = state.settings?.dangerThreshold || 75;
@@ -233,14 +236,22 @@ const ClassCard = ({
                             styles.statusBadge,
                             markedStatus === 'present' ? styles.statusPresent : styles.statusAbsent,
                         ]}>
-                            <Text style={styles.statusEmoji}>
-                                {markedStatus === 'present' ? '✅' : '❌'}
-                            </Text>
+                            {isSyncedFromErp ? (
+                                <Text style={styles.statusEmoji}>🔒</Text>
+                            ) : (
+                                <Text style={styles.statusEmoji}>
+                                    {markedStatus === 'present' ? '✅' : '❌'}
+                                </Text>
+                            )}
                             <Text style={[
                                 styles.statusText,
                                 markedStatus === 'present' ? styles.statusTextPresent : styles.statusTextAbsent,
                             ]}>
-                                Marked {markedStatus === 'present' ? 'Present' : 'Absent'}
+                                {isSyncedFromErp ? 'Synced from Portal' : (
+                                    isPredicted 
+                                        ? `Predicted ${markedStatus === 'present' ? 'Present' : 'Absent'}`
+                                        : `Marked ${markedStatus === 'present' ? 'Present' : 'Absent'}`
+                                )}
                             </Text>
                             {isAutoMarked && (
                                 <View style={styles.autoMarkedBadge}>
@@ -249,9 +260,11 @@ const ClassCard = ({
                             )}
                         </View>
 
-                        <TouchableOpacity style={styles.undoButton} onPress={handleUndo}>
-                            <Text style={styles.undoText}>Undo</Text>
-                        </TouchableOpacity>
+                        {!isSyncedFromErp && (
+                            <TouchableOpacity style={styles.undoButton} onPress={handleUndo}>
+                                <Text style={styles.undoText}>Undo</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 ) : (
                     // Not marked - show buttons

@@ -98,7 +98,8 @@ export const getUserId = async () => {
 export const loginWithCode = async (code) => {
   try {
     // Validate code format before hitting Firestore
-    const CODE_REGEX = /^PRES-[A-Z0-9]{7}$/;
+    // Only accept characters from CODE_CHARS (excludes 0, O, 1, I, L)
+    const CODE_REGEX = /^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/;
     if (!code || !CODE_REGEX.test(code)) {
       throw new Error('Invalid login code');
     }
