@@ -221,6 +221,15 @@ export function useErpAutoSync(state, dispatch) {
                 } else if (calData.calendar && Object.keys(calData.calendar).length > 0) {
                     const result = mapCalendarToRecords(calData.calendar, calData.subjects, latestSubjects);
 
+                    // ── DEBUG: log full mapping result ────────────
+                    console.log('[CAL-DEBUG] calData.subjects:', JSON.stringify(calData.subjects));
+                    console.log('[CAL-DEBUG] latestSubjects (app):', JSON.stringify(latestSubjects.map(s => ({ id: s.id, name: s.name, erpSubjectId: s.erpSubjectId }))));
+                    console.log('[CAL-DEBUG] subjectMapping:', JSON.stringify(result.subjectMapping));
+                    console.log('[CAL-DEBUG] totalDays:', result.totalDays);
+                    console.log('[CAL-DEBUG] newSubjects:', result.newSubjects.length);
+                    console.log('[CAL-DEBUG] sample records (first 3 dates):', JSON.stringify(Object.entries(result.records).slice(0, 3)));
+                    // ─────────────────────────────────────────────
+
                     if (result.newSubjects.length > 0) {
                         const withNew = [...latestSubjects, ...result.newSubjects];
                         dispatch({ type: 'SET_SUBJECTS', payload: withNew });
