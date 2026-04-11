@@ -10,22 +10,6 @@
     },
     "rewrites": [
         {
-            "source": "/api/erp-login",
-            "destination": "/api/erp-login.js"
-        },
-        {
-            "source": "/api/erp-verify-otp",
-            "destination": "/api/erp-verify-otp.js"
-        },
-        {
-            "source": "/api/erp-attendance",
-            "destination": "/api/erp-attendance.js"
-        },
-        {
-            "source": "/api/erp-calendar",
-            "destination": "/api/erp-calendar.js"
-        },
-        {
             "source": "/app",
             "destination": "/app.html"
         },
@@ -35,6 +19,14 @@
         }
     ],
     "headers": [
+        {
+            "source": "/api/(.*)",
+            "headers": [
+                { "key": "Access-Control-Allow-Origin", "value": "*" },
+                { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
+                { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+            ]
+        },
         {
             "source": "/releases/(.*).apk",
             "headers": [

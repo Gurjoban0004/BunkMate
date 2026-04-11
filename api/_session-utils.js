@@ -184,16 +184,13 @@ function isSessionDead(responseData, htmlBody = '') {
 }
 
 /**
- * Set CORS headers on a response. Enforces ALLOWED_ORIGIN in production.
- * Falls back to '*' only in non-production environments.
+ * Set CORS headers on a response.
+ * Uses ALLOWED_ORIGIN env var if set, otherwise defaults to '*'.
+ * Never throws — a missing env var should not crash the API.
  */
 function setCorsHeaders(res) {
-    const origin = process.env.ALLOWED_ORIGIN;
-    if (!origin && process.env.NODE_ENV === 'production') {
-        // Hard fail — misconfigured production deployment
-        throw new Error('ALLOWED_ORIGIN must be set in production');
-    }
-    res.setHeader('Access-Control-Allow-Origin',  origin || '*');
+    const origin = process.env.ALLOWED_ORIGIN || '*';
+    res.setHeader('Access-Control-Allow-Origin',  origin);
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }

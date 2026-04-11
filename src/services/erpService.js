@@ -32,7 +32,7 @@ async function apiCall(endpoint, body) {
         const data = await response.json();
 
         if (!response.ok) {
-            const error    = new Error(data.message || data.error || 'Request failed');
+            const error    = new Error(data.message || data.error || `HTTP ${response.status}`);
             error.status   = response.status;
             error.code     = data.error;
             error.data     = data;
@@ -47,9 +47,11 @@ async function apiCall(endpoint, body) {
             e.code  = 'TIMEOUT';
             throw e;
         }
-        if (err.status) throw err;
-        const e = new Error('Could not connect. Please check your internet connection.');
+        if (err.status) throw err; // already a structured API error
+        // True network failure (no response at all)
+        const e = new Error(`Could not connect to ${endpoint}. Please check your internet connection.`);
         e.code  = 'NETWORK_ERROR';
+        e.cause = err.message;
         throw e;
     }
 }
