@@ -222,21 +222,35 @@ export function useErpAutoSync(state, dispatch) {
                     const result = mapCalendarToRecords(calData.calendar, calData.subjects, latestSubjects);
 
                     if (result.newSubjects.length > 0) {
-                        dispatch({
-                            type: 'SET_SUBJECTS',
-                            payload: [...latestSubjects, ...result.newSubjects],
-                        });
+                        const withNew = [...latestSubjects, ...result.newSubjects];
+                        dispatch({ type: 'SET_SUBJECTS', payload: withNew });
+                        latestSubjects = withNew;
                     }
+
+                    // Stamp numeric portal IDs onto matched subjects so future syncs
+                    // use stable ID-based matching instead of fuzzy name matching
+                    if (result.erpSubjectIdStamps && Object.keys(result.erpSubjectIdStamps).length > 0) {
+                        const stamped = latestSubjects.map(s => {
+                            const portalId = result.erpSubjectIdStamps[s.id];
+                            if (portalId && !s.erpSubjectId) {
+                                return { ...s, erpSubjectId: String(portalId) };
+                            }
+                            return s;
+                        });
+                        dispatch({ type: 'SET_SUBJECTS', payload: stamped });
+                        latestSubjects = stamped;
+                    }
+
                     dispatch({
                         type: 'ERP_OVERWRITE_CALENDAR',
-                        payload: { 
-                            records: result.records, 
+                        payload: {
+                            records: result.records,
                             trackingStartDate: result.earliestDate,
                             lastSubjectSyncDates: result.lastSubjectSyncDates
                         },
                     });
                     setSyncStatus({ calendarSyncStatus: 'ok' });
-                    logger.info('✅', `ERP calendar sync: ${result.totalDays} days`);
+                    logger.info('✅', `ERP calendar sync: ${result.totalDays} days, ${Object.keys(result.subjectMapping).length} subjects mapped`);
                 } else {
                     setSyncStatus({ calendarSyncStatus: 'ok' });
                 }

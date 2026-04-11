@@ -435,7 +435,38 @@ const SettingsScreen = ({ navigation }) => {
                                 </Text>
                             </TouchableOpacity>
                         </View>
-                        {/* We removed the dead manual timetable & subjects editing paths */}
+
+                        {state.settings?.erpConnected && (
+                            <>
+                                <View style={styles.divider} />
+                                <TouchableOpacity
+                                    style={[styles.groupItem, { paddingVertical: SPACING.sm }]}
+                                    onPress={() => {
+                                        showAlert(
+                                            'Re-sync Calendar',
+                                            'This will clear all ERP subject links and re-match your subjects from scratch, then pull the full attendance calendar. Use this if your calendar shows no data.',
+                                            [
+                                                { text: 'Cancel', style: 'cancel' },
+                                                {
+                                                    text: 'Re-sync',
+                                                    onPress: () => {
+                                                        // Clear erpSubjectId stamps so matcher runs fresh
+                                                        const cleared = state.subjects.map(s => ({ ...s, erpSubjectId: null }));
+                                                        dispatch({ type: 'SET_SUBJECTS', payload: cleared });
+                                                        // Force sync after a tick so state settles
+                                                        setTimeout(() => triggerErpSync(true), 300);
+                                                    }
+                                                }
+                                            ]
+                                        );
+                                    }}
+                                    disabled={isErpSyncing}
+                                >
+                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Re-sync Calendar from Scratch</Text>
+                                    <Text style={styles.chevron}>›</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                 </View>
 
