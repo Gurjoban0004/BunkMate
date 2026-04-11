@@ -2,7 +2,7 @@
   "name": "Presence",
   "short_name": "Presence",
   "description": "Smart Attendance Tracker",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "background_color": "#1A1A2E",
