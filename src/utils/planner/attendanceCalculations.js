@@ -72,20 +72,32 @@ export function simulateAttendance(attended, total, offset) {
  * Returns null only if target is 100% and student has missed at least one class.
  */
 export function calculateRecoveryClasses(attended, total, targetPercentage) {
-    const target = targetPercentage / 100;
-
     // Handle 100% target edge case
-    if (target >= 1) {
+    if (targetPercentage >= 100) {
         if (attended < total) return null; // Impossible — already missed classes
         return { classesNeeded: 0, resultPercentage: 100, newAttended: attended, newTotal: total };
     }
 
-    const current = total === 0 ? 0 : attended / total;
-    if (current * 100 >= targetPercentage) {
-        return { classesNeeded: 0, resultPercentage: parseFloat((current * 100).toFixed(1)), newAttended: attended, newTotal: total };
+    if (total === 0) {
+        return { classesNeeded: 0, resultPercentage: 100, newAttended: 0, newTotal: 0 };
     }
 
-    const classesNeeded = Math.ceil((target * total - attended) / (1 - target));
+    const currentExact = (attended * 100) / total;
+    if (currentExact >= targetPercentage) {
+        return { 
+            classesNeeded: 0, 
+            resultPercentage: parseFloat(currentExact.toFixed(1)), 
+            newAttended: attended, 
+            newTotal: total 
+        };
+    }
+
+    // Integer-friendly math to avoid floating point precision errors (e.g., ceil(2.0000000000004) -> 3)
+    // F >= (P * T - 100 * A) / (100 - P)
+    const divisor = 100 - targetPercentage;
+    const rawAttend = (targetPercentage * total - 100 * attended) / divisor;
+    const classesNeeded = Math.ceil(rawAttend - 1e-9);
+
     const newAttended = attended + classesNeeded;
     const newTotal = total + classesNeeded;
 
@@ -102,10 +114,16 @@ export function calculateRecoveryClasses(attended, total, targetPercentage) {
  * Derivation: attended / (total + n) >= target → n <= attended/target - total
  */
 export function calculateSkipAllowance(targetPercentage, currentAttended, currentTotal) {
-    const target = targetPercentage / 100;
-    if (target <= 0) return { skips: Infinity, outOf: Infinity, ratio: '∞', simplified: '∞' };
+    if (targetPercentage <= 0) return { skips: Infinity, outOf: Infinity, ratio: '∞', simplified: '∞' };
 
-    const maxSafeSkips = Math.max(0, Math.floor(currentAttended / target - currentTotal));
+    let maxSafeSkips = 0;
+    const currentExact = currentTotal === 0 ? 0 : (currentAttended * 100) / currentTotal;
+
+    if (currentExact >= targetPercentage) {
+        // Integer-friendly math: S <= (100 * A - P * T) / P
+        const rawSkips = (100 * currentAttended - targetPercentage * currentTotal) / targetPercentage;
+        maxSafeSkips = Math.max(0, Math.floor(rawSkips + 1e-9));
+    }
 
     return {
         skips: maxSafeSkips,

@@ -157,13 +157,7 @@ export function getSubjectUnits(subjectId, state) {
     return maxUnits;
 }
 
-/**
- * Skip Calculator: how many classes can be skipped or need to attend.
- */
 export function calculateSkips(attended, total, targetPercent) {
-    const target = targetPercent / 100;
-    const currentPercent = calculatePercentage(attended, total);
-
     if (total === 0) {
         return {
             status: 'safe',
@@ -172,17 +166,24 @@ export function calculateSkips(attended, total, targetPercent) {
         };
     }
 
-    if (currentPercent >= targetPercent) {
-        // canSkip = (attended / target) - total
-        const canSkip = target > 0 ? Math.floor(attended / target - total) : 0;
+    const exactCurrentPercent = (attended / total) * 100;
+
+    if (exactCurrentPercent >= targetPercent) {
+        // Integer-friendly math: S <= (100 * A - P * T) / P
+        let canSkip = 0;
+        if (targetPercent > 0) {
+            const rawSkips = (100 * attended - targetPercent * total) / targetPercent;
+            canSkip = Math.floor(rawSkips + 1e-9);
+        }
+        
         return {
             status: 'safe',
             count: Math.max(0, canSkip),
             message: `You can skip ${Math.max(0, canSkip)} more classes`,
         };
     } else {
-        // needAttend = (target * total - attended) / (1 - target)
-        const divisor = 1 - target;
+        // Integer-friendly math: F >= (P * T - 100 * A) / (100 - P)
+        const divisor = 100 - targetPercent;
         if (divisor <= 0) {
             // Target is 100% or more, you'll never reach it if you've missed even one class
             return {
@@ -192,7 +193,8 @@ export function calculateSkips(attended, total, targetPercent) {
             };
         }
 
-        const needAttend = Math.ceil((target * total - attended) / divisor);
+        const rawAttend = (targetPercent * total - 100 * attended) / divisor;
+        const needAttend = Math.ceil(rawAttend - 1e-9);
 
         return {
             status: 'danger',
