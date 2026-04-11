@@ -1,6 +1,6 @@
 {
     "version": 2,
-    "buildCommand": "npx expo export -p web && mv dist/index.html dist/app.html && sed -i 's|</head>|<link rel=\"manifest\" href=\"/manifest.json\"><link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\"></head>|' dist/app.html && cp -r web-landing/* dist/ && mkdir -p dist/releases && (cp public/releases/presence-latest.apk dist/releases/presence-latest.apk 2>/dev/null || true)",
+    "buildCommand": "bash build.sh",
     "outputDirectory": "dist",
     "functions": {
         "api/*.js": {
