@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
-import { getTodayKey, parseDate, isPastTime, subtractDays } from '../utils/dateHelpers';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import { getTodayKey } from '../utils/dateHelpers';
 import { initNetworkListener, onNetworkStatusChange } from '../utils/firebaseHelpers';
 import { loadAppState, saveAppState, migrateToFirestore } from '../storage/storage';
 import { logger } from '../utils/logger';
@@ -46,16 +46,9 @@ const initialState = {
         notificationEnabled: true,
         notificationTime: '18:00',
         smartAlertsEnabled: true,
-        autopilotEnabled: false,
-        autopilotTime: '20:00',
-        autopilotDefault: 'present',
         erpConnected: false,
         lastErpSync: null,
-        attendanceMode: 'erp', // 'erp' | 'manual'
     },
-
-    autopilotReview: null, // { date: 'YYYY-MM-DD', count: >0, dismissed: false }
-    autopilotDiscoveryDismissed: false,
 
     // Track which warning notifications have been sent (avoid spam)
     notificationState: {},
@@ -163,15 +156,9 @@ function appReducer(state, action) {
         }
 
         case 'MARK_ATTENDANCE': {
-            const { date, subjectId, status, units, isExtra, autoMarked } = action.payload;
+            const { date, subjectId, status, units, isExtra } = action.payload;
             return {
                 ...state,
-                // Also mark the subject as manually sourced (will be overwritten on next ERP sync)
-                subjects: state.subjects.map(sub =>
-                    sub.id === subjectId && sub.source !== 'erp'
-                        ? { ...sub, source: 'manual', lastUpdated: new Date().toISOString() }
-                        : sub
-                ),
                 attendanceRecords: {
                     ...state.attendanceRecords,
                     [date]: {
@@ -179,9 +166,8 @@ function appReducer(state, action) {
                         [subjectId]: {
                             status,
                             units: units || 1,
-                            source: 'manual',
+                            source: 'prediction',
                             ...(isExtra ? { isExtra: true } : {}),
-                            ...(autoMarked ? { autoMarked: true } : {}),
                         },
                     },
                 },
@@ -272,73 +258,7 @@ function appReducer(state, action) {
                 settings: { ...state.settings, ...action.payload },
             };
 
-        case 'UPDATE_AUTOPILOT_SETTINGS':
-            return {
-                ...state,
-                settings: {
-                    ...state.settings,
-                    ...action.payload,
-                },
-            };
 
-        case 'SET_AUTOPILOT_REVIEW':
-            return {
-                ...state,
-                autopilotReview: action.payload,
-            };
-
-        case 'DISMISS_AUTOPILOT_REVIEW':
-            return {
-                ...state,
-                autopilotReview: state.autopilotReview
-                    ? { ...state.autopilotReview, dismissed: true }
-                    : null,
-            };
-
-        case 'DISMISS_AUTOPILOT_DISCOVERY':
-            return {
-                ...state,
-                autopilotDiscoveryDismissed: true,
-            };
-
-        case 'CONFIRM_AUTO_MARK': {
-            const { date, subjectId } = action.payload;
-            const existing = state.attendanceRecords[date]?.[subjectId];
-            if (!existing) return state;
-
-            const { autoMarked, ...cleanedRecord } = existing;
-            return {
-                ...state,
-                attendanceRecords: {
-                    ...state.attendanceRecords,
-                    [date]: {
-                        ...state.attendanceRecords[date],
-                        [subjectId]: cleanedRecord,
-                    },
-                },
-            };
-        }
-
-        case 'CONFIRM_ALL_AUTO_MARK': {
-            const newRecords = { ...state.attendanceRecords };
-            Object.keys(newRecords).forEach(date => {
-                const dayRecord = { ...newRecords[date] };
-                let modified = false;
-                Object.keys(dayRecord).forEach(sid => {
-                    if (dayRecord[sid]?.autoMarked) {
-                        const { autoMarked, ...cleaned } = dayRecord[sid];
-                        dayRecord[sid] = cleaned;
-                        modified = true;
-                    }
-                });
-                if (modified) newRecords[date] = dayRecord;
-            });
-            return {
-                ...state,
-                attendanceRecords: newRecords,
-                autopilotReview: state.autopilotReview ? { ...state.autopilotReview, dismissed: true } : null,
-            };
-        }
 
         case 'UPDATE_NOTIFICATION_STATE':
             return {
@@ -398,21 +318,36 @@ function appReducer(state, action) {
         }
 
         case 'ERP_OVERWRITE_CALENDAR': {
-            // ERP calendar completely replaces all attendance records.
-            // Manual entries are discarded — ERP is the source of truth.
-            // Holidays are preserved — they are user-set and not part of ERP data.
-            const { records, trackingStartDate: newTrackingStart } = action.payload;
+            // ERP calendar correctly replaces attendance records where ERP has data.
+            // Predict ('prediction') records are kept if ERP doesn't overwrite them.
+            // Holidays are preserved.
+            const { records: erpRecords, trackingStartDate: newTrackingStart, lastSubjectSyncDates } = action.payload;
 
-            // Re-apply holidays on top of ERP records so they aren't lost
-            const mergedWithHolidays = { ...records };
-            (state.holidays || []).forEach(dateKey => {
-                mergedWithHolidays[dateKey] = { _holiday: true };
-            });
+            const nextRecords = { ...state.attendanceRecords };
+
+            // Merge ERP records into state
+            for (const [dateKey, dayData] of Object.entries(erpRecords)) {
+                if (!nextRecords[dateKey]) nextRecords[dateKey] = {};
+                
+                for (const [subjectId, erpInfo] of Object.entries(dayData)) {
+                    nextRecords[dateKey][subjectId] = { ...erpInfo }; // status, units, source: 'erp'
+                }
+            }
+
+            // Optional cleanup pass: if there's any prediction old enough that ERP *should* have it but doesn't, 
+            // you might want to expire it. But for now, keeping it is safer.
 
             return {
                 ...state,
-                attendanceRecords: mergedWithHolidays,
+                attendanceRecords: nextRecords,
                 trackingStartDate: newTrackingStart || state.trackingStartDate,
+                settings: {
+                    ...state.settings,
+                    lastSubjectSyncDates: {
+                        ...(state.settings?.lastSubjectSyncDates || {}),
+                        ...lastSubjectSyncDates
+                    }
+                }
             };
         }
 
@@ -463,21 +398,20 @@ function appReducer(state, action) {
                 });
             }
 
-            // Migrate autopilot settings
+            // Merge settings with defaults
             const settings = { ...initialState.settings, ...(loaded.settings || {}) };
             if (settings.dangerThreshold === undefined) settings.dangerThreshold = 75;
-            if (settings.autopilotEnabled === undefined) settings.autopilotEnabled = false;
-            if (!settings.autopilotTime) settings.autopilotTime = '20:00';
-            if (!settings.autopilotDefault) settings.autopilotDefault = 'present';
-            if (!settings.attendanceMode) settings.attendanceMode = 'erp';
+            // Clean out legacy autopilot/mode settings that may exist in saved state
+            delete settings.autopilotEnabled;
+            delete settings.autopilotTime;
+            delete settings.autopilotDefault;
+            delete settings.attendanceMode;
 
             return {
                 ...initialState,
                 ...loaded,
                 settings,
                 timetable: { ...initialState.timetable, ...(loaded.timetable || {}) },
-                autopilotReview: loaded.autopilotReview !== undefined ? loaded.autopilotReview : null,
-                autopilotDiscoveryDismissed: loaded.autopilotDiscoveryDismissed !== undefined ? loaded.autopilotDiscoveryDismissed : false,
                 // Always reset sync status on load — it's transient UI state
                 erpSync: { ...initialState.erpSync, lastGlobalSyncAt: loaded.erpSync?.lastGlobalSyncAt || null },
                 // Always clear pending OTP state on load — stale authUserId is useless after restart
@@ -656,113 +590,6 @@ export function AppProvider({ children }) {
         }
     }, [state, isLoading]);
 
-    // ─── AUTOPILOT LOGIC ──────────────────────────────────────────
-
-    const runAutopilotCheck = useCallback(() => {
-        // Always read from ref to avoid stale closure
-        const currentState = stateRef.current;
-        if (!currentState.settings.autopilotEnabled) return;
-        if (currentState.settings.attendanceMode === 'erp') return; // No autopilot in ERP mode
-
-        const nowObj = currentState.devDate ? new Date(currentState.devDate) : new Date();
-        const year = nowObj.getFullYear();
-        const month = String(nowObj.getMonth() + 1).padStart(2, '0');
-        const day = String(nowObj.getDate()).padStart(2, '0');
-        const todayStr = `${year}-${month}-${day}`;
-
-        const yesterdayObj = subtractDays(nowObj, 1);
-        const yYear = yesterdayObj.getFullYear();
-        const yMonth = String(yesterdayObj.getMonth() + 1).padStart(2, '0');
-        const yDay = String(yesterdayObj.getDate()).padStart(2, '0');
-        const yesterdayStr = `${yYear}-${yMonth}-${yDay}`;
-
-        let autoMarkedCount = 0;
-        let reviewDate = null;
-
-        const existingReview = currentState.autopilotReview;
-
-        const getUnmarkedForDate = (dateStr) => {
-            if (currentState.trackingStartDate && dateStr < currentState.trackingStartDate && !currentState.devDate) return [];
-            const parsedDate = parseDate(dateStr);
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = days[parsedDate.getDay()];
-            const dayClasses = currentState.timetable[dayName] || [];
-            const recordsForDate = currentState.attendanceRecords[dateStr] || {};
-            if (recordsForDate._holiday) return [];
-            // BUG-12 fix: Track which subjects are already marked (even partially)
-            // and count only unmarked slots per subject
-            const subjectSlotCounts = {}; // subjectId -> { total, marked }
-            dayClasses.forEach(({ subjectId }) => {
-                if (!subjectSlotCounts[subjectId]) {
-                    subjectSlotCounts[subjectId] = { total: 0, marked: !!recordsForDate[subjectId] };
-                }
-                subjectSlotCounts[subjectId].total++;
-            });
-            const unmarked = [];
-            const seen = new Set();
-            dayClasses.forEach(({ slotId, subjectId }) => {
-                if (seen.has(subjectId)) return;
-                const slot = currentState.timeSlots.find((s) => s.id === slotId);
-                if (!slot) return;
-                if (recordsForDate[subjectId]) return; // Already marked
-                seen.add(subjectId);
-                unmarked.push({
-                    subjectId,
-                    slotId,
-                    startTime: slot.start,
-                    endTime: slot.end,
-                    units: subjectSlotCounts[subjectId].total || 1,
-                });
-            });
-            return unmarked;
-        };
-
-        const shouldMark = (classItem, dateStr) => {
-            const autopilotTime = currentState.settings.autopilotTime || '20:00';
-            const classEndTime = classItem.endTime;
-            const [autopilotHour, autopilotMin] = autopilotTime.split(':').map(Number);
-            const [classEndHour, classEndMin] = classEndTime.split(':').map(Number);
-            let triggerTime;
-            if (classEndHour < autopilotHour || (classEndHour === autopilotHour && classEndMin <= autopilotMin)) {
-                triggerTime = autopilotTime;
-            } else {
-                let triggerHour = classEndHour + 2;
-                let triggerMin = classEndMin;
-                if (triggerHour >= 24) triggerHour -= 24;
-                triggerTime = `${String(triggerHour).padStart(2, '0')}:${String(triggerMin).padStart(2, '0')}`;
-            }
-            return isPastTime(dateStr, triggerTime, currentState.devDate);
-        };
-
-        [yesterdayStr, todayStr].forEach((dateStr) => {
-            getUnmarkedForDate(dateStr).forEach((classItem) => {
-                if (shouldMark(classItem, dateStr)) {
-                    safeDispatch({
-                        type: 'MARK_ATTENDANCE',
-                        payload: {
-                            date: dateStr,
-                            subjectId: classItem.subjectId,
-                            status: currentState.settings.autopilotDefault,
-                            units: classItem.units,
-                            autoMarked: true,
-                        },
-                    });
-                    autoMarkedCount++;
-                    if (!reviewDate) reviewDate = dateStr;
-                }
-            });
-        });
-
-        if (autoMarkedCount > 0 && reviewDate) {
-            if (existingReview?.date !== reviewDate || existingReview?.dismissed) {
-                safeDispatch({
-                    type: 'SET_AUTOPILOT_REVIEW',
-                    payload: { date: reviewDate, count: autoMarkedCount, dismissed: false },
-                });
-            }
-        }
-    }, []); // empty deps — always reads from stateRef
-
     // ─── ERP AUTO-SYNC ────────────────────────────────────────────
     const { isSyncing: isErpSyncing, lastSyncedAt: erpLastSynced, syncError: erpSyncError, triggerSync: triggerErpSync } = useErpAutoSync(state, safeDispatch);
 
@@ -784,7 +611,7 @@ export function AppProvider({ children }) {
                 dispatch: safeDispatch,
                 isLoading,
                 userId: state.userId,
-                runAutopilotCheck,
+
                 triggerErpSync,
                 isErpSyncing,
                 erpLastSynced,

@@ -5,10 +5,6 @@ import { useApp } from '../context/AppContext';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import LoginScreen from '../screens/setup/LoginScreen';
 import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
-import SubjectListScreen from '../screens/setup/SubjectListScreen';
-import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
-import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
-import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
 import { COLORS } from '../theme/theme';
 
@@ -83,38 +79,7 @@ export default function SetupNavigator() {
                 component={ERPSetupScreen}
                 options={{ headerShown: false }}
             />
-            <Stack.Screen
-                name="TimeSlots"
-                component={TimeSlotsScreen}
-                options={{ 
-                    title: '',
-                    headerTransparent: true,
-                }}
-            />
-            <Stack.Screen
-                name="SubjectList"
-                component={SubjectListScreen}
-                options={{ 
-                    title: '',
-                    headerTransparent: true,
-                }}
-            />
-            <Stack.Screen
-                name="TimetableBuilder"
-                component={TimetableBuilderScreen}
-                options={{ 
-                    title: '',
-                    headerTransparent: true,
-                }}
-            />
-            <Stack.Screen
-                name="AttendanceStats"
-                component={AttendanceStatsScreen}
-                options={{ 
-                    title: '',
-                    headerTransparent: true,
-                }}
-            />
+
             <Stack.Screen
                 name="SetupComplete"
                 component={SetupCompleteScreen}

@@ -23,9 +23,9 @@ export function getSubjectAttendance(subjectId, state) {
 
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
-    const trackingStartDate = state.trackingStartDate;
-    const isErpMode = state.settings?.attendanceMode === 'erp';
-
+    // Option A: Just use `subject.initialAttended` (which is ERP's exact summary numbers) AND add ONLY 'prediction' marks.
+    // This perfectly solves double counting. The ERP calendar data just sits there for UI/History, 
+    // but the summary numbers are the source of truth.
     Object.entries(records).forEach(([dateKey, dayRecord]) => {
         // Skip holidays
         if (dayRecord._holiday) return;
@@ -36,12 +36,11 @@ export function getSubjectAttendance(subjectId, state) {
             // Skip cancelled individual classes
             if (record.status === 'cancelled') return;
 
-            // In ERP mode, ERP calendar data is ignored for stats calculations since
-            // it's already included in subject.initialTotal. We only add 'manual' (predicted) marks.
-            if (isErpMode && record.source !== 'manual') return;
-
-            // In manual mode, we only count records from trackingStartDate onwards
-            if (!isErpMode && trackingStartDate && dateKey < trackingStartDate) return;
+            // CRITICAL fix to prevent double-counting ERP records.
+            // `subject.initialTotal` already contains the ERP's total count.
+            // We ONLY add units that are 'prediction' (manual gap-days).
+            // 'erp' sourced daily records are purely for historic calendar UI.
+            if (record.source !== 'prediction') return;
 
             recordedTotal += record.units;
             if (record.status === 'present') {

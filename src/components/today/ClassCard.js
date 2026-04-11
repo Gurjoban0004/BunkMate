@@ -18,6 +18,7 @@ const ClassCard = ({
     onMark,
     isCurrentClass = false,
     isPreCounted = false,
+    freshnessData = null,
 }) => {
     const styles = getStyles();
     const { subjectId, subjectName, startTime, endTime, units } = classInfo;
@@ -36,10 +37,11 @@ const ClassCard = ({
     const todayKey = getTodayKey(state.devDate);
     const todayRecord = state.attendanceRecords[todayKey]?.[subjectId];
     const markedStatus = todayRecord?.status; // 'present', 'absent', or undefined
-    const isAutoMarked = todayRecord?.autoMarked;
-    const isErpMode = state.settings?.attendanceMode === 'erp';
-    const isSyncedFromErp = isErpMode && todayRecord?.source === 'erp';
-    const isPredicted = isErpMode && todayRecord?.source === 'manual';
+    const isSyncedFromErp = todayRecord?.source === 'erp';
+    
+    // Freshness Engine drives predicted vs confirmed
+    const isPredicted = freshnessData ? freshnessData.hasPrediction : (todayRecord?.source === 'prediction');
+    // If not predicted and it has a status, but is NOT explicitly confirmed, we can assume it's a gap fallback.
 
     // Calculate danger threshold (from settings or default 75)
     const dangerThreshold = state.settings?.dangerThreshold || 75;
@@ -247,17 +249,13 @@ const ClassCard = ({
                                 styles.statusText,
                                 markedStatus === 'present' ? styles.statusTextPresent : styles.statusTextAbsent,
                             ]}>
-                                {isSyncedFromErp ? 'Synced from Portal' : (
+                                {isSyncedFromErp ? 'Confirmed by ERP' : (
                                     isPredicted 
-                                        ? `Predicted ${markedStatus === 'present' ? 'Present' : 'Absent'}`
+                                        ? `Prediction: ${markedStatus === 'present' ? 'Present' : 'Absent'}`
                                         : `Marked ${markedStatus === 'present' ? 'Present' : 'Absent'}`
                                 )}
                             </Text>
-                            {isAutoMarked && (
-                                <View style={styles.autoMarkedBadge}>
-                                    <Text style={styles.autoMarkedText}>🤖</Text>
-                                </View>
-                            )}
+
                         </View>
 
                         {!isSyncedFromErp && (
@@ -510,16 +508,6 @@ const getStyles = () => StyleSheet.create({
         fontSize: FONT_SIZES.sm,
         color: COLORS.primary,
         fontWeight: '600',
-    },
-    autoMarkedBadge: {
-        marginLeft: SPACING.sm,
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        backgroundColor: COLORS.background,
-        borderRadius: BORDER_RADIUS.sm,
-    },
-    autoMarkedText: {
-        fontSize: 12,
     },
 });
 

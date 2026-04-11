@@ -30,14 +30,7 @@ export default function WelcomeScreen({ navigation }) {
                         <Text style={styles.primaryButtonText}>Login</Text>
                     </TouchableOpacity>
 
-                    {/* Secondary — Manual setup */}
-                    <TouchableOpacity
-                        style={styles.secondaryButton}
-                        onPress={() => navigation.navigate('TimeSlots')}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.secondaryButtonText}>Set Up Manually</Text>
-                    </TouchableOpacity>
+
 
                     {/* Tertiary — Already have a code */}
                     <TouchableOpacity
@@ -113,19 +106,7 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.md,
         fontWeight: '700',
     },
-    secondaryButton: {
-        backgroundColor: COLORS.cardBackground,
-        paddingVertical: 16,
-        borderRadius: BORDER_RADIUS.md,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    secondaryButtonText: {
-        color: COLORS.textPrimary,
-        fontSize: FONT_SIZES.md,
-        fontWeight: '600',
-    },
+
     tertiaryLink: {
         alignItems: 'center',
         paddingVertical: SPACING.md,

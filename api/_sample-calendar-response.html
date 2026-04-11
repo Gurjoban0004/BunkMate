@@ -1,0 +1,43 @@
+<!-- 
+  Sample response from: POST /chalkpadpro/studentDetails/getAttendanceRegister
+  Body: studentId=9508
+  
+  Also expected from: POST /mobile/commonPage with commonPageId=85 (mobile API equivalent)
+  
+  STRUCTURE:
+  - Each subject has its own <thead> + <tbody> pair
+  - <thead> second <tr>: first <th> = "Subject Name\n(SubjectCode)", rest = "N\nDD-MM\nPeriod"
+  - <tbody> <tr id='subject_{erpSubjectId}'>: 
+      - First <td>: "Attendance Count"
+      - Cell ID: subject_{erpSubjectId}_{YYYY}_{MM}_{DD}_{period}
+      - Cell value: Number = PRESENT (running count), "X" = ABSENT
+      - Second-to-last <td class='total_{id}'>: "attended/total" (e.g. "73/89")
+      - Last <td class='percent_{id}'>: "NN.NN%" (e.g. "82.02%")
+-->
+
+<!-- SUBJECT 1: Data Structures using OOP-II (24CSE0212) - ERP ID: 10755 -->
+<table border='1' cellspacing='0' cellpadding='5' width='100%' style='border-collapse: collapse; text-align:center;'>
+    <thead>
+        <tr><th></th></tr>
+        <tr>
+            <th>Data Structures using Object Oriented Programming-II<br>(24CSE0212)</th>
+            <th>1<br>20-01<br>1</th>
+            <th>2<br>20-01<br>2</th>
+            <!-- ... more columns ... -->
+            <th>Total</th>
+            <th>%age</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr id='subject_10755'>
+            <td>Attendance Count</td>
+            <td id='subject_10755_2026_01_20_1'>1</td>   <!-- PRESENT -->
+            <td id='subject_10755_2026_01_20_2'>2</td>   <!-- PRESENT -->
+            <td id='subject_10755_2026_01_23_1'>X</td>   <!-- ABSENT -->
+            <td id='subject_10755_2026_01_23_2'>X</td>   <!-- ABSENT -->
+            <!-- ... more cells ... -->
+            <td class='total_10755'>73/89</td>
+            <td class='percent_10755'>82.02%</td>
+        </tr>
+    </tbody>
+</table>

@@ -14,6 +14,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from 
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
 import { getTodayClasses, getCurrentClassIndex, calculateOverallPercentage } from '../../utils/attendance';
+import { calculateFreshness } from '../../utils/erpFreshness';
 import { calculateOverallStreak } from '../../utils/streak';
 import { getUnmarkedCount } from '../../utils/backlog';
 import { getTodayKey, getTodayDayName, isPastTime } from '../../utils/dateHelpers';
@@ -42,7 +43,7 @@ import { showAlert } from '../../utils/alert';
 
 const TodayScreen = ({ navigation }) => {
     const styles = getStyles();
-    const { state, dispatch, runAutopilotCheck, triggerErpSync, isErpSyncing } = useApp();
+    const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
     const [refreshing, setRefreshing] = useState(false);
     const [showExtraModal, setShowExtraModal] = useState(false);
     const [selectedExtraSubject, setSelectedExtraSubject] = useState(null);
@@ -57,11 +58,7 @@ const TodayScreen = ({ navigation }) => {
         return () => clearInterval(timer);
     }, [state.devDate]);
 
-    // Autopilot settings
-    const isErpMode = state.settings?.attendanceMode === 'erp';
-    const autopilotEnabled = state.settings?.autopilotEnabled || false;
-    const autopilotReview = state.autopilotReview;
-    const autopilotDiscoveryDismissed = state.autopilotDiscoveryDismissed;
+
 
     // Get greeting
     const greeting = getGreeting(state.userName || 'there', state.devDate);
@@ -80,6 +77,9 @@ const TodayScreen = ({ navigation }) => {
     // Get classes
     const todayClasses = getTodayClasses(state, state.devDate);
     const currentClassIndex = getCurrentClassIndex(todayClasses, state.devDate);
+
+    // Compute ERP Freshness
+    const freshnessMap = useMemo(() => calculateFreshness(state, todayClasses), [state, todayClasses]);
 
     // Calculate stats
     const streak = calculateOverallStreak(state);
@@ -209,18 +209,7 @@ const TodayScreen = ({ navigation }) => {
 
     const { now, upcoming, done } = categorizeClasses();
 
-    // ─── AUTOPILOT UI COMPONENTS ──────────────────────────────────────
 
-    const showDiscovery = !isErpMode && !autopilotEnabled && !autopilotDiscoveryDismissed;
-    const showReview = !isErpMode && autopilotReview && !autopilotReview.dismissed;
-
-    const format12Hour = (time24) => {
-        const [h, m] = time24.split(':');
-        let hours = parseInt(h, 10);
-        const ampm = hours >= 12 ? 'pm' : 'am';
-        hours = hours % 12 || 12;
-        return `${hours}:${m}${ampm}`;
-    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -252,69 +241,11 @@ const TodayScreen = ({ navigation }) => {
                 {/* Deletion Warning Banner */}
                 <DeletionWarningBanner />
 
-                {/* Autopilot Discovery or Review */}
-                {showReview ? (
-                    <View style={styles.reviewCard}>
-                        <View style={styles.reviewHeader}>
-                            <HeadingSmall style={styles.reviewTitle}>🤖 Autopilot Ran</HeadingSmall>
-                            <BodySmall style={styles.reviewSubtitle}>
-                                Automatically marked {autopilotReview.count} missing class{autopilotReview.count > 1 ? 'es' : ''} for {autopilotReview.date}.
-                            </BodySmall>
-                        </View>
-                        <View style={styles.reviewActions}>
-                            <TouchableOpacity
-                                style={styles.reviewDismissBtn}
-                                onPress={() => dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' })}
-                            >
-                                <CaptionMedium>Dismiss</CaptionMedium>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.reviewViewBtn}
-                                onPress={() => {
-                                    dispatch({ type: 'DISMISS_AUTOPILOT_REVIEW' });
-                                    navigation.navigate('PastAttendance');
-                                }}
-                            >
-                                <CaptionMedium color="textOnPrimary">Review Classes</CaptionMedium>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                ) : (
-                    <>
-                        {showDiscovery && (
-                            <View style={styles.discoveryCard}>
-                                <View style={styles.discoveryContent}>
-                                    <Text style={styles.discoveryEmoji}>🤖</Text>
-                                    <View style={styles.discoveryTextContainer}>
-                                        <HeadingSmall style={styles.discoveryTitle}>Meet Autopilot</HeadingSmall>
-                                        <BodySmall style={styles.discoverySubtitle}>
-                                            Forget marking classes? Let the app do it automatically every night.
-                                        </BodySmall>
-                                    </View>
-                                </View>
-                                <View style={styles.discoveryActions}>
-                                    <TouchableOpacity
-                                        style={styles.discoveryDismissBtn}
-                                        onPress={() => dispatch({ type: 'DISMISS_AUTOPILOT_DISCOVERY' })}
-                                    >
-                                        <CaptionMedium>Maybe Later</CaptionMedium>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.discoveryEnableBtn}
-                                        onPress={() => navigation.navigate('Settings')}
-                                    >
-                                        <CaptionMedium color="textOnPrimary">Setup Now</CaptionMedium>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
-                        {unmarkedCount > 0 && (
-                            <BacklogBanner
-                                count={unmarkedCount}
-                                onPress={handleBacklogPress}
-                            />
-                        )}
-                    </>
+                {unmarkedCount > 0 && (
+                    <BacklogBanner
+                        count={unmarkedCount}
+                        onPress={handleBacklogPress}
+                    />
                 )}
 
                 {/* Quick Answer Card */}
@@ -368,6 +299,7 @@ const TodayScreen = ({ navigation }) => {
                                         onMark={() => { }}
                                         isCurrentClass={false}
                                         isPreCounted={true}
+                                        freshnessData={freshnessMap[classInfo.subjectId]}
                                     />
                                 ))}
                             </View>
@@ -398,6 +330,7 @@ const TodayScreen = ({ navigation }) => {
                                             state={state}
                                             onMark={handleMarkAttendance}
                                             isCurrentClass={true}
+                                            freshnessData={freshnessMap[now.subjectId]}
                                         />
                                     </View>
                                 )}
@@ -415,6 +348,7 @@ const TodayScreen = ({ navigation }) => {
                                                 state={state}
                                                 onMark={handleMarkAttendance}
                                                 isCurrentClass={false}
+                                                freshnessData={freshnessMap[classInfo.subjectId]}
                                             />
                                         ))}
                                     </View>
@@ -431,6 +365,7 @@ const TodayScreen = ({ navigation }) => {
                                                 state={state}
                                                 onMark={handleMarkAttendance}
                                                 isCurrentClass={false}
+                                                freshnessData={freshnessMap[classInfo.subjectId]}
                                             />
                                         ))}
                                     </View>
@@ -445,13 +380,7 @@ const TodayScreen = ({ navigation }) => {
                     </>
                 )}
 
-                {!isErpMode && autopilotEnabled && (
-                    <View style={styles.indicatorContainer}>
-                        <Text style={styles.indicatorText}>
-                            🤖 Autopilot runs at {format12Hour(state.settings?.autopilotTime || '20:00')} today
-                        </Text>
-                    </View>
-                )}
+
                 {/* Bottom Padding */}
                 <View style={styles.bottomPadding} />
             </ScrollView>
@@ -567,118 +496,6 @@ const getStyles = () => StyleSheet.create({
     },
     bottomPadding: {
         height: 100,
-    },
-    // ─── AUTOPILOT STYLES ─────────────────────────────────
-    discoveryCard: {
-        backgroundColor: COLORS.cardBackground,
-        marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
-        ...SHADOWS.small,
-        borderLeftWidth: 4,
-        borderLeftColor: COLORS.primary,
-    },
-    discoveryContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: SPACING.md,
-    },
-    discoveryEmoji: {
-        fontSize: 32,
-        marginRight: SPACING.sm,
-    },
-    discoveryTextContainer: {
-        flex: 1,
-    },
-    discoveryTitle: {
-        ...TYPOGRAPHY.headerSmall,
-        color: COLORS.textPrimary,
-        marginBottom: 2,
-    },
-    discoverySubtitle: {
-        ...TYPOGRAPHY.caption,
-        color: COLORS.textSecondary,
-        lineHeight: 18,
-    },
-    discoveryActions: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: SPACING.sm,
-    },
-    discoveryDismissBtn: {
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 8,
-        borderRadius: BORDER_RADIUS.md,
-        backgroundColor: COLORS.inputBackground,
-    },
-    discoveryDismissText: {
-        ...TYPOGRAPHY.button,
-        color: COLORS.textSecondary,
-    },
-    discoveryEnableBtn: {
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 8,
-        borderRadius: BORDER_RADIUS.md,
-        backgroundColor: COLORS.primary,
-    },
-    discoveryEnableText: {
-        ...TYPOGRAPHY.button,
-        color: COLORS.textOnPrimary,
-    },
-    reviewCard: {
-        backgroundColor: COLORS.primaryLight,
-        marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.md,
-    },
-    reviewHeader: {
-        marginBottom: SPACING.md,
-    },
-    reviewTitle: {
-        ...TYPOGRAPHY.headerSmall,
-        color: COLORS.primary,
-        marginBottom: 4,
-    },
-    reviewSubtitle: {
-        ...TYPOGRAPHY.caption,
-        color: COLORS.textSecondary,
-    },
-    reviewActions: {
-        flexDirection: 'row',
-        gap: SPACING.sm,
-    },
-    reviewDismissBtn: {
-        flex: 1,
-        paddingVertical: 10,
-        borderRadius: BORDER_RADIUS.md,
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.5)',
-    },
-    reviewDismissText: {
-        ...TYPOGRAPHY.button,
-        color: COLORS.textSecondary,
-    },
-    reviewViewBtn: {
-        flex: 1,
-        paddingVertical: 10,
-        borderRadius: BORDER_RADIUS.md,
-        alignItems: 'center',
-        backgroundColor: COLORS.primary,
-    },
-    reviewViewText: {
-        ...TYPOGRAPHY.button,
-        color: COLORS.textOnPrimary,
-    },
-    indicatorContainer: {
-        marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md,
-        alignItems: 'center',
-    },
-    indicatorText: {
-        ...TYPOGRAPHY.caption,
-        color: COLORS.textSecondary,
     },
     // Modal styles
     modalOverlay: {

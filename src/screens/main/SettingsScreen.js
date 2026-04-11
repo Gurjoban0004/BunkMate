@@ -13,7 +13,6 @@ import {
     Switch
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { clearAppState, saveAppState, deleteUserAccount } from '../../storage/storage';
@@ -23,16 +22,9 @@ import LoginCodeSection from '../../components/settings/LoginCodeSection';
 
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
-    const { state, dispatch } = useApp();
+    const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState(state.userName || '');
-    const [showTimePicker, setShowTimePicker] = useState(false);
-
-    // Web Time Picker State
-    const [webTimePickerVisible, setWebTimePickerVisible] = useState(false);
-    const [webHour, setWebHour] = useState('08');
-    const [webMinute, setWebMinute] = useState('00');
-    const [webAmPm, setWebAmPm] = useState('PM');
 
     // Import Modal State
     const [importModalVisible, setImportModalVisible] = useState(false);
@@ -52,9 +44,6 @@ const SettingsScreen = ({ navigation }) => {
         weeklySummaryEnabled = true,
         theme = 'light',
         landingPage = 'today',
-        autopilotEnabled = false,
-        autopilotTime = '20:00',
-        autopilotDefault = 'present',
     } = state.settings || {};
 
     const customTargets = state.subjects ? state.subjects.filter(s => s.target && s.target !== dangerThreshold) : [];
@@ -63,113 +52,7 @@ const SettingsScreen = ({ navigation }) => {
         dispatch({ type: 'UPDATE_SETTINGS', payload: { [key]: value } });
     };
 
-    const handleModeSwitch = (mode) => {
-        const currentMode = state.settings?.attendanceMode || 'erp';
-        if (mode === currentMode) return;
 
-        if (mode === 'manual') {
-            showAlert(
-                'Switch to Manual Mode?',
-                'This will disable background portal sync and autopilot. You will need to mark your own attendance.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Switch to Manual', onPress: () => updateSetting('attendanceMode', 'manual') }
-                ]
-            );
-        } else {
-            showAlert(
-                'Switch to ERP Mode?',
-                'The university portal will become the source of truth. Manual attendance marks will be permanently overwritten each time the app syncs.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Switch to ERP', onPress: () => updateSetting('attendanceMode', 'erp') }
-                ]
-            );
-        }
-    };
-
-    const handleToggleAutopilot = () => {
-        dispatch({
-            type: 'UPDATE_AUTOPILOT_SETTINGS',
-            payload: { autopilotEnabled: !autopilotEnabled },
-        });
-    };
-
-    const handleTimeChange = (event, selectedDate) => {
-        if (Platform.OS === 'android') {
-            setShowTimePicker(false);
-        }
-        if (selectedDate) {
-            const hours = String(selectedDate.getHours()).padStart(2, '0');
-            const minutes = String(selectedDate.getMinutes()).padStart(2, '0');
-            dispatch({
-                type: 'UPDATE_AUTOPILOT_SETTINGS',
-                payload: { autopilotTime: `${hours}:${minutes}` },
-            });
-        }
-    };
-
-    const handleDefaultChange = (value) => {
-        dispatch({
-            type: 'UPDATE_AUTOPILOT_SETTINGS',
-            payload: { autopilotDefault: value },
-        });
-    };
-
-    const formatTime = (timeStr) => {
-        if (!timeStr) return '';
-        const [h, m] = timeStr.split(':');
-        let hours = parseInt(h, 10);
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12 || 12;
-        return `${hours}:${m} ${ampm}`;
-    };
-
-    const parseTimeToDate = (timeStr) => {
-        const [h, m] = (timeStr || '20:00').split(':');
-        const d = new Date();
-        d.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
-        return d;
-    };
-
-    const openWebTimePicker = () => {
-        let [h, m] = (autopilotTime || '20:00').split(':');
-        let hour = parseInt(h, 10);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        hour = hour % 12 || 12;
-
-        setWebHour(String(hour).padStart(2, '0'));
-        setWebMinute(m);
-        setWebAmPm(ampm);
-        setWebTimePickerVisible(true);
-    };
-
-    const handleSaveWebTime = () => {
-        let h = parseInt(webHour, 10);
-        let m = parseInt(webMinute, 10);
-
-        // Clamp with feedback
-        if (isNaN(h) || h < 1 || h > 12) {
-            h = 12;
-            setWebHour('12');
-        }
-        if (isNaN(m) || m < 0 || m > 59) {
-            m = 0;
-            setWebMinute('00');
-        }
-
-        if (h === 12 && webAmPm === 'AM') h = 0;
-        else if (h < 12 && webAmPm === 'PM') h += 12;
-
-        const hStr = String(h).padStart(2, '0');
-        const mStr = String(m).padStart(2, '0');
-
-        dispatch({
-            type: 'UPDATE_AUTOPILOT_SETTINGS',
-            payload: { autopilotTime: `${hStr}:${mStr}` },
-        });
-        setWebTimePickerVisible(false);
-    };
 
     const handleSaveName = () => {
         if (tempName.trim()) {
@@ -403,31 +286,9 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* Core Preferences Section (Landing Page) */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>PREFERENCES</Text>
                     <View style={styles.cardGroup}>
-                        <View style={[styles.settingRow, styles.groupItem]}>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.cardTitle}>App Mode</Text>
-                                <Text style={styles.cardDescription}>ERP sync vs Manual tracking</Text>
-                            </View>
-                            <View style={styles.optionsGroupSmall}>
-                                <TouchableOpacity
-                                    style={[styles.smallOptionBtn, (state.settings?.attendanceMode !== 'manual') && styles.optionButtonActive]}
-                                    onPress={() => handleModeSwitch('erp')}
-                                >
-                                    <Text style={[styles.optionText, (state.settings?.attendanceMode !== 'manual') && styles.optionTextActive]}>ERP</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.smallOptionBtn, state.settings?.attendanceMode === 'manual' && styles.optionButtonActive]}
-                                    onPress={() => handleModeSwitch('manual')}
-                                >
-                                    <Text style={[styles.optionText, state.settings?.attendanceMode === 'manual' && styles.optionTextActive]}>Manual</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                        <View style={styles.divider} />
                         <View style={[styles.settingRow, styles.groupItem]}>
                             <View style={styles.settingInfo}>
                                 <Text style={styles.cardTitle}>Startup Screen</Text>
@@ -451,117 +312,7 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* Autopilot Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>AUTOMATION</Text>
 
-                    <View style={styles.card}>
-                        <View style={styles.settingRow}>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.settingLabel}>Autopilot Mode</Text>
-                                <Text style={styles.settingDescription}>
-                                    Automatically mark untouched attendance cards
-                                </Text>
-                            </View>
-                            <Switch
-                                value={autopilotEnabled}
-                                onValueChange={handleToggleAutopilot}
-                                trackColor={{ false: COLORS.border, true: COLORS.success }}
-                                thumbColor={COLORS.cardBackground}
-                            />
-                        </View>
-
-                        {autopilotEnabled && (
-                            <>
-                                <View style={[styles.divider, { marginVertical: SPACING.md, marginLeft: 0 }]} />
-
-                                <View style={styles.settingRow}>
-                                    <View style={styles.settingInfo}>
-                                        <Text style={styles.settingLabel}>Trigger Time</Text>
-                                        <Text style={styles.settingDescription}>
-                                            When should missing cards be auto-marked?
-                                        </Text>
-                                    </View>
-                                    <TouchableOpacity
-                                        style={styles.timeValueBox}
-                                        onPress={() => {
-                                            if (Platform.OS === 'web') {
-                                                openWebTimePicker();
-                                            } else {
-                                                setShowTimePicker(true);
-                                            }
-                                        }}
-                                    >
-                                        <Text style={styles.timeValueText}>
-                                            {formatTime(autopilotTime)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {showTimePicker && (
-                                    <View style={Platform.OS === 'ios' && styles.iosPickerContainer}>
-                                        <DateTimePicker
-                                            value={parseTimeToDate(autopilotTime)}
-                                            mode="time"
-                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                            onChange={handleTimeChange}
-                                        />
-                                        {Platform.OS === 'ios' && (
-                                            <TouchableOpacity
-                                                style={styles.pickerDoneBtn}
-                                                onPress={() => setShowTimePicker(false)}
-                                            >
-                                                <Text style={styles.pickerDoneText}>Done</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                )}
-
-                                <View style={[styles.divider, { marginVertical: SPACING.md, marginLeft: 0 }]} />
-
-                                <View style={styles.settingRow}>
-                                    <View style={styles.settingInfo}>
-                                        <Text style={styles.settingLabel}>Default Status</Text>
-                                        <Text style={styles.settingDescription}>
-                                            What should untouched cards be marked as?
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <View style={styles.radioGroup}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.radioOption,
-                                            autopilotDefault === 'present' && styles.radioOptionSelectedPresent
-                                        ]}
-                                        onPress={() => handleDefaultChange('present')}
-                                    >
-                                        <Text style={[
-                                            styles.radioText,
-                                            autopilotDefault === 'present' && styles.radioTextSelectedPresent
-                                        ]}>
-                                            Present
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.radioOption,
-                                            autopilotDefault === 'absent' && styles.radioOptionSelectedAbsent
-                                        ]}
-                                        onPress={() => handleDefaultChange('absent')}
-                                    >
-                                        <Text style={[
-                                            styles.radioText,
-                                            autopilotDefault === 'absent' && styles.radioTextSelectedAbsent
-                                        ]}>
-                                            Absent
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </>
-                        )}
-                    </View>
-                </View>
 
                 {/* Appearance Section */}
                 <View style={styles.section}>
@@ -660,30 +411,31 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 )}
 
-                {/* Timetable Management */}
+                {/* ERP Portal Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>MANAGE CLASSES</Text>
+                    <Text style={styles.sectionTitle}>ERP PORTAL</Text>
 
                     <View style={styles.cardGroup}>
-                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditTimetable')}>
-                            <Text style={styles.linkText}>Edit Timetable</Text>
-                            <Text style={styles.chevron}>›</Text>
-                        </TouchableOpacity>
-                        <View style={styles.divider} />
-                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditSubjects')}>
-                            <Text style={styles.linkText}>Edit Subjects</Text>
-                            <Text style={styles.chevron}>›</Text>
-                        </TouchableOpacity>
-                        <View style={styles.divider} />
-                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('AttendanceStats', { fromSettings: true })}>
-                            <Text style={styles.linkText}>Update Past Attendance</Text>
-                            <Text style={styles.chevron}>›</Text>
-                        </TouchableOpacity>
-                        <View style={styles.divider} />
-                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('SyncFromPortal')}>
-                            <Text style={styles.linkText}>Sync from Portal</Text>
-                            <Text style={styles.chevron}>›</Text>
-                        </TouchableOpacity>
+                        <View style={[styles.settingRow, styles.groupItem]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>
+                                    Status: {state.settings?.erpConnected ? 'Connected ✅' : 'Disconnected ❌'}
+                                </Text>
+                                <Text style={styles.cardDescription}>
+                                    Last synced: {state.settings?.lastErpSync ? new Date(state.settings.lastErpSync).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }) : 'Never'}
+                                </Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={[styles.syncButton, isErpSyncing && styles.syncingButton]}
+                                onPress={() => triggerErpSync(true)}
+                                disabled={isErpSyncing}
+                            >
+                                <Text style={styles.syncButtonText}>
+                                    {isErpSyncing ? 'Syncing...' : 'Sync Now'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        {/* We removed the dead manual timetable & subjects editing paths */}
                     </View>
                 </View>
 
@@ -831,60 +583,7 @@ const SettingsScreen = ({ navigation }) => {
                 </View>
             </Modal>
 
-            {/* Custom Web Time Picker */}
-            <Modal visible={webTimePickerVisible} animationType="fade" transparent={true} onRequestClose={() => setWebTimePickerVisible(false)}>
-                <View style={[styles.modalOverlay, styles.centeredOverlay]}>
-                    <View style={styles.timePickerModalContent}>
-                        <Text style={styles.modalTitle}>Set Autopilot Time</Text>
 
-                        <View style={styles.timeInputContainer}>
-                            <TextInput
-                                style={styles.customTimeInput}
-                                keyboardType="number-pad"
-                                maxLength={2}
-                                value={webHour}
-                                onChangeText={(val) => setWebHour(val.replace(/[^0-9]/g, ''))}
-                                placeholder="12"
-                                placeholderTextColor={COLORS.textMuted}
-                            />
-                            <Text style={styles.timeColon}>:</Text>
-                            <TextInput
-                                style={styles.customTimeInput}
-                                keyboardType="number-pad"
-                                maxLength={2}
-                                value={webMinute}
-                                onChangeText={(val) => setWebMinute(val.replace(/[^0-9]/g, ''))}
-                                placeholder="00"
-                                placeholderTextColor={COLORS.textMuted}
-                            />
-
-                            <View style={styles.amPmToggle}>
-                                <TouchableOpacity
-                                    style={[styles.amPmBtn, webAmPm === 'AM' && styles.amPmBtnActive]}
-                                    onPress={() => setWebAmPm('AM')}
-                                >
-                                    <Text style={[styles.amPmText, webAmPm === 'AM' && styles.amPmTextActive]}>AM</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.amPmBtn, webAmPm === 'PM' && styles.amPmBtnActive]}
-                                    onPress={() => setWebAmPm('PM')}
-                                >
-                                    <Text style={[styles.amPmText, webAmPm === 'PM' && styles.amPmTextActive]}>PM</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={[styles.modalButton, styles.modalButtonCancel]} onPress={() => setWebTimePickerVisible(false)}>
-                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.modalButton, styles.modalButtonConfirm]} onPress={handleSaveWebTime}>
-                                <Text style={styles.modalButtonTextConfirm}>Set Time</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
 
             {/* Threshold Editor Modal */}
             <Modal visible={thresholdModalVisible} animationType="slide" transparent={true} onRequestClose={() => setThresholdModalVisible(false)}>
@@ -1206,6 +905,22 @@ const getStyles = () => StyleSheet.create({
     version: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: 4 },
     bottomPadding: { height: 100 },
 
+    // Sync button styles
+    syncButton: {
+        backgroundColor: COLORS.primaryLight,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 8,
+        borderRadius: BORDER_RADIUS.sm,
+    },
+    syncingButton: {
+        opacity: 0.7,
+    },
+    syncButtonText: {
+        color: COLORS.primary,
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '600',
+    },
+
     // Login with Different Code card styles
     loginButtonCard: {
         backgroundColor: COLORS.cardBackground,
@@ -1246,70 +961,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textSecondary,
     },
 
-    // Autopilot specific styles
-    timeValueBox: {
-        backgroundColor: COLORS.inputBackground,
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 8,
-        borderRadius: BORDER_RADIUS.md,
-    },
-    timeValueText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: COLORS.primary,
-    },
-    iosPickerContainer: {
-        backgroundColor: COLORS.background,
-        padding: SPACING.md,
-        alignItems: 'center',
-    },
-    pickerDoneBtn: {
-        backgroundColor: COLORS.primaryLight,
-        paddingHorizontal: SPACING.lg,
-        paddingVertical: SPACING.sm,
-        borderRadius: BORDER_RADIUS.full,
-        marginTop: SPACING.sm,
-    },
-    pickerDoneText: {
-        color: COLORS.primary,
-        fontWeight: '600',
-    },
-    radioGroup: {
-        flexDirection: 'row',
-        paddingHorizontal: SPACING.md,
-        paddingBottom: SPACING.md,
-        gap: SPACING.sm,
-        marginTop: SPACING.sm,
-    },
-    radioOption: {
-        flex: 1,
-        paddingVertical: SPACING.sm,
-        borderRadius: BORDER_RADIUS.sm,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        alignItems: 'center',
-    },
-    radioOptionSelectedPresent: {
-        borderColor: COLORS.success,
-        backgroundColor: COLORS.successLight,
-    },
-    radioOptionSelectedAbsent: {
-        borderColor: COLORS.danger,
-        backgroundColor: COLORS.dangerLight,
-    },
-    radioText: {
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textSecondary,
-        fontWeight: '500',
-    },
-    radioTextSelectedPresent: {
-        color: COLORS.successDark,
-        fontWeight: '600',
-    },
-    radioTextSelectedAbsent: {
-        color: COLORS.dangerDark,
-        fontWeight: '600',
-    },
+
 
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

@@ -229,7 +229,11 @@ export function useErpAutoSync(state, dispatch) {
                     }
                     dispatch({
                         type: 'ERP_OVERWRITE_CALENDAR',
-                        payload: { records: result.records, trackingStartDate: result.earliestDate },
+                        payload: { 
+                            records: result.records, 
+                            trackingStartDate: result.earliestDate,
+                            lastSubjectSyncDates: result.lastSubjectSyncDates
+                        },
                     });
                     setSyncStatus({ calendarSyncStatus: 'ok' });
                     logger.info('✅', `ERP calendar sync: ${result.totalDays} days`);

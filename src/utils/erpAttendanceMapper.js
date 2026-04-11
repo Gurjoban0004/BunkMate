@@ -261,6 +261,8 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
     // Step 2: Convert calendar data into attendanceRecords format
     let earliestDate = null;
 
+    const lastSubjectSyncDates = {};
+
     for (const [dateKey, dayData] of Object.entries(calendarData)) {
         if (!earliestDate || dateKey < earliestDate) {
             earliestDate = dateKey;
@@ -270,12 +272,18 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
 
         for (const [subjectName, attendanceInfo] of Object.entries(dayData)) {
             const appSubjectId = subjectMapping[subjectName];
-            if (!appSubjectId) continue; // shouldn't happen but safety check
+            if (!appSubjectId) continue; 
 
             records[dateKey][appSubjectId] = {
                 status: attendanceInfo.status, // 'present' or 'absent'
                 source: 'erp', // Explicitly label as synced from ERP
+                units: attendanceInfo.units || 1,
             };
+
+            // Track freshness
+            if (!lastSubjectSyncDates[appSubjectId] || dateKey > lastSubjectSyncDates[appSubjectId]) {
+                lastSubjectSyncDates[appSubjectId] = dateKey;
+            }
         }
     }
 
@@ -285,5 +293,6 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
         subjectMapping,
         totalDays: Object.keys(records).length,
         earliestDate,
+        lastSubjectSyncDates,
     };
 }
