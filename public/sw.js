@@ -3,8 +3,8 @@
  * Provides offline support and install capability.
  */
 
-const CACHE_NAME = 'presence-v1';
-const STATIC_ASSETS = ['/', '/index.html'];
+const CACHE_NAME = 'presence-v2';
+const STATIC_ASSETS = ['/', '/index.html', '/app'];
 
 // Install: cache static shell
 self.addEventListener('install', (event) => {

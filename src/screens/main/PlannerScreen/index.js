@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES } from '../../../theme/theme';
 import { useApp } from '../../../context/AppContext';
@@ -19,8 +19,17 @@ import NoClassesTodayView from './NoClassesTodayView';
  */
 const PlannerScreen = ({ navigation }) => {
     const styles = getStyles();
-    const { state } = useApp();
+    const { state, triggerErpSync, isErpSyncing } = useApp();
     const [activeMode, setActiveMode] = useState('skip');
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        if (state.settings?.erpConnected && triggerErpSync) {
+            triggerErpSync(true);
+        }
+        setTimeout(() => setRefreshing(false), 800);
+    }, [state.settings?.erpConnected, triggerErpSync]);
 
     // Get all subjects in planner format
     const subjects = useMemo(
@@ -51,6 +60,13 @@ const PlannerScreen = ({ navigation }) => {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={COLORS.primary}
+                    />
+                }
             >
                 {/* Header */}
                 <View style={styles.header}>

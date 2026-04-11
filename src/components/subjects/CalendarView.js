@@ -37,11 +37,25 @@ export default function CalendarView({ subjectId, state }) {
             let status = 'none'; // no data
             if (isHoliday) {
                 status = 'holiday';
-            } else if (dayRecord?.[subjectId]) {
+            } else if (subjectId && dayRecord?.[subjectId]) {
                 const record = dayRecord[subjectId];
                 if (record.status === 'present') status = 'present';
                 else if (record.status === 'absent') status = 'absent';
                 else if (record.status === 'cancelled') status = 'cancelled';
+            } else if (!subjectId && dayRecord) {
+                // Global Heatmap Mode: Aggregate all classes for the day
+                const records = Object.values(dayRecord).filter(r => r && typeof r === 'object');
+                const isAbsent = records.some(r => r.status === 'absent');
+                const isPresent = records.some(r => r.status === 'present');
+                const isCancelled = records.some(r => r.status === 'cancelled');
+
+                if (isAbsent) {
+                    status = 'absent'; // Show red if you skipped ANYTHING that day
+                } else if (isPresent) {
+                    status = 'present'; // Fully safe day
+                } else if (isCancelled) {
+                    status = 'cancelled';
+                }
             }
 
             data.push({ day: d, dateKey, status });
@@ -68,12 +82,22 @@ export default function CalendarView({ subjectId, state }) {
         gridCells.push({ type: 'day', ...d, key: d.dateKey });
     });
 
-    const getBgColor = (status) => {
+    const getDotColor = (status) => {
         switch (status) {
-            case 'present': return COLORS.successLight;
-            case 'absent': return COLORS.dangerLight;
-            case 'holiday': return COLORS.primaryLight;
+            case 'present':  return COLORS.success;
+            case 'absent':   return COLORS.danger;
+            case 'holiday':  return COLORS.primary;
             case 'cancelled': return COLORS.border;
+            default: return null;
+        }
+    };
+
+    const getCellBg = (status) => {
+        switch (status) {
+            case 'present':  return COLORS.successLight;
+            case 'absent':   return COLORS.dangerLight;
+            case 'holiday':  return COLORS.primaryLight;
+            case 'cancelled': return COLORS.inputBackground;
             default: return 'transparent';
         }
     };
@@ -109,7 +133,7 @@ export default function CalendarView({ subjectId, state }) {
                         {cell.type === 'day' ? (
                             <View style={[
                                 styles.cellInner,
-                                cell.status !== 'none' && { backgroundColor: getBgColor(cell.status) }
+                                cell.status !== 'none' && { backgroundColor: getCellBg(cell.status) }
                             ]}>
                                 <Text style={[
                                     styles.dayText,
@@ -118,6 +142,9 @@ export default function CalendarView({ subjectId, state }) {
                                 ]}>
                                     {cell.day}
                                 </Text>
+                                {getDotColor(cell.status) && (
+                                    <View style={[styles.statusDot, { backgroundColor: getDotColor(cell.status) }]} />
+                                )}
                             </View>
                         ) : null}
                     </View>
@@ -127,15 +154,15 @@ export default function CalendarView({ subjectId, state }) {
             {/* Legend */}
             <View style={styles.legend}>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendBox, { backgroundColor: COLORS.successLight }]} />
+                    <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
                     <Text style={styles.legendText}>Attended</Text>
                 </View>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendBox, { backgroundColor: COLORS.dangerLight }]} />
+                    <View style={[styles.legendDot, { backgroundColor: COLORS.danger }]} />
                     <Text style={styles.legendText}>Skipped</Text>
                 </View>
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendBox, { backgroundColor: COLORS.primaryLight }]} />
+                    <View style={[styles.legendDot, { backgroundColor: COLORS.primary }]} />
                     <Text style={styles.legendText}>Holiday</Text>
                 </View>
             </View>
@@ -198,6 +225,12 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    statusDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 3,
+        marginTop: 2,
+    },
     dayText: {
         ...TYPOGRAPHY.bodySmall,
         color: COLORS.textPrimary,
@@ -222,9 +255,9 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         gap: SPACING.xs,
     },
-    legendBox: {
-        width: 14,
-        height: 14,
+    legendDot: {
+        width: 8,
+        height: 8,
         borderRadius: 4,
     },
     legendText: {

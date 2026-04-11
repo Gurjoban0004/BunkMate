@@ -732,3 +732,76 @@ export const applyTheme = (themeStr) => {
         }
     }
 };
+
+// ---------------------------------------------------------
+// GLASSMORPHISM — frosted glass card surfaces
+// Use these on cards that sit over gradient/image backgrounds
+// ---------------------------------------------------------
+export const GLASS = {
+    // Light mode: white tint with blur
+    light: {
+        backgroundColor: 'rgba(255, 255, 255, 0.72)',
+        borderColor: 'rgba(255, 255, 255, 0.9)',
+        borderWidth: 1,
+        ...(Platform.OS === 'web'
+            ? { backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }
+            : {}),
+    },
+    // Dark mode: navy tint with blur
+    dark: {
+        backgroundColor: 'rgba(20, 29, 46, 0.72)',
+        borderColor: 'rgba(142, 185, 254, 0.15)',
+        borderWidth: 1,
+        ...(Platform.OS === 'web'
+            ? { backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }
+            : {}),
+    },
+    // Subtle tinted glass — for stat chips, badges
+    tinted: {
+        backgroundColor: 'rgba(142, 185, 254, 0.12)',
+        borderColor: 'rgba(142, 185, 254, 0.25)',
+        borderWidth: 1,
+    },
+};
+
+// ---------------------------------------------------------
+// MICRO-INTERACTIONS — press feedback & animation timing
+// ---------------------------------------------------------
+export const MOTION = {
+    // Active opacity for TouchableOpacity press states
+    pressOpacity: 0.72,
+
+    // Spring config for layout animations (react-native Animated)
+    spring: {
+        tension: 120,
+        friction: 8,
+    },
+
+    // Timing durations (ms)
+    duration: {
+        fast: 150,
+        normal: 250,
+        slow: 400,
+    },
+
+    // Easing labels (use with Animated.timing)
+    easing: {
+        enter: 'ease-out',
+        exit: 'ease-in',
+        standard: 'ease-in-out',
+    },
+};
+
+// ---------------------------------------------------------
+// BORDER RADIUS — extended modern iOS/Android standards
+// ---------------------------------------------------------
+// BORDER_RADIUS already exported above; these are additive aliases
+// for components that want the "squircle" feel
+export const RADIUS = {
+    ...BORDER_RADIUS,
+    card: 16,       // Standard card corner
+    modal: 24,      // Bottom sheet / modal
+    chip: 100,      // Pill-shaped chips & badges
+    avatar: 14,     // Avatar thumbnails
+    input: 12,      // Text inputs
+};
