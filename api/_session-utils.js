@@ -27,10 +27,31 @@ const SESSION_KEY    = crypto.scryptSync(SECRET, SESSION_SALT,    32);
 const PERSISTENT_KEY = crypto.scryptSync(SECRET, PERSISTENT_SALT, 32);
 
 const MOBILE_HEADERS = {
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'application/json',
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Origin': 'null',
 };
+
+/**
+ * Generate a deterministic Apple-style UUID from a username.
+ * This produces a consistent, unique "device fingerprint" per user so the ERP
+ * treats every login from our app as a trusted mobile device.
+ *
+ * Format: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX (uppercase)
+ */
+function generateDeviceUUID(username) {
+    const hash = crypto.createHash('md5')
+        .update(`presence-device-${username}`)
+        .digest('hex');
+    return [
+        hash.slice(0, 8),
+        hash.slice(8, 12),
+        hash.slice(12, 16),
+        hash.slice(16, 20),
+        hash.slice(20, 32),
+    ].join('-').toUpperCase();
+}
 
 function encodeForm(obj) {
     return Object.entries(obj)
@@ -83,11 +104,15 @@ function decryptPersistent(token) {
  * @returns {{ userId, sessionId, roleId, apiKey, studentId, studentName }}
  * @throws on network failure or invalid OTP
  */
-async function verifyOtpWithERP(authUserId, otp) {
-    const otpRes = await fetch(`${ERP_BASE}/mobile/verifyOtp`, {
+async function verifyOtpWithERP(authUserId, otp, deviceIdUUID = '') {
+    const otpRes = await fetch(`${ERP_BASE}/mobilev2/verifyOtp`, {
         method: 'POST',
         headers: MOBILE_HEADERS,
-        body: encodeForm({ authUserId, OTPText: otp }),
+        body: encodeForm({
+            deviceIdUUID: deviceIdUUID,
+            OTPText:      otp,
+            authUserId:   authUserId,
+        }),
     });
 
     if (!otpRes.ok) throw new Error('OTP verification request failed');
@@ -101,13 +126,14 @@ async function verifyOtpWithERP(authUserId, otp) {
     if (!firstUser) throw new Error('Unexpected ERP OTP response');
 
     return {
-        userId:      String(firstUser.userId      || otpData.userId      || ''),
-        sessionId:   String(firstUser.sessionId   || otpData.sessionId   || ''),
-        roleId:      String(firstUser.roleId      || otpData.roleId      || ''),
-        apiKey:      String(firstUser.apiKey      || firstUser.appKey    || otpData.apiKey || ''),
-        studentId:   String(firstUser.studentId   || firstUser.id        || ''),
-        studentName: String(firstUser.name        || firstUser.profileName || ''),
-        studentPhoto: String(firstUser.photo      || ''),
+        userId:       String(firstUser.userId      || otpData.userId      || ''),
+        sessionId:    String(firstUser.sessionId   || otpData.sessionId   || ''),
+        roleId:       String(firstUser.roleId      || otpData.roleId      || ''),
+        apiKey:       String(firstUser.apiKey      || firstUser.appKey    || otpData.apiKey || ''),
+        studentId:    String(firstUser.studentId   || firstUser.id        || ''),
+        studentName:  String(firstUser.name        || firstUser.profileName || ''),
+        studentPhoto: String(firstUser.photo       || ''),
+        securityToken: String(firstUser.token      || otpData.token       || ''),
     };
 }
 
@@ -117,18 +143,18 @@ async function verifyOtpWithERP(authUserId, otp) {
  * With OTP: completes full flow, returns session object.
  */
 async function reloginERP(username, password, otp = null) {
-    // Step 1: init client (non-critical)
-    await fetch(`${ERP_BASE}/mobile/getClientDetails`, {
-        method: 'POST',
-        headers: MOBILE_HEADERS,
-        body: encodeForm({ schoolCode: SCHOOL_CODE }),
-    }).catch(() => {});
+    const deviceIdUUID = generateDeviceUUID(username);
 
-    // Step 2: authenticate
-    const loginRes  = await fetch(`${ERP_BASE}/mobile/appLoginAuthV2`, {
+    // Step 1: authenticate via mobilev2 (no getClientDetails needed)
+    const loginRes = await fetch(`${ERP_BASE}/mobilev2/appLoginAuthV2`, {
         method: 'POST',
         headers: MOBILE_HEADERS,
-        body: encodeForm({ txtUsername: username, txtPassword: password }),
+        body: encodeForm({
+            deviceIdUUID,
+            device:      'iOS',
+            txtUsername: username,
+            txtPassword: password,
+        }),
     });
     if (!loginRes.ok) throw new Error('ERP login request failed');
     const loginData = await loginRes.json();
@@ -145,8 +171,8 @@ async function reloginERP(username, password, otp = null) {
         return { needsOtp: true, authUserId: String(authUserId) };
     }
 
-    // Step 3: verify OTP using shared helper
-    return verifyOtpWithERP(String(authUserId), otp);
+    // Step 2: verify OTP using shared helper (with deviceIdUUID)
+    return verifyOtpWithERP(String(authUserId), otp, deviceIdUUID);
 }
 
 /**
@@ -205,6 +231,7 @@ module.exports = {
     isSessionDead,
     setCorsHeaders,
     encodeForm,
+    generateDeviceUUID,
     MOBILE_HEADERS,
     ERP_BASE,
 };

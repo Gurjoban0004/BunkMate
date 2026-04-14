@@ -164,15 +164,16 @@ module.exports = async function handler(req, res) {
 
     // ── Attempt ERP fetch ─────────────────────────────────────────
     async function fetchAttendance(sess) {
-        const r = await fetch(`${ERP_BASE}/mobile/commonPage`, {
+        const r = await fetch(`${ERP_BASE}/mobilev2/commonPage`, {
             method: 'POST',
             headers: MOBILE_HEADERS,
             body: encodeForm({
-                commonPageId: '28',
-                userId:    sess.userId,
-                sessionId: sess.sessionId,
-                roleId:    sess.roleId,
-                device:    'android',
+                commonPageId:  '28',
+                deviceIdUUID:  sess.deviceIdUUID || '',
+                userId:        sess.userId,
+                sessionId:     sess.sessionId,
+                roleId:        sess.roleId,
+                appKey:        sess.apiKey || '',
             }),
         });
         return r;

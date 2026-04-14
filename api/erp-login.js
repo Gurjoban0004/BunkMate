@@ -15,11 +15,11 @@
 const {
     setCorsHeaders,
     encodeForm,
+    generateDeviceUUID,
     MOBILE_HEADERS,
     ERP_BASE,
 } = require('./_session-utils');
 
-const SCHOOL_CODE = process.env.ERP_SCHOOL_CODE || '800002';
 
 module.exports = async function handler(req, res) {
     try {
@@ -43,22 +43,19 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        // Step 1: Initialize client details
-        const clientRes = await fetch(`${ERP_BASE}/mobile/getClientDetails`, {
+        const deviceIdUUID = generateDeviceUUID(username);
+
+        // Authenticate via mobilev2 — mirrors the official iOS app exactly.
+        // No getClientDetails pre-flight needed for mobilev2.
+        const loginRes = await fetch(`${ERP_BASE}/mobilev2/appLoginAuthV2`, {
             method: 'POST',
             headers: MOBILE_HEADERS,
-            body: encodeForm({ schoolCode: SCHOOL_CODE }),
-        });
-
-        if (!clientRes.ok) {
-            return res.status(502).json({ error: 'Failed to connect to college portal' });
-        }
-
-        // Step 2: Authenticate
-        const loginRes = await fetch(`${ERP_BASE}/mobile/appLoginAuthV2`, {
-            method: 'POST',
-            headers: MOBILE_HEADERS,
-            body: encodeForm({ txtUsername: username, txtPassword: password }),
+            body: encodeForm({
+                deviceIdUUID,
+                device:      'iOS',
+                txtUsername: username,
+                txtPassword: password,
+            }),
         });
 
         if (!loginRes.ok) {

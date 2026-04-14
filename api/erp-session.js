@@ -24,6 +24,7 @@ const {
     encryptSession,
     reloginERP,
     verifyOtpWithERP,
+    generateDeviceUUID,
     setCorsHeaders,
     ERP_BASE,
 } = require('./_session-utils');
@@ -94,17 +95,21 @@ module.exports = async function handler(req, res) {
         }
 
         try {
-            // Use shared OTP verification helper — no duplication
-            const session = await verifyOtpWithERP(authUserId, otp);
+            // Generate deterministic device UUID from stored credentials
+            const deviceIdUUID = generateDeviceUUID(creds.username);
+
+            // Use shared OTP verification helper with deviceIdUUID
+            const session = await verifyOtpWithERP(authUserId, otp, deviceIdUUID);
 
             const studentName = creds.studentName || session.studentName || '';
 
             const newToken = encryptSession({
-                userId:    session.userId,
-                sessionId: session.sessionId,
-                roleId:    session.roleId,
-                apiKey:    session.apiKey,
-                studentId: session.studentId,
+                userId:       session.userId,
+                sessionId:    session.sessionId,
+                roleId:       session.roleId,
+                apiKey:       session.apiKey,
+                studentId:    session.studentId,
+                deviceIdUUID: deviceIdUUID,
             });
 
             // Re-encrypt persistent token to update studentName if it changed

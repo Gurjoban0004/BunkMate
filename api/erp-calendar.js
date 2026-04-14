@@ -193,15 +193,16 @@ module.exports = async function handler(req, res) {
     }
 
     async function fetchCalendar(sess) {
-        return await fetch(`${ERP_BASE}/mobile/commonPage`, {
+        return await fetch(`${ERP_BASE}/mobilev2/commonPage`, {
             method: 'POST',
             headers: MOBILE_HEADERS,
             body: encodeForm({
-                commonPageId: '85', // Discovered Calendar Endpoint
-                userId:    sess.userId,
-                sessionId: sess.sessionId,
-                roleId:    sess.roleId,
-                device:    'android',
+                commonPageId:  '85',
+                deviceIdUUID:  sess.deviceIdUUID || '',
+                userId:        sess.userId,
+                sessionId:     sess.sessionId,
+                roleId:        sess.roleId,
+                appKey:        sess.apiKey || '',
             }),
         });
     }

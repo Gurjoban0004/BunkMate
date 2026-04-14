@@ -19,6 +19,7 @@ const {
     encryptSession,
     encryptPersistent,
     verifyOtpWithERP,
+    generateDeviceUUID,
     setCorsHeaders,
     ERP_BASE,
 } = require('./_session-utils');
@@ -44,19 +45,23 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        const session = await verifyOtpWithERP(authUserId, otp);
+        // Generate deterministic device UUID from username (if provided)
+        const deviceIdUUID = username ? generateDeviceUUID(username) : '';
+
+        const session = await verifyOtpWithERP(authUserId, otp, deviceIdUUID);
 
         if (!session.userId || !session.sessionId) {
             return res.status(502).json({ error: 'Could not retrieve session details' });
         }
 
-        // Session token — no expiry, refreshed on failure not on time
+        // Session token — includes deviceIdUUID so data endpoints can pass it to ERP
         const token = encryptSession({
-            userId:    session.userId,
-            sessionId: session.sessionId,
-            roleId:    session.roleId,
-            apiKey:    session.apiKey,
-            studentId: session.studentId,
+            userId:       session.userId,
+            sessionId:    session.sessionId,
+            roleId:       session.roleId,
+            apiKey:       session.apiKey,
+            studentId:    session.studentId,
+            deviceIdUUID: deviceIdUUID,
         });
 
         // Persistent token — stores credentials for auto re-login, no expiry
