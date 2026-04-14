@@ -28,7 +28,7 @@ export default function PlannerModeToggle({ activeMode, onModeChange }) {
                     {
                         left: slideAnim.interpolate({
                             inputRange: [0, 1],
-                            outputRange: ['1%', '50%'],
+                            outputRange: ['2%', '51%'],
                         }),
                     },
                 ]}
@@ -60,7 +60,7 @@ const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.full,
+        borderRadius: BORDER_RADIUS.md,
         padding: 4,
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.lg,
@@ -70,28 +70,29 @@ const getStyles = () => StyleSheet.create({
         position: 'absolute',
         top: 4,
         bottom: 4,
-        width: '48%',
+        width: '47%',
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.full,
+        borderRadius: BORDER_RADIUS.sm,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
+        shadowOpacity: 0.1,
         shadowRadius: 3,
-        elevation: 3,
+        elevation: 2,
     },
     tab: {
         flex: 1,
         paddingVertical: 10,
         alignItems: 'center',
-        borderRadius: BORDER_RADIUS.full,
+        borderRadius: BORDER_RADIUS.sm,
         zIndex: 1,
     },
     tabText: {
         fontSize: FONT_SIZES.sm,
         fontWeight: '600',
-        color: COLORS.textMuted,
+        color: COLORS.textSecondary,
     },
     activeTabText: {
-        color: COLORS.primary,
+        color: COLORS.textPrimary,
+        fontWeight: '700',
     },
 });

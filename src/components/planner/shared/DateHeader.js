@@ -24,9 +24,10 @@ export default function DateHeader({ date }) {
 
 const getStyles = () => StyleSheet.create({
     date: {
-        fontSize: FONT_SIZES.sm,
+        fontSize: FONT_SIZES.md,
+        fontWeight: '500',
         color: COLORS.textSecondary,
         paddingHorizontal: SPACING.lg,
-        marginBottom: SPACING.sm,
+        marginBottom: SPACING.md,
     },
 });

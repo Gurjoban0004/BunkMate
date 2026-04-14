@@ -70,7 +70,10 @@ const PlannerScreen = ({ navigation }) => {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Planner</Text>
+                    <View style={styles.headerLeft}>
+                        <Text style={styles.headerTitle}>Skip Planner</Text>
+                        <Text style={styles.headerSubtitle}>Plan your days off strategically</Text>
+                    </View>
                     <Text style={styles.headerEmoji}>🎯</Text>
                 </View>
 
@@ -127,17 +130,27 @@ const getStyles = () => StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         paddingHorizontal: SPACING.lg,
         marginBottom: SPACING.sm,
     },
+    headerLeft: {
+        flex: 1,
+    },
     headerTitle: {
-        fontSize: FONT_SIZES.xl,
-        fontWeight: '700',
+        fontSize: 28,
+        fontWeight: '800',
+        letterSpacing: -0.5,
         color: COLORS.textPrimary,
+    },
+    headerSubtitle: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textSecondary,
+        marginTop: 4,
     },
     headerEmoji: {
         fontSize: 28,
+        marginTop: 2,
     },
 });
 

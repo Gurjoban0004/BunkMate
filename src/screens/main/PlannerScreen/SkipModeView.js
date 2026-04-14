@@ -74,29 +74,45 @@ export default function SkipModeView({ subjects, onSubjectPress, activeDate = ne
 
     return (
         <View style={styles.container}>
-            {/* Skip Summary Card */}
-            <View style={styles.summaryCard}>
-                <View style={styles.summaryHeader}>
-                    <Text style={styles.summaryEmoji}>{skipSummary.emoji}</Text>
-                    <View style={styles.summaryInfo}>
-                        <Text style={styles.summaryTitle}>
-                            {skipSummary.totalSkippable} skippable classes
-                        </Text>
-                        <Text style={styles.summaryMessage}>{skipSummary.message}</Text>
-                    </View>
+            {/* Quick Answer Card — prototype style */}
+            <View style={[
+                styles.quickAnswerCard,
+                skipSummary.dangerCount > 0 ? styles.quickAnswerDanger :
+                skipSummary.warningCount > 0 ? styles.quickAnswerWarning :
+                styles.quickAnswerSafe,
+            ]}>
+                <View style={[
+                    styles.quickAnswerIcon,
+                    skipSummary.dangerCount > 0 ? styles.iconDanger :
+                    skipSummary.warningCount > 0 ? styles.iconWarning :
+                    styles.iconSafe,
+                ]}>
+                    <Text style={styles.quickAnswerIconText}>
+                        {skipSummary.dangerCount > 0 ? '!' : skipSummary.warningCount > 0 ? '~' : '✓'}
+                    </Text>
                 </View>
-                <View style={styles.summaryBreakdown}>
-                    <View style={styles.breakdownItem}>
-                        <View style={[styles.breakdownDot, { backgroundColor: COLORS.success }]} />
-                        <Text style={styles.breakdownText}>{skipSummary.safeCount} safe</Text>
+                <View style={styles.quickAnswerContent}>
+                    <Text style={styles.quickAnswerTitle}>
+                        {skipSummary.dangerCount > 0
+                            ? `${skipSummary.dangerCount} subject${skipSummary.dangerCount > 1 ? 's' : ''} need attention`
+                            : skipSummary.totalSkippable > 0
+                            ? `${skipSummary.totalSkippable} skippable classes`
+                            : 'Better attend everything'}
+                    </Text>
+                    <Text style={styles.quickAnswerSubtitle}>{skipSummary.message}</Text>
+                </View>
+                <View style={styles.quickAnswerStats}>
+                    <View style={styles.statDot}>
+                        <View style={[styles.dot, { backgroundColor: COLORS.success }]} />
+                        <Text style={styles.statNum}>{skipSummary.safeCount}</Text>
                     </View>
-                    <View style={styles.breakdownItem}>
-                        <View style={[styles.breakdownDot, { backgroundColor: COLORS.warning }]} />
-                        <Text style={styles.breakdownText}>{skipSummary.warningCount} warning</Text>
+                    <View style={styles.statDot}>
+                        <View style={[styles.dot, { backgroundColor: COLORS.warning }]} />
+                        <Text style={styles.statNum}>{skipSummary.warningCount}</Text>
                     </View>
-                    <View style={styles.breakdownItem}>
-                        <View style={[styles.breakdownDot, { backgroundColor: COLORS.danger }]} />
-                        <Text style={styles.breakdownText}>{skipSummary.dangerCount} danger</Text>
+                    <View style={styles.statDot}>
+                        <View style={[styles.dot, { backgroundColor: COLORS.danger }]} />
+                        <Text style={styles.statNum}>{skipSummary.dangerCount}</Text>
                     </View>
                 </View>
             </View>
@@ -138,55 +154,82 @@ const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
     },
-    summaryCard: {
+    quickAnswerCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
         marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.lg,
+        marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderLeftWidth: 3,
         ...SHADOWS.small,
     },
-    summaryHeader: {
-        flexDirection: 'row',
+    quickAnswerSafe: {
+        borderLeftColor: COLORS.success,
+    },
+    quickAnswerWarning: {
+        borderLeftColor: COLORS.warning,
+    },
+    quickAnswerDanger: {
+        borderLeftColor: COLORS.danger,
+    },
+    quickAnswerIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: BORDER_RADIUS.sm,
         alignItems: 'center',
-        gap: SPACING.sm,
-        marginBottom: SPACING.sm,
+        justifyContent: 'center',
+        flexShrink: 0,
     },
-    summaryEmoji: {
-        fontSize: 28,
+    iconSafe: {
+        backgroundColor: COLORS.successLight,
     },
-    summaryInfo: {
-        flex: 1,
+    iconWarning: {
+        backgroundColor: COLORS.warningLight,
     },
-    summaryTitle: {
+    iconDanger: {
+        backgroundColor: COLORS.dangerLight,
+    },
+    quickAnswerIconText: {
         fontSize: FONT_SIZES.md,
         fontWeight: '700',
         color: COLORS.textPrimary,
     },
-    summaryMessage: {
+    quickAnswerContent: {
+        flex: 1,
+    },
+    quickAnswerTitle: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
+        marginBottom: 2,
+    },
+    quickAnswerSubtitle: {
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
-        marginTop: 2,
     },
-    summaryBreakdown: {
+    quickAnswerStats: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingTop: SPACING.sm,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
+        gap: 8,
+        alignItems: 'center',
     },
-    breakdownItem: {
+    statDot: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
+        gap: 3,
     },
-    breakdownDot: {
+    dot: {
         width: 8,
         height: 8,
         borderRadius: 4,
     },
-    breakdownText: {
+    statNum: {
         fontSize: FONT_SIZES.xs,
+        fontWeight: '600',
         color: COLORS.textSecondary,
     },
 });
