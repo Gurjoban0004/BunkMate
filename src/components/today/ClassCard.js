@@ -38,7 +38,7 @@ const ClassCard = ({
     const todayRecord = state.attendanceRecords[todayKey]?.[subjectId];
     const markedStatus = todayRecord?.status; // 'present', 'absent', or undefined
     const isSyncedFromErp = todayRecord?.source === 'erp';
-    
+
     // Freshness Engine drives predicted vs confirmed
     const isPredicted = freshnessData ? freshnessData.hasPrediction : (todayRecord?.source === 'prediction');
     // If not predicted and it has a status, but is NOT explicitly confirmed, we can assume it's a gap fallback.
@@ -157,28 +157,42 @@ const ClassCard = ({
                 isCurrentClass && styles.currentClassShadow,
             ]}
         >
-            {/* Color Accent Bar */}
+            {/* Color Accent Dot */}
             <View style={[styles.colorBar, { backgroundColor: color }]} />
 
             <View style={styles.content}>
-                {/* Header Row */}
+                {/* Header Row - Subject name + time on left, badge on right */}
                 <View style={styles.headerRow}>
                     <View style={styles.subjectInfo}>
-                        <View style={styles.titleRow}>
-                            <Text style={styles.subjectName}>{subjectName}</Text>
+                        <Text style={styles.subjectName}>{subjectName}</Text>
+                        <View style={styles.timeContainer}>
+                            <Text style={styles.time}>
+                                {formatTimeRange(startTime, endTime)}
+                            </Text>
                             {units > 1 && (
                                 <View style={styles.durationBadge}>
-                                    <Text style={styles.durationBadgeText}>{units}-HR CLASS</Text>
+                                    <Text style={styles.durationBadgeText}>{units}-HR</Text>
                                 </View>
                             )}
                         </View>
                     </View>
 
-                    <View style={styles.timeContainer}>
-                        <Text style={styles.time}>
-                            {formatTimeRange(startTime, endTime)}
-                        </Text>
-                    </View>
+                    {/* Status Badge or Safe indicator */}
+                    {!isDanger && !markedStatus && percentage >= (dangerThreshold + 10) && (
+                        <View style={[styles.durationBadge, { backgroundColor: COLORS.successLight, marginLeft: 8 }]}>
+                            <Text style={[styles.durationBadgeText, { color: COLORS.success }]}>SAFE</Text>
+                        </View>
+                    )}
+                    {isDanger && !markedStatus && (
+                        <View style={[styles.durationBadge, { backgroundColor: COLORS.dangerLight, marginLeft: 8 }]}>
+                            <Text style={[styles.durationBadgeText, { color: COLORS.danger }]}>LOW</Text>
+                        </View>
+                    )}
+                    {isEdge && !markedStatus && (
+                        <View style={[styles.durationBadge, { backgroundColor: COLORS.warningLight, marginLeft: 8 }]}>
+                            <Text style={[styles.durationBadgeText, { color: COLORS.warning }]}>EDGE</Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Progress Row */}
@@ -233,34 +247,25 @@ const ClassCard = ({
                 {/* Action Buttons or Status */}
                 {markedStatus ? (
                     // Already marked - show status and undo
-                    <View style={styles.markedContainer}>
+                    <View style={styles.buttonRow}>
                         <View style={[
-                            styles.statusBadge,
-                            markedStatus === 'present' ? styles.statusPresent : styles.statusAbsent,
+                            styles.actionButton,
+                            markedStatus === 'present' ? styles.presentButton : styles.absentButton,
+                            { flex: 1 },
                         ]}>
-                            {isSyncedFromErp ? (
-                                <Text style={styles.statusEmoji}>🔒</Text>
-                            ) : (
-                                <Text style={styles.statusEmoji}>
-                                    {markedStatus === 'present' ? '✅' : '❌'}
-                                </Text>
-                            )}
-                            <Text style={[
-                                styles.statusText,
-                                markedStatus === 'present' ? styles.statusTextPresent : styles.statusTextAbsent,
-                            ]}>
-                                {isSyncedFromErp ? 'Confirmed by ERP' : (
-                                    isPredicted 
-                                        ? `Prediction: ${markedStatus === 'present' ? 'Present' : 'Absent'}`
-                                        : `Marked ${markedStatus === 'present' ? 'Present' : 'Absent'}`
-                                )}
+                            <Text style={markedStatus === 'present' ? styles.presentButtonText : styles.absentButtonText}>
+                                {markedStatus === 'present' ? '✓ Present' : '✕ Absent'}
+                                {isSyncedFromErp && ' (ERP)'}
+                                {isPredicted && !isSyncedFromErp && ' (Predicted)'}
                             </Text>
-
                         </View>
 
                         {!isSyncedFromErp && (
-                            <TouchableOpacity style={styles.undoButton} onPress={handleUndo}>
-                                <Text style={styles.undoText}>Undo</Text>
+                            <TouchableOpacity
+                                style={[styles.actionButton, { backgroundColor: COLORS.inputBackground, borderWidth: 1, borderColor: COLORS.border }]}
+                                onPress={handleUndo}
+                            >
+                                <Text style={{ color: COLORS.textSecondary, fontWeight: '600' }}>Undo</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -273,7 +278,7 @@ const ClassCard = ({
                             activeOpacity={0.7}
                         >
                             <Text style={styles.presentButtonText}>
-                                Present ✓
+                                ✓ Present
                             </Text>
                         </TouchableOpacity>
 
@@ -283,7 +288,7 @@ const ClassCard = ({
                             activeOpacity={0.7}
                         >
                             <Text style={styles.absentButtonText}>
-                                Absent
+                                ✕ Absent
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -311,27 +316,38 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.cardGap,
         borderRadius: BORDER_RADIUS.lg,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(142, 185, 254, 0.15)',
         ...SHADOWS.small,
     },
     currentClassShadow: {
         ...SHADOWS.large,
+        borderWidth: 2,
+        borderColor: COLORS.primary,
     },
     colorBar: {
         position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 4,
+        left: 14,
+        top: 14,
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        shadowColor: 'currentColor',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 6,
+        elevation: 4,
     },
     content: {
         flex: 1,
-        padding: SPACING.cardPadding,
-        paddingLeft: SPACING.cardPadding + 4,
+        padding: 12,
+        paddingLeft: 28,
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
+        marginBottom: 6,
     },
     subjectInfo: {
         flex: 1,
@@ -340,55 +356,47 @@ const getStyles = () => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         flexWrap: 'wrap',
-        marginBottom: 2,
     },
     subjectName: {
-        fontSize: FONT_SIZES.md,
+        fontSize: 16,
         fontWeight: '700',
         color: COLORS.textPrimary,
-        marginRight: SPACING.sm,
-    },
-    durationBadge: {
-        backgroundColor: COLORS.primaryLight,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: BORDER_RADIUS.sm,
-    },
-    durationBadgeText: {
-        fontSize: 10,
-        fontWeight: 'bold',
-        color: COLORS.primary,
-        letterSpacing: 0.5,
+        lineHeight: 22,
     },
     timeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.inputBackground,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: 4,
-        borderRadius: BORDER_RADIUS.sm,
+        marginTop: 2,
     },
     time: {
-        fontSize: FONT_SIZES.xs,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
+        fontSize: 13,
+        fontWeight: '500',
+        color: COLORS.textSecondary,
     },
-    timeDivider: {
-        fontSize: FONT_SIZES.xs,
-        color: COLORS.textMuted,
-        marginHorizontal: 4,
+    durationBadge: {
+        backgroundColor: COLORS.primaryLight,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: BORDER_RADIUS.sm,
+        marginLeft: SPACING.sm,
+    },
+    durationBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: COLORS.primary,
+        letterSpacing: 0.5,
     },
     progressRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: SPACING.sm,
+        marginTop: 8,
     },
     progressBarContainer: {
         flex: 1,
-        height: 6,
+        height: 5,
         backgroundColor: COLORS.border,
         borderRadius: 3,
-        marginRight: SPACING.sm,
+        marginRight: 10,
         overflow: 'hidden',
     },
     progressBar: {
@@ -400,8 +408,8 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     percentage: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '700',
+        fontSize: 14,
+        fontWeight: '800',
         color: COLORS.textPrimary,
         minWidth: 48,
         textAlign: 'right',
@@ -426,88 +434,50 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '600',
     },
     warningRow: {
-        marginTop: SPACING.sm,
+        marginTop: 8,
         backgroundColor: COLORS.warningLight,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: 'rgba(251, 191, 36, 0.3)',
     },
     warningText: {
-        fontSize: FONT_SIZES.xs,
+        fontSize: 12,
         color: COLORS.warningDark,
-        fontWeight: '500',
+        fontWeight: '600',
     },
     buttonRow: {
         flexDirection: 'row',
-        marginTop: SPACING.md,
+        marginTop: 12,
         gap: SPACING.sm,
     },
     actionButton: {
         flex: 1,
-        paddingVertical: SPACING.sm,
+        paddingVertical: 10,
         borderRadius: BORDER_RADIUS.md,
         alignItems: 'center',
         justifyContent: 'center',
     },
     presentButton: {
         backgroundColor: COLORS.successLight,
-
+        borderWidth: 1,
+        borderColor: COLORS.success,
     },
     presentButtonText: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
+        fontSize: 14,
+        fontWeight: '700',
         color: COLORS.successDark,
     },
     absentButton: {
         backgroundColor: COLORS.dangerLight,
-
+        borderWidth: 1,
+        borderColor: COLORS.danger,
     },
     absentButtonText: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
-        color: COLORS.dangerDark,
-    },
-    markedContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: SPACING.md,
-    },
-    statusBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: 6,
-        borderRadius: BORDER_RADIUS.sm,
-    },
-    statusPresent: {
-        backgroundColor: COLORS.successLight,
-    },
-    statusAbsent: {
-        backgroundColor: COLORS.dangerLight,
-    },
-    statusEmoji: {
         fontSize: 14,
-        marginRight: 6,
-    },
-    statusText: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
-    },
-    statusTextPresent: {
-        color: COLORS.successDark,
-    },
-    statusTextAbsent: {
+        fontWeight: '700',
         color: COLORS.dangerDark,
-    },
-    undoButton: {
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 6,
-    },
-    undoText: {
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.primary,
-        fontWeight: '600',
     },
 });
 
