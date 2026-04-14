@@ -317,7 +317,7 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.lg,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(142, 185, 254, 0.15)',
+        borderColor: COLORS.borderLight,
         ...SHADOWS.small,
     },
     currentClassShadow: {

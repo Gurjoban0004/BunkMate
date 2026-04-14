@@ -370,9 +370,9 @@ import { Platform } from 'react-native';
 
 export const LIGHT_COLORS = {
     // ---------------------------------------------------------
-    // 1. BACKGROUNDS (The Canvas)
+    // 1. BACKGROUNDS (The Canvas) - With subtle blue tint
     // ---------------------------------------------------------
-    background: '#F8FAFC',       // Cool gray-white
+    background: '#F0F7FF',       // Light blue tint (was cool gray-white)
     cardBackground: '#FFFFFF',   // Pure white cards
     inputBackground: '#F1F5F9',  // Soft gray inputs
     bgSkip: '#FEF2F2',           // Danger tint (skip mode)
@@ -412,6 +412,7 @@ export const LIGHT_COLORS = {
     // 5. STRUCTURAL
     // ---------------------------------------------------------
     border: '#E2E8F0',           // Light gray border
+    borderLight: 'rgba(142, 185, 254, 0.15)',  // Subtle blue-tinted border for cards
     shadow: '#0F172A',           // Dark shadow base
     overlay: 'rgba(15, 23, 42, 0.5)', // Slate overlay
 
