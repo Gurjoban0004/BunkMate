@@ -64,3 +64,69 @@ export function calculateFreshness(state, todayClasses) {
 
     return freshnessMap;
 }
+
+/**
+ * Calculate global staleness summary across ALL subjects.
+ * Used by the OverallStatsCard to show "ERP data is X days behind for Y subjects".
+ *
+ * @param {Object} state - The global AppContext state
+ * @returns {{
+ *   staleCount: number,      // How many subjects have stale ERP data
+ *   maxGapDays: number,      // The largest gap in days among all subjects
+ *   totalSubjects: number,   // Total subjects with ERP sync dates
+ *   staleSubjects: Array<{ subjectId, subjectName, gapDays, lastSyncDate }>,
+ *   isProjected: boolean,    // True if ANY subject has prediction records
+ * }}
+ */
+export function calculateGlobalStaleness(state) {
+    const result = {
+        staleCount: 0,
+        maxGapDays: 0,
+        totalSubjects: 0,
+        staleSubjects: [],
+        isProjected: false,
+    };
+
+    const syncDates = state.settings?.lastSubjectSyncDates;
+    if (!syncDates || !state.subjects?.length) return result;
+
+    const devDate = state.devDate ? new Date(state.devDate) : new Date();
+    const todayKey = getTodayKey(state.devDate);
+    const todayTime = devDate.getTime();
+
+    // Check if any predictions exist globally
+    const records = state.attendanceRecords || {};
+    outer:
+    for (const dayData of Object.values(records)) {
+        for (const record of Object.values(dayData)) {
+            if (record?.source === 'prediction') {
+                result.isProjected = true;
+                break outer;
+            }
+        }
+    }
+
+    state.subjects.forEach(sub => {
+        const lastSync = syncDates[sub.id];
+        if (!lastSync) return; // No sync date — skip (not ERP-connected)
+
+        result.totalSubjects++;
+
+        if (lastSync < todayKey) {
+            const lastSyncTime = new Date(lastSync).getTime();
+            const gapDays = Math.floor((todayTime - lastSyncTime) / (1000 * 60 * 60 * 24));
+
+            result.staleCount++;
+            result.maxGapDays = Math.max(result.maxGapDays, gapDays);
+            result.staleSubjects.push({
+                subjectId: sub.id,
+                subjectName: sub.name,
+                gapDays,
+                lastSyncDate: lastSync,
+            });
+        }
+    });
+
+    return result;
+}
+

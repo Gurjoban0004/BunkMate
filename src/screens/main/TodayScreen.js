@@ -19,6 +19,7 @@ import { calculateOverallStreak } from '../../utils/streak';
 import { getUnmarkedCount } from '../../utils/backlog';
 import { getTodayKey, getTodayDayName, isPastTime } from '../../utils/dateHelpers';
 import { getDayStatus } from '../../utils/planner';
+import { calculateBestBunkDay, generateWeeklyReport } from '../../utils/insights';
 
 // Components
 import QuickStatsCard from '../../components/today/QuickStatsCard';
@@ -31,6 +32,8 @@ import HolidayCard from '../../components/today/HolidayCard';
 import AddExtraClassButton from '../../components/today/AddExtraClassButton';
 import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
+import BestBunkDayCard from '../../components/insights/BestBunkDayCard';
+import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import {
     DisplayMedium,
     HeadingMedium,
@@ -46,6 +49,7 @@ const TodayScreen = ({ navigation }) => {
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
     const [refreshing, setRefreshing] = useState(false);
     const [showExtraModal, setShowExtraModal] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
     const [selectedExtraSubject, setSelectedExtraSubject] = useState(null);
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -101,6 +105,13 @@ const TodayScreen = ({ navigation }) => {
     const dangerThreshold = state.settings?.dangerThreshold || 75;
     const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, dangerThreshold), [state, todayDayName, dangerThreshold]);
 
+    // Insights: Best Day to Bunk
+    const bunkData = useMemo(() => calculateBestBunkDay(state), [state.subjects, state.attendanceRecords, state.timetable, state.settings?.dangerThreshold]);
+
+    // Insights: Weekly Report
+    const weeklyReport = useMemo(() => generateWeeklyReport(state), [state.subjects, state.attendanceRecords, state.holidays, state.devDate]);
+    const [showWeeklyReport, setShowWeeklyReport] = useState(true);
+
     // Pull to refresh — also triggers ERP sync if connected
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -145,6 +156,23 @@ const TodayScreen = ({ navigation }) => {
 
     const handleExtraClass = () => {
         setShowExtraModal(true);
+    };
+
+    const handleCancelClassPress = () => {
+        setShowCancelModal(true);
+    };
+
+    const handleCancelClassConfirm = (subjectId, units) => {
+        dispatch({
+            type: 'MARK_ATTENDANCE',
+            payload: {
+                date: todayKey,
+                subjectId,
+                status: 'cancelled',
+                units,
+            },
+        });
+        setShowCancelModal(false);
     };
 
     const handleAddExtraSubject = (subjectId) => {
@@ -241,13 +269,6 @@ const TodayScreen = ({ navigation }) => {
                 {/* Deletion Warning Banner */}
                 <DeletionWarningBanner />
 
-                {unmarkedCount > 0 && (
-                    <BacklogBanner
-                        count={unmarkedCount}
-                        onPress={handleBacklogPress}
-                    />
-                )}
-
                 {/* Quick Answer Card */}
                 {!isHoliday && todayClasses.length > 0 && (
                     <QuickAnswerCard
@@ -266,6 +287,25 @@ const TodayScreen = ({ navigation }) => {
 
                 {/* Streak Banner */}
                 <StreakBanner streak={streak} />
+
+                {/* Best Day to Bunk */}
+                <BestBunkDayCard bunkData={bunkData} />
+
+                {/* Weekly Report */}
+                {showWeeklyReport && (
+                    <WeeklyReportCard
+                        report={weeklyReport}
+                        onDismiss={() => setShowWeeklyReport(false)}
+                    />
+                )}
+
+                {/* Backlog — shown below insights, not leading the screen */}
+                {unmarkedCount > 0 && (
+                    <BacklogBanner
+                        count={unmarkedCount}
+                        onPress={handleBacklogPress}
+                    />
+                )}
 
                 {/* Holiday State */}
                 {isHoliday ? (
@@ -312,6 +352,7 @@ const TodayScreen = ({ navigation }) => {
                             title="Today's Classes"
                             classCount={classCount}
                             onHolidayPress={handleHolidayPress}
+                            onCancelClassPress={handleCancelClassPress}
                         />
 
                         {/* Empty State */}
@@ -413,6 +454,45 @@ const TodayScreen = ({ navigation }) => {
                             onPress={() => setShowExtraModal(false)}
                         >
                             <Text style={styles.modalCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Cancel Class Modal */}
+            <Modal
+                visible={showCancelModal}
+                transparent={true}
+                animationType={Platform.OS === 'web' ? 'fade' : 'slide'}
+                onRequestClose={() => setShowCancelModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Cancel Class</Text>
+                        <Text style={styles.modalSubtitle}>Select a class from today</Text>
+                        <ScrollView style={styles.modalScroll}>
+                            {todayClasses.map((c, index) => (
+                                <TouchableOpacity
+                                    key={`cancel-${c.subjectId}-${index}`}
+                                    style={styles.modalItem}
+                                    onPress={() => handleCancelClassConfirm(c.subjectId, c.units)}
+                                >
+                                    <View style={[styles.modalDot, { backgroundColor: c.color }]} />
+                                    <View>
+                                        <Text style={styles.modalItemText}>{c.subjectName}</Text>
+                                        <Text style={{fontSize: 12, color: COLORS.textSecondary}}>{c.startTime} - {c.endTime}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                            {todayClasses.length === 0 && (
+                                <Text style={styles.modalSubtitle}>No classes scheduled today.</Text>
+                            )}
+                        </ScrollView>
+                        <TouchableOpacity
+                            style={styles.modalCancel}
+                            onPress={() => setShowCancelModal(false)}
+                        >
+                            <Text style={styles.modalCancelText}>Close</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

@@ -11,6 +11,7 @@ import {
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
+import { calculateGlobalStaleness } from '../../utils/erpFreshness';
 
 // Components
 import OverallStatsCard from '../../components/subjects/OverallStatsCard';
@@ -48,8 +49,8 @@ const SubjectsScreen = ({ navigation }) => {
                 resolvedTarget: target,
             };
         });
-    // Only recalculate when the data that actually affects attendance changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Only recalculate when the data that actually affects attendance changes
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.subjects, state.attendanceRecords, state.holidays, state.trackingStartDate, dangerThreshold]);
 
     // Categorize subjects
@@ -93,6 +94,12 @@ const SubjectsScreen = ({ navigation }) => {
         };
     }, [subjectsWithStats, categorizedSubjects]);
 
+    // Calculate global staleness for the stats card
+    const staleness = useMemo(() => {
+        if (!state.settings?.erpConnected) return null;
+        return calculateGlobalStaleness(state);
+    }, [state.settings?.lastSubjectSyncDates, state.subjects, state.attendanceRecords, state.settings?.erpConnected, state.devDate]);
+
     const handleSubjectPress = (subject) => {
         navigation.navigate('SubjectDetail', { subjectId: subject.id });
     };
@@ -112,12 +119,15 @@ const SubjectsScreen = ({ navigation }) => {
                 }
             >
                 {/* Header */}
-                <Text style={styles.headerTitle}>Your Subjects</Text>
+                <View style={styles.headerContainer}>
+                    <Text style={styles.headerTitle}>Your Subjects</Text>
+                </View>
 
                 {/* Overall Stats Card */}
                 <OverallStatsCard
                     stats={overallStats}
                     threshold={dangerThreshold}
+                    staleness={staleness}
                 />
 
                 {/* View Toggle */}
@@ -273,14 +283,17 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.lg,
+        paddingTop: 24,
+    },
+    headerContainer: {
+        paddingHorizontal: SPACING.screenPadding,
+        paddingBottom: 16,
     },
     headerTitle: {
-        fontSize: FONT_SIZES.xl,
-        fontWeight: '700',
+        fontSize: 28,
+        fontWeight: '800',
+        letterSpacing: -0.5,
         color: COLORS.textPrimary,
-        paddingHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md,
     },
     toggleContainer: {
         flexDirection: 'row',

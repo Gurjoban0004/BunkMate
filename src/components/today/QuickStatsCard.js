@@ -4,6 +4,10 @@ import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 
 const QuickStatsCard = ({ classCount, streak, overallPercentage }) => {
     const styles = getStyles();
+
+    const streakEmoji = streak > 0 ? '🔥' : '—';
+    const streakDisplay = streak > 0 ? streak : '—';
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Today's Stats</Text>
@@ -18,8 +22,8 @@ const QuickStatsCard = ({ classCount, streak, overallPercentage }) => {
                 <View style={styles.divider} />
 
                 <View style={styles.statItem}>
-                    <Text style={styles.statEmoji}>🔥</Text>
-                    <Text style={styles.statValue}>{streak}</Text>
+                    <Text style={styles.statEmoji}>{streakEmoji}</Text>
+                    <Text style={styles.statValue}>{streakDisplay}</Text>
                     <Text style={styles.statLabel}>streak</Text>
                 </View>
 

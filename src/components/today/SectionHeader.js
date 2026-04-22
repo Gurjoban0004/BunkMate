@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING } from '../../theme/theme';
 
-const SectionHeader = ({ title, classCount, onHolidayPress, showHoliday = true }) => {
+const SectionHeader = ({ title, classCount, onHolidayPress, showHoliday = true, onCancelClassPress, showCancelClass = true }) => {
     const styles = getStyles();
     return (
         <View style={styles.container}>
@@ -15,14 +15,24 @@ const SectionHeader = ({ title, classCount, onHolidayPress, showHoliday = true }
                 )}
             </View>
 
-            {showHoliday && onHolidayPress && (
-                <TouchableOpacity
-                    style={styles.holidayButton}
-                    onPress={onHolidayPress}
-                >
-                    <Text style={styles.holidayText}>Mark Holiday</Text>
-                </TouchableOpacity>
-            )}
+            <View style={styles.rightActions}>
+                {showCancelClass && onCancelClassPress && (
+                    <TouchableOpacity
+                        style={[styles.actionButton, { marginRight: SPACING.xs }]}
+                        onPress={onCancelClassPress}
+                    >
+                        <Text style={styles.actionText}>Cancel Class</Text>
+                    </TouchableOpacity>
+                )}
+                {showHoliday && onHolidayPress && (
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={onHolidayPress}
+                    >
+                        <Text style={styles.actionText}>Mark Holiday</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
         </View>
     );
 };
@@ -59,13 +69,17 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '600',
         color: COLORS.textOnPrimary,
     },
-    holidayButton: {
+    rightActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    actionButton: {
         paddingHorizontal: SPACING.sm,
         paddingVertical: 6,
         backgroundColor: COLORS.inputBackground,
         borderRadius: 12,
     },
-    holidayText: {
+    actionText: {
         fontSize: 12,
         fontWeight: '600',
         color: COLORS.textSecondary,

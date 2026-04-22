@@ -47,7 +47,7 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
                 <View style={styles.topRow}>
                     <Text style={styles.name} numberOfLines={1}>{name}</Text>
                     <Text style={[styles.percentage, { color: statusColor }]}>
-                        {percentage.toFixed(1)}%
+                        {percentage.toFixed(1)}%{subject.hasPredictions ? ' ✨' : ''}
                     </Text>
                 </View>
 
@@ -98,9 +98,6 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
                     </View>
                 )}
             </View>
-
-            {/* Chevron */}
-            <Text style={styles.chevron}>›</Text>
         </TouchableOpacity>
     );
 };
@@ -108,21 +105,24 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
 const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.cardGap,
-        padding: SPACING.cardPadding,
-        borderRadius: BORDER_RADIUS.xl,
+        padding: 12,
+        paddingLeft: 28,
+        borderRadius: BORDER_RADIUS.lg,
         borderWidth: 1,
-        borderColor: COLORS.border,
-        ...SHADOWS.medium,
+        borderColor: COLORS.borderLight,
+        ...SHADOWS.small,
     },
     colorDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        marginRight: SPACING.md,
+        position: 'absolute',
+        left: 14,
+        top: 14,
+        width: 6,
+        height: 6,
+        borderRadius: 3,
     },
     content: {
         flex: 1,
@@ -133,13 +133,13 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     name: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '700',
         color: COLORS.textPrimary,
     },
     percentage: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '700',
+        fontSize: 16,
+        fontWeight: '800',
     },
     bottomRow: {
         flexDirection: 'row',
@@ -153,15 +153,15 @@ const getStyles = () => StyleSheet.create({
     },
     progressBar: {
         flex: 1,
-        height: 6,
+        height: 8,
         backgroundColor: COLORS.border,
-        borderRadius: 3,
+        borderRadius: 4,
         marginRight: SPACING.sm,
         overflow: 'hidden',
     },
     progressFill: {
         height: '100%',
-        borderRadius: 3,
+        borderRadius: 4,
     },
     marksText: {
         fontSize: FONT_SIZES.xs,
@@ -187,11 +187,6 @@ const getStyles = () => StyleSheet.create({
         fontSize: 10,
         fontWeight: '600',
         color: COLORS.textPrimary,
-    },
-    chevron: {
-        fontSize: 24,
-        color: COLORS.textMuted,
-        marginLeft: SPACING.sm,
     },
     sourceBadgeRow: {
         marginTop: SPACING.xs,

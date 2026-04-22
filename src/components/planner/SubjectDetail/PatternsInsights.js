@@ -21,6 +21,17 @@ export default function PatternsInsights({ subjectData }) {
         .filter(([_, data]) => data.total > 0)
         .sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
 
+    // Don't render an empty shell — only show when there's real data
+    const hasInsights = insights.length > 0;
+    const hasDays = activeDays.length > 0;
+    const hasStreak = patterns.streaks?.current?.type;
+    const hasLast5 = patterns.last5?.length > 0;
+    const hasTrend = patterns.trends?.direction && patterns.trends.direction !== 'stable';
+
+    if (!hasInsights && !hasDays && !hasStreak && !hasLast5 && !hasTrend) {
+        return null;
+    }
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Patterns & Insights</Text>

@@ -389,19 +389,19 @@ const getStyles = () => StyleSheet.create({
     progressRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
+        marginTop: 12,
     },
     progressBarContainer: {
         flex: 1,
-        height: 5,
+        height: 8,
         backgroundColor: COLORS.border,
-        borderRadius: 3,
-        marginRight: 10,
+        borderRadius: 4,
+        marginRight: 12,
         overflow: 'hidden',
     },
     progressBar: {
         height: '100%',
-        borderRadius: 3,
+        borderRadius: 4,
     },
     percentageContainer: {
         flexDirection: 'row',

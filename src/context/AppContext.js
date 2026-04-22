@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { getTodayKey } from '../utils/dateHelpers';
+import { getUnmarkedClasses } from '../utils/backlog';
 import { initNetworkListener, onNetworkStatusChange } from '../utils/firebaseHelpers';
 import { loadAppState, saveAppState, migrateToFirestore } from '../storage/storage';
 import { logger } from '../utils/logger';
@@ -156,7 +157,10 @@ function appReducer(state, action) {
         }
 
         case 'MARK_ATTENDANCE': {
-            const { date, subjectId, status, units, isExtra } = action.payload;
+            const { date, subjectId, status, units, isExtra, autoMarked } = action.payload;
+            const existingRecord = state.attendanceRecords[date]?.[subjectId];
+            const wasAutoPrediction = existingRecord?.autoMarked && !autoMarked;
+
             return {
                 ...state,
                 attendanceRecords: {
@@ -166,16 +170,79 @@ function appReducer(state, action) {
                         [subjectId]: {
                             status,
                             units: units || 1,
-                            source: 'prediction',
+                            source: autoMarked ? 'prediction' : 'manual',
                             ...(isExtra ? { isExtra: true } : {}),
+                            ...(autoMarked ? { autoMarked: true } : {}),
                         },
+                    },
+                },
+                // If user manually overwrites an autopilot prediction, dismiss the slot
+                ...(wasAutoPrediction ? {
+                    autopilotDismissed: {
+                        ...(state.autopilotDismissed || {}),
+                        [`${date}:${subjectId}`]: true,
+                    },
+                } : {}),
+            };
+        }
+
+        case 'CONFIRM_AUTO_MARK': {
+            const { date, subjectId } = action.payload;
+            const existing = state.attendanceRecords[date]?.[subjectId];
+            if (!existing) return state;
+
+            const { autoMarked, ...cleanedRecord } = existing;
+            return {
+                ...state,
+                attendanceRecords: {
+                    ...state.attendanceRecords,
+                    [date]: {
+                        ...state.attendanceRecords[date],
+                        [subjectId]: cleanedRecord,
                     },
                 },
             };
         }
 
+        case 'CONFIRM_ALL_AUTO_MARK': {
+            const newRecords = { ...state.attendanceRecords };
+            Object.keys(newRecords).forEach(date => {
+                const dayRecord = { ...newRecords[date] };
+                let modified = false;
+                Object.keys(dayRecord).forEach(sid => {
+                    if (dayRecord[sid]?.autoMarked) {
+                        const { autoMarked, ...cleaned } = dayRecord[sid];
+                        dayRecord[sid] = cleaned;
+                        modified = true;
+                    }
+                });
+                if (modified) newRecords[date] = dayRecord;
+            });
+            return {
+                ...state,
+                attendanceRecords: newRecords,
+                autopilotReview: state.autopilotReview ? { ...state.autopilotReview, dismissed: true } : null,
+            };
+        }
+
+        case 'DISMISS_AUTOPILOT_REVIEW':
+            return {
+                ...state,
+                autopilotReview: state.autopilotReview
+                    ? { ...state.autopilotReview, dismissed: true }
+                    : null,
+            };
+
+        case 'SET_AUTOPILOT_REVIEW':
+            return {
+                ...state,
+                autopilotReview: action.payload,
+            };
+
         case 'REMOVE_ATTENDANCE': {
             const { date: removeDate, subjectId: removeSubjectId } = action.payload;
+            const removedRecord = state.attendanceRecords[removeDate]?.[removeSubjectId];
+            const wasPrediction = removedRecord?.autoMarked;
             const newDayRecord = { ...(state.attendanceRecords[removeDate] || {}) };
             delete newDayRecord[removeSubjectId];
             return {
@@ -184,6 +251,13 @@ function appReducer(state, action) {
                     ...state.attendanceRecords,
                     [removeDate]: newDayRecord,
                 },
+                // If user removes an autopilot prediction, dismiss the slot
+                ...(wasPrediction ? {
+                    autopilotDismissed: {
+                        ...(state.autopilotDismissed || {}),
+                        [`${removeDate}:${removeSubjectId}`]: true,
+                    },
+                } : {}),
             };
         }
 
@@ -319,7 +393,6 @@ function appReducer(state, action) {
 
         case 'ERP_OVERWRITE_CALENDAR': {
             // ERP calendar correctly replaces attendance records where ERP has data.
-            // Predict ('prediction') records are kept if ERP doesn't overwrite them.
             // Holidays are preserved.
             const { records: erpRecords, trackingStartDate: newTrackingStart, lastSubjectSyncDates } = action.payload;
 
@@ -334,8 +407,32 @@ function appReducer(state, action) {
                 }
             }
 
-            // Optional cleanup pass: if there's any prediction old enough that ERP *should* have it but doesn't, 
-            // you might want to expire it. But for now, keeping it is safer.
+            // Garbage Collection: Delete old invalid predictions (Cancelled/skipped classes)
+            const newLastSyncDates = {
+                ...(state.settings?.lastSubjectSyncDates || {}),
+                ...lastSubjectSyncDates
+            };
+
+            for (const [dateKey, dayData] of Object.entries(nextRecords)) {
+                let modified = false;
+                const newDayData = { ...dayData };
+                
+                for (const [subjectId, record] of Object.entries(newDayData)) {
+                    if (record.source === 'prediction') {
+                        const syncDateForSubject = newLastSyncDates[subjectId];
+                        // If the prediction date is older than or equal to the last sync date,
+                        // and it wasn't overwritten by ERP above, it means the class was cancelled/skipped.
+                        // We must delete it.
+                        if (syncDateForSubject && dateKey <= syncDateForSubject) {
+                            delete newDayData[subjectId];
+                            modified = true;
+                        }
+                    }
+                }
+                if (modified) {
+                    nextRecords[dateKey] = newDayData;
+                }
+            }
 
             return {
                 ...state,
@@ -343,10 +440,7 @@ function appReducer(state, action) {
                 trackingStartDate: newTrackingStart || state.trackingStartDate,
                 settings: {
                     ...state.settings,
-                    lastSubjectSyncDates: {
-                        ...(state.settings?.lastSubjectSyncDates || {}),
-                        ...lastSubjectSyncDates
-                    }
+                    lastSubjectSyncDates: newLastSyncDates
                 }
             };
         }
@@ -601,6 +695,70 @@ export function AppProvider({ children }) {
             return () => clearTimeout(timer);
         }
     }, [isLoading, state.isAuthenticated, state.settings?.erpConnected]);
+
+    // ─── AUTOPILOT LOGIC ──────────────────────────────────────────
+    const runAutopilotCheck = React.useCallback(() => {
+        const currentState = stateRef.current;
+        if (!currentState.settings?.erpConnected || !currentState.isAuthenticated) return;
+
+        // getUnmarkedClasses returns an array of unmarked classes up to "now" (or devDate)
+        const unmarkedClasses = getUnmarkedClasses(currentState, false);
+        if (!unmarkedClasses || unmarkedClasses.length === 0) return;
+
+        const lastSyncDates = currentState.settings?.lastSubjectSyncDates || {};
+        const dismissed = currentState.autopilotDismissed || {};
+
+        let autoMarkedCount = 0;
+        let reviewDate = null;
+
+        unmarkedClasses.forEach((classItem) => {
+            // ── PING-PONG GUARD ──────────────────────────────────
+            // If the ERP has already synced past this date for this subject,
+            // the teacher confirmed this class didn't happen. Do NOT predict it.
+            const syncDate = lastSyncDates[classItem.subjectId];
+            if (syncDate && classItem.date <= syncDate) return;
+
+            // ── IDEMPOTENCY GUARD ────────────────────────────────
+            // If the user previously dismissed/corrected this prediction,
+            // do not resurrect it.
+            const dismissKey = `${classItem.date}:${classItem.subjectId}`;
+            if (dismissed[dismissKey]) return;
+
+            safeDispatch({
+                type: 'MARK_ATTENDANCE',
+                payload: {
+                    date: classItem.date,
+                    subjectId: classItem.subjectId,
+                    status: 'present',
+                    units: classItem.units,
+                    autoMarked: true,
+                },
+            });
+            autoMarkedCount++;
+            if (!reviewDate || classItem.date > reviewDate) {
+                reviewDate = classItem.date;
+            }
+        });
+
+        if (autoMarkedCount > 0 && reviewDate) {
+            const existingReview = currentState.autopilotReview;
+            if (existingReview?.date !== reviewDate || existingReview?.dismissed) {
+                safeDispatch({
+                    type: 'SET_AUTOPILOT_REVIEW',
+                    payload: { date: reviewDate, count: autoMarkedCount, dismissed: false },
+                });
+            }
+        }
+    }, [safeDispatch]);
+
+    // Run Autopilot check on startup and after ERP sync finishes
+    useEffect(() => {
+        if (!isLoading && state.isAuthenticated && state.settings?.erpConnected) {
+            // run after a small delay to let state settle
+            const timer = setTimeout(() => runAutopilotCheck(), 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isLoading, state.isAuthenticated, state.settings?.erpConnected, erpLastSynced, state.devDate, runAutopilotCheck]);
 
     // ──────────────────────────────────────────────────────────────
 

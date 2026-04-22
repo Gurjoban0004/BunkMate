@@ -18,8 +18,14 @@ export const getGreeting = (name, devDate = null) => {
         emoji = '🌙';
     }
 
+    // Title case the name (DB often stores ALL CAPS)
+    const titleName = name
+        .toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+
     return {
-        text: `${greeting}, ${name}!`,
+        text: `${greeting}, ${titleName}!`,
         emoji,
     };
 };
+

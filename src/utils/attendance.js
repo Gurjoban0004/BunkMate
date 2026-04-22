@@ -20,6 +20,7 @@ export function getSubjectAttendance(subjectId, state) {
 
     let recordedTotal = 0;
     let recordedAttended = 0;
+    let hasPredictions = false;
 
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
@@ -42,6 +43,7 @@ export function getSubjectAttendance(subjectId, state) {
             // 'erp' sourced daily records are purely for historic calendar UI.
             if (record.source !== 'prediction') return;
 
+            hasPredictions = true;
             recordedTotal += record.units;
             if (record.status === 'present') {
                 recordedAttended += record.units;
@@ -57,6 +59,7 @@ export function getSubjectAttendance(subjectId, state) {
         totalUnits,
         attendedUnits,
         percentage,
+        hasPredictions,
     };
 }
 
