@@ -18,12 +18,15 @@ import OverallStatsCard from '../../components/subjects/OverallStatsCard';
 import SubjectRow from '../../components/subjects/SubjectRow';
 import CalendarView from '../../components/subjects/CalendarView';
 import TimetableGrid from '../../components/subjects/TimetableGrid';
+import ProjectionTransparencyModal from '../../components/insights/ProjectionTransparencyModal';
+import { calculateProjectionBreakdown } from '../../utils/transparency';
 
 const SubjectsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, triggerErpSync } = useApp();
     const [viewMode, setViewMode] = useState('list');
     const [refreshing, setRefreshing] = useState(false);
+    const [transparencyVisible, setTransparencyVisible] = useState(false);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -128,6 +131,7 @@ const SubjectsScreen = ({ navigation }) => {
                     stats={overallStats}
                     threshold={dangerThreshold}
                     staleness={staleness}
+                    onBannerPress={() => setTransparencyVisible(true)}
                 />
 
                 {/* View Toggle */}
@@ -270,6 +274,13 @@ const SubjectsScreen = ({ navigation }) => {
                 {/* Bottom Padding */}
                 <View style={styles.bottomPadding} />
             </ScrollView>
+
+            {/* Transparency Modal */}
+            <ProjectionTransparencyModal
+                visible={transparencyVisible}
+                onClose={() => setTransparencyVisible(false)}
+                breakdown={calculateProjectionBreakdown(state)}
+            />
         </SafeAreaView>
     );
 };

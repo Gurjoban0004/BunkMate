@@ -39,9 +39,9 @@ export function getSubjectAttendance(subjectId, state) {
 
             // CRITICAL fix to prevent double-counting ERP records.
             // `subject.initialTotal` already contains the ERP's total count.
-            // We ONLY add units that are 'prediction' (manual gap-days).
+            // We ONLY add units that are local ('prediction' or 'manual' gap-days).
             // 'erp' sourced daily records are purely for historic calendar UI.
-            if (record.source !== 'prediction') return;
+            if (record.source === 'erp') return;
 
             hasPredictions = true;
             recordedTotal += record.units;

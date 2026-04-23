@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 
-const OverallStatsCard = ({ stats, threshold, staleness }) => {
+const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
     const styles = getStyles();
     const { attended, total, percentage, dangerCount, safeCount } = stats;
     const numericPercentage = parseFloat(percentage);
@@ -38,11 +38,18 @@ const OverallStatsCard = ({ stats, threshold, staleness }) => {
             </Text>
 
             {showStaleness && (
-                <View style={styles.stalenessBanner}>
+                <TouchableOpacity 
+                    style={styles.stalenessBanner} 
+                    onPress={onBannerPress}
+                    activeOpacity={onBannerPress ? 0.7 : 1}
+                >
                     <Text style={styles.stalenessText}>
                         ✨ Projected — ERP is {staleness.maxGapDays} day{staleness.maxGapDays !== 1 ? 's' : ''} behind for {staleness.staleCount} subject{staleness.staleCount !== 1 ? 's' : ''}
                     </Text>
-                </View>
+                    {onBannerPress && (
+                        <Text style={styles.stalenessAction}>ℹ️ View Math</Text>
+                    )}
+                </TouchableOpacity>
             )}
         </View>
     );
@@ -95,15 +102,25 @@ const getStyles = () => StyleSheet.create({
     stalenessBanner: {
         marginTop: SPACING.sm,
         paddingHorizontal: SPACING.sm,
-        paddingVertical: 4,
+        paddingVertical: 6,
         backgroundColor: COLORS.warningLight || '#fff3cd',
         borderRadius: BORDER_RADIUS.sm,
+        alignItems: 'center',
     },
     stalenessText: {
         fontSize: 11,
         fontWeight: '600',
         color: COLORS.warning || '#856404',
         textAlign: 'center',
+        marginBottom: 2,
+    },
+    stalenessAction: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.warningDark || '#856404',
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
 });
 
