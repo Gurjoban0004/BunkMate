@@ -212,6 +212,7 @@ export function useErpAutoSync(state, dispatch) {
 
             // ── Step 2: Calendar ──────────────────────────────────
             setSyncStatus({ calendarSyncStatus: 'loading' });
+            let registerUnavailable = false;
             try {
                 const calData = await erpFetchCalendar(token, persistentToken);
 
@@ -220,15 +221,6 @@ export function useErpAutoSync(state, dispatch) {
                     setSyncStatus({ calendarSyncStatus: 'failed' });
                 } else if (calData.calendar && Object.keys(calData.calendar).length > 0) {
                     const result = mapCalendarToRecords(calData.calendar, calData.subjects, latestSubjects);
-
-                    // ── DEBUG: log full mapping result ────────────
-                    console.log('[CAL-DEBUG] calData.subjects:', JSON.stringify(calData.subjects));
-                    console.log('[CAL-DEBUG] latestSubjects (app):', JSON.stringify(latestSubjects.map(s => ({ id: s.id, name: s.name, erpSubjectId: s.erpSubjectId }))));
-                    console.log('[CAL-DEBUG] subjectMapping:', JSON.stringify(result.subjectMapping));
-                    console.log('[CAL-DEBUG] totalDays:', result.totalDays);
-                    console.log('[CAL-DEBUG] newSubjects:', result.newSubjects.length);
-                    console.log('[CAL-DEBUG] sample records (first 3 dates):', JSON.stringify(Object.entries(result.records).slice(0, 3)));
-                    // ─────────────────────────────────────────────
 
                     if (result.newSubjects.length > 0) {
                         const withNew = [...latestSubjects, ...result.newSubjects];
@@ -265,6 +257,8 @@ export function useErpAutoSync(state, dispatch) {
                 }
             } catch (calErr) {
                 logger.warn('⚠️ Calendar sync failed (non-critical):', calErr.message);
+                registerUnavailable = true;
+                setSyncError('Totals synced, attendance register unavailable.');
                 setSyncStatus({ calendarSyncStatus: 'failed' });
             }
 
@@ -275,13 +269,13 @@ export function useErpAutoSync(state, dispatch) {
 
             dispatch({ type: 'UPDATE_SETTINGS', payload: { lastErpSync: syncedAt } });
             setSyncStatus({
-                status:            'idle',
+                status:            registerUnavailable ? 'error' : 'idle',
                 lastGlobalSyncAt:  syncedAt,
                 syncDuration,
                 changedSubjectIds: changedIds,
             });
             setLastSyncedAt(new Date());
-            setSyncError(null);
+            if (!registerUnavailable) setSyncError(null);
             logger.info('✅', `ERP auto-sync complete (${syncDuration}ms)`);
 
         } catch (err) {

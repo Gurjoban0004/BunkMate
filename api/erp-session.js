@@ -2,13 +2,13 @@
  * Vercel Serverless Function: ERP Session Check / Refresh
  *
  * POST /api/erp-session
- * Body: { action: 'check' | 'refresh', persistentToken, authUserId?, otp? }
+ * Body:
+ *   check:   { action: 'check', token }
+ *   refresh: { action: 'refresh', persistentToken, authUserId, otp }
  *
  * ── action: check ────────────────────────────────────────────────────
- * Called on app start. Decrypts the persistent token to verify credentials
- * are stored, then initiates a fresh ERP login to get a new session.
- * Because ERP always requires OTP, this returns { needsOtp, authUserId }
- * so the frontend can show only the OTP screen (skipping username/password).
+ * Called on app start. Decrypts the existing session token locally only.
+ * It never contacts ERP login, so startup cannot silently send an OTP.
  *
  * ── action: refresh ──────────────────────────────────────────────────
  * Called after user enters OTP during a session refresh flow.
@@ -19,10 +19,10 @@
  */
 
 const {
+    decryptSession,
     decryptPersistent,
     encryptPersistent,
     encryptSession,
-    reloginERP,
     verifyOtpWithERP,
     generateDeviceUUID,
     setCorsHeaders,
@@ -43,41 +43,27 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    const { action, persistentToken, authUserId, otp } = req.body || {};
+    const { action, token, persistentToken, authUserId, otp } = req.body || {};
 
     // ── action: check ─────────────────────────────────────────────────
     if (action === 'check') {
-        if (!persistentToken) {
+        if (!token) {
             return res.status(200).json({ valid: false, reason: 'no_token' });
         }
 
-        let creds;
         try {
-            creds = decryptPersistent(persistentToken);
+            const session = decryptSession(token);
+            if (!session.userId || !session.sessionId || !session.roleId || !session.apiKey || !session.studentId) {
+                return res.status(200).json({ valid: false, reason: 'incomplete_session' });
+            }
+            return res.status(200).json({
+                valid: true,
+                reason: 'session_available',
+                studentId: session.studentId,
+                studentName: session.studentName || '',
+            });
         } catch {
             return res.status(200).json({ valid: false, reason: 'invalid_token' });
-        }
-
-        if (!creds.username || !creds.password) {
-            return res.status(200).json({ valid: false, reason: 'incomplete_credentials' });
-        }
-
-        // Initiate ERP login — this triggers an OTP to the student's phone/email
-        try {
-            const result = await reloginERP(creds.username, creds.password);
-            return res.status(200).json({
-                valid:       false,
-                reason:      'otp_required',
-                authUserId:  result.authUserId,
-                studentName: creds.studentName || '',
-            });
-        } catch {
-            // Credentials rejected — user must re-enter username/password.
-            // Do NOT forward err.message — it may contain internal ERP details.
-            return res.status(200).json({
-                valid:  false,
-                reason: 'credentials_rejected',
-            });
         }
     }
 
@@ -109,7 +95,8 @@ module.exports = async function handler(req, res) {
                 roleId:       session.roleId,
                 apiKey:       session.apiKey,
                 studentId:    session.studentId,
-                deviceIdUUID: deviceIdUUID,
+                studentName,
+                studentPhoto: session.studentPhoto,
             });
 
             // Re-encrypt persistent token to update studentName if it changed

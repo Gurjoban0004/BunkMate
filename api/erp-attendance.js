@@ -28,6 +28,10 @@ const {
     MOBILE_HEADERS,
     ERP_BASE,
 } = require('./_session-utils');
+const {
+    fetchSummaryLegacy,
+    readErpPayload,
+} = require('./_erp-provider');
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
 
@@ -163,8 +167,8 @@ module.exports = async function handler(req, res) {
     }
 
     // ── Attempt ERP fetch ─────────────────────────────────────────
-    async function fetchAttendance(sess) {
-        const r = await fetch(`${ERP_BASE}/mobilev2/commonPage`, {
+    async function fetchAttendanceV2(sess) {
+        return fetch(`${ERP_BASE}/mobilev2/commonPage`, {
             method: 'POST',
             headers: MOBILE_HEADERS,
             body: encodeForm({
@@ -176,16 +180,29 @@ module.exports = async function handler(req, res) {
                 appKey:        sess.apiKey || '',
             }),
         });
-        return r;
+    }
+
+    async function fetchAttendance(sess) {
+        const legacy = await fetchSummaryLegacy(sess);
+        const legacyContent = legacy.payload?.content || legacy.payload?.data?.content || '';
+        if (legacy.response.ok && legacyContent) {
+            return { response: legacy.response, payload: legacy.payload, htmlBody: legacyContent };
+        }
+
+        const fallbackResponse = await fetchAttendanceV2(sess);
+        const fallbackPayload = await readErpPayload(fallbackResponse);
+        return {
+            response: fallbackResponse,
+            payload: fallbackPayload,
+            htmlBody: fallbackPayload.content || fallbackPayload.data?.content || '',
+        };
     }
 
     try {
-        let erpRes = await fetchAttendance(session);
+        const erpResult = await fetchAttendance(session);
 
         // ── Session dead? ─────────────────────────────────────────
-        const erpResClone = erpRes.clone();
-        const erpJson = await erpResClone.json().catch(() => null);
-        if (!erpRes.ok || isSessionDead(erpJson)) {
+        if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
             if (!persistentToken) {
                 return res.status(401).json({ error: 'Session expired', sessionExpired: true });
             }
@@ -210,8 +227,7 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ success: true, alive: true });
         }
 
-        const attendanceData = erpJson || await erpRes.json();
-        const htmlContent    = attendanceData.content || attendanceData.data?.content || '';
+        const htmlContent = erpResult.htmlBody;
 
         if (!htmlContent) {
             return res.status(502).json({ error: 'Empty response', message: 'The portal returned no attendance data.' });
@@ -233,3 +249,5 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Fetch failed', message: 'Could not retrieve attendance. Please try again.' });
     }
 };
+
+module.exports.parseAttendanceHTML = parseAttendanceHTML;

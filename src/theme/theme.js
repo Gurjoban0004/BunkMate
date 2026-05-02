@@ -187,6 +187,18 @@ export const TYPOGRAPHY = {
     captionSmall:  { fontSize: 10, fontWeight: '400', lineHeight: 14, letterSpacing: 0.3 },
 };
 
+// Convenience scale — matches the named steps above.
+// Use FONT_SIZES.md, FONT_SIZES.lg etc. in StyleSheet definitions.
+export const FONT_SIZES = {
+    xs:   10,
+    sm:   12,
+    md:   14,
+    lg:   16,
+    xl:   20,
+    xxl:  24,
+    xxxl: 32,
+};
+
 // ─────────────────────────────────────────────────────────────
 // 4. BORDER RADIUS
 // ─────────────────────────────────────────────────────────────
@@ -199,6 +211,9 @@ export const RADIUS = {
     xxl:    24,   // Bottom sheets, modals
     full:   9999, // Pills, avatar circles
 };
+
+// Alias — many components import BORDER_RADIUS; keep both names in sync.
+export const BORDER_RADIUS = RADIUS;
 
 // ─────────────────────────────────────────────────────────────
 // 5. SHADOWS

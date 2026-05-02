@@ -6,7 +6,7 @@ import { loadAppState, saveAppState, migrateToFirestore } from '../storage/stora
 import { logger } from '../utils/logger';
 import { COLORS as THEME_COLORS } from '../theme/theme';
 import { useErpAutoSync } from '../hooks/useErpAutoSync';
-import { getErpPersistentToken } from '../storage/erpTokenStorage';
+import { getErpToken } from '../storage/erpTokenStorage';
 import { erpCheckSession } from '../services/erpService';
 
 const AppContext = createContext();
@@ -602,33 +602,21 @@ export function AppProvider({ children }) {
                     // Migrate to Firestore in background — do NOT await
                     migrateToFirestore(saved).catch(e => logger.warn('⚠️ Migration failed:', e));
 
-                    // ── ERP persistent session check ──────────────
-                    // If ERP was connected, check if we can skip the login screen
-                    // by using the stored persistent token to initiate a fresh session.
+                    // ── ERP local session check ──────────────────
+                    // Never contact ERP login on startup; data sync validates the session.
                     if (saved.settings?.erpConnected) {
-                        const persistentToken = await getErpPersistentToken();
-                        if (persistentToken) {
+                        const erpToken = await getErpToken();
+                        if (erpToken) {
                             try {
-                                const result = await erpCheckSession(persistentToken);
-                                if (result.reason === 'otp_required') {
-                                    // Credentials valid — ERP sent OTP to student's phone.
-                                    // Store the pending re-auth so UI can show OTP screen only.
-                                    safeDispatch({
-                                        type: 'ERP_SESSION_EXPIRED',
-                                        payload: {
-                                            authUserId:   result.authUserId,
-                                            studentName:  result.studentName || '',
-                                            persistentToken,
-                                        },
-                                    });
-                                } else if (result.reason === 'credentials_rejected') {
-                                    // Password changed — mark ERP disconnected
+                                const result = await erpCheckSession(erpToken);
+                                if (!result.valid && result.reason !== 'no_token') {
                                     safeDispatch({ type: 'UPDATE_SETTINGS', payload: { erpConnected: false } });
                                 }
-                                // 'no_token' / 'invalid_token' → do nothing, auto-sync will handle
                             } catch (e) {
                                 logger.warn('⚠️ ERP session check failed:', e.message);
                             }
+                        } else {
+                            safeDispatch({ type: 'UPDATE_SETTINGS', payload: { erpConnected: false } });
                         }
                     }
                 }

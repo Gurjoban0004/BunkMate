@@ -61,7 +61,8 @@ module.exports = async function handler(req, res) {
             roleId:       session.roleId,
             apiKey:       session.apiKey,
             studentId:    session.studentId,
-            deviceIdUUID: deviceIdUUID,
+            studentName:  session.studentName,
+            studentPhoto: session.studentPhoto,
         });
 
         // Persistent token — stores credentials for auto re-login, no expiry

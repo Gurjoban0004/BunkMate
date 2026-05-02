@@ -11,6 +11,7 @@ import ErrorBoundary from './src/components/common/ErrorBoundary';
 import BrandLoader from './src/components/common/BrandLoader';
 import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { setGlobalWebAlert } from './src/utils/alert';
+import ErpReauthModal from './src/components/erp/ErpReauthModal';
 
 // ─── Web: Disable react-native-screens on web ─────────────────────────────────
 // react-native-screens injects ScreenContainer divs that leave ghost overlay
@@ -125,6 +126,7 @@ function AppContent() {
         <>
             <StatusBar style={currentTheme === 'dark' ? 'light' : 'dark'} />
             <AppNavigator key={currentTheme} />
+            <ErpReauthModal />
             <DevModePanel />
         </>
     );

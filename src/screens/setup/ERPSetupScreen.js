@@ -159,10 +159,11 @@ export default function ERPSetupScreen({ navigation }) {
                             dispatch({ type: 'SET_SUBJECTS', payload: updatedSubjects });
                         }
                         dispatch({
-                            type: 'LOAD_CALENDAR_RECORDS',
+                            type: 'ERP_OVERWRITE_CALENDAR',
                             payload: {
                                 records: result.records,
                                 trackingStartDate: result.earliestDate,
+                                lastSubjectSyncDates: result.lastSubjectSyncDates,
                             },
                         });
                     }

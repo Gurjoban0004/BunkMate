@@ -73,14 +73,13 @@ export async function erpVerifyOtp(authUserId, otp, username = '', password = ''
 // ─── SESSION MANAGEMENT ───────────────────────────────────────────────
 
 /**
- * Check if a persistent session exists on app start.
+ * Check if an encrypted session token exists on app start.
  * Returns:
- *   { valid: false, reason: 'otp_required', authUserId, studentName } — show OTP screen only
- *   { valid: false, reason: 'credentials_rejected' }                  — show full login
- *   { valid: false, reason: 'no_token' | 'invalid_token' }            — show full login
+ *   { valid: true, reason: 'session_available' }              — let sync validate against ERP
+ *   { valid: false, reason: 'no_token' | 'invalid_token' }    — show full login
  */
-export async function erpCheckSession(persistentToken) {
-    return apiCall('/api/erp-session', { action: 'check', persistentToken });
+export async function erpCheckSession(token) {
+    return apiCall('/api/erp-session', { action: 'check', token });
 }
 
 /**

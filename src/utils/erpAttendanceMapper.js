@@ -77,7 +77,10 @@ function findBestMatch(erpSub, existingSubjects, matchedIds, threshold = 0.35) {
     // 2. Subject code match (e.g. "24CSE0212")
     if (erpSub.code) {
         const byCode = existingSubjects.find(
-            s => !matchedIds.has(s.id) && s.erpSubjectId && String(s.erpSubjectId) === String(erpSub.code)
+            s => !matchedIds.has(s.id) && (
+                (s.code && String(s.code) === String(erpSub.code)) ||
+                (s.erpSubjectId && String(s.erpSubjectId) === String(erpSub.code))
+            )
         );
         if (byCode) return { match: byCode, score: 1 };
     }
@@ -147,6 +150,7 @@ export function mapErpToAppState(erpSubjects, existingSubjects) {
             const newSubject = {
                 id: generateId(),
                 name: erpSub.name,
+                code: erpSub.code || '',
                 teacher: erpSub.teacher || '',
                 color,
                 initialAttended: erpSub.attended,
@@ -254,6 +258,7 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
             const newSub = {
                 id: generateId(),
                 name: erpSub.name,
+                code: erpSub.code || '',
                 teacher: '',
                 color,
                 initialAttended: erpSub.attended || 0,

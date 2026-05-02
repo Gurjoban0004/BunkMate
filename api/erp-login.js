@@ -4,9 +4,8 @@
  * POST /api/erp-login
  * Body: { username, password }
  *
- * 1. Initializes client with schoolCode
- * 2. Authenticates with ERP
- * 3. Returns { success, authUserId } for OTP step
+ * 1. Authenticates with the captured legacy mobile endpoint
+ * 2. Returns { success, authUserId } for OTP step
  *
  * SECURITY: ERP base URL and school code are server-side only (env vars).
  *           Credentials are forwarded once and never stored or logged.
@@ -14,11 +13,9 @@
 
 const {
     setCorsHeaders,
-    encodeForm,
-    generateDeviceUUID,
-    MOBILE_HEADERS,
     ERP_BASE,
 } = require('./_session-utils');
+const { loginLegacy } = require('./_erp-provider');
 
 
 module.exports = async function handler(req, res) {
@@ -43,56 +40,21 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        const deviceIdUUID = generateDeviceUUID(username);
-
-        // Authenticate via mobilev2 — mirrors the official iOS app exactly.
-        // No getClientDetails pre-flight needed for mobilev2.
-        const loginRes = await fetch(`${ERP_BASE}/mobilev2/appLoginAuthV2`, {
-            method: 'POST',
-            headers: MOBILE_HEADERS,
-            body: encodeForm({
-                deviceIdUUID,
-                device:      'iOS',
-                txtUsername: username,
-                txtPassword: password,
-            }),
-        });
-
-        if (!loginRes.ok) {
-            return res.status(502).json({ error: 'Authentication request failed' });
-        }
-
-        const loginData = await loginRes.json();
-
-        // Check for login failure — ERP uses numeric status strings
-        // status "4" = success, status "0"/"1"/"2" = various failures
-        if (loginData.error || loginData.status === '0' || loginData.status === 'error' || loginData.status === 'fail') {
-            return res.status(401).json({
-                error: 'Invalid credentials',
-                message: loginData.message || loginData.mobileString || 'Username or password is incorrect',
-            });
-        }
-
-        // ERP response: { status, mobileString, data: [{ userId, ... }] }
-        const firstUser  = Array.isArray(loginData.data) ? loginData.data[0] : loginData.data;
-        const authUserId = loginData.authUserId || firstUser?.userId || loginData.userId;
-
-        if (!authUserId) {
-            return res.status(502).json({
-                error: 'Unexpected response from portal',
-                message: 'Could not retrieve authentication ID',
-            });
-        }
-
-        const otpHint = loginData.mobileString || '';
+        const login = await loginLegacy(username, password);
 
         return res.status(200).json({
             success:  true,
-            authUserId: String(authUserId),
-            message:  otpHint || 'OTP sent to your registered mobile/email',
+            authUserId: login.authUserId,
+            message:  login.otpHint || 'OTP sent to your registered mobile/email',
         });
 
     } catch (err) {
+        if (err.code === 'ERP_REJECTED') {
+            return res.status(401).json({
+                error: 'Invalid credentials',
+                message: err.message || 'Username or password is incorrect',
+            });
+        }
         console.error('ERP login error:', err.message);
         return res.status(500).json({
             error:   'Connection failed',

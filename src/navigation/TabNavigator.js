@@ -16,6 +16,7 @@ import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import EndGameScreen from '../screens/main/EndGameScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useApp } from '../context/AppContext';
 import { COLORS } from '../theme/theme';
 
@@ -28,6 +29,7 @@ const EndGameStack = createStackNavigator();
 
 function TodayStackScreen() {
     return (
+        <ErrorBoundary screen screenName="Today">
         <TodayStack.Navigator
             screenOptions={{
                 headerShown: false,
@@ -49,11 +51,13 @@ function TodayStackScreen() {
                 options={{ title: 'Weekly Summary' }}
             />
         </TodayStack.Navigator>
+        </ErrorBoundary>
     );
 }
 
 function SubjectsStackScreen() {
     return (
+        <ErrorBoundary screen screenName="Subjects">
         <SubjectsStack.Navigator
             screenOptions={{
                 headerShown: false,
@@ -72,11 +76,13 @@ function SubjectsStackScreen() {
                 })}
             />
         </SubjectsStack.Navigator>
+        </ErrorBoundary>
     );
 }
 
 function PlannerStackScreen() {
     return (
+        <ErrorBoundary screen screenName="Planner">
         <PlannerStack.Navigator
             screenOptions={{
                 headerShown: false,
@@ -95,11 +101,13 @@ function PlannerStackScreen() {
                 })}
             />
         </PlannerStack.Navigator>
+        </ErrorBoundary>
     );
 }
 
 function SettingsStackScreen() {
     return (
+        <ErrorBoundary screen screenName="Settings">
         <SettingsStack.Navigator
             screenOptions={{
                 headerShown: false,
@@ -146,11 +154,13 @@ function SettingsStackScreen() {
                 options={{ title: 'Connect ERP' }}
             />
         </SettingsStack.Navigator>
+        </ErrorBoundary>
     );
 }
 
 function EndGameStackScreen() {
     return (
+        <ErrorBoundary screen screenName="End Game">
         <EndGameStack.Navigator
             screenOptions={{
                 headerShown: false,
@@ -161,6 +171,7 @@ function EndGameStackScreen() {
                 component={EndGameScreen}
             />
         </EndGameStack.Navigator>
+        </ErrorBoundary>
     );
 }
 

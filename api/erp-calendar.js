@@ -4,8 +4,11 @@
  * POST /api/erp-calendar
  * Body: { token, persistentToken? }
  *
- * Discovered endpoint:
- * POST /mobile/commonPage with commonPageId: 85
+ * Primary endpoint:
+ * POST /chalkpadpro/studentDetails/getAttendanceRegister
+ *
+ * Fallback endpoint:
+ * POST /mobilev2/commonPage with commonPageId: 85
  */
 
 const {
@@ -18,66 +21,72 @@ const {
     MOBILE_HEADERS,
     ERP_BASE,
 } = require('./_session-utils');
+const {
+    fetchRegisterLegacy,
+    readErpPayload,
+} = require('./_erp-provider');
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
 
-function parseCalendarHTML(htmlContent) {
-    const calendar = {}; // { 'YYYY-MM-DD': { subjectName: { status, period, code } } }
+function parseRegisterHTML(htmlContent) {
+    const calendar = {}; // { 'YYYY-MM-DD': { subjectName: { status, period, code, erpSubjectId, units } } }
     const subjects = []; // { name, code, erpSubjectId, total, attended, percentage }
     let latestDateStr = null;
+    const stripTags = (html) => html.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/&nbsp;?/gi, ' ').replace(/\s+/g, ' ').trim();
 
-    // Use regex to parse out each subject block
-    // A subject block consists of a <thead>...</thead> pair and its following <tbody>...</tbody> pair
-    const theadRegex = /<thead[^>]*>([\s\S]*?)<\/thead>/gi;
-    const tbodyRegex = /<tbody[^>]*>([\s\S]*?)<\/tbody>/gi;
-    
-    // We expect the same number of theads and tbodys
-    const theads = [];
-    const tbodys = [];
-    
-    let match;
-    while ((match = theadRegex.exec(htmlContent)) !== null) {
-        theads.push(match[1]);
+    // ── Step 1: Build erpSubjectId → { name, code } map ──────────────
+    // The register HTML has one <thead> row with subject-name <th> cells interleaved
+    // with date-column <th> cells. Subject-name cells look like:
+    //   "Subject Name<br>(CODE)"  where CODE is e.g. 24CSE0212
+    // Date-column cells look like:
+    //   "1<br>20-01<br>1"  (column number, date, period)
+    //
+    // Strategy: extract ALL <th> contents individually (no cross-tag matching),
+    // then filter for the ones that contain a real subject code.
+
+    // Extract all <th> inner contents without crossing </th> boundaries
+    const allThContents = [];
+    const thExtractRegex = /<th(?:\s[^>]*)?>([^]*?)<\/th>/gi;
+    let thExtractMatch;
+    while ((thExtractMatch = thExtractRegex.exec(htmlContent)) !== null) {
+        allThContents.push(thExtractMatch[1]);
     }
-    while ((match = tbodyRegex.exec(htmlContent)) !== null) {
-        tbodys.push(match[1]);
-    }
 
-    const stripTags = (html) => html.replace(/<[^>]+>/g, '').trim();
-
-    // Iterate over each subject block
-    for (let i = 0; i < Math.min(theads.length, tbodys.length); i++) {
-        const thead = theads[i];
-        const tbody = tbodys[i];
-
-        // 1. Parse subject info from thead
-        // Look for the first <th> in the second <tr> which contains "Subject Name\n(Code)"
-        const trs = thead.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
-        if (trs.length < 2) continue; // second tr holds the info
-        
-        const ths = trs[1].match(/<th[^>]*>([\s\S]*?)<\/th>/gi) || [];
-        if (ths.length === 0) continue;
-        
-        const rawSubjectText = stripTags(ths[0]);
-        // Extract Name and Code (e.g., "Data Structures using Object Oriented Programming-II(24CSE0212)")
-        // Sometimes separated by <br>, which becomes space or just concatenated
-        let name = rawSubjectText;
-        let code = '';
-        const codeMatch = rawSubjectText.match(/(.+?)\(([^)]+)\)$/i);
+    // Filter for subject-name <th> cells: must contain a real subject code like (24CSE0212).
+    // Real codes: optional leading digits, then 2+ uppercase letters, then 4+ digits.
+    // Date-column headers like "1<br>20-01<br>1" contain no uppercase letters in parens.
+    const subjectCodePattern = /\(\d*[A-Z]{2,}\d{4,}[^)]*\)/;
+    const subjectHeaders = []; // [{ name, code }] in document order
+    for (const thContent of allThContents) {
+        if (!subjectCodePattern.test(thContent)) continue;
+        const text = stripTags(thContent);
+        // text looks like "Subject Name (CODE)" after stripTags replaces <br> with space
+        const codeMatch = text.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
         if (codeMatch) {
-            name = codeMatch[1].trim();
-            code = codeMatch[2].trim();
+            subjectHeaders.push({ name: codeMatch[1].trim(), code: codeMatch[2].trim() });
         }
+    }
 
-        // 2. Parse attendance from tbody
-        // Get the first <tr>, its ID contains the erpSubjectId (e.g. <tr id='subject_10755'>)
-        const trMatch = /<tr[^>]*id=['"]subject_(\d+)['"][^>]*>([\s\S]*?)<\/tr>/i.exec(tbody);
-        if (!trMatch) continue;
-        
-        const erpSubjectId = trMatch[1];
-        const trContent = trMatch[2];
+    // Extract data rows: <tr id="subject_{erpSubjectId}">
+    const rowRegex = /<tr[^>]*id=['"]subject_(\d+)['"][^>]*>([\s\S]*?)<\/tr>/gi;
+    const dataRows = []; // [{ erpSubjectId, trContent }] in document order
+    let rowMatch;
+    while ((rowMatch = rowRegex.exec(htmlContent)) !== null) {
+        dataRows.push({ erpSubjectId: rowMatch[1], trContent: rowMatch[2] });
+    }
 
-        // Match all tds: <td id='...'> or <td class='...'>
+    // Correlate: subjectHeaders[i] ↔ dataRows[i]
+    const subjectMap = {}; // erpSubjectId → { name, code }
+    for (let i = 0; i < Math.min(subjectHeaders.length, dataRows.length); i++) {
+        subjectMap[dataRows[i].erpSubjectId] = subjectHeaders[i];
+    }
+
+    // ── Step 2: Parse each data row ──────────────────────────────────
+    for (const { erpSubjectId, trContent } of dataRows) {
+        const subjectInfo = subjectMap[erpSubjectId];
+        if (!subjectInfo) continue;
+        const { name, code } = subjectInfo;
+
         const tdRegex = /<td([^>]*)>([\s\S]*?)<\/td>/gi;
         let tdMatch;
         let attended = 0;
@@ -87,79 +96,50 @@ function parseCalendarHTML(htmlContent) {
         while ((tdMatch = tdRegex.exec(trContent)) !== null) {
             const tdAttrs = tdMatch[1];
             const tdVal = stripTags(tdMatch[2]);
-
-            // Check if it's a calendar cell (id="subject_XXXX_YYYY_MM_DD_Period")
             const idMatch = tdAttrs.match(/id=['"]subject_\d+_(\d{4})_(\d{2})_(\d{2})_(\d+)['"]/i);
-            if (idMatch) {
-                const year = idMatch[1];
-                const month = idMatch[2];
-                const day = idMatch[3];
-                const period = parseInt(idMatch[4], 10);
-                
-                const dateStr = `${year}-${month}-${day}`;
-                
-                // Track latest date
-                if (!latestDateStr || dateStr > latestDateStr) {
-                    latestDateStr = dateStr;
-                }
 
-                // Initialize calendar entry for this date
+            if (idMatch) {
+                const year   = idMatch[1];
+                const month  = idMatch[2];
+                const day    = idMatch[3];
+                const period = parseInt(idMatch[4], 10);
+                const dateStr = `${year}-${month}-${day}`;
+                const status  = tdVal.toUpperCase() === 'X' ? 'absent' : 'present';
+
+                if (!latestDateStr || dateStr > latestDateStr) latestDateStr = dateStr;
                 if (!calendar[dateStr]) calendar[dateStr] = {};
 
-                // Determine present or absent
-                const status = (tdVal.toUpperCase() === 'X') ? 'absent' : 'present';
-
-                // We might have multiple periods for the same subject on the same day.
-                // But the AppContext only stores ONE record per subject per day, with a `units` field.
-                // We'll group them into arrays first, then aggregate below.
                 if (!calendar[dateStr][name]) {
                     calendar[dateStr][name] = {
-                        status: status, // Assume first encountered status
-                        code: code,
-                        units: 1, // Start with 1 unit
-                        // Internal tracker for averaging if mixed (rare but possible)
-                        _att: status === 'present' ? 1 : 0
+                        status,
+                        code,
+                        erpSubjectId,
+                        period,
+                        units: 1,
+                        _att: status === 'present' ? 1 : 0,
                     };
                 } else {
-                    // Accumulate units
                     calendar[dateStr][name].units += 1;
                     if (status === 'present') calendar[dateStr][name]._att += 1;
-                    
-                    // Final status logic: if majority present -> present, else absent
-                    // (Actually if they marked present for ANY period, we'll call it present, since partial absences aren't natively supported, but normally it's homogeneous)
-                    const totalUnits = calendar[dateStr][name].units;
+                    const totalUnits   = calendar[dateStr][name].units;
                     const presentUnits = calendar[dateStr][name]._att;
-                    calendar[dateStr][name].status = (presentUnits > totalUnits / 2) ? 'present' : 'absent';
+                    calendar[dateStr][name].status = presentUnits > totalUnits / 2 ? 'present' : 'absent';
                 }
-            } 
-            // Check if it's the totals cell
-            else if (tdAttrs.toLowerCase().includes('class=') && tdAttrs.toLowerCase().includes('total_')) {
-                // e.g. "73/89"
+            } else if (tdAttrs.toLowerCase().includes('class=') && tdAttrs.toLowerCase().includes('total_')) {
                 const parts = tdVal.split('/');
                 if (parts.length === 2) {
                     attended = parseInt(parts[0], 10) || 0;
-                    total = parseInt(parts[1], 10) || 0;
+                    total    = parseInt(parts[1], 10) || 0;
                 }
-            }
-            // Check if it's the percentage cell
-            else if (tdAttrs.toLowerCase().includes('class=') && tdAttrs.toLowerCase().includes('percent_')) {
-                // e.g. "82.02%"
+            } else if (tdAttrs.toLowerCase().includes('class=') && tdAttrs.toLowerCase().includes('percent_')) {
                 percentage = parseFloat(tdVal.replace('%', '')) || 0;
             }
         }
 
-        // Add to subjects list
-        subjects.push({
-            name,
-            code,
-            erpSubjectId,
-            attended,
-            total,
-            percentage
-        });
+        subjects.push({ name, code, erpSubjectId, attended, total, percentage });
     }
 
-    // Clean up temporary `_att` field
+    // Clean up internal _att tracker
     Object.keys(calendar).forEach(date => {
         Object.keys(calendar[date]).forEach(sub => {
             delete calendar[date][sub]._att;
@@ -168,6 +148,8 @@ function parseCalendarHTML(htmlContent) {
 
     return { calendar, subjects, latestDate: latestDateStr };
 }
+
+const parseCalendarHTML = parseRegisterHTML;
 
 // ─── HANDLER ─────────────────────────────────────────────────────────
 
@@ -192,8 +174,8 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
     }
 
-    async function fetchCalendar(sess) {
-        return await fetch(`${ERP_BASE}/mobilev2/commonPage`, {
+    async function fetchCalendarV2(sess) {
+        return fetch(`${ERP_BASE}/mobilev2/commonPage`, {
             method: 'POST',
             headers: MOBILE_HEADERS,
             body: encodeForm({
@@ -207,13 +189,26 @@ module.exports = async function handler(req, res) {
         });
     }
 
-    try {
-        let erpRes = await fetchCalendar(session);
+    async function fetchCalendar(sess) {
+        const register = await fetchRegisterLegacy(sess);
+        const registerHtml = register.payload?.content || register.payload?.data?.content || '';
+        if (register.response.ok && registerHtml) {
+            return { response: register.response, payload: register.payload, htmlBody: registerHtml };
+        }
 
-        const erpResClone = erpRes.clone();
-        const erpJson = await erpResClone.json().catch(() => null);
+        const fallbackResponse = await fetchCalendarV2(sess);
+        const fallbackPayload = await readErpPayload(fallbackResponse);
+        return {
+            response: fallbackResponse,
+            payload: fallbackPayload,
+            htmlBody: fallbackPayload.content || fallbackPayload.data?.content || '',
+        };
+    }
+
+    try {
+        const erpResult = await fetchCalendar(session);
         
-        if (!erpRes.ok || isSessionDead(erpJson)) {
+        if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
             if (!persistentToken) {
                 return res.status(401).json({ error: 'Session expired', sessionExpired: true });
             }
@@ -233,14 +228,13 @@ module.exports = async function handler(req, res) {
             });
         }
 
-        const attendanceData = erpJson || await erpRes.json();
-        const htmlContent    = attendanceData.content || attendanceData.data?.content || '';
+        const htmlContent = erpResult.htmlBody;
 
         if (!htmlContent) {
             return res.status(502).json({ error: 'Empty response', message: 'The portal returned no calendar data.' });
         }
 
-        const { calendar, subjects, latestDate } = parseCalendarHTML(htmlContent);
+        const { calendar, subjects, latestDate } = parseRegisterHTML(htmlContent);
 
         return res.status(200).json({ 
             success: true, 
@@ -255,3 +249,6 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Fetch failed', message: 'Could not retrieve calendar. Please try again.' });
     }
 };
+
+module.exports.parseCalendarHTML = parseCalendarHTML;
+module.exports.parseRegisterHTML = parseRegisterHTML;

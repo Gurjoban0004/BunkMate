@@ -43,11 +43,19 @@ const SubjectsScreen = ({ navigation }) => {
         return state.subjects.map(subject => {
             const stats = getSubjectAttendance(subject.id, state);
             const target = subject.target || dangerThreshold;
-            const skipInfo = calculateSkips(stats.attendedUnits, stats.totalUnits, target);
+            // Guard: getSubjectAttendance returns null if subject not found (shouldn't happen
+            // here since we're iterating state.subjects, but guard anyway)
+            const attendedUnits = stats?.attendedUnits ?? 0;
+            const totalUnits = stats?.totalUnits ?? 0;
+            const percentage = stats?.percentage ?? 0;
+            const skipInfo = calculateSkips(attendedUnits, totalUnits, target);
 
             return {
                 ...subject,
-                ...stats,
+                attendedUnits,
+                totalUnits,
+                percentage,
+                hasPredictions: stats?.hasPredictions ?? false,
                 skipInfo,
                 resolvedTarget: target,
             };

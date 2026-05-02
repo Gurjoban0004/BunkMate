@@ -86,12 +86,12 @@ export default function ERPConnectScreen({ navigation }) {
 
         try {
             // Verify OTP → get encrypted token
-            const otpResult = await erpVerifyOtp(authUserId, otp.trim());
+            const otpResult = await erpVerifyOtp(authUserId, otp.trim(), username.trim(), password);
             setToken(otpResult.token);
             setStudentName(otpResult.studentName || '');
 
             // Save token for future syncs
-            await saveErpToken(otpResult.token, otpResult.expiresAt, otpResult.studentName);
+            await saveErpToken(otpResult.token, otpResult.studentName || '', otpResult.persistentToken);
 
             // Immediately fetch attendance
             const attendanceResult = await erpFetchAttendance(otpResult.token);
@@ -113,7 +113,7 @@ export default function ERPConnectScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
-    }, [otp, authUserId, state.subjects]);
+    }, [otp, authUserId, username, password, state.subjects]);
 
     // ─── STEP 3: IMPORT ─────────────────────────────────────────────
     const handleImport = useCallback(() => {
@@ -130,7 +130,7 @@ export default function ERPConnectScreen({ navigation }) {
         // Resync matched subjects
         if (matchedUpdates.length > 0) {
             const payload = buildResyncPayload(matchedUpdates);
-            dispatch({ type: 'RESYNC_ATTENDANCE', payload });
+            dispatch({ type: 'ERP_OVERWRITE_ATTENDANCE', payload });
         }
 
         // Update ERP connection status
@@ -172,12 +172,14 @@ export default function ERPConnectScreen({ navigation }) {
                     dispatch({ type: 'SET_SUBJECTS', payload: updatedSubjects });
                 }
 
-                // Load calendar records into state
+                // Load calendar records into state — use ERP_OVERWRITE_CALENDAR so
+                // stale predictions are garbage-collected and erpSubjectId stamps are applied
                 dispatch({
-                    type: 'LOAD_CALENDAR_RECORDS',
+                    type: 'ERP_OVERWRITE_CALENDAR',
                     payload: {
                         records: result.records,
                         trackingStartDate: result.earliestDate,
+                        lastSubjectSyncDates: result.lastSubjectSyncDates,
                     },
                 });
 

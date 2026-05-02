@@ -5,6 +5,10 @@
  */
 
 const crypto = require('crypto');
+const {
+    loginLegacy,
+    verifyOtpLegacy,
+} = require('./_erp-provider');
 
 const ERP_BASE    = process.env.ERP_BASE_URL;
 const SCHOOL_CODE = process.env.ERP_SCHOOL_CODE || '800002';
@@ -105,36 +109,7 @@ function decryptPersistent(token) {
  * @throws on network failure or invalid OTP
  */
 async function verifyOtpWithERP(authUserId, otp, deviceIdUUID = '') {
-    const otpRes = await fetch(`${ERP_BASE}/mobilev2/verifyOtp`, {
-        method: 'POST',
-        headers: MOBILE_HEADERS,
-        body: encodeForm({
-            deviceIdUUID: deviceIdUUID,
-            OTPText:      otp,
-            authUserId:   authUserId,
-        }),
-    });
-
-    if (!otpRes.ok) throw new Error('OTP verification request failed');
-    const otpData = await otpRes.json();
-
-    if (otpData.error || otpData.status === '0' || otpData.status === 'error' || otpData.status === 'fail') {
-        throw Object.assign(new Error(otpData.message || 'Invalid OTP'), { code: 'INVALID_OTP' });
-    }
-
-    const firstUser = Array.isArray(otpData.data) ? otpData.data[0] : otpData.data;
-    if (!firstUser) throw new Error('Unexpected ERP OTP response');
-
-    return {
-        userId:       String(firstUser.userId      || otpData.userId      || ''),
-        sessionId:    String(firstUser.sessionId   || otpData.sessionId   || ''),
-        roleId:       String(firstUser.roleId      || otpData.roleId      || ''),
-        apiKey:       String(firstUser.apiKey      || firstUser.appKey    || otpData.apiKey || ''),
-        studentId:    String(firstUser.studentId   || firstUser.id        || ''),
-        studentName:  String(firstUser.name        || firstUser.profileName || ''),
-        studentPhoto: String(firstUser.photo       || ''),
-        securityToken: String(firstUser.token      || otpData.token       || ''),
-    };
+    return verifyOtpLegacy(authUserId, otp);
 }
 
 /**
@@ -143,36 +118,13 @@ async function verifyOtpWithERP(authUserId, otp, deviceIdUUID = '') {
  * With OTP: completes full flow, returns session object.
  */
 async function reloginERP(username, password, otp = null) {
-    const deviceIdUUID = generateDeviceUUID(username);
-
-    // Step 1: authenticate via mobilev2 (no getClientDetails needed)
-    const loginRes = await fetch(`${ERP_BASE}/mobilev2/appLoginAuthV2`, {
-        method: 'POST',
-        headers: MOBILE_HEADERS,
-        body: encodeForm({
-            deviceIdUUID,
-            device:      'iOS',
-            txtUsername: username,
-            txtPassword: password,
-        }),
-    });
-    if (!loginRes.ok) throw new Error('ERP login request failed');
-    const loginData = await loginRes.json();
-
-    if (loginData.status === '0' || loginData.error) {
-        throw new Error(loginData.message || 'ERP credentials rejected — password may have changed');
-    }
-
-    const firstLoginUser = Array.isArray(loginData.data) ? loginData.data[0] : loginData.data;
-    const authUserId     = loginData.authUserId || firstLoginUser?.userId || loginData.userId;
-    if (!authUserId) throw new Error('No authUserId in ERP login response');
+    const login = await loginLegacy(username, password);
 
     if (!otp) {
-        return { needsOtp: true, authUserId: String(authUserId) };
+        return { needsOtp: true, authUserId: login.authUserId };
     }
 
-    // Step 2: verify OTP using shared helper (with deviceIdUUID)
-    return verifyOtpWithERP(String(authUserId), otp, deviceIdUUID);
+    return verifyOtpWithERP(String(login.authUserId), otp);
 }
 
 /**
