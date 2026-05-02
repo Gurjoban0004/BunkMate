@@ -4,7 +4,7 @@ import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme
 
 const SubjectRow = ({ subject, status, threshold, onPress }) => {
     const styles = getStyles();
-    const { name, color, percentage, attendedUnits, totalUnits, skipInfo, source, lastUpdated } = subject;
+    const { name, color, percentage, attendedUnits, totalUnits, skipInfo, source } = subject;
     const getStatusColor = () => {
         switch (status) {
             case 'danger': return COLORS.danger;
@@ -39,15 +39,13 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
             onPress={onPress}
             activeOpacity={0.7}
         >
-            {/* Color Indicator */}
             <View style={[styles.colorDot, { backgroundColor: color }]} />
 
-            {/* Content */}
             <View style={styles.content}>
                 <View style={styles.topRow}>
                     <Text style={styles.name} numberOfLines={1}>{name}</Text>
                     <Text style={[styles.percentage, { color: statusColor }]}>
-                        {percentage.toFixed(1)}%{subject.hasPredictions ? ' ✨' : ''}
+                        {percentage.toFixed(1)}%
                     </Text>
                 </View>
 
@@ -76,12 +74,11 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
                         status === 'safe' && styles.actionBadgeSafe,
                     ]}>
                         <Text style={styles.actionText}>
-                            → {getActionText()}
+                            {getActionText()}
                         </Text>
                     </View>
                 </View>
 
-                {/* Source badge row */}
                 {showSourceBadge && (
                     <View style={styles.sourceBadgeRow}>
                         <View style={[
@@ -92,7 +89,7 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
                                 styles.sourceBadgeText,
                                 isErpSynced ? styles.sourceBadgeTextErp : styles.sourceBadgeTextManual,
                             ]}>
-                                {isErpSynced ? '✓ Synced from ERP' : '⏳ Manual (pending sync)'}
+                                {isErpSynced ? 'ERP synced' : 'Manual, pending sync'}
                             </Text>
                         </View>
                     </View>
@@ -108,12 +105,12 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'flex-start',
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.cardGap,
-        padding: 12,
+        marginBottom: SPACING.sm,
+        padding: SPACING.md,
         paddingLeft: 28,
         borderRadius: BORDER_RADIUS.lg,
         borderWidth: 1,
-        borderColor: COLORS.borderLight,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     colorDot: {
@@ -144,7 +141,7 @@ const getStyles = () => StyleSheet.create({
     bottomRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: SPACING.xs,
+        marginTop: SPACING.sm,
     },
     progressContainer: {
         flexDirection: 'row',
@@ -154,7 +151,7 @@ const getStyles = () => StyleSheet.create({
     progressBar: {
         flex: 1,
         height: 8,
-        backgroundColor: COLORS.border,
+        backgroundColor: COLORS.inputBackground,
         borderRadius: 4,
         marginRight: SPACING.sm,
         overflow: 'hidden',
@@ -170,8 +167,8 @@ const getStyles = () => StyleSheet.create({
     },
     actionBadge: {
         paddingHorizontal: SPACING.sm,
-        paddingVertical: 2,
-        borderRadius: 8,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.full,
         marginLeft: SPACING.sm,
     },
     actionBadgeDanger: {
@@ -185,7 +182,7 @@ const getStyles = () => StyleSheet.create({
     },
     actionText: {
         fontSize: 10,
-        fontWeight: '600',
+        fontWeight: '700',
         color: COLORS.textPrimary,
     },
     sourceBadgeRow: {
@@ -193,25 +190,25 @@ const getStyles = () => StyleSheet.create({
         flexDirection: 'row',
     },
     sourceBadge: {
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
+        paddingHorizontal: 0,
+        paddingVertical: 0,
+        borderRadius: 0,
     },
     sourceBadgeErp: {
-        backgroundColor: COLORS.successLight || '#d4edda',
+        backgroundColor: 'transparent',
     },
     sourceBadgeManual: {
-        backgroundColor: COLORS.warningLight || '#fff3cd',
+        backgroundColor: 'transparent',
     },
     sourceBadgeText: {
         fontSize: 9,
         fontWeight: '600',
     },
     sourceBadgeTextErp: {
-        color: COLORS.success || '#28a745',
+        color: COLORS.textMuted,
     },
     sourceBadgeTextManual: {
-        color: COLORS.warning || '#856404',
+        color: COLORS.textMuted,
     },
 });
 

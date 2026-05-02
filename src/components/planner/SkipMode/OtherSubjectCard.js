@@ -22,10 +22,6 @@ export default function OtherSubjectCard({ subjectData, onPress }) {
         : status === 'warning' ? COLORS.warningDark
         : COLORS.successDark;
 
-    const badgeBg = status === 'danger' ? COLORS.dangerLight
-        : status === 'warning' ? COLORS.warningLight
-        : COLORS.successLight;
-
     return (
         <TouchableOpacity
             style={[styles.card, { borderLeftColor: borderColor }]}
@@ -36,11 +32,9 @@ export default function OtherSubjectCard({ subjectData, onPress }) {
                 <View style={[styles.colorDot, { backgroundColor: color || borderColor }]} />
                 <Text style={styles.name} numberOfLines={1}>{name}</Text>
                 <View style={styles.right}>
-                    <View style={[styles.badge, { backgroundColor: badgeBg }]}>
-                        <Text style={[styles.percentage, { color: percentColor }]}>
-                            {percentage.toFixed(0)}%
-                        </Text>
-                    </View>
+                    <Text style={[styles.percentage, { color: percentColor }]}>
+                        {percentage.toFixed(0)}%
+                    </Text>
                     {nextClass && (
                         <Text style={styles.nextLabel}>
                             {nextClass.isToday ? 'Today' :
@@ -57,14 +51,14 @@ export default function OtherSubjectCard({ subjectData, onPress }) {
 const getStyles = () => StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         paddingVertical: 12,
         paddingHorizontal: SPACING.md,
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.xs + 2,
         borderLeftWidth: 3,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     row: {
@@ -73,14 +67,14 @@ const getStyles = () => StyleSheet.create({
         gap: 10,
     },
     colorDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         flexShrink: 0,
     },
     name: {
         fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
+        fontWeight: '700',
         color: COLORS.textPrimary,
         flex: 1,
     },
@@ -89,14 +83,9 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         gap: 10,
     },
-    badge: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: BORDER_RADIUS.full,
-    },
     percentage: {
-        fontSize: FONT_SIZES.xs,
-        fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '800',
     },
     nextLabel: {
         fontSize: FONT_SIZES.xs,

@@ -97,6 +97,6 @@ const getStyles = () => StyleSheet.create({
     },
     scrollContent: {
         padding: SPACING.lg,
-        paddingTop: SPACING.xxl + SPACING.lg, // Added extra padding for floating back button
+        paddingTop: SPACING.sm,
     },
 });

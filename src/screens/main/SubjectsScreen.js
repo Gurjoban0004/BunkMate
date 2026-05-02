@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     RefreshControl,
 } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
 import { calculateGlobalStaleness } from '../../utils/erpFreshness';
@@ -131,7 +131,8 @@ const SubjectsScreen = ({ navigation }) => {
             >
                 {/* Header */}
                 <View style={styles.headerContainer}>
-                    <Text style={styles.headerTitle}>Your Subjects</Text>
+                    <Text style={styles.headerTitle}>Subjects</Text>
+                    <Text style={styles.headerSubtitle}>Your attendance portfolio</Text>
                 </View>
 
                 {/* Overall Stats Card */}
@@ -196,7 +197,8 @@ const SubjectsScreen = ({ navigation }) => {
                         {categorizedSubjects.danger.length > 0 && (
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
-                                    <Text style={[styles.sectionTitle, styles.sectionTitleDanger]}>
+                                    <View style={[styles.sectionRule, styles.sectionRuleDanger]} />
+                                    <Text style={styles.sectionTitle}>
                                         NEEDS ATTENTION
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeDanger]}>
@@ -222,7 +224,8 @@ const SubjectsScreen = ({ navigation }) => {
                         {categorizedSubjects.edge.length > 0 && (
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
-                                    <Text style={[styles.sectionTitle, styles.sectionTitleEdge]}>
+                                    <View style={[styles.sectionRule, styles.sectionRuleEdge]} />
+                                    <Text style={styles.sectionTitle}>
                                         ON THE EDGE
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeEdge]}>
@@ -248,7 +251,8 @@ const SubjectsScreen = ({ navigation }) => {
                         {categorizedSubjects.safe.length > 0 && (
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
-                                    <Text style={[styles.sectionTitle, styles.sectionTitleSafe]}>
+                                    <View style={[styles.sectionRule, styles.sectionRuleSafe]} />
+                                    <Text style={styles.sectionTitle}>
                                         ON TRACK
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeSafe]}>
@@ -302,25 +306,34 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: 24,
+        paddingTop: SPACING.sm,
     },
     headerContainer: {
         paddingHorizontal: SPACING.screenPadding,
-        paddingBottom: 16,
+        paddingTop: SPACING.xs,
+        paddingBottom: SPACING.md,
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: '800',
-        letterSpacing: -0.5,
+        letterSpacing: 0,
         color: COLORS.textPrimary,
+    },
+    headerSubtitle: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textSecondary,
+        marginTop: 4,
     },
     toggleContainer: {
         flexDirection: 'row',
         marginHorizontal: SPACING.screenPadding,
-        marginVertical: SPACING.md,
+        marginTop: SPACING.md,
+        marginBottom: SPACING.sm,
         backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: 4,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
     },
     toggleButton: {
         flex: 1,
@@ -330,7 +343,8 @@ const getStyles = () => StyleSheet.create({
     },
     toggleButtonActive: {
         backgroundColor: COLORS.cardBackground,
-        ...SHADOWS.small,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     toggleText: {
         fontSize: FONT_SIZES.sm,
@@ -349,20 +363,27 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.sm,
+        gap: SPACING.sm,
+    },
+    sectionRule: {
+        width: 18,
+        height: 2,
+        borderRadius: 1,
+    },
+    sectionRuleDanger: {
+        backgroundColor: COLORS.danger,
+    },
+    sectionRuleEdge: {
+        backgroundColor: COLORS.warning,
+    },
+    sectionRuleSafe: {
+        backgroundColor: COLORS.success,
     },
     sectionTitle: {
         fontSize: FONT_SIZES.xs,
         fontWeight: '700',
         letterSpacing: 0.5,
-    },
-    sectionTitleDanger: {
-        color: COLORS.danger,
-    },
-    sectionTitleEdge: {
-        color: COLORS.warning,
-    },
-    sectionTitleSafe: {
-        color: COLORS.success,
+        color: COLORS.textMuted,
     },
     sectionBadge: {
         marginLeft: SPACING.sm,

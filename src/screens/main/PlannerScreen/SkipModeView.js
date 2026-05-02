@@ -54,44 +54,29 @@ export default function SkipModeView({ subjects, onSubjectPress, activeDate = ne
 
         // Determine message
         let message = '';
-        let emoji = '';
         if (dangerCount > 0) {
-            emoji = '⚠️';
             message = `${dangerCount} subject${dangerCount > 1 ? 's' : ''} need${dangerCount === 1 ? 's' : ''} attention`;
         } else if (totalSkippable > 5) {
-            emoji = '😎';
             message = 'You\'re in great shape!';
         } else if (totalSkippable > 0) {
-            emoji = '📊';
             message = 'Manage your skips wisely';
         } else {
-            emoji = '📚';
             message = 'Better attend everything for now';
         }
 
-        return { totalSkippable, safeCount, warningCount, dangerCount, message, emoji };
+        return { totalSkippable, safeCount, warningCount, dangerCount, message };
     }, [subjects]);
 
     return (
         <View style={styles.container}>
-            {/* Quick Answer Card — prototype style */}
             <View style={[
                 styles.quickAnswerCard,
                 skipSummary.dangerCount > 0 ? styles.quickAnswerDanger :
                 skipSummary.warningCount > 0 ? styles.quickAnswerWarning :
                 styles.quickAnswerSafe,
             ]}>
-                <View style={[
-                    styles.quickAnswerIcon,
-                    skipSummary.dangerCount > 0 ? styles.iconDanger :
-                    skipSummary.warningCount > 0 ? styles.iconWarning :
-                    styles.iconSafe,
-                ]}>
-                    <Text style={styles.quickAnswerIconText}>
-                        {skipSummary.dangerCount > 0 ? '!' : skipSummary.warningCount > 0 ? '~' : '✓'}
-                    </Text>
-                </View>
                 <View style={styles.quickAnswerContent}>
+                    <Text style={styles.quickAnswerLabel}>Today’s answer</Text>
                     <Text style={styles.quickAnswerTitle}>
                         {skipSummary.dangerCount > 0
                             ? `${skipSummary.dangerCount} subject${skipSummary.dangerCount > 1 ? 's' : ''} need attention`
@@ -159,13 +144,13 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         gap: SPACING.sm,
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.md,
         borderWidth: 1,
-        borderColor: COLORS.border,
-        borderLeftWidth: 3,
+        borderColor: COLORS.borderSubtle,
+        borderLeftWidth: 4,
         ...SHADOWS.small,
     },
     quickAnswerSafe: {
@@ -177,34 +162,20 @@ const getStyles = () => StyleSheet.create({
     quickAnswerDanger: {
         borderLeftColor: COLORS.danger,
     },
-    quickAnswerIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: BORDER_RADIUS.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-    },
-    iconSafe: {
-        backgroundColor: COLORS.successLight,
-    },
-    iconWarning: {
-        backgroundColor: COLORS.warningLight,
-    },
-    iconDanger: {
-        backgroundColor: COLORS.dangerLight,
-    },
-    quickAnswerIconText: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '700',
-        color: COLORS.textPrimary,
-    },
     quickAnswerContent: {
         flex: 1,
     },
-    quickAnswerTitle: {
-        fontSize: FONT_SIZES.sm,
+    quickAnswerLabel: {
+        fontSize: FONT_SIZES.xs,
         fontWeight: '700',
+        color: COLORS.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+        marginBottom: 2,
+    },
+    quickAnswerTitle: {
+        fontSize: FONT_SIZES.lg,
+        fontWeight: '800',
         color: COLORS.textPrimary,
         marginBottom: 2,
     },

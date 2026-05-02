@@ -10,9 +10,10 @@ export default function SectionHeader({ title, count }) {
     const styles = getStyles();
     return (
         <View style={styles.container}>
+            <View style={styles.rule} />
             <Text style={styles.title}>
                 {title}
-                {count != null && <Text style={styles.count}> ({count})</Text>}
+                {count != null && <Text style={styles.count}> {count}</Text>}
             </Text>
         </View>
     );
@@ -20,9 +21,18 @@ export default function SectionHeader({ title, count }) {
 
 const getStyles = () => StyleSheet.create({
     container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
         paddingHorizontal: SPACING.lg,
         marginTop: SPACING.md,
         marginBottom: SPACING.sm,
+    },
+    rule: {
+        width: 18,
+        height: 2,
+        borderRadius: 1,
+        backgroundColor: COLORS.border,
     },
     title: {
         fontSize: FONT_SIZES.xs,

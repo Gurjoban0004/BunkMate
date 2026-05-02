@@ -13,7 +13,10 @@ export default function TargetSelector({ value, onChange, min = 50, max = 95 }) 
 
     return (
         <View style={styles.container}>
-            <Text style={styles.label}>Target</Text>
+            <View>
+                <Text style={styles.label}>Attendance target</Text>
+                <Text style={styles.subLabel}>Adjust the recovery goal</Text>
+            </View>
 
             <View style={styles.stepper}>
                 <TouchableOpacity
@@ -48,17 +51,24 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        paddingVertical: 20,
-        paddingHorizontal: 20,
+        borderRadius: BORDER_RADIUS.lg,
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.md,
         marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
-        ...SHADOWS.medium,
+        marginBottom: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+        ...SHADOWS.small,
     },
     label: {
-        fontSize: FONT_SIZES.lg,
+        fontSize: FONT_SIZES.md,
         fontWeight: '700',
         color: COLORS.textPrimary,
+    },
+    subLabel: {
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textSecondary,
+        marginTop: 2,
     },
     stepper: {
         flexDirection: 'row',
@@ -66,9 +76,9 @@ const getStyles = () => StyleSheet.create({
         gap: SPACING.sm,
     },
     button: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         backgroundColor: COLORS.primaryLight,
         justifyContent: 'center',
         alignItems: 'center',
@@ -86,12 +96,12 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textMuted,
     },
     valueContainer: {
-        minWidth: 64,
+        minWidth: 58,
         alignItems: 'center',
     },
     value: {
-        fontSize: FONT_SIZES.xxl,
-        fontWeight: '700',
+        fontSize: FONT_SIZES.xl,
+        fontWeight: '800',
         color: COLORS.primary,
     },
 });

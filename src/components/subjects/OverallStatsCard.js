@@ -12,13 +12,13 @@ const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Overall Attendance</Text>
+            <Text style={styles.title}>Overall standing</Text>
 
             <Text style={[
                 styles.percentage,
                 isAboveThreshold ? styles.percentageSafe : styles.percentageDanger,
             ]}>
-                {percentage}%{staleness?.isProjected ? ' ✨' : ''}
+                {percentage}%
             </Text>
 
             <View style={styles.progressBar}>
@@ -34,7 +34,7 @@ const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
             </View>
 
             <Text style={styles.marksText}>
-                {attended} / {total} marks  •  Goal: {threshold}%
+                {attended} / {total} classes  ·  Goal {threshold}%
             </Text>
 
             {showStaleness && (
@@ -44,10 +44,10 @@ const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
                     activeOpacity={onBannerPress ? 0.7 : 1}
                 >
                     <Text style={styles.stalenessText}>
-                        ✨ Projected — ERP is {staleness.maxGapDays} day{staleness.maxGapDays !== 1 ? 's' : ''} behind for {staleness.staleCount} subject{staleness.staleCount !== 1 ? 's' : ''}
+                        Projected from recent marks. ERP is {staleness.maxGapDays} day{staleness.maxGapDays !== 1 ? 's' : ''} behind for {staleness.staleCount} subject{staleness.staleCount !== 1 ? 's' : ''}.
                     </Text>
                     {onBannerPress && (
-                        <Text style={styles.stalenessAction}>ℹ️ View Math</Text>
+                        <Text style={styles.stalenessAction}>View math</Text>
                     )}
                 </TouchableOpacity>
             )}
@@ -63,7 +63,7 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.lg,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: COLORS.borderLight,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     title: {
@@ -73,8 +73,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     percentage: {
-        fontSize: 36,
-        fontWeight: '700',
+        fontSize: 38,
+        fontWeight: '800',
         marginBottom: SPACING.sm,
     },
     percentageSafe: {
@@ -86,7 +86,7 @@ const getStyles = () => StyleSheet.create({
     progressBar: {
         width: '100%',
         height: 8,
-        backgroundColor: COLORS.border,
+        backgroundColor: COLORS.inputBackground,
         borderRadius: 4,
         overflow: 'hidden',
         marginBottom: SPACING.sm,
@@ -96,21 +96,23 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     marksText: {
-        fontSize: FONT_SIZES.xs,
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
     },
     stalenessBanner: {
         marginTop: SPACING.sm,
         paddingHorizontal: SPACING.sm,
         paddingVertical: 6,
-        backgroundColor: COLORS.warningLight || '#fff3cd',
+        backgroundColor: COLORS.warningLight,
         borderRadius: BORDER_RADIUS.sm,
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.warning,
     },
     stalenessText: {
         fontSize: 11,
         fontWeight: '600',
-        color: COLORS.warning || '#856404',
+        color: COLORS.warningDark,
         textAlign: 'center',
         marginBottom: 2,
     },
@@ -120,9 +122,8 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.warningDark || '#856404',
         textAlign: 'center',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 0.4,
     },
 });
 
 export default OverallStatsCard;
-

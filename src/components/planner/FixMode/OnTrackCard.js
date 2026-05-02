@@ -1,9 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
-import StatusDot from '../shared/StatusDot';
 import PlannerProgressBar from '../shared/PlannerProgressBar';
-import { determineStatus, calculateSkipAllowance } from '../../../utils/planner/attendanceCalculations';
+import { calculateSkipAllowance } from '../../../utils/planner/attendanceCalculations';
 
 /**
  * Card for a subject at or above target — shows skip allowance.
@@ -12,8 +11,6 @@ import { determineStatus, calculateSkipAllowance } from '../../../utils/planner/
 export default function OnTrackCard({ subjectData, target, onPress }) {
     const { name, color, attended, total, percentage } = subjectData;
     const effectiveTarget = target || subjectData.target;
-    const status = determineStatus(percentage, effectiveTarget);
-
     const skipAllowance = calculateSkipAllowance(effectiveTarget, attended, total);
 
     return (
@@ -24,7 +21,7 @@ export default function OnTrackCard({ subjectData, target, onPress }) {
         >
             <View style={styles.row}>
                 <View style={styles.left}>
-                    <StatusDot status={status} size={10} />
+                    <View style={[styles.subjectAccent, { backgroundColor: color || COLORS.success }]} />
                     <Text style={styles.name} numberOfLines={1}>{name}</Text>
                 </View>
                 <View style={styles.right}>
@@ -51,11 +48,13 @@ export default function OnTrackCard({ subjectData, target, onPress }) {
 const styles = StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
+        borderRadius: BORDER_RADIUS.lg,
+        paddingVertical: 14,
+        paddingHorizontal: SPACING.md,
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     row: {
@@ -66,12 +65,18 @@ const styles = StyleSheet.create({
     left: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 9,
         flex: 1,
+    },
+    subjectAccent: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        flexShrink: 0,
     },
     name: {
         fontSize: FONT_SIZES.md,
-        fontWeight: '600',
+        fontWeight: '700',
         color: COLORS.textPrimary,
         flex: 1,
     },
@@ -80,7 +85,7 @@ const styles = StyleSheet.create({
     },
     percentage: {
         fontSize: FONT_SIZES.md,
-        fontWeight: '700',
+        fontWeight: '800',
     },
     skipInfo: {
         fontSize: FONT_SIZES.xs,

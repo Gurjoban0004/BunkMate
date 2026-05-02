@@ -54,6 +54,10 @@ const PlannerScreen = ({ navigation }) => {
         });
     };
 
+    const plannerSubtitle = activeMode === 'skip'
+        ? 'Can you miss class without regret?'
+        : 'What needs attention to recover?';
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView
@@ -68,13 +72,14 @@ const PlannerScreen = ({ navigation }) => {
                     />
                 }
             >
-                {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
-                        <Text style={styles.headerTitle}>Skip Planner</Text>
-                        <Text style={styles.headerSubtitle}>Plan your days off strategically</Text>
+                        <Text style={styles.headerTitle}>Planner</Text>
+                        <Text style={styles.headerSubtitle}>{plannerSubtitle}</Text>
                     </View>
-                    <Text style={styles.headerEmoji}>🎯</Text>
+                    <View style={styles.headerPill}>
+                        <Text style={styles.headerPillText}>{activeMode === 'skip' ? 'Skip' : 'Fix'}</Text>
+                    </View>
                 </View>
 
                 {/* Date */}
@@ -125,22 +130,23 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.xl,
+        paddingTop: SPACING.sm,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         paddingHorizontal: SPACING.lg,
-        marginBottom: SPACING.sm,
+        paddingTop: SPACING.xs,
+        marginBottom: SPACING.md,
     },
     headerLeft: {
         flex: 1,
     },
     headerTitle: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: '800',
-        letterSpacing: -0.5,
+        letterSpacing: 0,
         color: COLORS.textPrimary,
     },
     headerSubtitle: {
@@ -148,9 +154,18 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textSecondary,
         marginTop: 4,
     },
-    headerEmoji: {
-        fontSize: 28,
-        marginTop: 2,
+    headerPill: {
+        backgroundColor: COLORS.primaryLight,
+        borderRadius: 999,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 7,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+    },
+    headerPillText: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '700',
+        color: COLORS.primaryDark,
     },
 });
 

@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
 import PercentageBadge from '../shared/PercentageBadge';
 import PlannerProgressBar from '../shared/PlannerProgressBar';
-import StatusDot from '../shared/StatusDot';
-import { calculateSkipImpact, calculateAttendImpact, determineStatus } from '../../../utils/planner/attendanceCalculations';
+import { calculateSkipImpact, determineStatus } from '../../../utils/planner/attendanceCalculations';
 import { getNextClass, formatRelativeDate } from '../../../utils/planner/scheduleProcessor';
 
 /**
@@ -16,7 +15,6 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
     const { name, color, attended, total, percentage, target } = subjectData;
 
     const skipImpact = calculateSkipImpact(attended, total);
-    const attendImpact = calculateAttendImpact(attended, total);
     const currentStatus = determineStatus(percentage, target);
     const skipStatus = determineStatus(skipImpact.newPercentage, target);
 
@@ -25,10 +23,6 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
     const borderColor = currentStatus === 'danger' ? COLORS.danger
         : currentStatus === 'warning' ? COLORS.warning
         : COLORS.success;
-
-    const badgeLabel = currentStatus === 'danger' ? 'Risk'
-        : currentStatus === 'warning' ? 'Edge'
-        : 'Safe';
 
     const skipNewColor = skipStatus === 'danger' ? COLORS.danger
         : skipStatus === 'warning' ? COLORS.warningDark
@@ -40,7 +34,6 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
             onPress={onPress}
             activeOpacity={0.7}
         >
-            {/* Header: color dot + name + badge */}
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <View style={[styles.colorDot, { backgroundColor: color || borderColor }]} />
@@ -52,11 +45,10 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
             {/* Progress bar */}
             <PlannerProgressBar percentage={percentage} target={target} height={5} />
 
-            {/* Impact stats: current → skip */}
             <View style={styles.impactRow}>
                 <View style={styles.impactStat}>
                     <Text style={styles.impactValue}>{percentage.toFixed(0)}%</Text>
-                    <Text style={styles.impactArrow}>→</Text>
+                    <Text style={styles.impactArrow}>to</Text>
                     <Text style={[styles.impactValueNew, { color: skipNewColor }]}>
                         {skipImpact.newPercentage.toFixed(0)}%
                     </Text>
@@ -69,14 +61,11 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
                 )}
             </View>
 
-            {/* Danger warning */}
             {currentStatus === 'danger' && (
                 <View style={styles.warningRow}>
-                    <Text style={styles.warningText}>⚠ Attend this class! Attendance is critical.</Text>
+                    <Text style={styles.warningText}>Attend this class. Attendance is below target.</Text>
                 </View>
             )}
-
-            <Text style={styles.tapHint}>Tap for details →</Text>
         </TouchableOpacity>
     );
 }
@@ -84,13 +73,13 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
 const getStyles = () => StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.sm,
-        borderLeftWidth: 3,
+        borderLeftWidth: 4,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     header: {
@@ -106,9 +95,9 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     colorDot: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         flexShrink: 0,
     },
     subjectName: {
@@ -158,17 +147,13 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.sm,
         backgroundColor: COLORS.dangerLight,
         borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.danger,
     },
     warningText: {
         fontSize: FONT_SIZES.xs,
         fontWeight: '600',
         color: COLORS.dangerDark,
         flex: 1,
-    },
-    tapHint: {
-        fontSize: FONT_SIZES.xs,
-        color: COLORS.textMuted,
-        textAlign: 'right',
-        marginTop: SPACING.sm,
     },
 });
