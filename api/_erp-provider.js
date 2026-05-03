@@ -134,10 +134,21 @@ async function fetchSummaryLegacy(session) {
 }
 
 async function fetchRegisterLegacy(session) {
-    // ── STEP 1: WARMUP — required by the ERP to set session context ──
-    // The competitor's proxy sends these as X-Warmup-Url / X-Warmup-Body headers.
-    // The proxy first hits showAttendance, THEN getattendanceRegister.
-    // Without this warmup, the ERP returns a generic timetable page.
+    const _regDiag = { steps: [] };
+
+    function logStep(name, data) {
+        _regDiag.steps.push({ name, ...data });
+        console.log(`[CAL-REG] ${name}:`, JSON.stringify(data));
+    }
+
+    const allParams = {
+        studentId: session.studentId,
+        sessionId: session.sessionId,
+        userId: session.userId,
+        apiKey: session.apiKey,
+        roleId: session.roleId,
+    };
+
     const warmupBody = {
         prevNext: '0',
         userId: session.userId,
@@ -147,58 +158,123 @@ async function fetchRegisterLegacy(session) {
         month: '',
     };
 
+    // Helper: check if HTML contains the register table structure
+    function isRegisterTable(html) {
+        return html && /id=['"]subject_\d+['"]/.test(html) && html.includes('<thead');
+    }
+
+    // Helper: attempt a register call and check result
+    async function tryRegister(label, url, body, extraHeaders = {}) {
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { ...LEGACY_HEADERS, ...extraHeaders },
+                body: encodeForm(body),
+            });
+            const payload = await readErpPayload(resp);
+            const html = payload?.content || '';
+            const isTable = isRegisterTable(html);
+
+            logStep(label, {
+                status: resp.status,
+                ok: resp.ok,
+                hasContent: !!html,
+                htmlLen: html.length,
+                isRegisterTable: isTable,
+                preview: html ? html.slice(0, 200) : 'EMPTY',
+            });
+
+            if (resp.ok && html && isTable) {
+                return { response: resp, payload, _regDiag, _source: label };
+            }
+            return null;
+        } catch (err) {
+            logStep(label, { error: err.message });
+            return null;
+        }
+    }
+
+    // ── STEP 1: WARMUP ──
+    let warmupCookies = '';
     try {
         const warmupResp = await fetch(`${ERP_BASE}/mobile/showAttendance`, {
             method: 'POST',
             headers: LEGACY_HEADERS,
             body: encodeForm(warmupBody),
         });
-        // Extract cookies from warmup response to forward to register call
-        const warmupCookies = warmupResp.headers.get('set-cookie') || '';
-        console.log('[CAL-WARMUP] showAttendance status:', warmupResp.status, 'cookies:', warmupCookies ? 'YES' : 'NONE');
-
-        // ── STEP 2: REGISTER — with session context established ──
-        // Try correct casing first: chalkpadPro (capital P), getattendanceRegister (lowercase a)
-        const registerHeaders = { ...LEGACY_HEADERS };
-        if (warmupCookies) {
-            registerHeaders['Cookie'] = warmupCookies;
-        }
-
-        const registerResp = await fetch(`${ERP_BASE}/chalkpadPro/studentDetails/getattendanceRegister`, {
-            method: 'POST',
-            headers: registerHeaders,
-            body: encodeForm({ studentId: session.studentId }),
+        warmupCookies = warmupResp.headers.get('set-cookie') || '';
+        const warmupText = await warmupResp.text();
+        logStep('warmup', {
+            status: warmupResp.status,
+            ok: warmupResp.ok,
+            cookies: warmupCookies ? 'YES' : 'NONE',
+            bodyLen: warmupText.length,
+            preview: warmupText.slice(0, 200),
         });
-
-        const payload = await readErpPayload(registerResp);
-        if (registerResp.ok && payload?.content) {
-            return { response: registerResp, payload };
-        }
-
-        // Try alternate casing as fallback
-        const altResp = await fetch(`${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`, {
-            method: 'POST',
-            headers: registerHeaders,
-            body: encodeForm({ studentId: session.studentId }),
-        });
-        const altPayload = await readErpPayload(altResp);
-        if (altResp.ok && altPayload?.content) {
-            return { response: altResp, payload: altPayload };
-        }
-
-        console.log('[CAL-WARMUP] Both register casings failed, falling back to commonPage');
     } catch (err) {
-        console.error('[CAL-WARMUP] Warmup+register failed:', err.message);
+        logStep('warmup', { error: err.message });
     }
 
-    // FALLBACK: /mobile/commonPage with commonPageId 85
-    return postLegacy('/mobile/commonPage', {
+    const cookieHeaders = warmupCookies ? { Cookie: warmupCookies } : {};
+
+    // ── STEP 2: Register with correct casing + studentId only + cookies ──
+    let result = await tryRegister(
+        'register-capitalP-studentOnly',
+        `${ERP_BASE}/chalkpadPro/studentDetails/getattendanceRegister`,
+        { studentId: session.studentId },
+        cookieHeaders
+    );
+    if (result) return result;
+
+    // ── STEP 3: Register with correct casing + ALL params + cookies ──
+    result = await tryRegister(
+        'register-capitalP-allParams',
+        `${ERP_BASE}/chalkpadPro/studentDetails/getattendanceRegister`,
+        allParams,
+        cookieHeaders
+    );
+    if (result) return result;
+
+    // ── STEP 4: Register with lowercase casing + ALL params + cookies ──
+    result = await tryRegister(
+        'register-lowercaseP-allParams',
+        `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
+        allParams,
+        cookieHeaders
+    );
+    if (result) return result;
+
+    // ── STEP 5: Register with lowercase casing + studentId only (no warmup cookies) ──
+    result = await tryRegister(
+        'register-lowercaseP-studentOnly-noCookies',
+        `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
+        { studentId: session.studentId },
+        {}
+    );
+    if (result) return result;
+
+    // ── STEP 6: Register with lowercase + ALL params (no warmup cookies) ──
+    result = await tryRegister(
+        'register-lowercaseP-allParams-noCookies',
+        `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
+        allParams,
+        {}
+    );
+    if (result) return result;
+
+    logStep('fallback', { reason: 'all register attempts returned non-register HTML' });
+
+    // ── FALLBACK: /mobile/commonPage ──
+    const fallback = await postLegacy('/mobile/commonPage', {
         commonPageId: '85',
         device: 'android',
         userId: session.userId,
         sessionId: session.sessionId,
         roleId: session.roleId,
     });
+    fallback._regDiag = _regDiag;
+    fallback._source = 'commonPage-fallback';
+    return fallback;
 }
 
 module.exports = {

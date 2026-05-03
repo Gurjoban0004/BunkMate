@@ -199,7 +199,8 @@ module.exports = async function handler(req, res) {
         
         const registerHtml = register.payload?.content || register.payload?.data?.content || '';
         if (register.response.ok && registerHtml) {
-            _diag.source = 'chalkpadpro';
+            _diag.source = register._source || 'chalkpadpro';
+            _diag.regSteps = register._regDiag?.steps || [];
             return { response: register.response, payload: register.payload, htmlBody: registerHtml, _diag };
         }
 
