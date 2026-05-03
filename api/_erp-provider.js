@@ -146,97 +146,202 @@ async function fetchRegisterLegacy(session) {
         return html && /id=['"]subject_\d+['"]/.test(html) && html.includes('<thead');
     }
 
-    // ── PROBE 1: commonPageId 80 (competitor uses this, unknown purpose) ──
-    try {
-        const cp80 = await postLegacy('/mobile/commonPage', {
-            commonPageId: '80',
-            device: 'android',
-            userId: session.userId,
-            sessionId: session.sessionId,
-            roleId: session.roleId,
-        });
-        const cp80Html = cp80.payload?.content || '';
-        const cp80IsReg = isRegisterTable(cp80Html);
-        logStep('commonPage-80', {
-            status: cp80.response.status,
-            ok: cp80.response.ok,
-            htmlLen: cp80Html.length,
-            isRegisterTable: cp80IsReg,
-            preview: cp80Html.slice(0, 300) || 'EMPTY',
-            title: cp80.payload?.title || 'NO_TITLE',
-        });
-        if (cp80.response.ok && cp80Html && cp80IsReg) {
-            cp80._regDiag = _regDiag;
-            cp80._source = 'commonPage-80';
-            return cp80;
-        }
-    } catch (err) {
-        logStep('commonPage-80', { error: err.message });
+    // Helper: extract ALL cookies from a response (multiple Set-Cookie headers)
+    function extractAllCookies(resp) {
+        const cookies = [];
+        try {
+            // Method 1: getSetCookie (Node 18.14+)
+            if (typeof resp.headers.getSetCookie === 'function') {
+                const sc = resp.headers.getSetCookie();
+                if (sc && sc.length > 0) {
+                    for (const c of sc) {
+                        const name = c.split(';')[0];
+                        if (name) cookies.push(name);
+                    }
+                }
+            }
+        } catch (e) { /* ignore */ }
+
+        try {
+            // Method 2: raw() for node-fetch
+            if (typeof resp.headers.raw === 'function') {
+                const raw = resp.headers.raw();
+                const setCookies = raw['set-cookie'] || [];
+                for (const c of setCookies) {
+                    const name = c.split(';')[0];
+                    if (name && !cookies.includes(name)) cookies.push(name);
+                }
+            }
+        } catch (e) { /* ignore */ }
+
+        try {
+            // Method 3: get('set-cookie') may return comma-joined or single
+            const single = resp.headers.get('set-cookie');
+            if (single) {
+                // Some implementations join multiple Set-Cookie headers with comma
+                const parts = single.split(/,(?=[^;]*=)/);
+                for (const c of parts) {
+                    const name = c.trim().split(';')[0];
+                    if (name && !cookies.includes(name)) cookies.push(name);
+                }
+            }
+        } catch (e) { /* ignore */ }
+
+        return cookies.join('; ');
     }
 
-    // ── PROBE 2: showAttendance with prevNext values ──
-    // prevNext=0 returned "No Records Found" for May.
-    // Try previous months (-1, -2, -3) to see if they contain data.
-    for (const prevNext of ['-1', '-2', '-3', '0']) {
-        try {
-            const sa = await postLegacy('/mobile/showAttendance', {
-                prevNext,
+    // ══════════════════════════════════════════════════════════════════
+    // STEP 1: WARMUP — Hit /mobile/showAttendance to establish server session
+    // This is REQUIRED before hitting chalkpadpro. The competitor does this
+    // via x-warmup-url/x-warmup-body headers in their proxy.
+    // ══════════════════════════════════════════════════════════════════
+    let allCookies = '';
+    try {
+        const warmupResp = await fetch(`${ERP_BASE}/mobile/showAttendance`, {
+            method: 'POST',
+            headers: LEGACY_HEADERS,
+            redirect: 'manual', // Don't follow redirects, capture cookies
+            body: encodeForm({
+                prevNext: '0',
                 userId: session.userId,
                 sessionId: session.sessionId,
                 apiKey: session.apiKey,
                 roleId: session.roleId,
                 month: '',
-            });
-            const saHtml = sa.payload?.html || sa.payload?.content || JSON.stringify(sa.payload);
-            const isNotEmpty = saHtml && !saHtml.includes('No Records Found');
-            logStep(`showAttendance-prevNext${prevNext}`, {
-                status: sa.response.status,
-                ok: sa.response.ok,
-                htmlLen: saHtml.length,
-                hasRecords: isNotEmpty,
-                preview: saHtml.slice(0, 300) || 'EMPTY',
-            });
-            // If showAttendance returns register-like data, use it
-            if (sa.response.ok && isNotEmpty && isRegisterTable(saHtml)) {
-                sa._regDiag = _regDiag;
-                sa._source = `showAttendance-prevNext${prevNext}`;
-                return sa;
-            }
-        } catch (err) {
-            logStep(`showAttendance-prevNext${prevNext}`, { error: err.message });
-        }
-    }
-
-    // ── PROBE 3: mobilev2 showAttendance (different endpoint variant) ──
-    try {
-        const mv2 = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
-            method: 'POST',
-            headers: LEGACY_HEADERS,
-            body: encodeForm({
-                prevNext: '0',
-                userId: session.userId,
-                sessionId: session.sessionId,
-                roleId: session.roleId,
-                appKey: session.apiKey,
-                deviceIdUUID: session.deviceIdUUID || '',
-                month: '',
             }),
         });
-        const mv2Payload = await readErpPayload(mv2);
-        const mv2Html = mv2Payload?.html || mv2Payload?.content || JSON.stringify(mv2Payload);
-        logStep('mobilev2-showAttendance', {
-            status: mv2.status,
-            ok: mv2.ok,
-            htmlLen: mv2Html.length,
-            preview: mv2Html.slice(0, 300) || 'EMPTY',
+        allCookies = extractAllCookies(warmupResp);
+        const warmupText = await warmupResp.text();
+        logStep('warmup', {
+            status: warmupResp.status,
+            ok: warmupResp.ok,
+            cookieCount: allCookies ? allCookies.split(';').length : 0,
+            cookies: allCookies ? allCookies.slice(0, 200) : 'NONE',
+            bodyLen: warmupText.length,
+            preview: warmupText.slice(0, 200),
         });
     } catch (err) {
-        logStep('mobilev2-showAttendance', { error: err.message });
+        logStep('warmup', { error: err.message });
     }
 
-    // ── PROBE 4: commonPageId 28 (attendance summary with tt-box-new cards) ──
-    // This contains per-subject totals (Delivered/Attended/Absent/Percentage)
-    // which we can use for Insights even if we can't get day-by-day register.
+    // ══════════════════════════════════════════════════════════════════
+    // STEP 2: HIT THE REGISTER — Exact same call as the competitor
+    // URL: /chalkpadpro/studentDetails/getAttendanceRegister
+    // Body: studentId + sessionId + userId + apiKey + roleId
+    // Cookies from warmup forwarded
+    // ══════════════════════════════════════════════════════════════════
+    const registerBody = {
+        studentId: session.studentId,
+        sessionId: session.sessionId,
+        userId: session.userId,
+        apiKey: session.apiKey,
+        roleId: session.roleId,
+    };
+
+    // Try with warmup cookies
+    try {
+        const regHeaders = {
+            ...LEGACY_HEADERS,
+            ...(allCookies ? { Cookie: allCookies } : {}),
+        };
+        const regResp = await fetch(
+            `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
+            {
+                method: 'POST',
+                headers: regHeaders,
+                body: encodeForm(registerBody),
+            }
+        );
+
+        // Capture any additional cookies from the register response
+        const regCookies = extractAllCookies(regResp);
+        const regText = await regResp.text();
+        const isReg = isRegisterTable(regText);
+
+        logStep('register-with-cookies', {
+            status: regResp.status,
+            ok: regResp.ok,
+            htmlLen: regText.length,
+            isRegisterTable: isReg,
+            preview: regText.slice(0, 300) || 'EMPTY',
+            cookiesSent: allCookies ? allCookies.slice(0, 100) : 'NONE',
+            newCookies: regCookies ? regCookies.slice(0, 100) : 'NONE',
+        });
+
+        if (regResp.ok && regText && isReg) {
+            const payload = { content: regText };
+            return { response: regResp, payload, _regDiag, _source: 'chalkpadpro-register' };
+        }
+    } catch (err) {
+        logStep('register-with-cookies', { error: err.message });
+    }
+
+    // Try WITHOUT cookies (in case warmup cookies aren't needed)
+    try {
+        const regResp2 = await fetch(
+            `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
+            {
+                method: 'POST',
+                headers: LEGACY_HEADERS,
+                body: encodeForm(registerBody),
+            }
+        );
+        const regText2 = await regResp2.text();
+        const isReg2 = isRegisterTable(regText2);
+
+        logStep('register-no-cookies', {
+            status: regResp2.status,
+            ok: regResp2.ok,
+            htmlLen: regText2.length,
+            isRegisterTable: isReg2,
+            preview: regText2.slice(0, 300) || 'EMPTY',
+        });
+
+        if (regResp2.ok && regText2 && isReg2) {
+            const payload = { content: regText2 };
+            return { response: regResp2, payload, _regDiag, _source: 'chalkpadpro-register-no-cookies' };
+        }
+    } catch (err) {
+        logStep('register-no-cookies', { error: err.message });
+    }
+
+    // Try studentId ONLY (minimal payload)
+    try {
+        const regResp3 = await fetch(
+            `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
+            {
+                method: 'POST',
+                headers: {
+                    ...LEGACY_HEADERS,
+                    ...(allCookies ? { Cookie: allCookies } : {}),
+                },
+                body: encodeForm({ studentId: session.studentId }),
+            }
+        );
+        const regText3 = await regResp3.text();
+        const isReg3 = isRegisterTable(regText3);
+
+        logStep('register-studentId-only', {
+            status: regResp3.status,
+            ok: regResp3.ok,
+            htmlLen: regText3.length,
+            isRegisterTable: isReg3,
+            preview: regText3.slice(0, 300) || 'EMPTY',
+        });
+
+        if (regResp3.ok && regText3 && isReg3) {
+            const payload = { content: regText3 };
+            return { response: regResp3, payload, _regDiag, _source: 'chalkpadpro-register-studentOnly' };
+        }
+    } catch (err) {
+        logStep('register-studentId-only', { error: err.message });
+    }
+
+    logStep('register-failed', { reason: 'all register attempts failed, falling back to summary cards' });
+
+    // ══════════════════════════════════════════════════════════════════
+    // FALLBACK: commonPageId 28 (summary cards with per-subject totals)
+    // ══════════════════════════════════════════════════════════════════
     try {
         const cp28 = await postLegacy('/mobile/commonPage', {
             commonPageId: '28',
@@ -246,29 +351,20 @@ async function fetchRegisterLegacy(session) {
             roleId: session.roleId,
         });
         const cp28Html = cp28.payload?.content || '';
-        const hasSubjectCards = cp28Html.includes('tt-box-new');
-        logStep('commonPage-28', {
+        logStep('commonPage-28-fallback', {
             status: cp28.response.status,
             ok: cp28.response.ok,
             htmlLen: cp28Html.length,
-            hasSubjectCards,
-            title: cp28.payload?.title || 'NO_TITLE',
-            preview: cp28Html.slice(0, 300) || 'EMPTY',
+            hasSubjectCards: cp28Html.includes('tt-box-new'),
         });
-        // Return the commonPageId 28 data — it has attendance totals
-        // that can populate the Insights page even without the register.
-        if (cp28.response.ok && cp28Html && hasSubjectCards) {
-            cp28._regDiag = _regDiag;
-            cp28._source = 'commonPage-28-summary';
-            return cp28;
-        }
+        cp28._regDiag = _regDiag;
+        cp28._source = 'commonPage-28-summary';
+        return cp28;
     } catch (err) {
-        logStep('commonPage-28', { error: err.message });
+        logStep('commonPage-28-fallback', { error: err.message });
     }
 
-    logStep('fallback', { reason: 'no mobile endpoint returned register table' });
-
-    // ── ULTIMATE FALLBACK: commonPageId 85 (timetable) ──
+    // Ultimate fallback
     const fallback = await postLegacy('/mobile/commonPage', {
         commonPageId: '85',
         device: 'android',
