@@ -458,35 +458,8 @@ function appReducer(state, action) {
             };
         }
 
-        case 'LOAD_CALENDAR_RECORDS': {
-            // Import ERP calendar data into attendance records
-            // Manual records always take priority over ERP-imported ones
-            const { records, trackingStartDate: newTrackingStart } = action.payload;
+        // LOAD_CALENDAR_RECORDS removed — superseded by ERP_OVERWRITE_CALENDAR
 
-            // Merge: ERP data first, then overlay existing manual records
-            const mergedRecords = {};
-
-            // Add all ERP dates
-            for (const [dateKey, dayData] of Object.entries(records)) {
-                mergedRecords[dateKey] = { ...dayData };
-            }
-
-            // Overlay existing manual records (they take priority)
-            for (const [dateKey, dayData] of Object.entries(state.attendanceRecords)) {
-                if (!mergedRecords[dateKey]) {
-                    mergedRecords[dateKey] = { ...dayData };
-                } else {
-                    // Merge: existing manual entries override ERP entries
-                    mergedRecords[dateKey] = { ...mergedRecords[dateKey], ...dayData };
-                }
-            }
-
-            return {
-                ...state,
-                attendanceRecords: mergedRecords,
-                trackingStartDate: newTrackingStart || state.trackingStartDate,
-            };
-        }
 
         case 'RESET_STATE':
             return { ...initialState };

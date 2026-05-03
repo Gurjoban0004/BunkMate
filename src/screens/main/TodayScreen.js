@@ -20,6 +20,7 @@ import { getUnmarkedCount } from '../../utils/backlog';
 import { getTodayKey, getTodayDayName, isPastTime } from '../../utils/dateHelpers';
 import { getDayStatus } from '../../utils/planner';
 import { calculateBestBunkDay, generateWeeklyReport } from '../../utils/insights';
+import { deriveErpIntelligence } from '../../utils/erpIntelligence';
 
 // Components
 import QuickStatsCard from '../../components/today/QuickStatsCard';
@@ -35,6 +36,8 @@ import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
 import BestBunkDayCard from '../../components/insights/BestBunkDayCard';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
+import WeekInReviewCard from '../../components/today/WeekInReviewCard';
+import SmartInsightsCard from '../../components/today/SmartInsightsCard';
 import {
     DisplayMedium,
     HeadingMedium,
@@ -112,6 +115,17 @@ const TodayScreen = ({ navigation }) => {
     // Insights: Weekly Report
     const weeklyReport = useMemo(() => generateWeeklyReport(state), [state.subjects, state.attendanceRecords, state.holidays, state.devDate]);
     const [showWeeklyReport, setShowWeeklyReport] = useState(true);
+
+    // ERP Intelligence — weekday patterns, trends, smart insights
+    const erpIntel = useMemo(() => deriveErpIntelligence(state), [
+        state.subjects, state.attendanceRecords, state.holidays, state.settings?.dangerThreshold,
+    ]);
+
+    // Weekend detection (Sat = 6, Sun = 0)
+    const isWeekend = useMemo(() => {
+        const day = today.getDay();
+        return day === 0 || day === 6;
+    }, [today]);
 
     // Pull to refresh — also triggers ERP sync if connected
     const onRefresh = useCallback(() => {
@@ -298,6 +312,22 @@ const TodayScreen = ({ navigation }) => {
 
                 {/* Streak Banner */}
                 <StreakBanner streak={streak} />
+
+                {/* ── Weekend: Week in Review + Monday preview ── */}
+                {isWeekend && (
+                    <WeekInReviewCard
+                        state={state}
+                        onViewInsights={() => navigation.navigate('Insights')}
+                    />
+                )}
+
+                {/* ── Smart Insights highlights (all days) ── */}
+                {erpIntel.hasData && erpIntel.smartInsights.length > 0 && (
+                    <SmartInsightsCard
+                        insights={erpIntel.smartInsights}
+                        onViewAll={() => navigation.navigate('Insights')}
+                    />
+                )}
 
                 {/* Best Day to Bunk */}
                 <BestBunkDayCard bunkData={bunkData} />

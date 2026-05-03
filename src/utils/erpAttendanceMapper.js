@@ -253,50 +253,80 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
     const availableColors = (COLORS.subjectPalette || []).filter(c => !usedColors.has(c));
     let colorIndex = 0;
 
+    // ── Build lookup indices for fast matching ────────────────────────
+    // Index app subjects by erpSubjectId (numeric portal ID) and by code
+    const appByErpId = {};  // String(erpSubjectId) → appSubject
+    const appByCode  = {};  // String(code) → appSubject
+    existingSubjects.forEach(s => {
+        if (s.erpSubjectId) appByErpId[String(s.erpSubjectId)] = s;
+        if (s.code) appByCode[String(s.code)] = s;
+    });
+
     // Step 1: Build subject mapping — erpSubjectName → appSubjectId.
-    // Resolution order:
-    //   a. step1NameMap (direct map from Step 1 sync — most reliable, no re-matching needed)
-    //   b. erpSubjectId numeric match (stable portal ID)
-    //   c. subject code match
-    //   d. fuzzy name similarity (fallback)
+    // Resolution order (most reliable first):
+    //   a. erpSubjectId numeric match (deterministic — shared by both endpoints)
+    //   b. subject code match (e.g. "24CSE0212")
+    //   c. step1NameMap lookup (bridges name differences between endpoints)
+    //   d. fuzzy name similarity (last resort)
     for (const erpSub of erpSubjects) {
-        // (a) Use Step 1 direct map if available — this is the key fix for the calendar empty bug.
-        // Step 1 (attendance summary) creates/matches subjects and passes their name→id mapping.
-        // The register HTML may use slightly different names than mobilev2, but both reference
-        // the same ERP subject, so we try the step1NameMap by erpSubjectId first.
-        if (step1NameMap && Object.keys(step1NameMap).length > 0) {
-            // Try: match this calendar subject's erpSubjectId to any step1 subject
-            let foundViaStep1 = null;
-            if (erpSub.erpSubjectId) {
-                // Find the step1 app subject that got this erpSubjectId stamped
-                for (const [step1Name, appId] of Object.entries(step1NameMap)) {
+        let matched = null;
+
+        // (a) Match by numeric portal erpSubjectId — most stable key.
+        //     The register HTML has <tr id="subject_{erpSubjectId}"> and the calendar
+        //     API returns this ID on each subject. App subjects get this stamped
+        //     during Step 1 sync or previous calendar syncs.
+        if (!matched && erpSub.erpSubjectId) {
+            const byId = appByErpId[String(erpSub.erpSubjectId)];
+            if (byId && !matchedExistingIds.has(byId.id)) {
+                matched = byId;
+            }
+        }
+
+        // (b) Match by subject code (e.g. "24CSE0212").
+        //     During first setup, erpSubjectId on app subjects is set to the code
+        //     (because erp-attendance doesn't return numeric IDs). So also check
+        //     appByErpId with the code as key.
+        if (!matched && erpSub.code) {
+            const byCode = appByCode[String(erpSub.code)]
+                || appByErpId[String(erpSub.code)];
+            if (byCode && !matchedExistingIds.has(byCode.id)) {
+                matched = byCode;
+            }
+        }
+
+        // (c) step1NameMap: direct name→id mapping from Step 1 (attendance summary).
+        //     Also try matching by iterating the map to find matching erpSubjectId/code.
+        if (!matched && step1NameMap && Object.keys(step1NameMap).length > 0) {
+            // Direct name lookup
+            const directId = step1NameMap[erpSub.name];
+            if (directId && !matchedExistingIds.has(directId)) {
+                matched = existingSubjects.find(s => s.id === directId) || null;
+            }
+            // Cross-reference: find step1 entry whose app subject shares this erpSubjectId
+            if (!matched && erpSub.erpSubjectId) {
+                for (const [, appId] of Object.entries(step1NameMap)) {
+                    if (matchedExistingIds.has(appId)) continue;
                     const appSub = existingSubjects.find(s => s.id === appId);
                     if (appSub && (
-                        (appSub.erpSubjectId && String(appSub.erpSubjectId) === String(erpSub.erpSubjectId)) ||
-                        (appSub.code && String(appSub.code) === String(erpSub.code)) ||
-                        step1Name === erpSub.name
+                        String(appSub.erpSubjectId || '') === String(erpSub.erpSubjectId) ||
+                        String(appSub.code || '') === String(erpSub.code || '')
                     )) {
-                        foundViaStep1 = appId;
+                        matched = appSub;
                         break;
                     }
                 }
             }
-            if (!foundViaStep1 && step1NameMap[erpSub.name]) {
-                foundViaStep1 = step1NameMap[erpSub.name];
-            }
-            if (foundViaStep1 && !matchedExistingIds.has(foundViaStep1)) {
-                matchedExistingIds.add(foundViaStep1);
-                subjectMapping[erpSub.name] = foundViaStep1;
-                continue;
-            }
         }
 
-        // (b/c/d) Fall back to findBestMatch (erpSubjectId → code → fuzzy name)
-        const { match: bestMatch } = findBestMatch(erpSub, existingSubjects, matchedExistingIds);
+        // (d) Fuzzy name similarity — last resort
+        if (!matched) {
+            const { match: bestMatch } = findBestMatch(erpSub, existingSubjects, matchedExistingIds);
+            if (bestMatch) matched = bestMatch;
+        }
 
-        if (bestMatch) {
-            matchedExistingIds.add(bestMatch.id);
-            subjectMapping[erpSub.name] = bestMatch.id;
+        if (matched) {
+            matchedExistingIds.add(matched.id);
+            subjectMapping[erpSub.name] = matched.id;
         } else {
             // No match anywhere — create a new subject so calendar data isn't lost
             const color = availableColors[colorIndex % availableColors.length]

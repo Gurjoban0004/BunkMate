@@ -16,6 +16,7 @@ import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
+import InsightsScreen from '../screens/main/InsightsScreen';
 
 import { useApp } from '../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/theme';
@@ -52,6 +53,13 @@ function TabIcon({ label, focused }) {
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
         ),
+        Insights: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <line x1="9" y1="9" x2="15" y2="9"></line>
+                <line x1="12" y1="6" x2="12" y2="12"></line>
+            </svg>
+        ),
     };
 
     return (
@@ -73,6 +81,7 @@ export default function WebTabNavigator() {
         Today: [{ name: 'TodayMain', params: {} }],
         Subjects: [{ name: 'SubjectsList', params: {} }],
         Planner: [{ name: 'PlannerMain', params: {} }],
+        Insights: [{ name: 'InsightsMain', params: {} }],
         Settings: [{ name: 'SettingsMain', params: {} }],
     });
 
@@ -107,6 +116,7 @@ export default function WebTabNavigator() {
                         Today: [{ name: 'TodayMain', params: {} }],
                         Subjects: [{ name: 'SubjectsList', params: {} }],
                         Planner: [{ name: 'PlannerMain', params: {} }],
+                        Insights: [{ name: 'InsightsMain', params: {} }],
                         Settings: [{ name: 'SettingsMain', params: {} }],
                     });
                 }
@@ -121,7 +131,7 @@ export default function WebTabNavigator() {
 
     const mockNavigation = useMemo(() => ({
         navigate: (screenOrTabName, params = {}) => {
-            if (['Today', 'Subjects', 'Planner', 'Settings'].includes(screenOrTabName)) {
+            if (['Today', 'Subjects', 'Planner', 'Insights', 'Settings'].includes(screenOrTabName)) {
                 setCurrentTab(screenOrTabName);
                 if (Platform.OS === 'web') {
                     window.history.pushState({ tab: screenOrTabName, index: stacksRef.current[screenOrTabName].length - 1 }, '', `?tab=${screenOrTabName}`);
@@ -211,6 +221,7 @@ export default function WebTabNavigator() {
             case 'AttendanceStats': screen = <AttendanceStatsScreen {...props} />; break;
             case 'SyncFromPortal': screen = <SyncFromPortalScreen {...props} />; break;
             case 'ERPConnect': screen = <ERPConnectScreen {...props} />; break;
+            case 'InsightsMain': screen = <InsightsScreen {...props} />; break;
             default: screen = <TodayScreen {...props} />; break;
         }
 
@@ -230,7 +241,7 @@ export default function WebTabNavigator() {
             </View>
 
             <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'web' && typeof window !== 'undefined' && window.navigator?.standalone ? 20 : 4) }]}>
-                {['Today', 'Subjects', 'Planner', 'Settings'].map((tabName) => {
+                {['Today', 'Subjects', 'Planner', 'Insights', 'Settings'].map((tabName) => {
                     const focused = currentTab === tabName;
                     return (
                         <TouchableOpacity

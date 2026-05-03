@@ -14,6 +14,7 @@ import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import EndGameScreen from '../screens/main/EndGameScreen';
+import InsightsScreen from '../screens/main/InsightsScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
@@ -25,7 +26,7 @@ const SubjectsStack = createStackNavigator();
 const TodayStack = createStackNavigator();
 const PlannerStack = createStackNavigator();
 const SettingsStack = createStackNavigator();
-const EndGameStack = createStackNavigator();
+const InsightsStack = createStackNavigator();
 
 function TodayStackScreen() {
     return (
@@ -49,6 +50,11 @@ function TodayStackScreen() {
                 name="WeeklySummary"
                 component={WeeklySummaryScreen}
                 options={{ title: 'Weekly Summary' }}
+            />
+            <TodayStack.Screen
+                name="Insights"
+                component={InsightsScreen}
+                options={{ title: 'Insights' }}
             />
         </TodayStack.Navigator>
         </ErrorBoundary>
@@ -158,19 +164,19 @@ function SettingsStackScreen() {
     );
 }
 
-function EndGameStackScreen() {
+function InsightsStackScreen() {
     return (
-        <ErrorBoundary screen screenName="End Game">
-        <EndGameStack.Navigator
+        <ErrorBoundary screen screenName="Insights">
+        <InsightsStack.Navigator
             screenOptions={{
                 headerShown: false,
             }}
         >
-            <EndGameStack.Screen
-                name="EndGameMain"
-                component={EndGameScreen}
+            <InsightsStack.Screen
+                name="InsightsMain"
+                component={InsightsScreen}
             />
-        </EndGameStack.Navigator>
+        </InsightsStack.Navigator>
         </ErrorBoundary>
     );
 }
@@ -201,12 +207,11 @@ function TabIcon({ label, focused }) {
                 <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
         ),
-        "End Game": (
+        Insights: (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"></path>
-                <path d="M8.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path>
-                <path d="M15.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path>
-                <path d="M9 15a3 3 0 1 0 6 0"></path>
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <line x1="9" y1="9" x2="15" y2="9"></line>
+                <line x1="12" y1="6" x2="12" y2="12"></line>
             </svg>
         ),
         Settings: (
@@ -275,7 +280,7 @@ export default function TabNavigator() {
                 component={PlannerStackScreen}
                 options={{ title: 'Planner' }}
             />
-            <Tab.Screen name="End Game" component={EndGameStackScreen} />
+            <Tab.Screen name="Insights" component={InsightsStackScreen} />
             <Tab.Screen name="Settings" component={SettingsStackScreen} />
         </Tab.Navigator>
     );

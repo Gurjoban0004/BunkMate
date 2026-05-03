@@ -173,8 +173,9 @@ export default function ERPSetupScreen({ navigation }) {
             } catch (calErr) {
                 logger.warn('Calendar sync failed (non-critical):', calErr.message);
             }
-            // Route to timetable setup instead of finishing immediately
-            navigation.replace('TimeSlots');
+            // Complete setup — go straight to the main app.
+            // Timetable can be configured later from Settings.
+            dispatch({ type: 'COMPLETE_SETUP' });
         } catch (err) {
             logger.error('Setup import failed:', err);
             setError('Something went wrong during setup. Please try again.');
