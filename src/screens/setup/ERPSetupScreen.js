@@ -8,7 +8,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme
 import { useApp } from '../../context/AppContext';
 import { erpLogin, erpVerifyOtp, erpFetchAttendance, erpFetchCalendar } from '../../services/erpService';
 import { saveErpToken } from '../../storage/erpTokenStorage';
-import { mapErpToAppState, mapCalendarToRecords } from '../../utils/erpAttendanceMapper';
+import { mapErpToAppState, mapCalendarToRecords, buildErpNameMap } from '../../utils/erpAttendanceMapper';
 import { getUserId } from '../../utils/firebaseHelpers';
 import { getTodayKey } from '../../utils/dateHelpers';
 import { logger } from '../../utils/logger';
@@ -153,7 +153,8 @@ export default function ERPSetupScreen({ navigation }) {
                 if (currentToken) {
                     const calData = await erpFetchCalendar(currentToken);
                     if (calData.calendar && Object.keys(calData.calendar).length > 0) {
-                        const result = mapCalendarToRecords(calData.calendar, calData.subjects, allSubjects);
+                        const step1NameMap = buildErpNameMap(mappingResult.matchedUpdates || [], mappingResult.newSubjects || []);
+                        const result = mapCalendarToRecords(calData.calendar, calData.subjects, allSubjects, step1NameMap);
                         if (result.newSubjects.length > 0) {
                             const updatedSubjects = [...allSubjects, ...result.newSubjects];
                             dispatch({ type: 'SET_SUBJECTS', payload: updatedSubjects });
@@ -163,6 +164,7 @@ export default function ERPSetupScreen({ navigation }) {
                             payload: {
                                 records: result.records,
                                 trackingStartDate: result.earliestDate,
+                                latestErpDate: result.latestDate,
                                 lastSubjectSyncDates: result.lastSubjectSyncDates,
                             },
                         });

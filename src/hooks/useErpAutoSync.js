@@ -159,8 +159,17 @@ export function useErpAutoSync(state, dispatch) {
                 return;
             }
 
-            let latestSubjects = currentState.subjects;
             const mapping = mapErpToAppState(validErpSubjects, currentState.subjects);
+
+            // Build latest subjects array WITH the newly discovered erpSubjectId stamped on them,
+            // because mapCalendarToRecords needs these IDs to match register subjects correctly.
+            let latestSubjects = currentState.subjects.map(sub => {
+                const update = mapping.matchedUpdates.find(u => u.subjectId === sub.id);
+                if (update && update.erpSubjectId) {
+                    return { ...sub, erpSubjectId: update.erpSubjectId };
+                }
+                return sub;
+            });
 
             // Build a direct name→id map from Step 1 BEFORE any dispatch.
             // This is the critical link passed to Step 2 (calendar) to avoid re-matching
