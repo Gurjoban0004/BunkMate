@@ -134,6 +134,23 @@ async function fetchSummaryLegacy(session) {
 }
 
 async function fetchRegisterLegacy(session) {
+    // Primary: use /mobile/commonPage with commonPageId 85 — same endpoint that
+    // works for attendance summary (commonPageId 28). The chalkpadpro endpoint
+    // returns HTTP errors and the mobilev2 endpoint requires deviceIdUUID
+    // (not stored in the session token), so both fail.
+    const primary = await postLegacy('/mobile/commonPage', {
+        commonPageId: '85',
+        device: 'android',
+        userId: session.userId,
+        sessionId: session.sessionId,
+        roleId: session.roleId,
+    });
+
+    if (primary.response.ok) {
+        return primary;
+    }
+
+    // Fallback: try chalkpadpro in case the mobile endpoint changes
     return postLegacy('/chalkpadpro/studentDetails/getAttendanceRegister', {
         studentId: session.studentId,
         sessionId: session.sessionId,
