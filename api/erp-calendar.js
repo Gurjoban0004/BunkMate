@@ -28,6 +28,57 @@ const {
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
 
+/**
+ * Parse tt-box-new cards from commonPageId 28 (attendance summary).
+ * Extracts per-subject totals: name, code, teacher, delivered, attended, absent, percentage.
+ * This is the fallback when the register table (chalkpadpro) isn't available.
+ */
+function parseSummaryCards(htmlContent) {
+    const subjects = [];
+    const plainText = htmlContent
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;?/gi, ' ')
+        .replace(/\\n/g, ' ')
+        .replace(/\\t/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const regex = /(.+?)\s+(?:\d{2}[A-Z]{2,4}\d{4}\S*)\s+Teacher\s*:\s*(.+?)\s+From\s*:\s*.+?\s+Delivered\s*:\s*(\d+)\s+Attended\s*:\s*(\d+)\s+Absent\s*:\s*(\d+)[\s\S]*?Total Percentage\s*:\s*([\d.]+)%/gi;
+
+    // Also try a simpler per-block approach
+    const blockRegex = /class=['"]tt-box-new['"][^>]*>([\s\S]*?)(?=class=['"]tt-box-new['"]|<\/div>\s*<\/div>\s*<\/div>\s*<\/div>\s*$)/gi;
+    let blockMatch;
+    while ((blockMatch = blockRegex.exec(htmlContent)) !== null) {
+        const block = blockMatch[1];
+        const clean = block.replace(/<[^>]+>/g, ' ').replace(/&nbsp;?/gi, ' ').replace(/\\n/g, ' ').replace(/\\t/g, ' ').replace(/\s+/g, ' ').trim();
+
+        // Extract subject name and code from tt-period-number span pair
+        const nameCodeMatch = clean.match(/^\s*(.+?)\s+(\d{2}[A-Z]{2,4}\d{4}\S*)/);
+        if (!nameCodeMatch) continue;
+
+        const name = nameCodeMatch[1].trim();
+        const code = nameCodeMatch[2].trim();
+
+        const deliveredMatch = clean.match(/Delivered\s*:\s*(\d+)/i);
+        const attendedMatch = clean.match(/Attended\s*:\s*(\d+)/i);
+        const absentMatch = clean.match(/Absent\s*:\s*(\d+)/i);
+        const percentMatch = clean.match(/Total Percentage\s*:\s*([\d.]+)%/i);
+        const teacherMatch = clean.match(/Teacher\s*:\s*(.+?)\s+From/i);
+
+        const delivered = deliveredMatch ? parseInt(deliveredMatch[1], 10) : 0;
+        const attended = attendedMatch ? parseInt(attendedMatch[1], 10) : 0;
+        const absent = absentMatch ? parseInt(absentMatch[1], 10) : 0;
+        const percentage = percentMatch ? parseFloat(percentMatch[1]) : (delivered > 0 ? Math.round((attended / delivered) * 1000) / 10 : 0);
+        const teacher = teacherMatch ? teacherMatch[1].trim() : '';
+
+        if (name && (delivered > 0 || attended > 0)) {
+            subjects.push({ name, code, teacher, delivered, attended, absent, percentage });
+        }
+    }
+
+    return subjects;
+}
+
 function parseRegisterHTML(htmlContent) {
     const calendar = {}; // { 'YYYY-MM-DD': { subjectName: { status, period, code, erpSubjectId, units } } }
     const subjects = []; // { name, code, erpSubjectId, total, attended, percentage }
@@ -295,9 +346,29 @@ module.exports = async function handler(req, res) {
 
         console.log('[CAL-SERVER] HTML diag:', JSON.stringify(htmlDiag));
 
-        const { calendar, subjects, latestDate } = parseRegisterHTML(htmlContent);
+        let { calendar, subjects, latestDate } = parseRegisterHTML(htmlContent);
 
-        console.log('[CAL-SERVER] Parse result: days=' + Object.keys(calendar).length + ' subjects=' + subjects.length);
+        console.log('[CAL-SERVER] Register parse: days=' + Object.keys(calendar).length + ' subjects=' + subjects.length);
+
+        // If register parser found nothing, try the summary card parser (tt-box-new format)
+        if (subjects.length === 0 && htmlContent.includes('tt-box-new')) {
+            const summarySubjects = parseSummaryCards(htmlContent);
+            console.log('[CAL-SERVER] Summary card parse: subjects=' + summarySubjects.length);
+            if (summarySubjects.length > 0) {
+                subjects = summarySubjects.map(s => ({
+                    name: s.name,
+                    code: s.code,
+                    erpSubjectId: s.code, // Use code as ID since we don't have ERP subject IDs
+                    total: s.delivered,
+                    attended: s.attended,
+                    percentage: s.percentage,
+                    teacher: s.teacher,
+                    absent: s.absent,
+                }));
+                htmlDiag.parsedViaSummaryCards = true;
+                htmlDiag.summarySubjectCount = summarySubjects.length;
+            }
+        }
 
         return res.status(200).json({ 
             success: true, 

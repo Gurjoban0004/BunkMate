@@ -290,6 +290,41 @@ export function useErpAutoSync(state, dispatch) {
                     });
                     setSyncStatus({ calendarSyncStatus: 'ok' });
                     logger.info('✅', `ERP calendar sync: ${result.totalDays} days, ${Object.keys(result.subjectMapping).length} subjects mapped`);
+                } else if (calData.subjects?.length > 0) {
+                    // Calendar is empty but we have subject totals from summary cards.
+                    // Update subjects with ERP attendance totals (delivered/attended/absent/percentage).
+                    console.log('[CAL-DEBUG] No calendar data but got', calData.subjects.length, 'subjects from summary cards');
+                    console.log('[CAL-DEBUG] Summary subjects:', calData.subjects.map(s => ({ name: s.name, code: s.code, total: s.total, attended: s.attended, pct: s.percentage })));
+
+                    // Match ERP subjects to local subjects by code or name
+                    const updatedSubjects = latestSubjects.map(localSub => {
+                        const erpMatch = calData.subjects.find(erpSub => {
+                            // Match by code first
+                            if (localSub.code && erpSub.code && localSub.code === erpSub.code) return true;
+                            if (localSub.erpSubjectId && erpSub.code && localSub.erpSubjectId === erpSub.code) return true;
+                            // Fuzzy name match
+                            const localName = (localSub.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const erpName = (erpSub.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                            return localName && erpName && (localName.includes(erpName) || erpName.includes(localName));
+                        });
+                        if (erpMatch) {
+                            return {
+                                ...localSub,
+                                erpSubjectId: erpMatch.code || localSub.erpSubjectId,
+                                erpDelivered: erpMatch.total,
+                                erpAttended: erpMatch.attended,
+                                erpAbsent: erpMatch.absent,
+                                erpPercentage: erpMatch.percentage,
+                                erpTeacher: erpMatch.teacher,
+                            };
+                        }
+                        return localSub;
+                    });
+
+                    dispatch({ type: 'SET_SUBJECTS', payload: updatedSubjects });
+                    latestSubjects = updatedSubjects;
+                    setSyncStatus({ calendarSyncStatus: 'ok' });
+                    logger.info('✅', `ERP summary sync: ${calData.subjects.length} subject totals updated (no day-by-day register available)`);
                 } else {
                     console.log('[CAL-DEBUG] Calendar empty or missing — skipping. calData:', JSON.stringify(calData).slice(0, 500));
                     setSyncStatus({ calendarSyncStatus: 'ok' });
