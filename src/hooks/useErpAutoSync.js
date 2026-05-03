@@ -233,6 +233,7 @@ export function useErpAutoSync(state, dispatch) {
                 console.log('[CAL-DEBUG] calData.calendar days:', calData.calendar ? Object.keys(calData.calendar).length : 'NO CALENDAR');
                 console.log('[CAL-DEBUG] calData.subjects count:', calData.subjects ? calData.subjects.length : 'NO SUBJECTS');
                 console.log('[CAL-DEBUG] calData.sessionExpired:', calData.sessionExpired);
+                console.log('[CAL-DEBUG] SERVER DIAGNOSTICS:', calData._diag);
                 console.log('[CAL-DEBUG] latestSubjects count:', latestSubjects.length);
                 console.log('[CAL-DEBUG] latestSubjects sample:', latestSubjects.slice(0, 2).map(s => ({ id: s.id, name: s.name, code: s.code, erpSubjectId: s.erpSubjectId })));
 

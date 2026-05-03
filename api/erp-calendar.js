@@ -190,27 +190,51 @@ module.exports = async function handler(req, res) {
     }
 
     async function fetchCalendar(sess) {
+        const _diag = { source: null, payloadKeys: null, payloadType: null, registerOk: false };
+
         const register = await fetchRegisterLegacy(sess);
+        _diag.registerOk = register.response.ok;
+        _diag.payloadType = typeof register.payload;
+        _diag.payloadKeys = register.payload ? Object.keys(register.payload).slice(0, 10) : [];
+        
         const registerHtml = register.payload?.content || register.payload?.data?.content || '';
         if (register.response.ok && registerHtml) {
-            return { response: register.response, payload: register.payload, htmlBody: registerHtml };
+            _diag.source = 'chalkpadpro';
+            return { response: register.response, payload: register.payload, htmlBody: registerHtml, _diag };
         }
 
+        _diag.source = 'mobilev2-fallback';
         const fallbackResponse = await fetchCalendarV2(sess);
         const fallbackPayload = await readErpPayload(fallbackResponse);
+        _diag.fallbackPayloadKeys = fallbackPayload ? Object.keys(fallbackPayload).slice(0, 10) : [];
+        _diag.fallbackPayloadType = typeof fallbackPayload;
+
         return {
             response: fallbackResponse,
             payload: fallbackPayload,
             htmlBody: fallbackPayload.content || fallbackPayload.data?.content || '',
+            _diag,
         };
     }
 
     try {
+        // Log session fields being used (redacted for security)
+        const sessionDiag = {
+            hasUserId: !!session.userId,
+            hasSessionId: !!session.sessionId,
+            hasRoleId: !!session.roleId,
+            hasApiKey: !!session.apiKey,
+            hasStudentId: !!session.studentId,
+            studentIdValue: session.studentId ? `${String(session.studentId).slice(0, 3)}...` : 'MISSING',
+        };
+        console.log('[CAL-SERVER] Session fields:', JSON.stringify(sessionDiag));
+
         const erpResult = await fetchCalendar(session);
+        const diag = erpResult._diag || {};
         
         if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
             if (!persistentToken) {
-                return res.status(401).json({ error: 'Session expired', sessionExpired: true });
+                return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: diag });
             }
 
             let creds;
@@ -230,18 +254,35 @@ module.exports = async function handler(req, res) {
 
         const htmlContent = erpResult.htmlBody;
 
+        // Diagnostic info about the HTML we got
+        const htmlDiag = {
+            ...diag,
+            ...sessionDiag,
+            htmlLength: htmlContent ? htmlContent.length : 0,
+            htmlPreview: htmlContent ? htmlContent.slice(0, 500) : 'EMPTY',
+            hasTable: htmlContent ? htmlContent.includes('<table') : false,
+            hasThead: htmlContent ? htmlContent.includes('<thead') : false,
+            hasSubjectTr: htmlContent ? /id=['"]subject_\d+['"]/.test(htmlContent) : false,
+            hasTdWithSubjectId: htmlContent ? /id=['"]subject_\d+_\d{4}/.test(htmlContent) : false,
+        };
+
         if (!htmlContent) {
-            return res.status(502).json({ error: 'Empty response', message: 'The portal returned no calendar data.' });
+            return res.status(502).json({ error: 'Empty response', message: 'The portal returned no calendar data.', _diag: htmlDiag });
         }
 
+        console.log('[CAL-SERVER] HTML diag:', JSON.stringify(htmlDiag));
+
         const { calendar, subjects, latestDate } = parseRegisterHTML(htmlContent);
+
+        console.log('[CAL-SERVER] Parse result: days=' + Object.keys(calendar).length + ' subjects=' + subjects.length);
 
         return res.status(200).json({ 
             success: true, 
             calendar, 
             subjects,
             latestDate,
-            fetchedAt: new Date().toISOString() 
+            fetchedAt: new Date().toISOString(),
+            _diag: htmlDiag,
         });
 
     } catch (err) {
