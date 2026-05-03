@@ -225,145 +225,108 @@ export function buildErpNameMap(matchedUpdates, newSubjects) {
 
 /**
  * Map ERP calendar data into Presence attendanceRecords format.
- * 
- * @param {Object} calendarData - From erp-calendar endpoint
- *   { "2026-01-20": { "Subject Name": { status: "present"|"absent", code, erpSubjectId } } }
- * @param {Array} erpSubjects - Subjects list from erp-calendar endpoint
- *   [{ erpSubjectId, name, code, attended, total, percentage }]
- * @param {Array} existingSubjects - Current subjects from app state
- *   [{ id, name, teacher, color, initialAttended, initialTotal, target }]
- * @param {Object} [step1NameMap] - Optional { erpSubjectName → appSubjectId } from buildErpNameMap.
- *   When provided, name resolution uses this map first (avoids re-matching mismatches).
- * 
- * @returns {{
- *   records: Object,           // { "2026-01-20": { "appSubjectId": { status, autoMarked } } }
- *   newSubjects: Array,        // Subjects not matched to existing ones
- *   subjectMapping: Object,    // { erpSubjectName: appSubjectId }
- *   totalDays: number,
- *   earliestDate: string,
- * }}
+ *
+ * REBUILT FROM SCRATCH — previous versions failed because they tried to match
+ * subjects by name strings (which differ between the summary and calendar endpoints).
+ *
+ * This version uses a SINGLE key: erpSubjectId.
+ * The register HTML encodes it in every <td id="subject_{erpSubjectId}_{date}_{period}">.
+ * The calendar API returns it on both `erpSubjects[]` and inside `calendarData[date][name]`.
+ * App subjects get it stamped during Step 1 (from the subject code, since erp-attendance
+ * doesn't return numeric portal IDs) or from a previous calendar sync.
+ *
+ * Resolution: erpSubjectId → app subject.erpSubjectId OR app subject.code
+ * If no match exists, a new subject is created.
+ *
+ * @param {Object} calendarData - { "2026-01-20": { "Subject Name": { status, code, erpSubjectId, units } } }
+ * @param {Array} erpSubjects  - [{ erpSubjectId, name, code, attended, total, percentage }]
+ * @param {Array} existingSubjects - current app subjects
+ * @param {Object} [step1NameMap] - ignored (kept for API compat)
  */
 export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects, step1NameMap = {}) {
     const records = {};
-    const subjectMapping = {}; // erpName → appSubjectId
     const newSubjects = [];
-    const matchedExistingIds = new Set();
+    const subjectMapping = {};   // erpSubjectId → appSubjectId
+    const erpSubjectIdStamps = {}; // appSubjectId → erpSubjectId (for stamping)
 
     const usedColors = new Set(existingSubjects.map(s => s.color));
     const availableColors = (COLORS.subjectPalette || []).filter(c => !usedColors.has(c));
     let colorIndex = 0;
 
-    // ── Build lookup indices for fast matching ────────────────────────
-    // Index app subjects by erpSubjectId (numeric portal ID) and by code
-    const appByErpId = {};  // String(erpSubjectId) → appSubject
-    const appByCode  = {};  // String(code) → appSubject
-    existingSubjects.forEach(s => {
-        if (s.erpSubjectId) appByErpId[String(s.erpSubjectId)] = s;
-        if (s.code) appByCode[String(s.code)] = s;
-    });
+    // ── Build a single lookup: erpSubjectId OR code → app subject ──────
+    // App subjects can have erpSubjectId set to either:
+    //   - The numeric portal ID (e.g. "10574") from a previous calendar sync
+    //   - The subject code (e.g. "24CSE0212") from the first attendance summary sync
+    // We index by both so we catch either case.
+    const appSubjectByKey = {}; // String key → appSubject
+    for (const sub of existingSubjects) {
+        if (sub.erpSubjectId) appSubjectByKey[String(sub.erpSubjectId)] = sub;
+        if (sub.code)         appSubjectByKey[String(sub.code)] = sub;
+    }
 
-    // Step 1: Build subject mapping — erpSubjectName → appSubjectId.
-    // Resolution order (most reliable first):
-    //   a. erpSubjectId numeric match (deterministic — shared by both endpoints)
-    //   b. subject code match (e.g. "24CSE0212")
-    //   c. step1NameMap lookup (bridges name differences between endpoints)
-    //   d. fuzzy name similarity (last resort)
+    // ── Step 1: Map each calendar-endpoint subject to an app subject ──
+    // The calendar endpoint returns erpSubjects[] with { erpSubjectId, name, code }.
+    // Match each to an existing app subject by erpSubjectId or code.
+    const usedAppIds = new Set();
+
     for (const erpSub of erpSubjects) {
-        let matched = null;
+        const portalId = erpSub.erpSubjectId ? String(erpSub.erpSubjectId) : null;
+        const code     = erpSub.code ? String(erpSub.code) : null;
 
-        // (a) Match by numeric portal erpSubjectId — most stable key.
-        //     The register HTML has <tr id="subject_{erpSubjectId}"> and the calendar
-        //     API returns this ID on each subject. App subjects get this stamped
-        //     during Step 1 sync or previous calendar syncs.
-        if (!matched && erpSub.erpSubjectId) {
-            const byId = appByErpId[String(erpSub.erpSubjectId)];
-            if (byId && !matchedExistingIds.has(byId.id)) {
-                matched = byId;
-            }
-        }
+        // Try: numeric portal ID → app subject
+        let appSub = portalId ? appSubjectByKey[portalId] : null;
 
-        // (b) Match by subject code (e.g. "24CSE0212").
-        //     During first setup, erpSubjectId on app subjects is set to the code
-        //     (because erp-attendance doesn't return numeric IDs). So also check
-        //     appByErpId with the code as key.
-        if (!matched && erpSub.code) {
-            const byCode = appByCode[String(erpSub.code)]
-                || appByErpId[String(erpSub.code)];
-            if (byCode && !matchedExistingIds.has(byCode.id)) {
-                matched = byCode;
-            }
-        }
+        // Try: subject code → app subject
+        if (!appSub && code) appSub = appSubjectByKey[code];
 
-        // (c) step1NameMap: direct name→id mapping from Step 1 (attendance summary).
-        //     Also try matching by iterating the map to find matching erpSubjectId/code.
-        if (!matched && step1NameMap && Object.keys(step1NameMap).length > 0) {
-            // Direct name lookup
-            const directId = step1NameMap[erpSub.name];
-            if (directId && !matchedExistingIds.has(directId)) {
-                matched = existingSubjects.find(s => s.id === directId) || null;
-            }
-            // Cross-reference: find step1 entry whose app subject shares this erpSubjectId
-            if (!matched && erpSub.erpSubjectId) {
-                for (const [, appId] of Object.entries(step1NameMap)) {
-                    if (matchedExistingIds.has(appId)) continue;
-                    const appSub = existingSubjects.find(s => s.id === appId);
-                    if (appSub && (
-                        String(appSub.erpSubjectId || '') === String(erpSub.erpSubjectId) ||
-                        String(appSub.code || '') === String(erpSub.code || '')
-                    )) {
-                        matched = appSub;
-                        break;
-                    }
-                }
-            }
-        }
+        // Guard: don't double-match the same app subject
+        if (appSub && usedAppIds.has(appSub.id)) appSub = null;
 
-        // (d) Fuzzy name similarity — last resort
-        if (!matched) {
-            const { match: bestMatch } = findBestMatch(erpSub, existingSubjects, matchedExistingIds);
-            if (bestMatch) matched = bestMatch;
-        }
+        if (appSub) {
+            usedAppIds.add(appSub.id);
+            subjectMapping[portalId || code] = appSub.id;
+            if (erpSub.name) subjectMapping[erpSub.name] = appSub.id;
 
-        if (matched) {
-            matchedExistingIds.add(matched.id);
-            subjectMapping[erpSub.name] = matched.id;
+            // Stamp the numeric portal ID for future syncs
+            if (portalId) erpSubjectIdStamps[appSub.id] = portalId;
         } else {
-            // No match anywhere — create a new subject so calendar data isn't lost
+            // No match — create new subject
             const color = availableColors[colorIndex % availableColors.length]
                 || (COLORS.subjectPalette || ['#85C1E9'])[colorIndex % (COLORS.subjectPalette?.length || 1)];
             colorIndex++;
 
             const newSub = {
                 id: generateId(),
-                name: erpSub.name,
-                code: erpSub.code || '',
+                name: erpSub.name || `Subject ${erpSub.code || portalId}`,
+                code: code || '',
                 teacher: '',
                 color,
                 initialAttended: erpSub.attended || 0,
                 initialTotal: erpSub.total || 0,
                 target: 75,
-                erpSubjectId: erpSub.erpSubjectId || erpSub.code || null,
+                erpSubjectId: portalId || code || null,
                 source: 'erp',
                 lastUpdated: new Date().toISOString(),
             };
 
             newSubjects.push(newSub);
-            subjectMapping[erpSub.name] = newSub.id;
+            usedAppIds.add(newSub.id);
+            if (portalId) subjectMapping[portalId] = newSub.id;
+            if (code)     subjectMapping[code] = newSub.id;
+            if (erpSub.name) subjectMapping[erpSub.name] = newSub.id;
+            if (portalId) erpSubjectIdStamps[newSub.id] = portalId;
         }
     }
 
-    // Step 2: Convert calendar data into attendanceRecords format
+    // ── Step 2: Convert calendar data → attendanceRecords ─────────────
+    // calendarData format: { "2026-01-20": { "Subject Name": { status, erpSubjectId, code, units } } }
+    // We need to produce: { "2026-01-20": { appSubjectId: { status, source, units } } }
+    //
+    // KEY INSIGHT: each entry in calendarData has its own erpSubjectId field.
+    // We match by that ID, NOT by the subject name key.
     let earliestDate = null;
     let latestDate = null;
     const lastSubjectSyncDates = {};
-    const erpSubjectIdStamps = {}; // appSubjectId → erpSubjectId
-
-    for (const erpSub of erpSubjects) {
-        const appId = subjectMapping[erpSub.name];
-        if (appId && erpSub.erpSubjectId) {
-            erpSubjectIdStamps[appId] = erpSub.erpSubjectId;
-        }
-    }
 
     for (const [dateKey, dayData] of Object.entries(calendarData)) {
         if (!earliestDate || dateKey < earliestDate) earliestDate = dateKey;
@@ -372,8 +335,26 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
         records[dateKey] = {};
 
         for (const [subjectName, attendanceInfo] of Object.entries(dayData)) {
-            const appSubjectId = subjectMapping[subjectName];
-            if (!appSubjectId) continue;
+            // Resolve app subject ID using the erpSubjectId embedded in the entry
+            const entryPortalId = attendanceInfo.erpSubjectId ? String(attendanceInfo.erpSubjectId) : null;
+            const entryCode     = attendanceInfo.code ? String(attendanceInfo.code) : null;
+
+            let appSubjectId = null;
+
+            // Primary: match by erpSubjectId from the entry itself
+            if (entryPortalId && subjectMapping[entryPortalId]) {
+                appSubjectId = subjectMapping[entryPortalId];
+            }
+            // Fallback: match by code
+            if (!appSubjectId && entryCode && subjectMapping[entryCode]) {
+                appSubjectId = subjectMapping[entryCode];
+            }
+            // Last resort: match by subject name (from Step 1 name mapping)
+            if (!appSubjectId && subjectMapping[subjectName]) {
+                appSubjectId = subjectMapping[subjectName];
+            }
+
+            if (!appSubjectId) continue; // skip unmatchable entries
 
             records[dateKey][appSubjectId] = {
                 status: attendanceInfo.status, // 'present' or 'absent'
