@@ -141,130 +141,134 @@ async function fetchRegisterLegacy(session) {
         console.log(`[CAL-REG] ${name}:`, JSON.stringify(data));
     }
 
-    const allParams = {
-        studentId: session.studentId,
-        sessionId: session.sessionId,
-        userId: session.userId,
-        apiKey: session.apiKey,
-        roleId: session.roleId,
-    };
-
-    const warmupBody = {
-        prevNext: '0',
-        userId: session.userId,
-        sessionId: session.sessionId,
-        apiKey: session.apiKey,
-        roleId: session.roleId,
-        month: '',
-    };
-
     // Helper: check if HTML contains the register table structure
     function isRegisterTable(html) {
         return html && /id=['"]subject_\d+['"]/.test(html) && html.includes('<thead');
     }
 
-    // Helper: attempt a register call and check result
-    async function tryRegister(label, url, body, extraHeaders = {}) {
+    // ── PROBE 1: commonPageId 80 (competitor uses this, unknown purpose) ──
+    try {
+        const cp80 = await postLegacy('/mobile/commonPage', {
+            commonPageId: '80',
+            device: 'android',
+            userId: session.userId,
+            sessionId: session.sessionId,
+            roleId: session.roleId,
+        });
+        const cp80Html = cp80.payload?.content || '';
+        const cp80IsReg = isRegisterTable(cp80Html);
+        logStep('commonPage-80', {
+            status: cp80.response.status,
+            ok: cp80.response.ok,
+            htmlLen: cp80Html.length,
+            isRegisterTable: cp80IsReg,
+            preview: cp80Html.slice(0, 300) || 'EMPTY',
+            title: cp80.payload?.title || 'NO_TITLE',
+        });
+        if (cp80.response.ok && cp80Html && cp80IsReg) {
+            cp80._regDiag = _regDiag;
+            cp80._source = 'commonPage-80';
+            return cp80;
+        }
+    } catch (err) {
+        logStep('commonPage-80', { error: err.message });
+    }
+
+    // ── PROBE 2: showAttendance with prevNext values ──
+    // prevNext=0 returned "No Records Found" for May.
+    // Try previous months (-1, -2, -3) to see if they contain data.
+    for (const prevNext of ['-1', '-2', '-3', '0']) {
         try {
-            const resp = await fetch(url, {
-                method: 'POST',
-                headers: { ...LEGACY_HEADERS, ...extraHeaders },
-                body: encodeForm(body),
+            const sa = await postLegacy('/mobile/showAttendance', {
+                prevNext,
+                userId: session.userId,
+                sessionId: session.sessionId,
+                apiKey: session.apiKey,
+                roleId: session.roleId,
+                month: '',
             });
-            const payload = await readErpPayload(resp);
-            const html = payload?.content || '';
-            const isTable = isRegisterTable(html);
-
-            logStep(label, {
-                status: resp.status,
-                ok: resp.ok,
-                hasContent: !!html,
-                htmlLen: html.length,
-                isRegisterTable: isTable,
-                preview: html ? html.slice(0, 200) : 'EMPTY',
+            const saHtml = sa.payload?.html || sa.payload?.content || JSON.stringify(sa.payload);
+            const isNotEmpty = saHtml && !saHtml.includes('No Records Found');
+            logStep(`showAttendance-prevNext${prevNext}`, {
+                status: sa.response.status,
+                ok: sa.response.ok,
+                htmlLen: saHtml.length,
+                hasRecords: isNotEmpty,
+                preview: saHtml.slice(0, 300) || 'EMPTY',
             });
-
-            if (resp.ok && html && isTable) {
-                return { response: resp, payload, _regDiag, _source: label };
+            // If showAttendance returns register-like data, use it
+            if (sa.response.ok && isNotEmpty && isRegisterTable(saHtml)) {
+                sa._regDiag = _regDiag;
+                sa._source = `showAttendance-prevNext${prevNext}`;
+                return sa;
             }
-            return null;
         } catch (err) {
-            logStep(label, { error: err.message });
-            return null;
+            logStep(`showAttendance-prevNext${prevNext}`, { error: err.message });
         }
     }
 
-    // ── STEP 1: WARMUP ──
-    let warmupCookies = '';
+    // ── PROBE 3: mobilev2 showAttendance (different endpoint variant) ──
     try {
-        const warmupResp = await fetch(`${ERP_BASE}/mobile/showAttendance`, {
+        const mv2 = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
             method: 'POST',
             headers: LEGACY_HEADERS,
-            body: encodeForm(warmupBody),
+            body: encodeForm({
+                prevNext: '0',
+                userId: session.userId,
+                sessionId: session.sessionId,
+                roleId: session.roleId,
+                appKey: session.apiKey,
+                deviceIdUUID: session.deviceIdUUID || '',
+                month: '',
+            }),
         });
-        warmupCookies = warmupResp.headers.get('set-cookie') || '';
-        const warmupText = await warmupResp.text();
-        logStep('warmup', {
-            status: warmupResp.status,
-            ok: warmupResp.ok,
-            cookies: warmupCookies ? 'YES' : 'NONE',
-            bodyLen: warmupText.length,
-            preview: warmupText.slice(0, 200),
+        const mv2Payload = await readErpPayload(mv2);
+        const mv2Html = mv2Payload?.html || mv2Payload?.content || JSON.stringify(mv2Payload);
+        logStep('mobilev2-showAttendance', {
+            status: mv2.status,
+            ok: mv2.ok,
+            htmlLen: mv2Html.length,
+            preview: mv2Html.slice(0, 300) || 'EMPTY',
         });
     } catch (err) {
-        logStep('warmup', { error: err.message });
+        logStep('mobilev2-showAttendance', { error: err.message });
     }
 
-    const cookieHeaders = warmupCookies ? { Cookie: warmupCookies } : {};
+    // ── PROBE 4: commonPageId 28 (attendance summary with tt-box-new cards) ──
+    // This contains per-subject totals (Delivered/Attended/Absent/Percentage)
+    // which we can use for Insights even if we can't get day-by-day register.
+    try {
+        const cp28 = await postLegacy('/mobile/commonPage', {
+            commonPageId: '28',
+            device: 'android',
+            userId: session.userId,
+            sessionId: session.sessionId,
+            roleId: session.roleId,
+        });
+        const cp28Html = cp28.payload?.content || '';
+        const hasSubjectCards = cp28Html.includes('tt-box-new');
+        logStep('commonPage-28', {
+            status: cp28.response.status,
+            ok: cp28.response.ok,
+            htmlLen: cp28Html.length,
+            hasSubjectCards,
+            title: cp28.payload?.title || 'NO_TITLE',
+            preview: cp28Html.slice(0, 300) || 'EMPTY',
+        });
+        // Return the commonPageId 28 data — it has attendance totals
+        // that can populate the Insights page even without the register.
+        if (cp28.response.ok && cp28Html && hasSubjectCards) {
+            cp28._regDiag = _regDiag;
+            cp28._source = 'commonPage-28-summary';
+            return cp28;
+        }
+    } catch (err) {
+        logStep('commonPage-28', { error: err.message });
+    }
 
-    // ── STEP 2: Register with correct casing + studentId only + cookies ──
-    let result = await tryRegister(
-        'register-capitalP-studentOnly',
-        `${ERP_BASE}/chalkpadPro/studentDetails/getattendanceRegister`,
-        { studentId: session.studentId },
-        cookieHeaders
-    );
-    if (result) return result;
+    logStep('fallback', { reason: 'no mobile endpoint returned register table' });
 
-    // ── STEP 3: Register with correct casing + ALL params + cookies ──
-    result = await tryRegister(
-        'register-capitalP-allParams',
-        `${ERP_BASE}/chalkpadPro/studentDetails/getattendanceRegister`,
-        allParams,
-        cookieHeaders
-    );
-    if (result) return result;
-
-    // ── STEP 4: Register with lowercase casing + ALL params + cookies ──
-    result = await tryRegister(
-        'register-lowercaseP-allParams',
-        `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
-        allParams,
-        cookieHeaders
-    );
-    if (result) return result;
-
-    // ── STEP 5: Register with lowercase casing + studentId only (no warmup cookies) ──
-    result = await tryRegister(
-        'register-lowercaseP-studentOnly-noCookies',
-        `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
-        { studentId: session.studentId },
-        {}
-    );
-    if (result) return result;
-
-    // ── STEP 6: Register with lowercase + ALL params (no warmup cookies) ──
-    result = await tryRegister(
-        'register-lowercaseP-allParams-noCookies',
-        `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
-        allParams,
-        {}
-    );
-    if (result) return result;
-
-    logStep('fallback', { reason: 'all register attempts returned non-register HTML' });
-
-    // ── FALLBACK: /mobile/commonPage ──
+    // ── ULTIMATE FALLBACK: commonPageId 85 (timetable) ──
     const fallback = await postLegacy('/mobile/commonPage', {
         commonPageId: '85',
         device: 'android',
@@ -273,7 +277,7 @@ async function fetchRegisterLegacy(session) {
         roleId: session.roleId,
     });
     fallback._regDiag = _regDiag;
-    fallback._source = 'commonPage-fallback';
+    fallback._source = 'commonPage-85-timetable';
     return fallback;
 }
 
