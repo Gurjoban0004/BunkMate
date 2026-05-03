@@ -255,11 +255,33 @@ module.exports = async function handler(req, res) {
         const htmlContent = erpResult.htmlBody;
 
         // Diagnostic info about the HTML we got
+        const tableStart = htmlContent ? htmlContent.indexOf('<table') : -1;
+        const tablePreview = tableStart >= 0 ? htmlContent.slice(tableStart, tableStart + 3000) : 'NO TABLE FOUND';
+        
+        // Search for subject codes like 24CSE0212
+        const codePattern = /\d{2}[A-Z]{2,4}\d{4}/g;
+        const foundCodes = htmlContent ? [...new Set((htmlContent.match(codePattern) || []).slice(0, 10))] : [];
+        
+        // Extract first 5 <tr> rows to understand structure
+        const trSamples = [];
+        if (htmlContent) {
+            const trRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
+            let trMatch;
+            let trCount = 0;
+            while ((trMatch = trRegex.exec(htmlContent)) !== null && trCount < 5) {
+                trSamples.push(trMatch[0].slice(0, 500));
+                trCount++;
+            }
+        }
+
         const htmlDiag = {
             ...diag,
             ...sessionDiag,
             htmlLength: htmlContent ? htmlContent.length : 0,
             htmlPreview: htmlContent ? htmlContent.slice(0, 500) : 'EMPTY',
+            tablePreview,
+            foundCodes,
+            trSamples,
             hasTable: htmlContent ? htmlContent.includes('<table') : false,
             hasThead: htmlContent ? htmlContent.includes('<thead') : false,
             hasSubjectTr: htmlContent ? /id=['"]subject_\d+['"]/.test(htmlContent) : false,
