@@ -1,32 +1,49 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
+import React, { useMemo, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Platform } from 'react-native';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 
-const CELL_SIZE = 28;
-const GAP = 4;
+const CELL_SIZE = 32;
 
 /**
- * Calendar heatmap showing attendance for a subject.
- * Shows current month by default. Colored dots per day.
+ * Calendar heatmap showing attendance for a subject or globally.
+ * Auto-jumps to latest ERP data month on first render.
  *
- * @param {string} subjectId
- * @param {object} state
+ * @param {string|null} subjectId - null = global heatmap
+ * @param {object} state - full AppContext state
+ * @param {string|null} subjectColor - accent color for subject mode
  */
-export default function CalendarView({ subjectId, state }) {
+export default function CalendarView({ subjectId, state, subjectColor }) {
     const styles = getStyles();
-    const [monthOffset, setMonthOffset] = useState(0);
 
-    const { month, year, calendarData, monthName, daysInMonth, firstDayOfWeek } = useMemo(() => {
+    // ── Compute initial month offset to jump to latest ERP data ──────
+    const initialOffset = useMemo(() => {
+        const latestErpDate = state.latestErpDate;
+        if (!latestErpDate) return 0;
+
         const now = new Date();
-        const yr = now.getFullYear();
+        const latest = new Date(latestErpDate + 'T12:00:00');
+        const monthDiff =
+            (latest.getFullYear() - now.getFullYear()) * 12 +
+            (latest.getMonth() - now.getMonth());
+
+        // Jump to the month containing the latest ERP date, capped at current month
+        return Math.min(0, monthDiff);
+    }, [state.latestErpDate]);
+
+    const [monthOffset, setMonthOffset] = useState(initialOffset);
+    const [selectedDay, setSelectedDay] = useState(null);
+
+    const { month, year, calendarData, monthName, firstDayOfWeek } = useMemo(() => {
+        const now = new Date();
         const mn = now.getMonth() + monthOffset;
-        const target = new Date(yr, mn, 1);
+        const target = new Date(now.getFullYear(), mn, 1);
         const targetYear = target.getFullYear();
         const targetMonth = target.getMonth();
 
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'];
         const daysCount = new Date(targetYear, targetMonth + 1, 0).getDate();
-        const firstDay = new Date(targetYear, targetMonth, 1).getDay(); // 0=Sun
+        const firstDay = new Date(targetYear, targetMonth, 1).getDay();
 
         const data = [];
         for (let d = 1; d <= daysCount; d++) {
@@ -34,31 +51,39 @@ export default function CalendarView({ subjectId, state }) {
             const dayRecord = state.attendanceRecords[dateKey];
             const isHoliday = dayRecord?._holiday || (state.holidays || []).includes(dateKey);
 
-            let status = 'none'; // no data
+            let status = 'none';
+            let units = 1;
+            let subjectDetails = [];
+
             if (isHoliday) {
                 status = 'holiday';
             } else if (subjectId && dayRecord?.[subjectId]) {
                 const record = dayRecord[subjectId];
-                if (record.status === 'present') status = 'present';
-                else if (record.status === 'absent') status = 'absent';
-                else if (record.status === 'cancelled') status = 'cancelled';
+                status = record.status === 'cancelled' ? 'cancelled' : record.status;
+                units = record.units || 1;
             } else if (!subjectId && dayRecord) {
-                // Global Heatmap Mode: Aggregate all classes for the day
-                const records = Object.values(dayRecord).filter(r => r && typeof r === 'object');
-                const isAbsent = records.some(r => r.status === 'absent');
-                const isPresent = records.some(r => r.status === 'present');
-                const isCancelled = records.some(r => r.status === 'cancelled');
+                // Global heatmap: collect all subject records for the day
+                const entries = Object.entries(dayRecord)
+                    .filter(([k, r]) => k !== '_holiday' && r && typeof r === 'object' && r.status);
 
-                if (isAbsent) {
-                    status = 'absent'; // Show red if you skipped ANYTHING that day
-                } else if (isPresent) {
-                    status = 'present'; // Fully safe day
-                } else if (isCancelled) {
-                    status = 'cancelled';
-                }
+                const absentCount = entries.filter(([, r]) => r.status === 'absent').length;
+                const presentCount = entries.filter(([, r]) => r.status === 'present').length;
+                const cancelledCount = entries.filter(([, r]) => r.status === 'cancelled').length;
+
+                if (absentCount > 0) status = 'absent';
+                else if (presentCount > 0) status = 'present';
+                else if (cancelledCount > 0) status = 'cancelled';
+
+                units = entries.reduce((sum, [, r]) => sum + (r.units || 1), 0);
+
+                // Build subject details for tap overlay
+                subjectDetails = entries.map(([sid, r]) => {
+                    const sub = state.subjects.find(s => s.id === sid);
+                    return { name: sub?.name || 'Unknown', color: sub?.color || COLORS.primary, status: r.status, units: r.units || 1 };
+                });
             }
 
-            data.push({ day: d, dateKey, status });
+            data.push({ day: d, dateKey, status, units, subjectDetails });
         }
 
         return {
@@ -66,47 +91,44 @@ export default function CalendarView({ subjectId, state }) {
             year: targetYear,
             calendarData: data,
             monthName: `${monthNames[targetMonth]} ${targetYear}`,
-            daysInMonth: daysCount,
             firstDayOfWeek: firstDay,
         };
-    }, [subjectId, state.attendanceRecords, state.holidays, monthOffset]);
+    }, [subjectId, state.attendanceRecords, state.holidays, state.subjects, monthOffset]);
 
-    const dayHeaders = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-    // Build grid with leading empty cells
+    // Build grid
     const gridCells = [];
     for (let i = 0; i < firstDayOfWeek; i++) {
         gridCells.push({ type: 'empty', key: `empty-${i}` });
     }
-    calendarData.forEach((d) => {
-        gridCells.push({ type: 'day', ...d, key: d.dateKey });
-    });
+    calendarData.forEach(d => gridCells.push({ type: 'day', ...d, key: d.dateKey }));
 
-    const getDotColor = (status) => {
+    const getCellStyle = useCallback((status) => {
         switch (status) {
-            case 'present':  return COLORS.success;
-            case 'absent':   return COLORS.danger;
-            case 'holiday':  return COLORS.primary;
-            case 'cancelled': return COLORS.border;
-            default: return null;
+            case 'present':  return { bg: COLORS.successLight, text: COLORS.successDark };
+            case 'absent':   return { bg: COLORS.dangerLight,  text: COLORS.dangerDark  };
+            case 'holiday':  return { bg: COLORS.primaryLight,  text: COLORS.primary    };
+            case 'cancelled': return { bg: COLORS.inputBackground, text: COLORS.textMuted };
+            default:         return { bg: 'transparent', text: COLORS.textSecondary };
         }
-    };
+    }, []);
 
-    const getCellBg = (status) => {
-        switch (status) {
-            case 'present':  return COLORS.successLight;
-            case 'absent':   return COLORS.dangerLight;
-            case 'holiday':  return COLORS.primaryLight;
-            case 'cancelled': return COLORS.inputBackground;
-            default: return 'transparent';
-        }
+    const dayHeaders = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const accentColor = subjectColor || COLORS.primary;
+
+    const handleDayPress = (cell) => {
+        if (cell.status === 'none') return;
+        setSelectedDay(cell);
     };
 
     return (
         <View style={styles.container}>
             {/* Month navigation */}
             <View style={styles.monthNav}>
-                <TouchableOpacity onPress={() => setMonthOffset(monthOffset - 1)} style={styles.navBtn}>
+                <TouchableOpacity
+                    onPress={() => setMonthOffset(monthOffset - 1)}
+                    style={styles.navBtn}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
                     <Text style={styles.navBtnText}>‹</Text>
                 </TouchableOpacity>
                 <Text style={styles.monthTitle}>{monthName}</Text>
@@ -114,6 +136,7 @@ export default function CalendarView({ subjectId, state }) {
                     onPress={() => setMonthOffset(monthOffset + 1)}
                     style={styles.navBtn}
                     disabled={monthOffset >= 0}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
                     <Text style={[styles.navBtnText, monthOffset >= 0 && styles.navBtnDisabled]}>›</Text>
                 </TouchableOpacity>
@@ -128,44 +151,154 @@ export default function CalendarView({ subjectId, state }) {
 
             {/* Calendar grid */}
             <View style={styles.grid}>
-                {gridCells.map((cell) => (
-                    <View key={cell.key} style={styles.cellOuter}>
-                        {cell.type === 'day' ? (
+                {gridCells.map(cell => {
+                    if (cell.type === 'empty') {
+                        return <View key={cell.key} style={styles.cellOuter} />;
+                    }
+                    const cs = getCellStyle(cell.status);
+                    const isToday = cell.dateKey === new Date().toISOString().slice(0, 10);
+                    const multiPeriod = cell.units >= 2 && cell.status !== 'none';
+
+                    return (
+                        <TouchableOpacity
+                            key={cell.key}
+                            style={styles.cellOuter}
+                            onPress={() => handleDayPress(cell)}
+                            activeOpacity={cell.status === 'none' ? 1 : 0.7}
+                        >
                             <View style={[
                                 styles.cellInner,
-                                cell.status !== 'none' && { backgroundColor: getCellBg(cell.status) }
+                                cell.status !== 'none' && { backgroundColor: cs.bg },
+                                isToday && styles.cellToday,
+                                multiPeriod && { borderWidth: 1.5, borderColor: cs.text + '60' },
                             ]}>
                                 <Text style={[
                                     styles.dayText,
-                                    cell.status === 'present' && styles.dayTextPresent,
-                                    cell.status === 'absent' && styles.dayTextAbsent,
+                                    cell.status !== 'none' && { color: cs.text, fontWeight: '600' },
+                                    isToday && { fontWeight: '800' },
                                 ]}>
                                     {cell.day}
                                 </Text>
-                                {getDotColor(cell.status) && (
-                                    <View style={[styles.statusDot, { backgroundColor: getDotColor(cell.status) }]} />
+                                {/* Dot indicator for status */}
+                                {cell.status !== 'none' && cell.status !== 'holiday' && (
+                                    <View style={styles.dotsRow}>
+                                        <View style={[styles.dot, { backgroundColor: cs.text }]} />
+                                        {/* Second dot for multi-period days */}
+                                        {multiPeriod && (
+                                            <View style={[styles.dot, { backgroundColor: cs.text }]} />
+                                        )}
+                                    </View>
+                                )}
+                                {cell.status === 'holiday' && (
+                                    <View style={[styles.dot, { backgroundColor: COLORS.primary }]} />
                                 )}
                             </View>
-                        ) : null}
-                    </View>
-                ))}
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
 
             {/* Legend */}
             <View style={styles.legend}>
+                {[
+                    { label: 'Present', color: COLORS.success },
+                    { label: 'Absent',  color: COLORS.danger },
+                    { label: 'Holiday', color: COLORS.primary },
+                ].map(({ label, color }) => (
+                    <View key={label} style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: color }]} />
+                        <Text style={styles.legendText}>{label}</Text>
+                    </View>
+                ))}
                 <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
-                    <Text style={styles.legendText}>Attended</Text>
-                </View>
-                <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.danger }]} />
-                    <Text style={styles.legendText}>Skipped</Text>
-                </View>
-                <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.primary }]} />
-                    <Text style={styles.legendText}>Holiday</Text>
+                    <View style={[styles.legendDot, styles.legendDotDouble]}>
+                        <View style={[styles.dot, { backgroundColor: COLORS.successDark }]} />
+                        <View style={[styles.dot, { backgroundColor: COLORS.successDark }]} />
+                    </View>
+                    <Text style={styles.legendText}>2+ periods</Text>
                 </View>
             </View>
+
+            {/* Day Detail Modal */}
+            {selectedDay && (
+                <Modal
+                    visible={!!selectedDay}
+                    transparent
+                    animationType={Platform.OS === 'web' ? 'fade' : 'slide'}
+                    onRequestClose={() => setSelectedDay(null)}
+                >
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setSelectedDay(null)}
+                    >
+                        <View style={styles.dayDetailSheet}>
+                            <View style={styles.dayDetailHandle} />
+                            <Text style={styles.dayDetailDate}>
+                                {new Date(selectedDay.dateKey + 'T12:00:00').toLocaleDateString('en-US', {
+                                    weekday: 'long', month: 'long', day: 'numeric'
+                                })}
+                            </Text>
+
+                            {selectedDay.status === 'holiday' ? (
+                                <View style={styles.dayDetailRow}>
+                                    <View style={[styles.statusPill, { backgroundColor: COLORS.primaryLight }]}>
+                                        <Text style={[styles.statusPillText, { color: COLORS.primary }]}>Holiday</Text>
+                                    </View>
+                                </View>
+                            ) : subjectId ? (
+                                // Subject-specific detail
+                                <View style={styles.dayDetailRow}>
+                                    <View style={[styles.statusPill, {
+                                        backgroundColor: selectedDay.status === 'present' ? COLORS.successLight : COLORS.dangerLight,
+                                    }]}>
+                                        <Text style={[styles.statusPillText, {
+                                            color: selectedDay.status === 'present' ? COLORS.successDark : COLORS.dangerDark,
+                                        }]}>
+                                            {selectedDay.status === 'present' ? 'Present' : 'Absent'}
+                                        </Text>
+                                    </View>
+                                    {selectedDay.units >= 2 && (
+                                        <Text style={styles.dayDetailUnits}>{selectedDay.units} periods</Text>
+                                    )}
+                                    <View style={[styles.sourcePill]}>
+                                        <Text style={styles.sourcePillText}>
+                                            {state.attendanceRecords[selectedDay.dateKey]?.[subjectId]?.source === 'erp' ? 'Portal' : 'Manual'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            ) : (
+                                // Global detail — list subjects
+                                <ScrollView style={styles.dayDetailSubjects} showsVerticalScrollIndicator={false}>
+                                    {selectedDay.subjectDetails.length > 0 ? (
+                                        selectedDay.subjectDetails.map((sd, i) => (
+                                            <View key={i} style={styles.dayDetailSubjectRow}>
+                                                <View style={[styles.subjectColorDot, { backgroundColor: sd.color }]} />
+                                                <Text style={styles.dayDetailSubjectName}>{sd.name}</Text>
+                                                <View style={[styles.statusPill, {
+                                                    backgroundColor: sd.status === 'present' ? COLORS.successLight : COLORS.dangerLight,
+                                                }]}>
+                                                    <Text style={[styles.statusPillText, {
+                                                        color: sd.status === 'present' ? COLORS.successDark : COLORS.dangerDark,
+                                                        fontSize: 11,
+                                                    }]}>
+                                                        {sd.status === 'present' ? 'Present' : sd.status === 'absent' ? 'Absent' : 'Cancelled'}
+                                                    </Text>
+                                                </View>
+                                                {sd.units >= 2 && (
+                                                    <Text style={styles.dayDetailUnits}>{sd.units}×</Text>
+                                                )}
+                                            </View>
+                                        ))
+                                    ) : (
+                                        <Text style={styles.dayDetailEmpty}>No data for this day</Text>
+                                    )}
+                                </ScrollView>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                </Modal>
+            )}
         </View>
     );
 }
@@ -179,9 +312,12 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: SPACING.sm,
+        paddingHorizontal: 2,
     },
     navBtn: {
         padding: SPACING.xs,
+        width: 36,
+        alignItems: 'center',
     },
     navBtnText: {
         fontSize: 24,
@@ -194,6 +330,8 @@ const getStyles = () => StyleSheet.create({
     monthTitle: {
         ...TYPOGRAPHY.headerSmall,
         color: COLORS.textPrimary,
+        textAlign: 'center',
+        flex: 1,
     },
     dayHeaderRow: {
         flexDirection: 'row',
@@ -203,9 +341,10 @@ const getStyles = () => StyleSheet.create({
     dayHeader: {
         ...TYPOGRAPHY.caption,
         color: COLORS.textMuted,
-        width: CELL_SIZE,
+        width: `${100 / 7}%`,
         textAlign: 'center',
-        fontWeight: '600',
+        fontWeight: '700',
+        fontSize: 11,
     },
     grid: {
         flexDirection: 'row',
@@ -213,57 +352,153 @@ const getStyles = () => StyleSheet.create({
     },
     cellOuter: {
         width: `${100 / 7}%`,
-        height: CELL_SIZE + 10,
+        height: CELL_SIZE + 14,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: GAP,
+        paddingVertical: 2,
     },
     cellInner: {
-        width: CELL_SIZE + 6,
-        height: CELL_SIZE + 6,
+        width: CELL_SIZE,
+        height: CELL_SIZE,
         borderRadius: BORDER_RADIUS.sm,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    statusDot: {
-        width: 5,
-        height: 5,
-        borderRadius: 3,
-        marginTop: 2,
+    cellToday: {
+        borderWidth: 2,
+        borderColor: COLORS.primary,
     },
     dayText: {
-        ...TYPOGRAPHY.bodySmall,
-        color: COLORS.textPrimary,
-        fontSize: 13,
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        lineHeight: 15,
     },
-    dayTextPresent: {
-        color: COLORS.successDark,
-        fontWeight: '600',
+    dotsRow: {
+        flexDirection: 'row',
+        gap: 2,
+        marginTop: 1,
     },
-    dayTextAbsent: {
-        color: COLORS.dangerDark,
-        fontWeight: '600',
+    dot: {
+        width: 4,
+        height: 4,
+        borderRadius: 2,
     },
     legend: {
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: SPACING.md,
-        marginTop: SPACING.sm,
+        flexWrap: 'wrap',
+        gap: SPACING.sm,
+        marginTop: SPACING.md,
     },
     legendItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: SPACING.xs,
+        gap: 4,
     },
     legendDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
     },
+    legendDotDouble: {
+        width: 'auto',
+        height: 'auto',
+        borderRadius: 0,
+        backgroundColor: 'transparent',
+        flexDirection: 'row',
+        gap: 2,
+    },
     legendText: {
         ...TYPOGRAPHY.caption,
         color: COLORS.textMuted,
         fontSize: 11,
+    },
+    // Modal / day detail sheet
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: COLORS.overlay,
+        justifyContent: 'flex-end',
+    },
+    dayDetailSheet: {
+        backgroundColor: COLORS.cardBackground,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: SPACING.lg,
+        paddingBottom: SPACING.xxl,
+        ...SHADOWS.large,
+    },
+    dayDetailHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: COLORS.border,
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginBottom: SPACING.md,
+    },
+    dayDetailDate: {
+        ...TYPOGRAPHY.headerSmall,
+        color: COLORS.textPrimary,
+        marginBottom: SPACING.md,
+    },
+    dayDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
+    },
+    statusPill: {
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.full,
+    },
+    statusPillText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    sourcePill: {
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.full,
+        backgroundColor: COLORS.inputBackground,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    sourcePillText: {
+        fontSize: 11,
+        color: COLORS.textMuted,
         fontWeight: '500',
+    },
+    dayDetailUnits: {
+        fontSize: 12,
+        color: COLORS.textMuted,
+        marginLeft: 4,
+    },
+    dayDetailSubjects: {
+        maxHeight: 280,
+    },
+    dayDetailSubjectRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+        gap: SPACING.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.borderSubtle,
+    },
+    subjectColorDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        flexShrink: 0,
+    },
+    dayDetailSubjectName: {
+        flex: 1,
+        fontSize: 14,
+        color: COLORS.textPrimary,
+        fontWeight: '500',
+    },
+    dayDetailEmpty: {
+        ...TYPOGRAPHY.caption,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        marginTop: SPACING.md,
     },
 });

@@ -34,6 +34,7 @@ import DeletionWarningBanner from '../../components/today/DeletionWarningBanner'
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
 import BestBunkDayCard from '../../components/insights/BestBunkDayCard';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
+import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
 import {
     DisplayMedium,
     HeadingMedium,
@@ -120,6 +121,10 @@ const TodayScreen = ({ navigation }) => {
         }
         setTimeout(() => setRefreshing(false), 800);
     }, [state.settings?.erpConnected, triggerErpSync]);
+
+    const handleDismissWelcomeCard = () => {
+        dispatch({ type: 'UPDATE_SETTINGS', payload: { erpWelcomeCardDismissed: true } });
+    };
 
     // Handlers
     const handleMarkAttendance = (subjectId, status, units) => {
@@ -268,6 +273,12 @@ const TodayScreen = ({ navigation }) => {
 
                 {/* Deletion Warning Banner */}
                 <DeletionWarningBanner />
+
+                {/* ERP Welcome Card — shown once after first sync */}
+                <ErpWelcomeCard
+                    state={state}
+                    onDismiss={handleDismissWelcomeCard}
+                />
 
                 {/* Quick Answer Card */}
                 {!isHoliday && todayClasses.length > 0 && (

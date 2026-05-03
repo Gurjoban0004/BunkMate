@@ -74,6 +74,9 @@ const initialState = {
         calendarSyncStatus: 'idle',  // 'idle' | 'loading' | 'ok' | 'failed'
         changedSubjectIds:  [],      // subject IDs updated in the last sync cycle
     },
+
+    // Latest date for which ERP register data exists — drives CalendarView auto-jump
+    latestErpDate: null,
 };
 
 function appReducer(state, action) {
@@ -394,7 +397,7 @@ function appReducer(state, action) {
         case 'ERP_OVERWRITE_CALENDAR': {
             // ERP calendar correctly replaces attendance records where ERP has data.
             // Holidays are preserved.
-            const { records: erpRecords, trackingStartDate: newTrackingStart, lastSubjectSyncDates, erpSubjectIdStamps = {} } = action.payload;
+            const { records: erpRecords, trackingStartDate: newTrackingStart, lastSubjectSyncDates, erpSubjectIdStamps = {}, latestErpDate } = action.payload;
 
             const nextRecords = { ...state.attendanceRecords };
 
@@ -447,6 +450,7 @@ function appReducer(state, action) {
                 subjects: nextSubjects,
                 attendanceRecords: nextRecords,
                 trackingStartDate: newTrackingStart || state.trackingStartDate,
+                latestErpDate: latestErpDate || state.latestErpDate,
                 settings: {
                     ...state.settings,
                     lastSubjectSyncDates: newLastSyncDates

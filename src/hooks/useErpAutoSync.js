@@ -35,7 +35,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { AppState } from 'react-native';
 import { getErpToken, getErpPersistentToken } from '../storage/erpTokenStorage';
 import { erpFetchAttendance, erpFetchCalendar, erpKeepAlive } from '../services/erpService';
-import { mapErpToAppState, buildResyncPayload, mapCalendarToRecords, validateErpSubject } from '../utils/erpAttendanceMapper';
+import { mapErpToAppState, buildResyncPayload, mapCalendarToRecords, validateErpSubject, buildErpNameMap } from '../utils/erpAttendanceMapper';
 import { logger } from '../utils/logger';
 
 const MIN_SYNC_INTERVAL_MS       = 60 * 1000;   // 60s debounce (successful syncs)
@@ -162,6 +162,11 @@ export function useErpAutoSync(state, dispatch) {
             let latestSubjects = currentState.subjects;
             const mapping = mapErpToAppState(validErpSubjects, currentState.subjects);
 
+            // Build a direct name→id map from Step 1 BEFORE any dispatch.
+            // This is the critical link passed to Step 2 (calendar) to avoid re-matching
+            // mismatches when mobilev2 and register HTML use different subject name formats.
+            const step1NameMap = buildErpNameMap(mapping.matchedUpdates, mapping.newSubjects);
+
             // Add new subjects from ERP
             if (mapping.newSubjects.length > 0) {
                 latestSubjects = [...currentState.subjects, ...mapping.newSubjects];
@@ -220,7 +225,7 @@ export function useErpAutoSync(state, dispatch) {
                     logger.warn('⚠️ Calendar sync skipped — session expired');
                     setSyncStatus({ calendarSyncStatus: 'failed' });
                 } else if (calData.calendar && Object.keys(calData.calendar).length > 0) {
-                    const result = mapCalendarToRecords(calData.calendar, calData.subjects, latestSubjects);
+                    const result = mapCalendarToRecords(calData.calendar, calData.subjects, latestSubjects, step1NameMap);
 
                     if (result.newSubjects.length > 0) {
                         const withNew = [...latestSubjects, ...result.newSubjects];
@@ -247,6 +252,7 @@ export function useErpAutoSync(state, dispatch) {
                         payload: {
                             records: result.records,
                             trackingStartDate: result.earliestDate,
+                            latestErpDate: result.latestDate,
                             lastSubjectSyncDates: result.lastSubjectSyncDates
                         },
                     });

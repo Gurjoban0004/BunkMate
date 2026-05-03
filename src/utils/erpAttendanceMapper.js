@@ -206,6 +206,24 @@ export function validateErpSubject(sub) {
 }
 
 /**
+ * Build a direct { erpSubjectName → appSubjectId } map after Step 1 (attendance summary).
+ * This is passed to mapCalendarToRecords so it can resolve register subject names
+ * without re-running fuzzy matching (which fails when names differ between endpoints).
+ *
+ * Call this after mapErpToAppState + SET_SUBJECTS has run.
+ *
+ * @param {Array} matchedUpdates - from mapErpToAppState result
+ * @param {Array} newSubjects - from mapErpToAppState result
+ * @returns {Object} { [erpSubjectName]: appSubjectId }
+ */
+export function buildErpNameMap(matchedUpdates, newSubjects) {
+    const map = {};
+    matchedUpdates.forEach(u => { if (u.erpName) map[u.erpName] = u.subjectId; });
+    newSubjects.forEach(s => { map[s.name] = s.id; });
+    return map;
+}
+
+/**
  * Map ERP calendar data into Presence attendanceRecords format.
  * 
  * @param {Object} calendarData - From erp-calendar endpoint
@@ -214,6 +232,8 @@ export function validateErpSubject(sub) {
  *   [{ erpSubjectId, name, code, attended, total, percentage }]
  * @param {Array} existingSubjects - Current subjects from app state
  *   [{ id, name, teacher, color, initialAttended, initialTotal, target }]
+ * @param {Object} [step1NameMap] - Optional { erpSubjectName → appSubjectId } from buildErpNameMap.
+ *   When provided, name resolution uses this map first (avoids re-matching mismatches).
  * 
  * @returns {{
  *   records: Object,           // { "2026-01-20": { "appSubjectId": { status, autoMarked } } }
@@ -223,7 +243,7 @@ export function validateErpSubject(sub) {
  *   earliestDate: string,
  * }}
  */
-export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects) {
+export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects, step1NameMap = {}) {
     const records = {};
     const subjectMapping = {}; // erpName → appSubjectId
     const newSubjects = [];
@@ -233,24 +253,52 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
     const availableColors = (COLORS.subjectPalette || []).filter(c => !usedColors.has(c));
     let colorIndex = 0;
 
-    // Step 1: Build mapping from ERP subject names → app subject IDs
-    // erpSubjects from the calendar endpoint have: { name, code, erpSubjectId, attended, total }
-    // where erpSubjectId is the NUMERIC portal ID (e.g. "10755")
+    // Step 1: Build subject mapping — erpSubjectName → appSubjectId.
+    // Resolution order:
+    //   a. step1NameMap (direct map from Step 1 sync — most reliable, no re-matching needed)
+    //   b. erpSubjectId numeric match (stable portal ID)
+    //   c. subject code match
+    //   d. fuzzy name similarity (fallback)
     for (const erpSub of erpSubjects) {
+        // (a) Use Step 1 direct map if available — this is the key fix for the calendar empty bug.
+        // Step 1 (attendance summary) creates/matches subjects and passes their name→id mapping.
+        // The register HTML may use slightly different names than mobilev2, but both reference
+        // the same ERP subject, so we try the step1NameMap by erpSubjectId first.
+        if (step1NameMap && Object.keys(step1NameMap).length > 0) {
+            // Try: match this calendar subject's erpSubjectId to any step1 subject
+            let foundViaStep1 = null;
+            if (erpSub.erpSubjectId) {
+                // Find the step1 app subject that got this erpSubjectId stamped
+                for (const [step1Name, appId] of Object.entries(step1NameMap)) {
+                    const appSub = existingSubjects.find(s => s.id === appId);
+                    if (appSub && (
+                        (appSub.erpSubjectId && String(appSub.erpSubjectId) === String(erpSub.erpSubjectId)) ||
+                        (appSub.code && String(appSub.code) === String(erpSub.code)) ||
+                        step1Name === erpSub.name
+                    )) {
+                        foundViaStep1 = appId;
+                        break;
+                    }
+                }
+            }
+            if (!foundViaStep1 && step1NameMap[erpSub.name]) {
+                foundViaStep1 = step1NameMap[erpSub.name];
+            }
+            if (foundViaStep1 && !matchedExistingIds.has(foundViaStep1)) {
+                matchedExistingIds.add(foundViaStep1);
+                subjectMapping[erpSub.name] = foundViaStep1;
+                continue;
+            }
+        }
+
+        // (b/c/d) Fall back to findBestMatch (erpSubjectId → code → fuzzy name)
         const { match: bestMatch } = findBestMatch(erpSub, existingSubjects, matchedExistingIds);
 
         if (bestMatch) {
             matchedExistingIds.add(bestMatch.id);
             subjectMapping[erpSub.name] = bestMatch.id;
-
-            // Stamp the numeric portal ID onto the matched subject so future syncs
-            // can use it as a stable key without fuzzy matching
-            if (erpSub.erpSubjectId && !bestMatch.erpSubjectId) {
-                // We'll handle this via the ERP_OVERWRITE_ATTENDANCE reducer
-                // by including erpSubjectId in the calendar payload
-            }
         } else {
-            // No match — create a new subject so calendar data isn't lost
+            // No match anywhere — create a new subject so calendar data isn't lost
             const color = availableColors[colorIndex % availableColors.length]
                 || (COLORS.subjectPalette || ['#85C1E9'])[colorIndex % (COLORS.subjectPalette?.length || 1)];
             colorIndex++;
@@ -276,8 +324,8 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
 
     // Step 2: Convert calendar data into attendanceRecords format
     let earliestDate = null;
+    let latestDate = null;
     const lastSubjectSyncDates = {};
-    // Track which subjects got their erpSubjectId stamped via calendar
     const erpSubjectIdStamps = {}; // appSubjectId → erpSubjectId
 
     for (const erpSub of erpSubjects) {
@@ -288,9 +336,8 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
     }
 
     for (const [dateKey, dayData] of Object.entries(calendarData)) {
-        if (!earliestDate || dateKey < earliestDate) {
-            earliestDate = dateKey;
-        }
+        if (!earliestDate || dateKey < earliestDate) earliestDate = dateKey;
+        if (!latestDate || dateKey > latestDate) latestDate = dateKey;
 
         records[dateKey] = {};
 
@@ -314,9 +361,10 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
         records,
         newSubjects,
         subjectMapping,
-        erpSubjectIdStamps, // NEW: lets the sync hook stamp portal IDs onto matched subjects
+        erpSubjectIdStamps,
         totalDays: Object.keys(records).length,
         earliestDate,
+        latestDate,
         lastSubjectSyncDates,
     };
 }
