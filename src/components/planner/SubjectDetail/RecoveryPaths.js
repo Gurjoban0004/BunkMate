@@ -26,14 +26,14 @@ export default function RecoveryPaths({ subjectData }) {
         return (
             <Animated.View style={{ opacity: fadeAnim }}>
                 <View style={[styles.card, { backgroundColor: COLORS.successLight, borderColor: COLORS.success }]}>
-                    <Text style={styles.question}>⚡ Recovery Plan</Text>
+                    <Text style={styles.question}>Recovery Plan</Text>
                     <View style={styles.answerRow}>
                         <Text style={[styles.answerTitle, { color: COLORS.successDark }]}>
-                            🎉 You're above all targets!
+                            No recovery needed
                         </Text>
                     </View>
                     <Text style={[styles.answerSubtitle, { color: COLORS.successDark }]}>
-                        Keep it up — no recovery needed.
+                        This subject is above target. Keep the rhythm steady.
                     </Text>
                 </View>
             </Animated.View>
@@ -54,7 +54,7 @@ export default function RecoveryPaths({ subjectData }) {
                 onPress={toggleExpand}
                 activeOpacity={0.8}
             >
-                <Text style={styles.question}>⚡ Recovery Plan</Text>
+                <Text style={styles.question}>Recovery Plan</Text>
 
                 <View style={styles.answerRow}>
                     <Text style={[styles.answerTitle, { color: COLORS.warningDark }]}>
@@ -71,9 +71,11 @@ export default function RecoveryPaths({ subjectData }) {
                         {recovery.paths.map((path, idx) => (
                             <View key={idx} style={[styles.pathRow, idx === 0 && styles.firstPathRow]}>
                                 <View style={styles.pathHeader}>
-                                    <Text style={styles.pathTargetEmoji}>
-                                        {idx === 0 ? '🎯' : '🌟'}
-                                    </Text>
+                                    <View style={[styles.pathMarker, idx === 0 && styles.pathMarkerPrimary]}>
+                                        <Text style={[styles.pathMarkerText, idx === 0 && styles.pathMarkerTextPrimary]}>
+                                            {idx + 1}
+                                        </Text>
+                                    </View>
                                     <View>
                                         <Text style={styles.pathTarget}>Goal: {path.targetPercentage}%</Text>
                                         <Text style={styles.pathClasses}>
@@ -114,7 +116,7 @@ export default function RecoveryPaths({ subjectData }) {
 
                 <View style={styles.actionsRow}>
                     <Text style={styles.collapseText}>
-                        {expanded ? 'Collapse ↑' : 'Tap for details ↓'}
+                        {expanded ? 'Hide plan' : 'Show plan'}
                     </Text>
                 </View>
             </TouchableOpacity>
@@ -125,9 +127,10 @@ export default function RecoveryPaths({ subjectData }) {
 const getStyles = () => StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginBottom: SPACING.md,
+        borderWidth: 1,
         ...SHADOWS.small,
         borderLeftWidth: 4,
     },
@@ -136,7 +139,7 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '700',
         color: COLORS.textMuted,
         textTransform: 'uppercase',
-        letterSpacing: 0.8,
+        letterSpacing: 0,
         marginBottom: SPACING.sm,
     },
     answerRow: {
@@ -171,8 +174,27 @@ const getStyles = () => StyleSheet.create({
         gap: 12,
         marginBottom: SPACING.sm,
     },
-    pathTargetEmoji: {
-        fontSize: 24,
+    pathMarker: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.inputBackground,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+    },
+    pathMarkerPrimary: {
+        backgroundColor: COLORS.warning,
+        borderColor: COLORS.warning,
+    },
+    pathMarkerText: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '800',
+        color: COLORS.textSecondary,
+    },
+    pathMarkerTextPrimary: {
+        color: COLORS.textPrimary,
     },
     pathTarget: {
         fontSize: FONT_SIZES.md,
@@ -198,7 +220,7 @@ const getStyles = () => StyleSheet.create({
         gap: 6,
     },
     classChip: {
-        backgroundColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: COLORS.inputBackground,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 4,
@@ -214,9 +236,11 @@ const getStyles = () => StyleSheet.create({
         alignSelf: 'center',
     },
     pathFooterBox: {
-        backgroundColor: 'rgba(255,255,255,0.4)',
+        backgroundColor: COLORS.cardBackground,
         padding: SPACING.sm,
         borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
     },
     skipAllowance: {
         fontSize: FONT_SIZES.xs,
@@ -226,8 +250,8 @@ const getStyles = () => StyleSheet.create({
     },
     reward: {
         fontSize: 11,
-        color: COLORS.warningDark,
-        fontStyle: 'italic',
+        color: COLORS.textSecondary,
+        lineHeight: 16,
     },
     actionsRow: {
         alignItems: 'flex-start',
@@ -236,6 +260,6 @@ const getStyles = () => StyleSheet.create({
     collapseText: {
         fontSize: FONT_SIZES.sm,
         color: COLORS.textMuted,
-        fontWeight: '500',
+        fontWeight: '700',
     },
 });

@@ -122,7 +122,7 @@ export default function PatternsInsights({ subjectData }) {
                         color: patterns.trends.direction === 'improving'
                             ? COLORS.successDark : COLORS.danger,
                     }]}>
-                        {patterns.trends.direction === 'improving' ? '📈 Improving' : '📉 Declining'}
+                        {patterns.trends.direction === 'improving' ? 'Improving' : 'Declining'}
                     </Text>
                 </View>
             )}
@@ -133,9 +133,11 @@ export default function PatternsInsights({ subjectData }) {
 const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     title: {
@@ -174,7 +176,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     daysGrid: {
-        flexDirection: 'row',        flexWrap: 'wrap',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 12,
     },
     dayItem: {
@@ -191,7 +194,7 @@ const getStyles = () => StyleSheet.create({
     miniBar: {
         flex: 1,
         height: 6,
-        backgroundColor: COLORS.border,
+        backgroundColor: COLORS.inputBackground,
         borderRadius: 3,
         overflow: 'hidden',
     },
@@ -211,7 +214,8 @@ const getStyles = () => StyleSheet.create({
     },
     streakText: {
         fontSize: FONT_SIZES.md,
-        fontWeight: '700',    },
+        fontWeight: '700',
+    },
     last5Section: {
         marginTop: SPACING.sm,
     },

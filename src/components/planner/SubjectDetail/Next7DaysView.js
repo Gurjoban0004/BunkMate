@@ -113,9 +113,11 @@ function formatTimeTo12h(time) {
 const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     headerRow: {
@@ -188,7 +190,7 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '700',
     },
     countTextActive: {
-        color: '#FFFFFF',
+        color: COLORS.textOnPrimary,
     },
     countTextEmpty: {
         color: COLORS.textMuted,

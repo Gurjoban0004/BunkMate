@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
-import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses, calculateSkipAllowance } from '../../../utils/planner/attendanceCalculations';
+import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses } from '../../../utils/planner/attendanceCalculations';
 import { generateRecoveryPaths } from '../../../utils/planner/recoveryPlanner';
 
 /**
@@ -18,23 +18,6 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
         setMode(newMode);
         if (setSimulationOffset) setSimulationOffset(0);
     };
-
-    // Animations
-    const bgAnim = useRef(new Animated.Value(mode === 'skip' ? 0 : 1)).current;
-
-    // Animate background when mode changes
-    useEffect(() => {
-        Animated.timing(bgAnim, {
-            toValue: mode === 'skip' ? 0 : 1,
-            duration: 400,
-            useNativeDriver: false,
-        }).start();
-    }, [mode]);
-
-    const backgroundColor = bgAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [COLORS.bgSkip || '#FFF5F5', COLORS.bgAttend || '#F5FFF7'],
-    });
 
     const activeSteps = Math.abs(simulationOffset);
     const offset = simulationOffset;
@@ -73,13 +56,13 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                     }
 
                     return {
-                        icon: <Text style={{ fontSize: 16 }}>⚠️</Text>,
+                        label: 'Warning',
                         text: `Requires ${recovery.classesNeeded} classes to recover${extraText}.`,
                         color: COLORS.danger
                     };
                 }
                 return {
-                    icon: <Text style={{ fontSize: 16 }}>⚠️</Text>,
+                    label: 'Warning',
                     text: `Danger! You will drop below ${target}%.`,
                     color: COLORS.danger
                 };
@@ -93,13 +76,13 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
 
                 if (remainingSkips > 0) {
                     return {
-                        icon: <Text style={{ fontSize: 16 }}>✅</Text>,
+                        label: 'Safe',
                         text: `You can skip ${remainingSkips} more ${remainingSkips === 1 ? 'class' : 'classes'} safely.`,
                         color: COLORS.successDark
                     };
                 } else {
                     return {
-                        icon: <Text style={{ fontSize: 16 }}>⚠️</Text>,
+                        label: 'Edge',
                         text: `You are on the edge! 1 more skip drops you below ${target}%.`,
                         color: COLORS.warningDark
                     };
@@ -109,7 +92,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
             // Attend Mode
             if (simulated.percentage >= target && currentPercentage < target) {
                 return {
-                    icon: <Text style={{ fontSize: 16 }}>✅</Text>,
+                    label: 'Recovered',
                     text: `Attending ${activeSteps} gets you back safely to ${target}%.`,
                     color: COLORS.successDark
                 };
@@ -118,7 +101,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 const plusOne = simulateAttendance(simulated.attended, simulated.total, 1);
                 const gain = (plusOne.percentage - simulated.percentage).toFixed(1);
                 return {
-                    icon: <Text style={{ fontSize: 16 }}>📈</Text>,
+                    label: 'Improving',
                     text: `Every class adds +${gain}% to your score.`,
                     color: COLORS.successDark
                 };
@@ -129,8 +112,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     const insight = getInsight();
 
     return (
-        <Animated.View style={[styles.container, { backgroundColor }]}>
-            {/* Header / Mode Switcher */}
+        <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Smart Simulator</Text>
                 <View style={styles.modeSwitch}>
@@ -149,7 +131,6 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 </View>
             </View>
 
-            {/* Simulated Result display */}
             <View style={styles.resultBox}>
                 <Text style={styles.resultLabel}>PREDICTED ATTENDANCE</Text>
                 <View style={styles.resultMainRow}>
@@ -167,7 +148,6 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 </Text>
             </View>
 
-            {/* Stepper */}
             <View style={styles.stepperWrapper}>
                 <TouchableOpacity
                     style={styles.stepperBtn}
@@ -191,20 +171,20 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 </TouchableOpacity>
             </View>
 
-            {/* Dynamic Insight Pill */}
             <View style={styles.insightPill}>
-                {insight.icon}
-                <Text style={[styles.insightText, { color: insight.color }]}>{insight.text}</Text>
+                <View style={[styles.insightDot, { backgroundColor: insight.color }]} />
+                <Text style={styles.insightText}>
+                    <Text style={{ color: insight.color }}>{insight.label} · </Text>
+                    {insight.text}
+                </Text>
             </View>
 
-            {/* Simple Progress Bar */}
             <View style={styles.progressContainer}>
                 <View style={styles.progressBg}>
                     <Animated.View style={[styles.progressFill, {
                         width: `${Math.min(100, simulated.percentage)}%`,
                         backgroundColor: simulated.percentage < target ? COLORS.danger : COLORS.success
                     }]} />
-                    {/* Target Marker */}
                     <View style={[styles.targetMarker, { left: `${target}%` }]} />
                 </View>
                 <View style={styles.progressRow}>
@@ -213,18 +193,19 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 </View>
             </View>
 
-        </Animated.View>
+        </View>
     );
 }
 
 const getStyles = () => StyleSheet.create({
     container: {
+        backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
         marginBottom: SPACING.md,
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.02)',
-        ...SHADOWS.medium,
+        borderColor: COLORS.borderSubtle,
+        ...SHADOWS.small,
     },
     header: {
         flexDirection: 'row',
@@ -239,9 +220,11 @@ const getStyles = () => StyleSheet.create({
     },
     modeSwitch: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.full,
         padding: 4,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
     },
     modeBtn: {
         paddingHorizontal: 12,
@@ -256,7 +239,7 @@ const getStyles = () => StyleSheet.create({
         fontSize: 10,
         fontWeight: '800',
         color: COLORS.textMuted,
-        letterSpacing: 0.5,
+        letterSpacing: 0,
     },
     modeBtnTextActive: {
         color: COLORS.textPrimary,
@@ -270,7 +253,7 @@ const getStyles = () => StyleSheet.create({
         fontSize: 11,
         fontWeight: '800',
         color: COLORS.textMuted,
-        letterSpacing: 2,
+        letterSpacing: 0,
         marginBottom: 8,
     },
     resultMainRow: {
@@ -282,7 +265,7 @@ const getStyles = () => StyleSheet.create({
         fontSize: 72,
         fontWeight: '900',
         lineHeight: 76,
-        letterSpacing: -2,
+        letterSpacing: 0,
     },
     percentSymbol: {
         fontSize: 28,
@@ -331,24 +314,32 @@ const getStyles = () => StyleSheet.create({
         fontSize: 11,
         fontWeight: '800',
         color: COLORS.textMuted,
-        letterSpacing: 2,
+        letterSpacing: 0,
         marginTop: 2,
     },
     insightPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.cardBackground,
+        backgroundColor: COLORS.inputBackground,
         paddingHorizontal: SPACING.lg,
         paddingVertical: 14,
-        borderRadius: BORDER_RADIUS.full,
+        borderRadius: BORDER_RADIUS.lg,
         alignSelf: 'center',
         gap: SPACING.md,
         marginBottom: SPACING.xxl,
-        ...SHADOWS.small,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+    },
+    insightDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     insightText: {
         fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        color: COLORS.textSecondary,
+        lineHeight: 18,
     },
     progressContainer: {
         backgroundColor: COLORS.background,
@@ -384,6 +375,6 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '800',
         color: COLORS.textMuted,
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 0,
     },
 });

@@ -54,34 +54,16 @@ export default function PlannerSubjectDetail({ route }) {
             >
                 <StatusHeader subjectData={simulatedSubjectData} />
 
-                {initialMode === 'skip' ? (
-                    <>
-                        <NextClassDecision subjectData={simulatedSubjectData} />
-                        <WhatIfSimulator
-                            subjectData={subjectData}
-                            simulatedSubjectData={simulatedSubjectData}
-                            initialMode={initialMode}
-                            simulationOffset={simulationOffset}
-                            setSimulationOffset={setSimulationOffset}
-                        />
-                        <Next7DaysView subjectData={simulatedSubjectData} />
-                        <RecoveryPaths subjectData={simulatedSubjectData} />
-                    </>
-                ) : (
-                    <>
-                        <RecoveryPaths subjectData={simulatedSubjectData} />
-                        <WhatIfSimulator
-                            subjectData={subjectData}
-                            simulatedSubjectData={simulatedSubjectData}
-                            initialMode={initialMode}
-                            simulationOffset={simulationOffset}
-                            setSimulationOffset={setSimulationOffset}
-                        />
-                        <NextClassDecision subjectData={simulatedSubjectData} />
-                        <Next7DaysView subjectData={simulatedSubjectData} />
-                    </>
-                )}
-
+                <NextClassDecision subjectData={simulatedSubjectData} />
+                <RecoveryPaths subjectData={simulatedSubjectData} />
+                <WhatIfSimulator
+                    subjectData={subjectData}
+                    simulatedSubjectData={simulatedSubjectData}
+                    initialMode={initialMode}
+                    simulationOffset={simulationOffset}
+                    setSimulationOffset={setSimulationOffset}
+                />
+                <Next7DaysView subjectData={simulatedSubjectData} />
                 <PatternsInsights subjectData={simulatedSubjectData} />
 
                 <View style={{ height: SPACING.xxl }} />

@@ -1,7 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
-import ImpactText from '../shared/ImpactText';
 import { calculateSkipImpact, calculateAttendImpact, determineStatus } from '../../../utils/planner/attendanceCalculations';
 import { getNextClass, formatRelativeDate } from '../../../utils/planner/scheduleProcessor';
 
@@ -17,21 +16,41 @@ export default function NextClassDecision({ subjectData }) {
     const skipStatus = determineStatus(skipImpact.newPercentage, target);
     const attendStatus = determineStatus(attendImpact.newPercentage, target);
     const nextClass = getNextClass(subjectData);
+    const recommendation = skipStatus === 'danger'
+        ? 'Attending is the safer call today.'
+        : skipStatus === 'warning'
+            ? 'Skipping is possible, but it puts this subject on the edge.'
+            : 'Safe to skip this class.';
+    const recommendationColor = skipStatus === 'danger'
+        ? COLORS.danger
+        : skipStatus === 'warning'
+            ? COLORS.warningDark
+            : COLORS.successDark;
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Next Class</Text>
-            {nextClass && (
-                <Text style={styles.nextLabel}>
-                    {nextClass.isToday ? `Today at ${nextClass.time}` :
-                        nextClass.isTomorrow ? `Tomorrow at ${nextClass.time}` :
-                            `${formatRelativeDate(nextClass.date)} at ${nextClass.time}`
-                    }
+            <View style={styles.headerRow}>
+                <View>
+                    <Text style={styles.title}>Next Class</Text>
+                    {nextClass && (
+                        <Text style={styles.nextLabel}>
+                            {nextClass.isToday ? `Today at ${nextClass.time}` :
+                                nextClass.isTomorrow ? `Tomorrow at ${nextClass.time}` :
+                                    `${formatRelativeDate(nextClass.date)} at ${nextClass.time}`
+                            }
+                        </Text>
+                    )}
+                </View>
+            </View>
+
+            <View style={styles.recommendationRow}>
+                <View style={[styles.recommendationDot, { backgroundColor: recommendationColor }]} />
+                <Text style={[styles.recommendationText, { color: recommendationColor }]}>
+                    {recommendation}
                 </Text>
-            )}
+            </View>
 
             <View style={styles.optionsRow}>
-                {/* Skip option */}
                 <View style={[styles.option, styles.skipOption]}>
                     <Text style={styles.optionLabel}>If you skip</Text>
                     <Text style={[styles.optionPercentage, {
@@ -46,12 +65,10 @@ export default function NextClassDecision({ subjectData }) {
                     </Text>
                 </View>
 
-                {/* VS divider */}
                 <View style={styles.vsDivider}>
                     <Text style={styles.vsText}>vs</Text>
                 </View>
 
-                {/* Attend option */}
                 <View style={[styles.option, styles.attendOption]}>
                     <Text style={styles.optionLabel}>If you attend</Text>
                     <Text style={[styles.optionPercentage, {
@@ -73,21 +90,46 @@ export default function NextClassDecision({ subjectData }) {
 const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
+    },
+    headerRow: {
+        marginBottom: SPACING.sm,
     },
     title: {
         fontSize: FONT_SIZES.md,
-        fontWeight: '600',
+        fontWeight: '700',
         color: COLORS.textPrimary,
         marginBottom: SPACING.xs,
     },
     nextLabel: {
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
+    },
+    recommendationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: SPACING.sm,
         marginBottom: SPACING.md,
+    },
+    recommendationDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    recommendationText: {
+        flex: 1,
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '700',
+        lineHeight: 17,
     },
     optionsRow: {
         flexDirection: 'row',
@@ -98,13 +140,17 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         paddingVertical: SPACING.md,
-        borderRadius: BORDER_RADIUS.sm,
+        borderRadius: BORDER_RADIUS.md,
+        backgroundColor: COLORS.cardBackground,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        borderLeftWidth: 3,
     },
     skipOption: {
-        backgroundColor: COLORS.bgSkip,
+        borderLeftColor: COLORS.danger,
     },
     attendOption: {
-        backgroundColor: COLORS.bgAttend,
+        borderLeftColor: COLORS.success,
     },
     vsDivider: {
         backgroundColor: COLORS.cardBackground,
