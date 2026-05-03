@@ -224,6 +224,10 @@ export function getQuickWins(state, threshold = 75) {
  * End-game / minimum effort calculator.
  */
 export function getEndGameStats(state, threshold = 75, weeksLeft = 6) {
+    if (!state?.subjects?.length) {
+        return { results: [], totalRemaining: 0, totalMustAttend: 0, totalCanSkip: 0, weeksLeft, isExactMath: false, daysLeft: null };
+    }
+
     const hasEndDate = !!state.settings?.semesterEndDate;
     let exactRemaining = null;
     let daysLeft = null;
@@ -249,7 +253,7 @@ export function getEndGameStats(state, threshold = 75, weeksLeft = 6) {
             const classes = getClassesForDay(state, day);
             classes.forEach((cls) => {
                 if (cls.subjectId === subject.id) {
-                    weeklyUnits += cls.units;
+                    weeklyUnits += cls.units || 1;
                 }
             });
         });
@@ -348,30 +352,28 @@ export function getRecoverySteps(attended, total, needed, threshold = 75) {
  * Calculates exact remaining classes until the semester end date
  */
 export function getRemainingClassesUntilDate(state, endDateStr) {
+    if (!endDateStr || !state?.timetable) return {};
+
     const endDate = new Date(endDateStr);
     const today = new Date();
-    // Normalize
     today.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
 
-    if (endDate <= today) return {}; // Already passed
+    if (endDate <= today) return {};
 
+    const holidays = state.holidays || [];
     const subjectRemaining = {};
     let currentDate = new Date(today);
-    // Exclude today if it's already marked? For simplicity, we just count all remaining days from tomorrow.
-    // If we count today, it might double count if the user already marked today's attendance.
-    // Let's assume remaining means from tomorrow onwards.
-    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate.setDate(currentDate.getDate() + 1); // Start from tomorrow
 
-    // Hard cap at 200 days to prevent infinite loops from bad dates
     let safeGuard = 0;
     while (currentDate <= endDate && safeGuard < 200) {
         const dateKey = currentDate.toISOString().split('T')[0];
-        const isHoliday = state.holidays?.includes(dateKey);
+        const isHoliday = holidays.includes(dateKey);
         
         if (!isHoliday) {
             const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-            const classes = state.timetable[dayName] || [];
+            const classes = (state.timetable[dayName]) || [];
             
             classes.forEach(cls => {
                 const subId = cls.subjectId;
@@ -392,6 +394,8 @@ export function getRemainingClassesUntilDate(state, endDateStr) {
  * to unlock 4-day weekends.
  */
 export function findLongWeekends(state, defaultThreshold = 75) {
+    if (!state?.timetable || !state?.subjects?.length) return [];
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weekends = [];
