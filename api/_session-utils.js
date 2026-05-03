@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const {
     loginLegacy,
     verifyOtpLegacy,
+    encodeForm,
 } = require('./_erp-provider');
 
 const ERP_BASE    = process.env.ERP_BASE_URL;
@@ -57,11 +58,6 @@ function generateDeviceUUID(username) {
     ].join('-').toUpperCase();
 }
 
-function encodeForm(obj) {
-    return Object.entries(obj)
-        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-        .join('&');
-}
 
 function _encrypt(data, key) {
     const iv     = crypto.randomBytes(16);

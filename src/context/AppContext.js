@@ -394,9 +394,17 @@ function appReducer(state, action) {
         case 'ERP_OVERWRITE_CALENDAR': {
             // ERP calendar correctly replaces attendance records where ERP has data.
             // Holidays are preserved.
-            const { records: erpRecords, trackingStartDate: newTrackingStart, lastSubjectSyncDates } = action.payload;
+            const { records: erpRecords, trackingStartDate: newTrackingStart, lastSubjectSyncDates, erpSubjectIdStamps = {} } = action.payload;
 
             const nextRecords = { ...state.attendanceRecords };
+
+            // Stamp numeric portal ID onto subjects
+            const nextSubjects = state.subjects.map(sub => {
+                if (erpSubjectIdStamps[sub.id] && !sub.erpSubjectId) {
+                    return { ...sub, erpSubjectId: erpSubjectIdStamps[sub.id] };
+                }
+                return sub;
+            });
 
             // Merge ERP records into state
             for (const [dateKey, dayData] of Object.entries(erpRecords)) {
@@ -436,6 +444,7 @@ function appReducer(state, action) {
 
             return {
                 ...state,
+                subjects: nextSubjects,
                 attendanceRecords: nextRecords,
                 trackingStartDate: newTrackingStart || state.trackingStartDate,
                 settings: {
