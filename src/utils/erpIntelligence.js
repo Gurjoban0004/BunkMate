@@ -58,13 +58,14 @@ export function deriveErpIntelligence(state) {
 function computeWeekdayPatterns(records, subjects, holidays) {
     // { dayIndex: { present, absent, total, percentage } }
     const byDay = {};
-    for (let i = 0; i < 7; i++) byDay[i] = { present: 0, absent: 0, total: 0 };
+    for (let i = 1; i <= 5; i++) byDay[i] = { present: 0, absent: 0, total: 0 };
 
     Object.entries(records).forEach(([dateKey, dayData]) => {
         if (!dayData || dayData._holiday || holidays.includes(dateKey)) return;
 
         const d = new Date(dateKey + 'T12:00:00');
         const dayIndex = d.getDay();
+        if (dayIndex === 0 || dayIndex === 6) return; // Skip weekends
 
         Object.entries(dayData).forEach(([sid, rec]) => {
             if (sid === '_holiday' || !rec || !rec.status || rec.status === 'cancelled') return;

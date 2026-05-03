@@ -17,19 +17,15 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme
 import { useApp } from '../../context/AppContext';
 import { clearAppState, saveAppState, deleteUserAccount } from '../../storage/storage';
 import { showAlert } from '../../utils/alert';
-import { encodeBase64, decodeBase64 } from '../../utils/base64';
-import LoginCodeSection from '../../components/settings/LoginCodeSection';
-
+import PlatformDatePicker from '../../components/common/PlatformDatePicker';
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState(state.userName || '');
 
-    // Import Modal State
-    const [importModalVisible, setImportModalVisible] = useState(false);
-    const [importDataString, setImportDataString] = useState('');
-    const [resetModalVisible, setResetModalVisible] = useState(false);
+    // Import Modal State (Removed)
+    // Reset Modal State (Removed)
 
     // Threshold Editor Modal State
     const [thresholdModalVisible, setThresholdModalVisible] = useState(false);
@@ -44,6 +40,7 @@ const SettingsScreen = ({ navigation }) => {
         weeklySummaryEnabled = true,
         theme = 'light',
         landingPage = 'today',
+        semesterEndDate = null,
     } = state.settings || {};
 
     const customTargets = state.subjects ? state.subjects.filter(s => s.target && s.target !== dangerThreshold) : [];
@@ -61,26 +58,7 @@ const SettingsScreen = ({ navigation }) => {
         setEditingName(false);
     };
 
-    const handleExportData = () => {
-        try {
-            const jsonStr = JSON.stringify(state);
-            const base64 = encodeBase64(jsonStr);
 
-            if (Platform.OS === 'web' && navigator.clipboard) {
-                navigator.clipboard.writeText(base64)
-                    .then(() => showAlert('Export Successful', 'Your backup code has been copied to your clipboard. Keep it safe!'))
-                    .catch(() => copyFallback(base64));
-            } else {
-                copyFallback(base64);
-            }
-        } catch (e) {
-            showAlert('Export Failed', 'There was an error encoding your data.');
-        }
-    };
-
-    const copyFallback = (base64) => {
-        showAlert('Backup Code', 'Copy the following code:\n\n' + base64 + '\n\nSelect all text and copy.');
-    };
 
     const handleLogout = () => {
         // BUG-19 fix: Show login code so user can copy it before logging out
@@ -125,45 +103,7 @@ const SettingsScreen = ({ navigation }) => {
         );
     };
 
-    const handleImportData = () => {
-        if (!importDataString.trim()) {
-            showAlert('Error', 'Please enter a valid backup code.');
-            return;
-        }
 
-        try {
-            const decodedStr = decodeBase64(importDataString.trim());
-            if (!decodedStr) throw new Error('Invalid Base64');
-            const stateObj = JSON.parse(decodedStr);
-
-            // Deep validation: check required fields and structure
-            const isValid =
-                stateObj &&
-                Array.isArray(stateObj.subjects) &&
-                Array.isArray(stateObj.timeSlots) &&
-                stateObj.subjects.every(s => s.id && s.name) &&
-                stateObj.timeSlots.every(t => t.id && t.start && t.end);
-
-            if (isValid) {
-                dispatch({ type: 'LOAD_STATE', payload: stateObj });
-                saveAppState(stateObj);
-                setImportModalVisible(false);
-                setImportDataString('');
-                showAlert('Success', 'Your data was successfully restored!');
-            } else {
-                throw new Error('Invalid Data Structure');
-            }
-        } catch (e) {
-            showAlert('Import Failed', 'The code you entered is invalid or corrupted.');
-        }
-    };
-
-    const handleResetSemester = async () => {
-        await clearAppState();
-        // BUG-08 fix: Do NOT remove userId — user keeps their login code
-        dispatch({ type: 'RESET_STATE' });
-        setResetModalVisible(false);
-    };
 
     const handleOpenThresholdEditor = (subject = null) => {
         setEditingSubject(subject);
@@ -308,6 +248,22 @@ const SettingsScreen = ({ navigation }) => {
                                     <Text style={[styles.optionText, landingPage === 'planner' && styles.optionTextActive]}>Planner</Text>
                                 </TouchableOpacity>
                             </View>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        <View style={[styles.settingRow, styles.groupItem]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>Semester End Date</Text>
+                                <Text style={styles.cardDescription}>Powers exact attendance predictions</Text>
+                            </View>
+                            <PlatformDatePicker 
+                                date={semesterEndDate ? new Date(semesterEndDate) : null}
+                                minimumDate={new Date()}
+                                onDateChange={(date) => {
+                                    updateSetting('semesterEndDate', date ? date.toISOString() : null);
+                                }}
+                            />
                         </View>
                     </View>
                 </View>
@@ -470,24 +426,23 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* Login Code Section */}
-                <LoginCodeSection />
-
-                {/* Data Backup */}
+                {/* Timetable & Subjects Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>BACKUP & RESTORE</Text>
+                    <Text style={styles.sectionTitle}>TIMETABLE & SUBJECTS</Text>
                     <View style={styles.cardGroup}>
-                        <TouchableOpacity style={styles.groupItem} onPress={handleExportData}>
-                            <Text style={styles.linkText}>Export Backup Code</Text>
+                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditTimetable')}>
+                            <Text style={styles.linkText}>Setup Timetable</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                         <View style={styles.divider} />
-                        <TouchableOpacity style={styles.groupItem} onPress={() => setImportModalVisible(true)}>
-                            <Text style={styles.linkText}>Restore from Code</Text>
+                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditSubjects')}>
+                            <Text style={styles.linkText}>Manage Subjects</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
+
+
 
                 {/* Account Section */}
                 <View style={styles.section}>
@@ -532,87 +487,16 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* Danger Zone */}
-                <View style={styles.section}>
-                    <TouchableOpacity style={[styles.card, styles.dangerCard]} onPress={() => setResetModalVisible(true)}>
-                        <Text style={styles.dangerText}>Reset Entire Semester</Text>
-                    </TouchableOpacity>
-                </View>
+
 
                 {/* About Section */}
                 <View style={styles.aboutContainer}>
                     <Text style={styles.appName}>Presence</Text>
-                    <Text style={styles.version}>v1.0.1</Text>
+                    <Text style={styles.version}>v2.0.0</Text>
                 </View>
 
                 <View style={styles.bottomPadding} />
             </ScrollView>
-
-            {/* Import Backup Modal stays exactly the same */}
-            <Modal visible={importModalVisible} animationType="slide" transparent={true} onRequestClose={() => setImportModalVisible(false)}>
-                <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Restore Backup</Text>
-                            <TouchableOpacity onPress={() => setImportModalVisible(false)}>
-                                <Text style={styles.modalCloseText}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.modalSubtitle}>Paste your exported backup code below. This will overwrite all your current data!</Text>
-
-                        <TextInput
-                            style={styles.backupInput}
-                            value={importDataString}
-                            onChangeText={setImportDataString}
-                            placeholder="Paste code here..."
-                            multiline
-                            numberOfLines={4}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                        />
-
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={[styles.modalButton, styles.modalButtonCancel]} onPress={() => { setImportModalVisible(false); setImportDataString(''); }}>
-                                <Text style={styles.modalButtonTextCancel}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.modalButton, styles.modalButtonConfirm]} onPress={handleImportData}>
-                                <Text style={styles.modalButtonTextConfirm}>Restore Data</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
-
-            {/* Reset Semester Modal */}
-            <Modal visible={resetModalVisible} animationType="slide" transparent={true} onRequestClose={() => setResetModalVisible(false)}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.resetModalContent}>
-                        <View style={styles.resetDragHandle} />
-                        {/* Removed Giant Emoji Here */}
-                        <Text style={styles.resetTitle}>Reset Semester</Text>
-                        <Text style={styles.resetDescription}>
-                            This will permanently delete all your attendance data, subjects, timetable, and settings.
-                        </Text>
-                        <Text style={styles.resetWarning}>
-                            This action cannot be undone.
-                        </Text>
-                        <View style={styles.resetActions}>
-                            <TouchableOpacity
-                                style={[styles.resetButton, styles.resetButtonCancel]}
-                                onPress={() => setResetModalVisible(false)}
-                            >
-                                <Text style={styles.resetButtonCancelText}>Keep My Data</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.resetButton, styles.resetButtonConfirm]}
-                                onPress={handleResetSemester}
-                            >
-                                <Text style={styles.resetButtonConfirmText}>Reset Everything</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
 
 
 

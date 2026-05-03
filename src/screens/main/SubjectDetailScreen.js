@@ -11,6 +11,7 @@ import AttendanceGraph from '../../components/subjects/AttendanceGraph';
 import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
+import StatusHeader from '../../components/planner/SubjectDetail/StatusHeader';
 
 export default function SubjectDetailScreen({ route }) {
     const styles = getStyles();
@@ -60,8 +61,16 @@ export default function SubjectDetailScreen({ route }) {
             }
             if (records.length >= 14) break;
         }
-        return records;
     }, [state.attendanceRecords, subjectId]);
+
+    const subjectDataForHeader = useMemo(() => ({
+        name: subject.name,
+        color: subjectColor,
+        attended: stats.attendedUnits,
+        total: stats.totalUnits,
+        percentage: stats.percentage,
+        target: target
+    }), [subject, subjectColor, stats, target]);
 
     const handleEdit = (rec) => {
         setEditModal(rec);
@@ -92,16 +101,7 @@ export default function SubjectDetailScreen({ route }) {
                 showsVerticalScrollIndicator={false}
             >
                 {/* Main stats */}
-                <Card style={[styles.mainCard, { borderTopWidth: 3, borderTopColor: subjectColor }]}>
-                    <Text style={[styles.bigPercentage, isGood ? styles.textGreen : styles.textRed]}>
-                        {stats.percentage}%
-                    </Text>
-                    <ProgressBar percentage={stats.percentage} style={styles.progressBar} />
-                    <Text style={styles.statsText}>
-                        {stats.attendedUnits} / {stats.totalUnits} marks
-                    </Text>
-                    {/* Teacher removed */}
-                </Card>
+                <StatusHeader subjectData={subjectDataForHeader} />
 
                 {/* Streak */}
                 {streakMsg && (
@@ -232,25 +232,6 @@ const getStyles = () => StyleSheet.create({
         textAlign: 'center',
         marginTop: SPACING.xxl,
     },
-    mainCard: {
-        alignItems: 'center',
-        marginBottom: SPACING.md,
-    },
-    bigPercentage: {
-        fontSize: 48,
-        fontWeight: 'bold',
-        marginBottom: SPACING.md,
-    },
-    progressBar: {
-        width: '100%',
-        marginBottom: SPACING.sm,
-    },
-    statsText: {
-        ...TYPOGRAPHY.body,
-        color: COLORS.textSecondary,
-    },
-    textGreen: { color: COLORS.success },
-    textRed: { color: COLORS.danger },
     textDisabled: { color: COLORS.textMuted },
     streakCard: {
         flexDirection: 'row',

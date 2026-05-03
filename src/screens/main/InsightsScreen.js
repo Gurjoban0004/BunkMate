@@ -99,54 +99,63 @@ export default function InsightsScreen() {
                 {smartInsights.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>What we found</Text>
-                        {smartInsights.map((insight, i) => (
-                            <View
-                                key={i}
-                                style={[styles.insightCard, {
-                                    borderLeftColor: insight.severity === 'danger' ? COLORS.danger
-                                        : insight.severity === 'warning' ? COLORS.warning
-                                        : COLORS.success,
-                                }]}
-                            >
-                                <Text style={styles.insightText}>{insight.text}</Text>
-                                <Text style={styles.insightType}>{insight.type}</Text>
-                            </View>
-                        ))}
+                        <View style={styles.insightsList}>
+                            {smartInsights.map((insight, i) => {
+                                const isDanger = insight.severity === 'danger';
+                                const isWarning = insight.severity === 'warning';
+                                const icon = isDanger ? '⚠️' : isWarning ? '📉' : '💡';
+                                const color = isDanger ? COLORS.danger : isWarning ? COLORS.warning : COLORS.primary;
+
+                                return (
+                                    <View key={i} style={styles.cleanInsightRow}>
+                                        <View style={[styles.cleanInsightIconWrapper, { backgroundColor: `${color}15` }]}>
+                                            <Text style={styles.cleanInsightIcon}>{icon}</Text>
+                                        </View>
+                                        <View style={styles.cleanInsightTextWrapper}>
+                                            <Text style={styles.cleanInsightText}>{insight.text}</Text>
+                                        </View>
+                                    </View>
+                                );
+                            })}
+                        </View>
                     </View>
                 )}
 
                 {/* ── Semester Summary ────────────────────────────── */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Semester at a glance</Text>
-                    <View style={styles.summaryGrid}>
-                        <View style={styles.summaryItem}>
-                            <Text style={styles.summaryValue}>{semesterSummary.totalClasses}</Text>
-                            <Text style={styles.summaryLabel}>Total classes</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.glanceScroll}>
+                        <View style={styles.glanceCard}>
+                            <View style={[styles.glanceIconBg, { backgroundColor: `${COLORS.primary}15` }]}>
+                                <Text style={styles.glanceIcon}>📚</Text>
+                            </View>
+                            <Text style={styles.glanceValue}>{semesterSummary.totalClasses}</Text>
+                            <Text style={styles.glanceLabel}>Total Classes</Text>
                         </View>
-                        <View style={styles.summaryDivider} />
-                        <View style={styles.summaryItem}>
-                            <Text style={[styles.summaryValue, { color: COLORS.success }]}>
-                                {semesterSummary.totalPresent}
-                            </Text>
-                            <Text style={styles.summaryLabel}>Present</Text>
-                        </View>
-                        <View style={styles.summaryDivider} />
-                        <View style={styles.summaryItem}>
-                            <Text style={[styles.summaryValue, { color: COLORS.danger }]}>
-                                {semesterSummary.totalAbsent}
-                            </Text>
-                            <Text style={styles.summaryLabel}>Absent</Text>
-                        </View>
-                        <View style={styles.summaryDivider} />
-                        <View style={styles.summaryItem}>
-                            <Text style={[styles.summaryValue, {
-                                color: semesterSummary.overallPercentage >= threshold ? COLORS.success : COLORS.danger,
-                            }]}>
+                        <View style={styles.glanceCard}>
+                            <View style={[styles.glanceIconBg, { backgroundColor: `${semesterSummary.overallPercentage >= threshold ? COLORS.success : COLORS.danger}15` }]}>
+                                <Text style={styles.glanceIcon}>🎯</Text>
+                            </View>
+                            <Text style={[styles.glanceValue, { color: semesterSummary.overallPercentage >= threshold ? COLORS.success : COLORS.danger }]}>
                                 {semesterSummary.overallPercentage}%
                             </Text>
-                            <Text style={styles.summaryLabel}>Overall</Text>
+                            <Text style={styles.glanceLabel}>Overall Rate</Text>
                         </View>
-                    </View>
+                        <View style={styles.glanceCard}>
+                            <View style={[styles.glanceIconBg, { backgroundColor: `${COLORS.success}15` }]}>
+                                <Text style={styles.glanceIcon}>✅</Text>
+                            </View>
+                            <Text style={styles.glanceValue}>{semesterSummary.totalPresent}</Text>
+                            <Text style={styles.glanceLabel}>Present</Text>
+                        </View>
+                        <View style={styles.glanceCard}>
+                            <View style={[styles.glanceIconBg, { backgroundColor: `${COLORS.danger}15` }]}>
+                                <Text style={styles.glanceIcon}>❌</Text>
+                            </View>
+                            <Text style={styles.glanceValue}>{semesterSummary.totalAbsent}</Text>
+                            <Text style={styles.glanceLabel}>Missed</Text>
+                        </View>
+                    </ScrollView>
                 </View>
 
                 {/* ── Weekday Patterns ────────────────────────────── */}
@@ -158,7 +167,7 @@ export default function InsightsScreen() {
                             : 'Consistent across all days'}
                     </Text>
                     <View style={styles.barsContainer}>
-                        {[1, 2, 3, 4, 5, 6].map(dayIdx => {
+                        {[1, 2, 3, 4, 5].map(dayIdx => {
                             const data = weekdayPatterns.byDay[dayIdx];
                             if (!data || data.total === 0) return null;
                             const barHeight = Math.max(8, (data.total / maxDayTotal) * 100);
@@ -188,7 +197,7 @@ export default function InsightsScreen() {
                 </View>
 
                 {/* ── Subject Trends ──────────────────────────────── */}
-                {Object.keys(subjectTrends).length > 0 && (
+                {Object.keys(subjectTrends).length > 0 && Object.values(subjectTrends).filter(t => t.direction !== 'stable' || Math.abs(t.delta) > 2).length > 1 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Subject trends</Text>
                         <Text style={styles.sectionSubtitle}>First half vs second half of semester</Text>
@@ -326,52 +335,57 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textMuted,
         marginBottom: SPACING.md,
     },
-    // Smart Insights
-    insightCard: {
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
-        marginBottom: SPACING.sm,
-        borderLeftWidth: 3,
-    },
-    insightText: {
-        fontSize: 14,
-        color: COLORS.textPrimary,
-        lineHeight: 20,
-    },
-    insightType: {
-        ...TYPOGRAPHY.caption,
-        color: COLORS.textMuted,
-        marginTop: 4,
-        textTransform: 'capitalize',
-    },
-    // Semester Summary
-    summaryGrid: {
+    // Smart Insights New
+    insightCardNew: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        marginBottom: SPACING.sm,
+        gap: SPACING.sm,
     },
-    summaryItem: {
+    insightIcon: {
+        fontSize: 20,
+    },
+    insightContent: {
         flex: 1,
-        alignItems: 'center',
     },
-    summaryValue: {
-        fontSize: 22,
+    insightTextNew: {
+        fontSize: 14,
+        fontWeight: '600',
+        lineHeight: 20,
+    },
+    // Semester Summary 2x2
+    summaryGrid2x2: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: SPACING.md,
+        marginTop: SPACING.xs,
+    },
+    summaryItem2x2: {
+        width: '46%', // Approx half with gap
+        backgroundColor: COLORS.inputBackground,
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        justifyContent: 'center',
+    },
+    summaryValueBig: {
+        fontSize: 26,
         fontWeight: '800',
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
+        marginTop: 4,
+    },
+    summaryValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
+        marginTop: 4,
     },
     summaryLabel: {
         ...TYPOGRAPHY.caption,
         color: COLORS.textMuted,
-        marginTop: 2,
-    },
-    summaryDivider: {
-        width: 1,
-        height: 32,
-        backgroundColor: COLORS.border,
+        fontWeight: '500',
     },
     // Weekday Bars
     barsContainer: {
@@ -543,5 +557,76 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textSecondary,
         textAlign: 'center',
         lineHeight: 22,
+    },
+    insightsList: {
+        marginTop: SPACING.xs,
+    },
+    cleanInsightRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.md,
+        marginBottom: SPACING.sm,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+        ...SHADOWS.small,
+    },
+    cleanInsightIconWrapper: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: SPACING.sm,
+    },
+    cleanInsightIcon: {
+        fontSize: 14,
+    },
+    cleanInsightTextWrapper: {
+        flex: 1,
+    },
+    cleanInsightText: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textPrimary,
+        lineHeight: 20,
+    },
+    glanceScroll: {
+        paddingRight: SPACING.lg,
+        paddingBottom: SPACING.sm,
+    },
+    glanceCard: {
+        backgroundColor: COLORS.cardBackground,
+        padding: SPACING.lg,
+        borderRadius: BORDER_RADIUS.lg,
+        minWidth: 130,
+        marginRight: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+        ...SHADOWS.small,
+    },
+    glanceIconBg: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: SPACING.md,
+    },
+    glanceIcon: {
+        fontSize: 18,
+    },
+    glanceValue: {
+        fontSize: 26,
+        fontWeight: '800',
+        color: COLORS.textPrimary,
+        marginBottom: 4,
+    },
+    glanceLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        textTransform: 'uppercase',
     },
 });

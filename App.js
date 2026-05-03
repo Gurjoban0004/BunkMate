@@ -12,6 +12,7 @@ import BrandLoader from './src/components/common/BrandLoader';
 import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { setGlobalWebAlert } from './src/utils/alert';
 import ErpReauthModal from './src/components/erp/ErpReauthModal';
+import { registerBackgroundSync, setupNotifications } from './src/services/backgroundTasks';
 
 // ─── Web: Disable react-native-screens on web ─────────────────────────────────
 // react-native-screens injects ScreenContainer divs that leave ghost overlay
@@ -117,6 +118,19 @@ function AppContent() {
             return () => clearTimeout(timer);
         }
     }, [isLoading, devReady, state.setupComplete, runAutopilotCheck]);
+
+    // Register background sync & notifications (Android APK only)
+    useEffect(() => {
+        if (Platform.OS === 'android') {
+            setupNotifications().then((granted) => {
+                if (granted) {
+                    registerBackgroundSync();
+                }
+            }).catch(() => {
+                // Silently fail — notifications are non-critical
+            });
+        }
+    }, []);
 
     if (isLoading || !devReady) {
         return <BrandLoader />;

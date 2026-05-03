@@ -2,71 +2,55 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 
-const CHART_HEIGHT = 150;
+const CHART_HEIGHT = 100;
 
 /**
  * Pure React Native bar chart showing attendance trend.
- * No external library required.
  *
  * @param {string} subjectId - subject to graph
  * @param {object} state - full app state
- * @param {number} days - number of days to show (default 14)
+ * @param {number} days - number of classes to show (default 14)
  */
 export default function AttendanceGraph({ subjectId, state, days = 14 }) {
     const styles = getStyles();
-    const data = useMemo(() => {
-        const result = [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
 
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateKey = date.toISOString().split('T')[0];
-
-            const dayRecord = state.attendanceRecords[dateKey];
-            const isHoliday = dayRecord?._holiday || (state.holidays || []).includes(dateKey);
-
-            if (isHoliday) {
-                result.push({ dateKey, day: date.getDate(), status: 'holiday', percentage: 0 });
-                continue;
-            }
-
-            const record = dayRecord?.[subjectId];
-            if (!record) {
-                result.push({ dateKey, day: date.getDate(), status: 'none', percentage: 0 });
-            } else if (record.status === 'cancelled') {
-                result.push({ dateKey, day: date.getDate(), status: 'cancelled', percentage: 0 });
-            } else if (record.status === 'present') {
-                result.push({ dateKey, day: date.getDate(), status: 'present', percentage: 100 });
-            } else {
-                result.push({ dateKey, day: date.getDate(), status: 'absent', percentage: 0 });
-            }
-        }
-        return result;
-    }, [subjectId, state.attendanceRecords, state.holidays, days]);
-
-    // Calculate running percentage over each day
+    // Get all chronological records and compute cumulative pct
     const cumulativeData = useMemo(() => {
-        let totalUnits = 0;
-        let attendedUnits = 0;
+        const sortedDates = Object.keys(state.attendanceRecords).sort(); // Oldest to newest
         const subject = state.subjects.find((s) => s.id === subjectId);
-        if (subject) {
-            totalUnits = subject.initialTotal || 0;
-            attendedUnits = subject.initialAttended || 0;
+        
+        let totalUnits = subject?.initialTotal || 0;
+        let attendedUnits = subject?.initialAttended || 0;
+        const allClasses = [];
+
+        for (const dateKey of sortedDates) {
+            const record = state.attendanceRecords[dateKey]?.[subjectId];
+            if (!record) continue; // Skip days with no class for this subject
+
+            const date = new Date(dateKey + 'T12:00:00');
+            const units = record.units || 1;
+
+            if (record.status === 'present') {
+                totalUnits += units;
+                attendedUnits += units;
+            } else if (record.status === 'absent') {
+                totalUnits += units;
+            }
+            // If cancelled, units are not added.
+
+            const pct = totalUnits > 0 ? Math.round((attendedUnits / totalUnits) * 100) : 0;
+
+            allClasses.push({
+                dateKey,
+                day: date.getDate(),
+                status: record.status,
+                cumulativePct: pct
+            });
         }
 
-        return data.map((d) => {
-            if (d.status === 'present') {
-                totalUnits += 1;
-                attendedUnits += 1;
-            } else if (d.status === 'absent') {
-                totalUnits += 1;
-            }
-            const pct = totalUnits > 0 ? Math.round((attendedUnits / totalUnits) * 100) : 0;
-            return { ...d, cumulativePct: pct };
-        });
-    }, [data, state.subjects, subjectId]);
+        // Return the last N classes
+        return allClasses.slice(-days);
+    }, [subjectId, state.attendanceRecords, state.subjects, days]);
 
     const barWidth = Math.max(
         8,
@@ -75,7 +59,7 @@ export default function AttendanceGraph({ subjectId, state, days = 14 }) {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Last {days} Days</Text>
+            <Text style={styles.title}>Last {days} Classes</Text>
 
             {/* Chart area */}
             <View style={styles.chartArea}>
@@ -131,10 +115,6 @@ export default function AttendanceGraph({ subjectId, state, days = 14 }) {
                 <View style={styles.legendItem}>
                     <View style={[styles.legendDot, { backgroundColor: COLORS.danger }]} />
                     <Text style={styles.legendText}>&lt;60%</Text>
-                </View>
-                <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: COLORS.border }]} />
-                    <Text style={styles.legendText}>No class</Text>
                 </View>
             </View>
         </View>

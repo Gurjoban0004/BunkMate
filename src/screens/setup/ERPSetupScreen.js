@@ -301,10 +301,10 @@ export default function ERPSetupScreen({ navigation }) {
                         style={[styles.input, styles.otpInput]}
                         value={otp}
                         onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '')); setError(''); }}
-                        placeholder="• • • • • •"
+                        placeholder="• • • •"
                         placeholderTextColor={COLORS.textMuted}
                         keyboardType="number-pad"
-                        maxLength={6}
+                        maxLength={4}
                         autoFocus
                         editable={!loading}
                     />

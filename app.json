@@ -2,7 +2,7 @@
   "expo": {
     "name": "Presence",
     "slug": "presence",
-    "version": "1.0.1",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "automatic",
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.presence.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#1A1A2E"
@@ -33,7 +33,9 @@
         "VIBRATE",
         "POST_NOTIFICATIONS",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "FOREGROUND_SERVICE",
+        "WAKE_LOCK"
       ]
     },
     "web": {
@@ -60,6 +62,8 @@
           "color": "#6C63FF"
         }
       ],
+      "expo-background-fetch",
+      "expo-task-manager",
       "@react-native-community/datetimepicker"
     ],
     "extra": {

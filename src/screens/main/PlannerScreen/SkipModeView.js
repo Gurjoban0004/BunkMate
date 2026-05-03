@@ -6,13 +6,19 @@ import TodaySubjectCard from '../../../components/planner/SkipMode/TodaySubjectC
 import OtherSubjectCard from '../../../components/planner/SkipMode/OtherSubjectCard';
 import { getTodaysClasses } from '../../../utils/planner/scheduleProcessor';
 import { determineStatus, calculateSkipAllowance } from '../../../utils/planner/attendanceCalculations';
+import { useApp } from '../../../context/AppContext';
+import { findLongWeekends } from '../../../utils/planner.js';
 
 /**
  * Skip? mode view — now with a summary card showing total skippable classes.
  */
 export default function SkipModeView({ subjects, onSubjectPress, activeDate = new Date() }) {
     const styles = getStyles();
+    const { state } = useApp();
     const todayClasses = useMemo(() => getTodaysClasses(subjects, activeDate), [subjects, activeDate]);
+
+    const longWeekends = useMemo(() => findLongWeekends(state, state.settings?.dangerThreshold || 75), [state]);
+    const nextLongWeekend = longWeekends.length > 0 ? longWeekends[0] : null;
 
     const { todaySubjects, otherSubjects } = useMemo(() => {
         const todayIds = new Set(todayClasses.map(c => c.subject.id));
@@ -101,6 +107,23 @@ export default function SkipModeView({ subjects, onSubjectPress, activeDate = ne
                     </View>
                 </View>
             </View>
+
+            {nextLongWeekend && (
+                <View style={[styles.quickAnswerCard, { borderLeftColor: COLORS.primary, backgroundColor: COLORS.primaryLight }]}>
+                    <View style={styles.quickAnswerContent}>
+                        <Text style={[styles.quickAnswerLabel, { color: COLORS.primaryDark }]}>Smart Bunk</Text>
+                        <Text style={[styles.quickAnswerTitle, { color: COLORS.primaryDark }]}>
+                            {nextLongWeekend.type} Off!
+                        </Text>
+                        <Text style={[styles.quickAnswerSubtitle, { color: COLORS.primaryDark }]}>
+                            Skip all {nextLongWeekend.classesToSkip} classes on {nextLongWeekend.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} to unlock a 4-day weekend!
+                        </Text>
+                    </View>
+                    <View style={{ paddingLeft: 10 }}>
+                        <Text style={{ fontSize: 24 }}>🏖️</Text>
+                    </View>
+                </View>
+            )}
 
             {/* TODAY Section */}
             {todaySubjects.length > 0 && (

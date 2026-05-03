@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutAnimation } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
-import { getDayRecommendation } from '../../utils/planner';
+import { getDayRecommendation } from '../../utils/planner.js';
 
 const QuickAnswerCard = ({ dayStatus, compact = false, onPlannerPress }) => {
     const [expanded, setExpanded] = useState(false);

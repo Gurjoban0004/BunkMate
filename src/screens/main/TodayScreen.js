@@ -18,7 +18,7 @@ import { calculateFreshness } from '../../utils/erpFreshness';
 import { calculateOverallStreak } from '../../utils/streak';
 import { getUnmarkedCount } from '../../utils/backlog';
 import { getTodayKey, getTodayDayName, isPastTime } from '../../utils/dateHelpers';
-import { getDayStatus } from '../../utils/planner';
+import { getDayStatus } from '../../utils/planner.js';
 import { calculateBestBunkDay, generateWeeklyReport } from '../../utils/insights';
 import { deriveErpIntelligence } from '../../utils/erpIntelligence';
 

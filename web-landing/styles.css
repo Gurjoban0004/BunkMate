@@ -1,13 +1,13 @@
 /* ===== Reset & Base ===== */
 :root {
-  --c-bg-gradient-start: #F5F7FA;
-  --c-bg-gradient-mid: #EDE9FE;
-  --c-bg-gradient-end: #F0FFF4;
-  --c-text-primary: #2D3436;
-  --c-text-secondary: #636E72;
-  --c-text-muted: #9CA3AF;
-  --c-primary: #8B80F9;
-  --c-primary-rgb: 139, 128, 249;
+  --c-bg-gradient-start: #F0F7FF;
+  --c-bg-gradient-mid: #E8F1FF;
+  --c-bg-gradient-end: #F0F7FF;
+  --c-text-primary: #0F172A;
+  --c-text-secondary: #64748B;
+  --c-text-muted: #94A3B8;
+  --c-primary: #5B9BF2;
+  --c-primary-rgb: 91, 155, 242;
   --c-white: #FFFFFF;
   --c-white-rgb: 255, 255, 255;
   --c-black-rgb: 0, 0, 0;

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import { getEndGameStats } from '../../utils/planner';
+import { getEndGameStats } from '../../utils/planner.js';
 import FloatingBackButton from '../../components/common/FloatingBackButton';
 
 const WEEK_OPTIONS = [4, 6, 8, 10];

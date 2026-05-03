@@ -44,18 +44,25 @@ export default function SmartInsightsCard({ insights, onViewAll }) {
                     </TouchableOpacity>
                 )}
             </View>
-            {topInsights.map((insight, i) => (
-                <View
-                    key={i}
-                    style={[styles.insightRow, {
-                        borderLeftColor: insight.severity === 'danger' ? COLORS.danger
-                            : insight.severity === 'warning' ? COLORS.warning
-                            : COLORS.success,
-                    }]}
-                >
-                    <Text style={styles.insightText}>{insight.text}</Text>
-                </View>
-            ))}
+            {topInsights.map((insight, i) => {
+                const isDanger = insight.severity === 'danger';
+                const isWarning = insight.severity === 'warning';
+                const bg = isDanger ? COLORS.dangerLight : isWarning ? COLORS.warningLight : COLORS.successLight;
+                const textC = isDanger ? COLORS.dangerDark : isWarning ? COLORS.warningDark : COLORS.successDark;
+                const icon = severityIcon(insight.severity);
+
+                return (
+                    <View
+                        key={i}
+                        style={[styles.insightRowNew, { backgroundColor: bg }]}
+                    >
+                        <Text style={styles.insightIcon}>{icon}</Text>
+                        <View style={styles.insightContent}>
+                            <Text style={[styles.insightTextNew, { color: textC }]}>{insight.text}</Text>
+                        </View>
+                    </View>
+                );
+            })}
         </View>
     );
 }
@@ -91,16 +98,23 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '600',
         color: COLORS.primary,
     },
-    insightRow: {
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.sm,
-        padding: SPACING.sm,
-        marginBottom: SPACING.xs,
-        borderLeftWidth: 3,
+    insightRowNew: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        marginBottom: SPACING.sm,
+        gap: SPACING.sm,
     },
-    insightText: {
+    insightIcon: {
+        fontSize: 18,
+    },
+    insightContent: {
+        flex: 1,
+    },
+    insightTextNew: {
         fontSize: 13,
-        color: COLORS.textSecondary,
+        fontWeight: '600',
         lineHeight: 18,
     },
 });

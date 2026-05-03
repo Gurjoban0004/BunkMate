@@ -157,7 +157,6 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
                     }
                     const cs = getCellStyle(cell.status);
                     const isToday = cell.dateKey === new Date().toISOString().slice(0, 10);
-                    const multiPeriod = cell.units >= 2 && cell.status !== 'none';
 
                     return (
                         <TouchableOpacity
@@ -170,7 +169,6 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
                                 styles.cellInner,
                                 cell.status !== 'none' && { backgroundColor: cs.bg },
                                 isToday && styles.cellToday,
-                                multiPeriod && { borderWidth: 1.5, borderColor: cs.text + '60' },
                             ]}>
                                 <Text style={[
                                     styles.dayText,
@@ -183,10 +181,6 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
                                 {cell.status !== 'none' && cell.status !== 'holiday' && (
                                     <View style={styles.dotsRow}>
                                         <View style={[styles.dot, { backgroundColor: cs.text }]} />
-                                        {/* Second dot for multi-period days */}
-                                        {multiPeriod && (
-                                            <View style={[styles.dot, { backgroundColor: cs.text }]} />
-                                        )}
                                     </View>
                                 )}
                                 {cell.status === 'holiday' && (
@@ -210,13 +204,6 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
                         <Text style={styles.legendText}>{label}</Text>
                     </View>
                 ))}
-                <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, styles.legendDotDouble]}>
-                        <View style={[styles.dot, { backgroundColor: COLORS.successDark }]} />
-                        <View style={[styles.dot, { backgroundColor: COLORS.successDark }]} />
-                    </View>
-                    <Text style={styles.legendText}>2+ periods</Text>
-                </View>
             </View>
 
             {/* Day Detail Modal */}

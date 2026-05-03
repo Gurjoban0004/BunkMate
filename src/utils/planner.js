@@ -1,4 +1,4 @@
-import { getSubjectAttendance, calculatePercentage, getClassesForDay } from './attendance';
+import { getSubjectAttendance, calculatePercentage, getClassesForDay, calculateSkips } from './attendance';
 import { getDateKey } from './dateHelpers';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -109,6 +109,7 @@ export function getRecoveryNeeded(attended, total, threshold = 75) {
     const currentPercent = calculatePercentage(attended, total);
 
     if (currentPercent >= threshold) return 0;
+    if (target >= 1) return attended < total ? Infinity : 0;
 
     // (attended + X) / (total + X) = target
     // attended + X = target * total + target * X
@@ -223,12 +224,27 @@ export function getQuickWins(state, threshold = 75) {
  * End-game / minimum effort calculator.
  */
 export function getEndGameStats(state, threshold = 75, weeksLeft = 6) {
+    const hasEndDate = !!state.settings?.semesterEndDate;
+    let exactRemaining = null;
+    let daysLeft = null;
+
+    if (hasEndDate) {
+        exactRemaining = getRemainingClassesUntilDate(state, state.settings.semesterEndDate);
+        const end = new Date(state.settings.semesterEndDate);
+        end.setHours(23, 59, 59, 999);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        daysLeft = Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
+    }
+
     const results = state.subjects.map((subject) => {
         const stats = getSubjectAttendance(subject.id, state);
         if (!stats) return null;
 
-        // Count weekly classes for this subject
+        let remainingUnits = 0;
         let weeklyUnits = 0;
+
+        // Count weekly classes for this subject
         DAY_NAMES.forEach((day) => {
             const classes = getClassesForDay(state, day);
             classes.forEach((cls) => {
@@ -238,9 +254,14 @@ export function getEndGameStats(state, threshold = 75, weeksLeft = 6) {
             });
         });
 
-        const remainingUnits = weeklyUnits * weeksLeft;
+        if (hasEndDate && exactRemaining) {
+            remainingUnits = exactRemaining[subject.id] || 0;
+        } else {
+            remainingUnits = weeklyUnits * weeksLeft;
+        }
+
         const futureTotal = stats.totalUnits + remainingUnits;
-        const target = threshold / 100;
+        const target = (subject.target || threshold) / 100;
         const mustAttend = Math.max(0, Math.ceil(target * futureTotal) - stats.attendedUnits);
         const canSkip = Math.max(0, remainingUnits - mustAttend);
 
@@ -259,7 +280,15 @@ export function getEndGameStats(state, threshold = 75, weeksLeft = 6) {
     const totalMustAttend = results.reduce((sum, r) => sum + r.mustAttend, 0);
     const totalCanSkip = results.reduce((sum, r) => sum + r.canSkip, 0);
 
-    return { results, totalRemaining, totalMustAttend, totalCanSkip, weeksLeft };
+    return { 
+        results, 
+        totalRemaining, 
+        totalMustAttend, 
+        totalCanSkip, 
+        weeksLeft: hasEndDate ? Math.ceil(daysLeft / 7) : weeksLeft,
+        isExactMath: hasEndDate,
+        daysLeft
+    };
 }
 
 /**
@@ -313,4 +342,119 @@ export function getRecoverySteps(attended, total, needed, threshold = 75) {
     }
 
     return steps;
+}
+
+/**
+ * Calculates exact remaining classes until the semester end date
+ */
+export function getRemainingClassesUntilDate(state, endDateStr) {
+    const endDate = new Date(endDateStr);
+    const today = new Date();
+    // Normalize
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    if (endDate <= today) return {}; // Already passed
+
+    const subjectRemaining = {};
+    let currentDate = new Date(today);
+    // Exclude today if it's already marked? For simplicity, we just count all remaining days from tomorrow.
+    // If we count today, it might double count if the user already marked today's attendance.
+    // Let's assume remaining means from tomorrow onwards.
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    // Hard cap at 200 days to prevent infinite loops from bad dates
+    let safeGuard = 0;
+    while (currentDate <= endDate && safeGuard < 200) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        const isHoliday = state.holidays?.includes(dateKey);
+        
+        if (!isHoliday) {
+            const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+            const classes = state.timetable[dayName] || [];
+            
+            classes.forEach(cls => {
+                const subId = cls.subjectId;
+                if (!subjectRemaining[subId]) subjectRemaining[subId] = 0;
+                subjectRemaining[subId] += cls.units || 1;
+            });
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+        safeGuard++;
+    }
+    
+    return subjectRemaining;
+}
+
+/**
+ * Scans upcoming weeks for safe-to-skip Fridays and Mondays
+ * to unlock 4-day weekends.
+ */
+export function findLongWeekends(state, defaultThreshold = 75) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weekends = [];
+    
+    // Look ahead 4 weeks
+    for (let w = 0; w < 4; w++) {
+        // Find next Friday
+        const friday = new Date(today);
+        friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7) + (w * 7));
+        if (friday < today) friday.setDate(friday.getDate() + 7);
+        
+        const monday = new Date(friday);
+        monday.setDate(monday.getDate() + 3); // The following Monday
+        
+        // Evaluate Friday
+        const friDayName = 'Friday';
+        const friClasses = state.timetable[friDayName] || [];
+        if (friClasses.length > 0) {
+            // Aggregate units by subject for Friday
+            const subjectUnitsFri = {};
+            friClasses.forEach(c => {
+                subjectUnitsFri[c.subjectId] = (subjectUnitsFri[c.subjectId] || 0) + (c.units || 1);
+            });
+            
+            let safeToSkipAllFri = true;
+            for (const subId in subjectUnitsFri) {
+                const stats = getSubjectAttendance(subId, state);
+                const tgt = state.subjects.find(s => s.id === subId)?.target || defaultThreshold;
+                if (!stats || calculateSkips(stats.attendedUnits, stats.totalUnits, tgt) < subjectUnitsFri[subId]) {
+                    safeToSkipAllFri = false;
+                    break;
+                }
+            }
+            if (safeToSkipAllFri) {
+                weekends.push({ date: new Date(friday), type: 'Friday', classesToSkip: friClasses.length });
+            }
+        }
+        
+        // Evaluate Monday
+        const monDayName = 'Monday';
+        const monClasses = state.timetable[monDayName] || [];
+        if (monClasses.length > 0) {
+            const subjectUnitsMon = {};
+            monClasses.forEach(c => {
+                subjectUnitsMon[c.subjectId] = (subjectUnitsMon[c.subjectId] || 0) + (c.units || 1);
+            });
+            
+            let safeToSkipAllMon = true;
+            for (const subId in subjectUnitsMon) {
+                const stats = getSubjectAttendance(subId, state);
+                const tgt = state.subjects.find(s => s.id === subId)?.target || defaultThreshold;
+                if (!stats || calculateSkips(stats.attendedUnits, stats.totalUnits, tgt) < subjectUnitsMon[subId]) {
+                    safeToSkipAllMon = false;
+                    break;
+                }
+            }
+            if (safeToSkipAllMon) {
+                weekends.push({ date: new Date(monday), type: 'Monday', classesToSkip: monClasses.length });
+            }
+        }
+    }
+    
+    // Sort by date closest to today
+    weekends.sort((a, b) => a.date - b.date);
+    return weekends;
 }

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
 import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses } from '../../../utils/planner/attendanceCalculations';
 import { generateRecoveryPaths } from '../../../utils/planner/recoveryPlanner';
+import { useApp } from '../../../context/AppContext';
 
 /**
  * Interactive What-If Simulator with Skip/Attend stepper and dynamic predictions.
@@ -17,10 +18,64 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     const handleModeChange = (newMode) => {
         setMode(newMode);
         if (setSimulationOffset) setSimulationOffset(0);
+        setSelectedDates({}); // Clear selected dates on mode switch
     };
 
-    const activeSteps = Math.abs(simulationOffset);
-    const offset = simulationOffset;
+    const { state } = useApp();
+    const [selectedDates, setSelectedDates] = useState({});
+
+    // Compute active steps combining manual slider and selected calendar dates
+    const selectedCount = Object.values(selectedDates).filter(Boolean).length;
+    
+    // Total offset is manual offset + selected calendar offsets
+    let finalOffset = simulationOffset;
+    if (mode === 'skip') {
+        finalOffset = simulationOffset - selectedCount;
+    } else {
+        finalOffset = simulationOffset + selectedCount;
+    }
+
+    const activeSteps = Math.abs(finalOffset);
+    const offset = finalOffset;
+
+    // Find upcoming dates for this subject
+    const upcomingDates = React.useMemo(() => {
+        const dates = [];
+        let d = new Date();
+        d.setHours(0,0,0,0);
+        d.setDate(d.getDate() + 1); // Start from tomorrow
+        
+        let count = 0;
+        let safeGuard = 0;
+        
+        while (count < 14 && safeGuard < 100) {
+            const dateStr = d.toISOString().split('T')[0];
+            const isHoliday = state.holidays?.includes(dateStr);
+            if (!isHoliday) {
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+                const classes = state.timetable[dayName] || [];
+                const subjectClasses = classes.filter(c => c.subjectId === subjectData.id);
+                if (subjectClasses.length > 0) {
+                    dates.push({
+                        date: new Date(d),
+                        units: subjectClasses.reduce((sum, c) => sum + (c.units || 1), 0)
+                    });
+                    count++;
+                }
+            }
+            d.setDate(d.getDate() + 1);
+            safeGuard++;
+        }
+        return dates;
+    }, [state.timetable, state.holidays, subjectData.id]);
+
+    const toggleDate = (dateObj) => {
+        const key = dateObj.date.toISOString().split('T')[0];
+        setSelectedDates(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
 
     // Simulation Data
     const currentPercentage = calculatePlannerPercentage(attended, total);
@@ -177,6 +232,41 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                     <Text style={{ color: insight.color }}>{insight.label} · </Text>
                     {insight.text}
                 </Text>
+            </View>
+
+            {/* Interactive Timetable Sandbox */}
+            <View style={styles.sandboxContainer}>
+                <Text style={styles.sandboxTitle}>OR SELECT SPECIFIC CLASSES</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sandboxScroll}>
+                    {upcomingDates.map((item, index) => {
+                        const key = item.date.toISOString().split('T')[0];
+                        const isSelected = !!selectedDates[key];
+                        return (
+                            <TouchableOpacity 
+                                key={index}
+                                style={[
+                                    styles.sandboxDateCard,
+                                    isSelected && (mode === 'skip' ? styles.sandboxDateCardSkip : styles.sandboxDateCardAttend)
+                                ]}
+                                onPress={() => toggleDate(item)}
+                            >
+                                <Text style={[styles.sandboxDayText, isSelected && styles.sandboxTextActive]}>
+                                    {item.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
+                                </Text>
+                                <Text style={[styles.sandboxDateText, isSelected && styles.sandboxTextActive]}>
+                                    {item.date.getDate()} {item.date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
+                                </Text>
+                                {isSelected && (
+                                    <View style={styles.sandboxCheck}>
+                                        <Text style={styles.sandboxCheckIcon}>
+                                            {mode === 'skip' ? '✕' : '✓'}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
             </View>
 
             <View style={styles.progressContainer}>
@@ -377,4 +467,70 @@ const getStyles = () => StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0,
     },
+    sandboxContainer: {
+        marginBottom: SPACING.xl,
+    },
+    sandboxTitle: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: COLORS.textMuted,
+        letterSpacing: 0,
+        marginBottom: SPACING.sm,
+        textAlign: 'center',
+    },
+    sandboxScroll: {
+        gap: SPACING.md,
+        paddingHorizontal: SPACING.xs,
+        paddingBottom: SPACING.sm,
+    },
+    sandboxDateCard: {
+        backgroundColor: COLORS.inputBackground,
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.lg,
+        borderRadius: BORDER_RADIUS.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+        minWidth: 70,
+        position: 'relative',
+    },
+    sandboxDateCardSkip: {
+        backgroundColor: COLORS.dangerLight,
+        borderColor: COLORS.danger,
+    },
+    sandboxDateCardAttend: {
+        backgroundColor: COLORS.successLight,
+        borderColor: COLORS.success,
+    },
+    sandboxDayText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.textSecondary,
+    },
+    sandboxDateText: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: COLORS.textPrimary,
+        marginTop: 2,
+    },
+    sandboxTextActive: {
+        color: COLORS.textPrimary,
+    },
+    sandboxCheck: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: COLORS.textPrimary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sandboxCheckIcon: {
+        color: COLORS.cardBackground,
+        fontSize: 10,
+        fontWeight: 'bold',
+    }
 });

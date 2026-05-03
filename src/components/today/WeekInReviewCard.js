@@ -115,28 +115,25 @@ export default function WeekInReviewCard({ state, onViewInsights }) {
             </View>
 
             {/* Stats row */}
-            <View style={styles.statsRow}>
-                <View style={styles.statBox}>
-                    <Text style={styles.statNum}>{review.totalClasses}</Text>
+            <View style={styles.statsGrid}>
+                <View style={styles.statBoxCard}>
                     <Text style={styles.statLabel}>Classes</Text>
+                    <Text style={styles.statNumBig}>{review.totalClasses}</Text>
                 </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statBox}>
-                    <Text style={[styles.statNum, { color: COLORS.success }]}>{review.totalPresent}</Text>
-                    <Text style={styles.statLabel}>Present</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statBox}>
-                    <Text style={[styles.statNum, { color: COLORS.danger }]}>{review.totalAbsent}</Text>
-                    <Text style={styles.statLabel}>Missed</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statBox}>
-                    <Text style={[styles.statNum, {
+                <View style={styles.statBoxCard}>
+                    <Text style={styles.statLabel}>Rate</Text>
+                    <Text style={[styles.statNumBig, {
                         color: review.weekPct >= (state.settings?.dangerThreshold || 75)
                             ? COLORS.success : COLORS.danger,
                     }]}>{review.weekPct}%</Text>
-                    <Text style={styles.statLabel}>Rate</Text>
+                </View>
+                <View style={styles.statBoxCard}>
+                    <Text style={styles.statLabel}>Present</Text>
+                    <Text style={[styles.statNumBig, { color: COLORS.success }]}>{review.totalPresent}</Text>
+                </View>
+                <View style={styles.statBoxCard}>
+                    <Text style={styles.statLabel}>Missed</Text>
+                    <Text style={[styles.statNumBig, { color: COLORS.danger }]}>{review.totalAbsent}</Text>
                 </View>
             </View>
 
@@ -221,33 +218,30 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '600',
         color: COLORS.primary,
     },
-    statsRow: {
+    statsGrid: {
         flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.background,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
+        flexWrap: 'wrap',
+        gap: SPACING.md,
         marginBottom: SPACING.md,
     },
-    statBox: {
-        flex: 1,
-        alignItems: 'center',
+    statBoxCard: {
+        width: '46%', // approximately half minus gap
+        backgroundColor: COLORS.inputBackground,
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        justifyContent: 'center',
     },
-    statNum: {
-        fontSize: 20,
+    statNumBig: {
+        fontSize: 24,
         fontWeight: '800',
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
+        marginTop: 4,
     },
     statLabel: {
         ...TYPOGRAPHY.caption,
         color: COLORS.textMuted,
-        marginTop: 2,
-    },
-    statDivider: {
-        width: 1,
-        height: 28,
-        backgroundColor: COLORS.border,
+        fontWeight: '500',
     },
     highlightsSection: {
         gap: SPACING.xs,
