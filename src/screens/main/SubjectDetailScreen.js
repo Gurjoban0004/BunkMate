@@ -61,6 +61,7 @@ export default function SubjectDetailScreen({ route }) {
             }
             if (records.length >= 14) break;
         }
+        return records;
     }, [state.attendanceRecords, subjectId]);
 
     const subjectDataForHeader = useMemo(() => ({

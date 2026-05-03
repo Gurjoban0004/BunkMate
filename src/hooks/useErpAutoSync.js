@@ -229,23 +229,11 @@ export function useErpAutoSync(state, dispatch) {
             let registerUnavailable = false;
             try {
                 const calData = await erpFetchCalendar(token, persistentToken);
-                console.log('[CAL-DEBUG] API response keys:', Object.keys(calData));
-                console.log('[CAL-DEBUG] calData.calendar days:', calData.calendar ? Object.keys(calData.calendar).length : 'NO CALENDAR');
-                console.log('[CAL-DEBUG] calData.subjects count:', calData.subjects ? calData.subjects.length : 'NO SUBJECTS');
-                console.log('[CAL-DEBUG] calData.sessionExpired:', calData.sessionExpired);
-                console.log('[CAL-DEBUG] SERVER DIAGNOSTICS:', calData._diag);
-                console.log('[CAL-DEBUG] latestSubjects count:', latestSubjects.length);
-                console.log('[CAL-DEBUG] latestSubjects sample:', latestSubjects.slice(0, 2).map(s => ({ id: s.id, name: s.name, code: s.code, erpSubjectId: s.erpSubjectId })));
 
                 if (calData.sessionExpired) {
                     logger.warn('⚠️ Calendar sync skipped — session expired');
                     setSyncStatus({ calendarSyncStatus: 'failed' });
                 } else if (calData.calendar && Object.keys(calData.calendar).length > 0) {
-                    console.log('[CAL-DEBUG] Calendar has data, calling mapCalendarToRecords...');
-                    console.log('[CAL-DEBUG] Sample calendar day:', Object.entries(calData.calendar)[0]);
-                    if (calData.subjects?.length > 0) {
-                        console.log('[CAL-DEBUG] API subjects:', calData.subjects.map(s => ({ name: s.name, code: s.code, erpSubjectId: s.erpSubjectId })));
-                    }
                     const result = mapCalendarToRecords(calData.calendar, calData.subjects, latestSubjects, step1NameMap);
 
                     if (result.newSubjects.length > 0) {
@@ -268,16 +256,6 @@ export function useErpAutoSync(state, dispatch) {
                         latestSubjects = stamped;
                     }
 
-                    console.log('[CAL-DEBUG] mapCalendarToRecords result:', {
-                        totalDays: result.totalDays,
-                        newSubjects: result.newSubjects.length,
-                        mappingKeys: Object.keys(result.subjectMapping),
-                        earliestDate: result.earliestDate,
-                        latestDate: result.latestDate,
-                        sampleRecord: Object.entries(result.records)[0],
-                        erpSubjectIdStamps: result.erpSubjectIdStamps,
-                    });
-
                     dispatch({
                         type: 'ERP_OVERWRITE_CALENDAR',
                         payload: {
@@ -292,9 +270,6 @@ export function useErpAutoSync(state, dispatch) {
                     logger.info('✅', `ERP calendar sync: ${result.totalDays} days, ${Object.keys(result.subjectMapping).length} subjects mapped`);
                 } else if (calData.subjects?.length > 0) {
                     // Calendar is empty but we have subject totals from summary cards.
-                    // Update subjects with ERP attendance totals (delivered/attended/absent/percentage).
-                    console.log('[CAL-DEBUG] No calendar data but got', calData.subjects.length, 'subjects from summary cards');
-                    console.log('[CAL-DEBUG] Summary subjects:', calData.subjects.map(s => ({ name: s.name, code: s.code, total: s.total, attended: s.attended, pct: s.percentage })));
 
                     // Match ERP subjects to local subjects by code or name
                     const updatedSubjects = latestSubjects.map(localSub => {
@@ -326,11 +301,9 @@ export function useErpAutoSync(state, dispatch) {
                     setSyncStatus({ calendarSyncStatus: 'ok' });
                     logger.info('✅', `ERP summary sync: ${calData.subjects.length} subject totals updated (no day-by-day register available)`);
                 } else {
-                    console.log('[CAL-DEBUG] Calendar empty or missing — skipping. calData:', JSON.stringify(calData).slice(0, 500));
                     setSyncStatus({ calendarSyncStatus: 'ok' });
                 }
             } catch (calErr) {
-                console.error('[CAL-DEBUG] Calendar sync EXCEPTION:', calErr.message, calErr.stack);
                 logger.warn('⚠️ Calendar sync failed (non-critical):', calErr.message);
                 registerUnavailable = true;
                 setSyncError('Totals synced, attendance register unavailable.');
