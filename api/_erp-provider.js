@@ -134,19 +134,61 @@ async function fetchSummaryLegacy(session) {
 }
 
 async function fetchRegisterLegacy(session) {
-    // PRIMARY: Match the exact endpoint the competitor uses.
-    // Key insights from network tab analysis:
-    //   1. URL: /chalkpadPro/ (capital P) not /chalkpadpro/
-    //   2. URL: getattendanceRegister (lowercase 'a') not getAttendanceRegister
-    //   3. Payload: ONLY studentId — no sessionId/userId/apiKey/roleId
-    //      Sending extra params causes the ERP to return a summary page
-    //      instead of the register table with <thead>/<tr id="subject_...">.
-    const primary = await postLegacy('/chalkpadPro/studentDetails/getattendanceRegister', {
-        studentId: session.studentId,
-    });
+    // ── STEP 1: WARMUP — required by the ERP to set session context ──
+    // The competitor's proxy sends these as X-Warmup-Url / X-Warmup-Body headers.
+    // The proxy first hits showAttendance, THEN getattendanceRegister.
+    // Without this warmup, the ERP returns a generic timetable page.
+    const warmupBody = {
+        prevNext: '0',
+        userId: session.userId,
+        sessionId: session.sessionId,
+        apiKey: session.apiKey,
+        roleId: session.roleId,
+        month: '',
+    };
 
-    if (primary.response.ok && primary.payload?.content) {
-        return primary;
+    try {
+        const warmupResp = await fetch(`${ERP_BASE}/mobile/showAttendance`, {
+            method: 'POST',
+            headers: LEGACY_HEADERS,
+            body: encodeForm(warmupBody),
+        });
+        // Extract cookies from warmup response to forward to register call
+        const warmupCookies = warmupResp.headers.get('set-cookie') || '';
+        console.log('[CAL-WARMUP] showAttendance status:', warmupResp.status, 'cookies:', warmupCookies ? 'YES' : 'NONE');
+
+        // ── STEP 2: REGISTER — with session context established ──
+        // Try correct casing first: chalkpadPro (capital P), getattendanceRegister (lowercase a)
+        const registerHeaders = { ...LEGACY_HEADERS };
+        if (warmupCookies) {
+            registerHeaders['Cookie'] = warmupCookies;
+        }
+
+        const registerResp = await fetch(`${ERP_BASE}/chalkpadPro/studentDetails/getattendanceRegister`, {
+            method: 'POST',
+            headers: registerHeaders,
+            body: encodeForm({ studentId: session.studentId }),
+        });
+
+        const payload = await readErpPayload(registerResp);
+        if (registerResp.ok && payload?.content) {
+            return { response: registerResp, payload };
+        }
+
+        // Try alternate casing as fallback
+        const altResp = await fetch(`${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`, {
+            method: 'POST',
+            headers: registerHeaders,
+            body: encodeForm({ studentId: session.studentId }),
+        });
+        const altPayload = await readErpPayload(altResp);
+        if (altResp.ok && altPayload?.content) {
+            return { response: altResp, payload: altPayload };
+        }
+
+        console.log('[CAL-WARMUP] Both register casings failed, falling back to commonPage');
+    } catch (err) {
+        console.error('[CAL-WARMUP] Warmup+register failed:', err.message);
     }
 
     // FALLBACK: /mobile/commonPage with commonPageId 85
