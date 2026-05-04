@@ -10,7 +10,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from 
 import { useApp } from '../../context/AppContext';
 import { deriveErpIntelligence } from '../../utils/erpIntelligence';
 import { getSubjectAttendance } from '../../utils/attendance';
-import { getEndGameStats } from '../../utils/planner.js';
+import { getEndGameStats, findLongWeekends } from '../../utils/planner.js';
 import { DisplayMedium, BodySmall } from '../../components/common/Typography';
 
 // ─── End Game helpers ────────────────────────────────────────────────
@@ -56,6 +56,29 @@ const OVERALL_MESSAGES = {
     comfortable: "You're in great shape for the semester.",
 };
 
+function getWeeklyBurnPlan(canSkip, weeksLeft, weeklyUnits) {
+    if (canSkip <= 0 || weeksLeft <= 0 || weeklyUnits <= 0) return [];
+    const plan = [];
+    let acc = 0;
+    const rate = canSkip / weeksLeft;
+    for (let w = 1; w <= weeksLeft; w++) {
+        acc += rate;
+        let skips = Math.floor(acc);
+        skips = Math.min(skips, weeklyUnits); // cap
+        acc -= skips;
+        plan.push({ week: w, skips });
+    }
+    // Distribute leftovers if any
+    let leftover = canSkip - plan.reduce((sum, p) => sum + p.skips, 0);
+    for (let w = weeksLeft - 1; w >= 0 && leftover > 0; w--) {
+        if (plan[w].skips < weeklyUnits) {
+            plan[w].skips++;
+            leftover--;
+        }
+    }
+    return plan;
+}
+
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function InsightsScreen() {
@@ -82,6 +105,7 @@ export default function InsightsScreen() {
     [state.subjects, state.attendanceRecords]);
 
     const endGameStats = useMemo(() => getEndGameStats(state, threshold, weeksLeft), [state, threshold, weeksLeft]);
+    const longWeekends = useMemo(() => findLongWeekends(state, threshold), [state, threshold]);
 
     const sortedResults = useMemo(() => {
         const order = { impossible: 0, critical: 1, tight: 2, moderate: 3, comfortable: 4 };
@@ -291,6 +315,26 @@ export default function InsightsScreen() {
                         )}
                     </View>
 
+                    {/* Intelligent stuff: Long Weekends */}
+                    {longWeekends.length > 0 && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Smart Opportunities</Text>
+                            <Text style={styles.sectionSubtitle}>We found upcoming long weekends you can safely take off.</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: SPACING.lg, gap: SPACING.md }}>
+                                {longWeekends.map((lw, idx) => (
+                                    <View key={idx} style={styles.lwCard}>
+                                        <View style={styles.lwEmojiBg}>
+                                            <Text style={styles.lwEmoji}>🏖️</Text>
+                                        </View>
+                                        <Text style={styles.lwDate}>{lw.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
+                                        <Text style={styles.lwType}>Take {lw.type} off</Text>
+                                        <Text style={styles.lwClasses}>Skip {lw.classesToSkip} classes</Text>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
                     {/* Weeks selector */}
                     {!hasEndDate && (
                         <View style={styles.section}>
@@ -344,6 +388,22 @@ export default function InsightsScreen() {
                                                 <Text style={styles.strategyAction}>{strategy.action}</Text>
                                             </View>
                                         </View>
+                                        
+                                        {/* Weekly Burn Plan */}
+                                        {subject.canSkip > 0 && subject.weeklyUnits > 0 && (
+                                            <View style={styles.planSection}>
+                                                <Text style={styles.consequenceTitle}>RECOMMENDED WEEKLY PLAN:</Text>
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.planScroll}>
+                                                    {getWeeklyBurnPlan(subject.canSkip, endGameStats.weeksLeft, subject.weeklyUnits).map((p, i) => (
+                                                        <View key={p.week} style={[styles.planChip, p.skips > 0 ? styles.planChipActive : styles.planChipEmpty]}>
+                                                            <Text style={styles.planWeekText}>Wk {p.week}</Text>
+                                                            <Text style={[styles.planSkipText, p.skips > 0 && {color: COLORS.primary}]}>{p.skips > 0 ? `Skip ${p.skips}` : 'Attend'}</Text>
+                                                        </View>
+                                                    ))}
+                                                </ScrollView>
+                                            </View>
+                                        )}
+
                                         {risk !== 'impossible' && (
                                             <View style={styles.consequenceSection}>
                                                 <Text style={styles.consequenceTitle}>IF YOU SKIP N CLASSES:</Text>
@@ -542,6 +602,15 @@ const getStyles = () => StyleSheet.create({
     strategyDetail: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary, lineHeight: 18, marginBottom: 4 },
     strategyAction: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, fontStyle: 'italic' },
 
+    // Plan
+    planSection: { marginTop: SPACING.xs, marginBottom: SPACING.md },
+    planScroll: { gap: SPACING.sm, paddingRight: SPACING.md },
+    planChip: { alignItems: 'center', paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
+    planChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '12' },
+    planChipEmpty: { borderColor: COLORS.borderSubtle, backgroundColor: COLORS.inputBackground },
+    planWeekText: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 2 },
+    planSkipText: { fontSize: FONT_SIZES.sm, fontWeight: '800', color: COLORS.textMuted },
+
     // Consequence simulator
     consequenceSection: { marginTop: SPACING.xs },
     consequenceTitle: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: SPACING.sm },
@@ -554,4 +623,12 @@ const getStyles = () => StyleSheet.create({
     // Footer
     footerNote: { marginHorizontal: SPACING.screenPadding, marginTop: SPACING.md, padding: SPACING.md, backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md },
     footerNoteText: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, lineHeight: 18 },
+
+    // Long Weekends
+    lwCard: { backgroundColor: COLORS.cardBackground, padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, borderColor: COLORS.borderSubtle, minWidth: 140, ...SHADOWS.small },
+    lwEmojiBg: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primary + '15', alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.sm },
+    lwEmoji: { fontSize: 16 },
+    lwDate: { fontSize: FONT_SIZES.md, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 2 },
+    lwType: { fontSize: FONT_SIZES.xs, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 4 },
+    lwClasses: { fontSize: FONT_SIZES.xs, color: COLORS.primary, fontWeight: '700' },
 });
