@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { deriveErpIntelligence } from '../../utils/erpIntelligence';
-import { getSubjectAttendance } from '../../utils/attendance';
+import { getSubjectAttendance, calculatePercentage } from '../../utils/attendance';
 import { getEndGameStats, findLongWeekends } from '../../utils/planner.js';
 import { DisplayMedium, BodySmall } from '../../components/common/Typography';
 
@@ -412,7 +412,7 @@ export default function InsightsScreen() {
                                                         const attendIfSkipN = subject.remainingUnits - n;
                                                         const finalAttended = subject.attendedUnits + attendIfSkipN;
                                                         const finalTotal = subject.totalUnits + subject.remainingUnits;
-                                                        const finalPct = finalTotal > 0 ? (finalAttended / finalTotal) * 100 : 0;
+                                                        const finalPct = calculatePercentage(finalAttended, finalTotal);
                                                         const tgt = subject.target || threshold;
                                                         const passes = finalPct >= tgt;
                                                         return (

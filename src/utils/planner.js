@@ -265,9 +265,33 @@ export function getEndGameStats(state, threshold = 75, weeksLeft = 6) {
         }
 
         const futureTotal = stats.totalUnits + remainingUnits;
-        const target = (subject.target || threshold) / 100;
-        const mustAttend = Math.max(0, Math.ceil(target * futureTotal) - stats.attendedUnits);
-        const canSkip = Math.max(0, remainingUnits - mustAttend);
+        const targetValue = subject.target || threshold;
+        
+        let mustAttend = 0;
+        let canSkip = 0;
+        
+        // Max possible percentage if we attend every remaining class
+        const maxPossiblePct = calculatePercentage(stats.attendedUnits + remainingUnits, futureTotal);
+        
+        if (maxPossiblePct < targetValue) {
+            // Impossible to reach target
+            canSkip = 0;
+            // Calculate how many they actually needed to reach target (will be > remainingUnits)
+            mustAttend = Math.max(0, Math.ceil((targetValue / 100) * futureTotal) - stats.attendedUnits);
+        } else {
+            // It's possible. Find exact canSkip by backing down from maximum
+            while (canSkip <= remainingUnits) {
+                const simulatedAttended = stats.attendedUnits + remainingUnits - canSkip;
+                const simulatedPct = calculatePercentage(simulatedAttended, futureTotal);
+                if (simulatedPct >= targetValue) {
+                    canSkip++;
+                } else {
+                    break;
+                }
+            }
+            canSkip = Math.max(0, canSkip - 1);
+            mustAttend = remainingUnits - canSkip;
+        }
 
         return {
             ...subject,

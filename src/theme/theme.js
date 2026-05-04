@@ -42,6 +42,7 @@ export const LIGHT_COLORS = {
     // Structure
     border:          '#E2E8F0',   // Dividers, card borders
     borderSubtle:    'rgba(91, 155, 242, 0.15)', // Blue-tinted card border
+    borderLight:     '#F8FAFC',   // Very subtle borders
     shadow:          '#0F172A',
     overlay:         'rgba(15, 23, 42, 0.5)',
 
@@ -95,6 +96,7 @@ export const DARK_COLORS = {
     // Structure
     border:          '#2D3A4F',
     borderSubtle:    'rgba(91, 155, 242, 0.12)',
+    borderLight:     '#1E293B',
     shadow:          '#000000',
     overlay:         'rgba(0, 0, 0, 0.75)',
 
