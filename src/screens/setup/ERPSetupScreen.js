@@ -410,7 +410,7 @@ export default function ERPSetupScreen({ navigation }) {
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
@@ -485,6 +485,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: SPACING.lg,
+        paddingBottom: 120, // clear the absolute-positioned bottom bar
     },
 
     // Top bar
