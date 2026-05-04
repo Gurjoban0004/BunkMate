@@ -88,7 +88,8 @@ export function getClassesForDay(state, dayName) {
         const timeSlot = state.timeSlots.find((ts) => ts.id === slot.slotId);
         const subject = state.subjects.find((s) => s.id === slot.subjectId);
 
-        if (!timeSlot || !subject) return;
+        // Need either a matching timeSlot OR custom times on the slot itself
+        if ((!timeSlot && !slot.customStart) || !subject) return;
 
         const startTime = slot.customStart || timeSlot.start;
         const endTime = slot.customEnd || timeSlot.end;
