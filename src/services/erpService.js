@@ -11,12 +11,13 @@
  *   3. After OTP, new token is saved and the original call is retried automatically
  */
 
+import { Platform } from 'react-native';
+
 const API_TIMEOUT = 20000; // 20 seconds
 
-// On web, relative paths work. On native, EXPO_PUBLIC_API_BASE must be set.
-// Fallback to the production Vercel URL so the APK always works even if the
-// env var wasn't injected correctly (e.g. stored as Secret type in EAS).
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE || 'https://presence-gurjobanpanjeta.vercel.app';
+// Web uses relative paths (same domain as Vercel deployment).
+// Native APK must use the absolute production URL.
+const API_BASE = Platform.OS === 'web' ? '' : 'https://presence-gurjobanpanjeta.vercel.app';
 
 async function apiCall(endpoint, body) {
     const controller = new AbortController();

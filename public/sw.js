@@ -3,7 +3,7 @@
  * Provides offline support and install capability.
  */
 
-const CACHE_NAME = 'presence-v2';
+const CACHE_NAME = 'presence-v3';
 const STATIC_ASSETS = ['/', '/index.html', '/app'];
 
 // Install: cache static shell
@@ -28,7 +28,8 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch: network-first for API calls, cache-first for static assets
+// Fetch: network-first for everything — ensures users always get fresh code.
+// Falls back to cache only when offline.
 self.addEventListener('fetch', (event) => {
     // Only handle GET requests
     if (event.request.method !== 'GET') return;
@@ -44,10 +45,9 @@ self.addEventListener('fetch', (event) => {
     }
 
     event.respondWith(
-        caches.match(event.request).then((cached) => {
-            if (cached) return cached;
-            return fetch(event.request).then((response) => {
-                // Cache successful same-origin responses
+        fetch(event.request)
+            .then((response) => {
+                // Cache successful same-origin responses for offline fallback
                 if (
                     response.ok &&
                     response.type === 'basic' &&
@@ -57,7 +57,10 @@ self.addEventListener('fetch', (event) => {
                     caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                 }
                 return response;
-            });
-        })
+            })
+            .catch(() => {
+                // Network failed — serve from cache if available
+                return caches.match(event.request);
+            })
     );
 });
