@@ -378,10 +378,20 @@ export function getRecoverySteps(attended, total, needed, threshold = 75) {
 export function getRemainingClassesUntilDate(state, endDateStr) {
     if (!endDateStr || !state?.timetable) return {};
 
-    const endDate = new Date(endDateStr);
+    // Parse end date as local noon to avoid UTC timezone off-by-one
+    let endDate;
+    if (endDateStr.includes('T')) {
+        // ISO string — extract date part and parse as local noon
+        const datePart = endDateStr.split('T')[0];
+        const [y, m, d] = datePart.split('-').map(Number);
+        endDate = new Date(y, m - 1, d, 23, 59, 59, 999);
+    } else {
+        endDate = new Date(endDateStr);
+        endDate.setHours(23, 59, 59, 999);
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
 
     if (endDate <= today) return {};
 

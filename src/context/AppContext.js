@@ -418,6 +418,94 @@ function appReducer(state, action) {
                 }
             }
 
+            // ── Auto-generate timetable from ERP calendar data ──────────
+            // If the user set up via ERP (no manual timetable), derive which subjects
+            // appear on which days of the week so Today screen shows classes.
+            // Only do this if the timetable is currently empty (all days have 0 slots).
+            const timetableIsEmpty = Object.values(state.timetable).every(slots => !slots || slots.length === 0);
+            let nextTimetable = state.timetable;
+            let nextTimeSlots = state.timeSlots;
+
+            if (timetableIsEmpty && Object.keys(erpRecords).length > 0) {
+                const DAY_NAMES_MAP = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+                // Count how many times each subject appears on each day of week
+                const subjectDayCount = {}; // { subjectId: { dayName: count } }
+
+                for (const [dateKey, dayData] of Object.entries(erpRecords)) {
+                    const [y, m, d] = dateKey.split('-').map(Number);
+                    const date = new Date(y, m - 1, d, 12, 0, 0);
+                    const dayName = DAY_NAMES_MAP[date.getDay()];
+                    if (!dayName || dayName === 'Sunday') continue;
+
+                    for (const subjectId of Object.keys(dayData)) {
+                        if (!subjectDayCount[subjectId]) subjectDayCount[subjectId] = {};
+                        subjectDayCount[subjectId][dayName] = (subjectDayCount[subjectId][dayName] || 0) + 1;
+                    }
+                }
+
+                // A subject is "scheduled" on a day if it appears on >30% of that day's occurrences
+                // Count total occurrences of each day name in the records
+                const dayOccurrences = {};
+                for (const dateKey of Object.keys(erpRecords)) {
+                    const [y, m, d] = dateKey.split('-').map(Number);
+                    const date = new Date(y, m - 1, d, 12, 0, 0);
+                    const dayName = DAY_NAMES_MAP[date.getDay()];
+                    if (!dayName || dayName === 'Sunday') continue;
+                    dayOccurrences[dayName] = (dayOccurrences[dayName] || 0) + 1;
+                }
+
+                // Build new timetable
+                const newTimetable = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [] };
+                const newTimeSlots = [...(state.timeSlots || [])];
+
+                // Create a synthetic time slot per subject-day combination
+                // Use period number from ERP data if available, otherwise assign sequential slots
+                const slotIdMap = {}; // "subjectId-dayName" → slotId
+
+                for (const [subjectId, dayCounts] of Object.entries(subjectDayCount)) {
+                    for (const [dayName, count] of Object.entries(dayCounts)) {
+                        const totalDayOccurrences = dayOccurrences[dayName] || 1;
+                        const frequency = count / totalDayOccurrences;
+                        if (frequency < 0.3) continue; // skip if appears on <30% of that weekday
+
+                        const key = `${subjectId}-${dayName}`;
+                        if (!slotIdMap[key]) {
+                            // Create a synthetic time slot (no real time info from ERP)
+                            const slotId = `erp-slot-${subjectId}-${dayName}`;
+                            slotIdMap[key] = slotId;
+
+                            // Only add if not already in timeSlots
+                            if (!newTimeSlots.find(ts => ts.id === slotId)) {
+                                newTimeSlots.push({
+                                    id: slotId,
+                                    start: '09:00',
+                                    end: '10:00',
+                                    label: dayName,
+                                });
+                            }
+                        }
+
+                        if (newTimetable[dayName]) {
+                            // Only add if not already there
+                            const alreadyAdded = newTimetable[dayName].some(s => s.subjectId === subjectId);
+                            if (!alreadyAdded) {
+                                newTimetable[dayName].push({
+                                    slotId: slotIdMap[key],
+                                    subjectId,
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // Only apply if we actually derived something
+                const derivedSomething = Object.values(newTimetable).some(slots => slots.length > 0);
+                if (derivedSomething) {
+                    nextTimetable = newTimetable;
+                    nextTimeSlots = newTimeSlots;
+                }
+            }
+
             // Garbage Collection: Delete old invalid predictions (Cancelled/skipped classes)
             const newLastSyncDates = {
                 ...(state.settings?.lastSubjectSyncDates || {}),
@@ -449,6 +537,8 @@ function appReducer(state, action) {
                 ...state,
                 subjects: nextSubjects,
                 attendanceRecords: nextRecords,
+                timetable: nextTimetable,
+                timeSlots: nextTimeSlots,
                 trackingStartDate: newTrackingStart || state.trackingStartDate,
                 latestErpDate: latestErpDate || state.latestErpDate,
                 settings: {

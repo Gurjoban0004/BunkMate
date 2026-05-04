@@ -104,7 +104,7 @@ export default function InsightsScreen() {
         .sort((a, b) => a.percentage - b.percentage),
     [state.subjects, state.attendanceRecords]);
 
-    const endGameStats = useMemo(() => getEndGameStats(state, threshold, weeksLeft), [state, threshold, weeksLeft]);
+    const endGameStats = useMemo(() => getEndGameStats(state, threshold, weeksLeft), [state, threshold, weeksLeft, state.settings?.semesterEndDate]);
     const longWeekends = useMemo(() => findLongWeekends(state, threshold), [state, threshold]);
 
     const sortedResults = useMemo(() => {

@@ -17,7 +17,9 @@ export default function PlatformDatePicker({ date, onDateChange, minimumDate }) 
                 min={minimumDate ? minimumDate.toISOString().split('T')[0] : ''}
                 onChange={(e) => {
                     if (e.target.value) {
-                        onDateChange(new Date(e.target.value));
+                        // Parse as local date (not UTC) to avoid timezone off-by-one
+                        const [year, month, day] = e.target.value.split('-').map(Number);
+                        onDateChange(new Date(year, month - 1, day, 12, 0, 0));
                     } else {
                         onDateChange(null);
                     }
