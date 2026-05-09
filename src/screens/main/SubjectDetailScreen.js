@@ -111,24 +111,7 @@ export default function SubjectDetailScreen({ route }) {
                     </Card>
                 )}
 
-                {/* Skip calculation */}
-                {skip && (
-                    <Card style={[styles.skipCard, skip.status === 'safe' ? styles.skipSafe : styles.skipDanger]}>
-                        {skip.status === 'safe' ? (
-                            <Text style={[styles.skipLabel, { textAlign: 'center', flexWrap: 'wrap' }]}>
-                                You can skip{' '}
-                                <Text style={[styles.skipNumber, styles.textGreen]}>{skip.count}</Text>
-                                {' '}more classes and stay at {target}%
-                            </Text>
-                        ) : (
-                            <Text style={[styles.skipLabel, { textAlign: 'center', flexWrap: 'wrap' }]}>
-                                You need to attend{' '}
-                                <Text style={[styles.skipNumber, styles.textRed]}>{skip.count}</Text>
-                                {' '}classes to reach {target}%
-                            </Text>
-                        )}
-                    </Card>
-                )}
+                {/* Skip calculation — removed, use Planner tab for skip analysis */}
 
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>

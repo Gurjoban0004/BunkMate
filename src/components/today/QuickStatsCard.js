@@ -65,14 +65,14 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.border,
     },
     portalItem: {
-        alignItems: 'flex-start',
+        alignItems: 'center',
     },
     portalStatus: {
         fontSize: 12,
         lineHeight: 15,
         color: COLORS.textSecondary,
         fontWeight: '700',
-        width: '100%',
+        textAlign: 'center',
     },
 });
 
