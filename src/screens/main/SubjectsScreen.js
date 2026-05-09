@@ -261,12 +261,12 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.sm,
+        paddingTop: SPACING.md,
+        paddingBottom: SPACING.xxl,
     },
     headerContainer: {
         paddingHorizontal: SPACING.screenPadding,
-        paddingTop: SPACING.xs,
-        paddingBottom: SPACING.md,
+        paddingBottom: SPACING.cardGap,
     },
     headerRow: {
         flexDirection: 'row',
@@ -293,7 +293,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textPrimary,
     },
     section: {
-        marginTop: SPACING.md,
+        marginTop: SPACING.cardGap,
     },
     sectionHeader: {
         flexDirection: 'row',

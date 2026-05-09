@@ -19,7 +19,7 @@ const HolidayCard = ({ onUndo }) => {
 const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.primaryLight,
-        marginHorizontal: SPACING.lg,
+        marginHorizontal: SPACING.screenPadding,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.xl,
         alignItems: 'center',

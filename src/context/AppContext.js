@@ -11,6 +11,12 @@ import { erpCheckSession } from '../services/erpService';
 
 const AppContext = createContext();
 
+function maxDateKey(a, b) {
+    if (!a) return b || null;
+    if (!b) return a;
+    return a > b ? a : b;
+}
+
 const initialState = {
     setupComplete: false,
     isAuthenticated: false, // true once user has logged in or completed setup
@@ -511,6 +517,7 @@ function appReducer(state, action) {
                 ...(state.settings?.lastSubjectSyncDates || {}),
                 ...lastSubjectSyncDates
             };
+            const nextLatestErpDate = maxDateKey(state.latestErpDate, latestErpDate);
 
             for (const [dateKey, dayData] of Object.entries(nextRecords)) {
                 let modified = false;
@@ -518,7 +525,7 @@ function appReducer(state, action) {
                 
                 for (const [subjectId, record] of Object.entries(newDayData)) {
                     if (record.source === 'prediction' || record.source === 'manual') {
-                        const syncDateForSubject = newLastSyncDates[subjectId];
+                        const syncDateForSubject = maxDateKey(newLastSyncDates[subjectId], nextLatestErpDate);
                         // If ERP now covers this date and did not overwrite the local record,
                         // the local bridge is no longer authoritative.
                         if (syncDateForSubject && dateKey <= syncDateForSubject) {
@@ -539,10 +546,11 @@ function appReducer(state, action) {
                 timetable: nextTimetable,
                 timeSlots: nextTimeSlots,
                 trackingStartDate: newTrackingStart || state.trackingStartDate,
-                latestErpDate: latestErpDate || state.latestErpDate,
+                latestErpDate: nextLatestErpDate,
                 settings: {
                     ...state.settings,
-                    lastSubjectSyncDates: newLastSyncDates
+                    lastSubjectSyncDates: newLastSyncDates,
+                    latestErpDate: nextLatestErpDate,
                 }
             };
         }

@@ -60,4 +60,27 @@ describe('ERP source of truth for local bridge records', () => {
       projected: { attended: 9, total: 11, percentage: 81.8 },
     });
   });
+
+  test('uses the global latest ERP date when a subject-specific sync date is missing', () => {
+    const state = {
+      ...baseState,
+      latestErpDate: '2026-05-07',
+      settings: {},
+      attendanceRecords: {
+        '2026-05-07': {
+          math: { status: 'absent', units: 1, source: 'manual' },
+        },
+        '2026-05-08': {
+          math: { status: 'present', units: 1, source: 'manual' },
+        },
+      },
+    };
+
+    expect(getSubjectAttendance('math', state)).toEqual({
+      attendedUnits: 9,
+      totalUnits: 11,
+      percentage: 81.8,
+      hasPredictions: true,
+    });
+  });
 });

@@ -78,7 +78,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.background,
     },
     scrollContent: {
-        padding: SPACING.lg,
-        paddingTop: SPACING.sm,
+        padding: SPACING.screenPadding,
+        paddingTop: SPACING.md,
+        paddingBottom: SPACING.xxl,
     },
 });

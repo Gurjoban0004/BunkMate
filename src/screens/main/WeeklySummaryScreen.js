@@ -134,6 +134,7 @@ const getStyles = () => StyleSheet.create({
         height: 60, // Space for the floating back button
     },
     scrollContent: {
+        paddingTop: SPACING.md,
         paddingBottom: SPACING.xxl,
     },
     header: {

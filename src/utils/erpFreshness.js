@@ -6,7 +6,7 @@
  */
 
 import { getTodayKey, getTodayDayName } from './dateHelpers';
-import { shouldCountLocalRecord } from './attendance';
+import { getErpCoverageDateForSubject, shouldCountLocalRecord } from './attendance';
 
 /**
  * Calculates the freshness states for today's classes
@@ -25,7 +25,7 @@ import { shouldCountLocalRecord } from './attendance';
  */
 export function calculateFreshness(state, todayClasses) {
     const freshnessMap = {};
-    if (!state.settings?.lastSubjectSyncDates || !todayClasses) return freshnessMap;
+    if (!todayClasses) return freshnessMap;
 
     const devDate = state.devDate ? new Date(state.devDate) : new Date();
     const todayKey = getTodayKey(state.devDate);
@@ -37,7 +37,7 @@ export function calculateFreshness(state, todayClasses) {
     // AND it has classes today.
 
     todayClasses.forEach(c => {
-        const lastSyncDate = state.settings.lastSubjectSyncDates[c.subjectId] || '2000-01-01';
+        const lastSyncDate = getErpCoverageDateForSubject(c.subjectId, state) || '2000-01-01';
         const todayRecord = state.attendanceRecords[todayKey]?.[c.subjectId];
         
         let isStale = false;
@@ -87,8 +87,7 @@ export function calculateGlobalStaleness(state) {
         isProjected: false,
     };
 
-    const syncDates = state.settings?.lastSubjectSyncDates;
-    if (!syncDates || !state.subjects?.length) return result;
+    if (!state.subjects?.length) return result;
 
     const devDate = state.devDate ? new Date(state.devDate) : new Date();
     const todayKey = getTodayKey(state.devDate);
@@ -107,7 +106,7 @@ export function calculateGlobalStaleness(state) {
     }
 
     state.subjects.forEach(sub => {
-        const lastSync = syncDates[sub.id];
+        const lastSync = getErpCoverageDateForSubject(sub.id, state);
         if (!lastSync) return; // No sync date — skip (not ERP-connected)
 
         result.totalSubjects++;

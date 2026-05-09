@@ -335,7 +335,7 @@ const EndGameScreen = () => {
 const getStyles = () => StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
     scrollView: { flex: 1 },
-    scrollContent: { paddingTop: SPACING.xxl + SPACING.md },
+    scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xxl },
 
     pageTitle: {
         fontSize: 26,

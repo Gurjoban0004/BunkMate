@@ -28,6 +28,6 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '500',
         color: COLORS.textSecondary,
         paddingHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
+        marginBottom: SPACING.cardGap,
     },
 });

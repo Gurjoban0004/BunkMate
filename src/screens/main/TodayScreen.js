@@ -120,15 +120,15 @@ const TodayScreen = ({ navigation }) => {
     const showWeeklyReportToday = showWeeklyReport && (today.getDay() === 0 || today.getDay() === 1);
 
     const portalStatus = useMemo(() => {
-        if (!state.settings?.erpConnected) return 'Set up manually';
-        if (isErpSyncing) return 'Updating portal';
+        if (!state.settings?.erpConnected) return 'Manual';
+        if (isErpSyncing) return 'Updating';
         const syncDates = Object.values(state.settings?.lastSubjectSyncDates || {}).filter(Boolean).sort();
         const latest = state.latestErpDate || syncDates[syncDates.length - 1];
-        if (!latest) return 'Waiting for portal';
-        if (latest >= todayKey) return 'Portal up to date';
+        if (!latest) return 'Waiting';
+        if (latest >= todayKey) return 'Portal: Today';
         const d = new Date(latest + 'T12:00:00');
         const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        return `Portal updated till ${label}`;
+        return `Portal: ${label}`;
     }, [state.settings?.erpConnected, state.settings?.lastSubjectSyncDates, state.latestErpDate, isErpSyncing, todayKey]);
 
     // Pull to refresh — also triggers ERP sync if connected
@@ -541,12 +541,12 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.lg,
-        paddingBottom: SPACING.xl,
+        paddingTop: SPACING.md,
+        paddingBottom: SPACING.xxl,
     },
     header: {
         paddingHorizontal: SPACING.screenPadding,
-        paddingBottom: SPACING.lg,
+        paddingBottom: SPACING.md,
     },
     setupDayCard: {
         marginHorizontal: SPACING.screenPadding,
@@ -581,7 +581,7 @@ const getStyles = () => StyleSheet.create({
         marginTop: 4,
     },
     sectionContainer: {
-        marginTop: SPACING.md,
+        marginTop: SPACING.sm,
     },
     sectionLabel: {
         fontSize: FONT_SIZES.xs,

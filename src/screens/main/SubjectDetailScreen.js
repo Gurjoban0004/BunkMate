@@ -228,7 +228,7 @@ const getStyles = () => StyleSheet.create({
     scrollContent: {
         padding: SPACING.screenPadding,
         paddingBottom: SPACING.xxl,
-        paddingTop: SPACING.xxl + SPACING.lg, // Extra padding for back button
+        paddingTop: SPACING.md,
     },
     errorText: {
         ...TYPOGRAPHY.body,

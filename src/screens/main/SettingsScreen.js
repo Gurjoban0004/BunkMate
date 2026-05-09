@@ -43,8 +43,6 @@ const SettingsScreen = ({ navigation }) => {
         semesterEndDate = null,
     } = state.settings || {};
 
-    const customTargets = state.subjects ? state.subjects.filter(s => s.target && s.target !== dangerThreshold) : [];
-
     const updateSetting = (key, value) => {
         dispatch({ type: 'UPDATE_SETTINGS', payload: { [key]: value } });
     };
@@ -131,11 +129,14 @@ const SettingsScreen = ({ navigation }) => {
         setThresholdModalVisible(false);
     };
 
-    const getThresholdStatus = (target) => {
-        if (target > dangerThreshold) return { emoji: '⚠️', label: 'Strict requirement' };
-        if (target < dangerThreshold) return { emoji: '✓', label: 'Lenient requirement' };
-        return { emoji: '', label: 'Default threshold' };
+    const formatPortalDate = (dateKey) => {
+        if (!dateKey) return 'Never';
+        const date = new Date(dateKey + 'T12:00:00');
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
+
+    const portalCoverageDate = state.latestErpDate || state.settings?.latestErpDate || null;
+    const portalLabel = formatPortalDate(portalCoverageDate);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -145,10 +146,209 @@ const SettingsScreen = ({ navigation }) => {
                     <Text style={styles.headerTitle}>Settings</Text>
                 </View>
 
-                {/* Profile Section */}
+                {/* Portal Section */}
                 <View style={styles.section}>
-                    <View style={styles.card}>
-                        <View style={styles.settingRow}>
+                    <Text style={styles.sectionTitle}>PORTAL</Text>
+                    <View style={styles.cardGroup}>
+                        <View style={[styles.settingRow, styles.groupItem, styles.primarySettingRow]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>
+                                    {state.settings?.erpConnected ? 'Connected' : 'Not connected'}
+                                </Text>
+                                <Text style={styles.cardDescription}>
+                                    Portal updated till {portalLabel}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[styles.syncButton, isErpSyncing && styles.syncingButton]}
+                                onPress={() => triggerErpSync(true)}
+                                disabled={isErpSyncing}
+                            >
+                                <Text style={styles.syncButtonText}>
+                                    {isErpSyncing ? 'Syncing' : 'Sync'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {state.settings?.erpConnected && (
+                            <>
+                                <View style={styles.divider} />
+                                <TouchableOpacity
+                                    style={styles.groupItem}
+                                    onPress={() => {
+                                        showAlert(
+                                            'Refresh Calendar',
+                                            'This re-matches your portal subjects and pulls the full calendar again. Use it if calendar data looks wrong.',
+                                            [
+                                                { text: 'Cancel', style: 'cancel' },
+                                                {
+                                                    text: 'Refresh',
+                                                    onPress: () => {
+                                                        const cleared = state.subjects.map(s => ({ ...s, erpSubjectId: null }));
+                                                        dispatch({ type: 'SET_SUBJECTS', payload: cleared });
+                                                        setTimeout(() => triggerErpSync(true), 300);
+                                                    }
+                                                }
+                                            ]
+                                        );
+                                    }}
+                                    disabled={isErpSyncing}
+                                >
+                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Refresh calendar</Text>
+                                    <Text style={styles.chevron}>›</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
+                </View>
+
+                {/* Attendance Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>ATTENDANCE</Text>
+                    <View style={styles.cardGroup}>
+                        <View style={[styles.settingRow, styles.groupItem]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>Default goal</Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={styles.thresholdValueBox}
+                                onPress={() => handleOpenThresholdEditor(null)}
+                            >
+                                <Text style={styles.thresholdValueText}>{dangerThreshold}%</Text>
+                                <Text style={styles.dropdownIcon}>▼</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.divider} />
+                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditTimetable')}>
+                            <Text style={styles.linkText}>Edit Timetable</Text>
+                            <Text style={styles.chevron}>›</Text>
+                        </TouchableOpacity>
+                        <View style={styles.divider} />
+                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditSubjects')}>
+                            <Text style={styles.linkText}>Manage Subjects</Text>
+                            <Text style={styles.chevron}>›</Text>
+                        </TouchableOpacity>
+                        <View style={styles.divider} />
+                        <View style={[styles.settingRow, styles.groupItem]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>Semester end</Text>
+                            </View>
+                            <PlatformDatePicker
+                                date={semesterEndDate ? new Date(semesterEndDate) : null}
+                                minimumDate={new Date()}
+                                onDateChange={(date) => {
+                                    updateSetting('semesterEndDate', date ? date.toISOString() : null);
+                                }}
+                            />
+                        </View>
+                    </View>
+                </View>
+
+                {/* App Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>APP</Text>
+                    <View style={styles.cardGroup}>
+                        <View style={[styles.settingRow, styles.groupItem]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>Start on</Text>
+                            </View>
+                            <View style={styles.optionsGroupSmall}>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, landingPage === 'today' && styles.optionButtonActive]}
+                                    onPress={() => updateSetting('landingPage', 'today')}
+                                >
+                                    <Text style={[styles.optionText, landingPage === 'today' && styles.optionTextActive]}>Today</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, landingPage === 'planner' && styles.optionButtonActive]}
+                                    onPress={() => updateSetting('landingPage', 'planner')}
+                                >
+                                    <Text style={[styles.optionText, landingPage === 'planner' && styles.optionTextActive]}>Planner</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        <View style={styles.divider} />
+                        <View style={[styles.settingRow, styles.groupItem]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.cardTitle}>Theme</Text>
+                            </View>
+                            <View style={styles.optionsGroupSmall}>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, theme === 'light' && styles.optionButtonActive]}
+                                    onPress={() => updateSetting('theme', 'light')}
+                                >
+                                    <Text style={[styles.optionText, theme === 'light' && styles.optionTextActive]}>Light</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.smallOptionBtn, theme === 'dark' && styles.optionButtonActive]}
+                                    onPress={() => updateSetting('theme', 'dark')}
+                                >
+                                    <Text style={[styles.optionText, theme === 'dark' && styles.optionTextActive]}>Dark</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {Platform.OS === 'android' && (
+                            <>
+                                <View style={styles.divider} />
+                                <View style={[styles.settingRow, styles.groupItem]}>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.cardTitle}>Daily reminder</Text>
+                                    </View>
+                                    <Switch
+                                        value={notificationEnabled}
+                                        onValueChange={(value) => updateSetting('notificationEnabled', value)}
+                                        trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+                                        thumbColor={notificationEnabled ? COLORS.primary : COLORS.textMuted}
+                                    />
+                                </View>
+                                {notificationEnabled && (
+                                    <>
+                                        <View style={styles.divider} />
+                                        <TouchableOpacity style={styles.groupItem}>
+                                            <Text style={styles.linkText}>Reminder time</Text>
+                                            <View style={styles.timeBadge}>
+                                                <Text style={styles.timeText}>{formatTime(state.settings?.notificationTime || '18:00')}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+                                <View style={styles.divider} />
+                                <View style={[styles.settingRow, styles.groupItem]}>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.cardTitle}>Smart alerts</Text>
+                                    </View>
+                                    <Switch
+                                        value={smartAlertsEnabled}
+                                        onValueChange={(value) => updateSetting('smartAlertsEnabled', value)}
+                                        trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+                                        thumbColor={smartAlertsEnabled ? COLORS.primary : COLORS.textMuted}
+                                    />
+                                </View>
+                                <View style={styles.divider} />
+                                <View style={[styles.settingRow, styles.groupItem]}>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.cardTitle}>Weekly summary</Text>
+                                    </View>
+                                    <Switch
+                                        value={weeklySummaryEnabled}
+                                        onValueChange={(value) => updateSetting('weeklySummaryEnabled', value)}
+                                        trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+                                        thumbColor={weeklySummaryEnabled ? COLORS.primary : COLORS.textMuted}
+                                    />
+                                </View>
+                            </>
+                        )}
+                    </View>
+                </View>
+
+                {/* Account Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>ACCOUNT</Text>
+                    <View style={styles.cardGroup}>
+                        <View style={[styles.settingRow, styles.groupItem]}>
                             <Text style={styles.settingLabel}>Name</Text>
                             {editingName ? (
                                 <View style={styles.nameEditContainer}>
@@ -171,283 +371,7 @@ const SettingsScreen = ({ navigation }) => {
                                 </TouchableOpacity>
                             )}
                         </View>
-                    </View>
-                </View>
-
-                {/* Attendance Thresholds Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ATTENDANCE GOALS</Text>
-                    
-                    {/* Default Threshold Card */}
-                    <View style={styles.card}>
-                        <View style={styles.settingRow}>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.cardTitle}>Default Goal</Text>
-                                <Text style={styles.cardDescription}>Applied to all subjects unless customized</Text>
-                            </View>
-                            <TouchableOpacity 
-                                style={styles.thresholdValueBox}
-                                onPress={() => handleOpenThresholdEditor(null)}
-                            >
-                                <Text style={styles.thresholdValueText}>{dangerThreshold}%</Text>
-                                <Text style={styles.dropdownIcon}>▼</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    {/* Custom Thresholds Section */}
-                    <Text style={[styles.sectionTitle, { marginTop: SPACING.lg }]}>SUBJECT GOALS</Text>
-                    <View style={styles.cardGroup}>
-                        {state.subjects.map((subject, index) => {
-                            const currentTarget = subject.target || dangerThreshold;
-                            const status = getThresholdStatus(currentTarget);
-                            
-                            return (
-                                <View key={subject.id}>
-                                    <TouchableOpacity 
-                                        style={styles.thresholdItem}
-                                        onPress={() => handleOpenThresholdEditor(subject)}
-                                    >
-                                        <View style={styles.thresholdInfo}>
-                                            <View style={[styles.colorDot, { backgroundColor: subject.color || COLORS.primary }]} />
-                                            <Text style={styles.subjectName} numberOfLines={1}>{subject.name}</Text>
-                                        </View>
-                                        <View style={styles.thresholdValueContainer}>
-                                            <Text style={styles.thresholdValue}>
-                                                {currentTarget}%
-                                            </Text>
-                                            <Text style={styles.dropdownIcon}>▼</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                    {index < state.subjects.length - 1 && <View style={styles.divider} />}
-                                </View>
-                            );
-                        })}
-                    </View>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>PREFERENCES</Text>
-                    <View style={styles.cardGroup}>
-                        <View style={[styles.settingRow, styles.groupItem]}>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.cardTitle}>Startup Screen</Text>
-                                <Text style={styles.cardDescription}>Default app open tab</Text>
-                            </View>
-                            <View style={styles.optionsGroupSmall}>
-                                <TouchableOpacity
-                                    style={[styles.smallOptionBtn, landingPage === 'today' && styles.optionButtonActive]}
-                                    onPress={() => updateSetting('landingPage', 'today')}
-                                >
-                                    <Text style={[styles.optionText, landingPage === 'today' && styles.optionTextActive]}>Today</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.smallOptionBtn, landingPage === 'planner' && styles.optionButtonActive]}
-                                    onPress={() => updateSetting('landingPage', 'planner')}
-                                >
-                                    <Text style={[styles.optionText, landingPage === 'planner' && styles.optionTextActive]}>Planner</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
                         <View style={styles.divider} />
-
-                        <View style={[styles.settingRow, styles.groupItem]}>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.cardTitle}>Semester End Date</Text>
-                                <Text style={styles.cardDescription}>Powers exact attendance predictions</Text>
-                            </View>
-                            <PlatformDatePicker 
-                                date={semesterEndDate ? new Date(semesterEndDate) : null}
-                                minimumDate={new Date()}
-                                onDateChange={(date) => {
-                                    updateSetting('semesterEndDate', date ? date.toISOString() : null);
-                                }}
-                            />
-                        </View>
-                    </View>
-                </View>
-
-
-
-                {/* Appearance Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>APPEARANCE</Text>
-                    <View style={styles.card}>
-                        <View style={styles.settingRow}>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.cardTitle}>Theme</Text>
-                                <Text style={styles.cardDescription}>Experimental pastel dark mode</Text>
-                            </View>
-                            <View style={styles.optionsGroupSmall}>
-                                <TouchableOpacity
-                                    style={[styles.smallOptionBtn, theme === 'light' && styles.optionButtonActive]}
-                                    onPress={() => updateSetting('theme', 'light')}
-                                >
-                                    <Text style={[styles.optionText, theme === 'light' && styles.optionTextActive]}>Light</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.smallOptionBtn, theme === 'dark' && styles.optionButtonActive]}
-                                    onPress={() => updateSetting('theme', 'dark')}
-                                >
-                                    <Text style={[styles.optionText, theme === 'dark' && styles.optionTextActive]}>Dark</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Notifications Section (Android Only) */}
-                {Platform.OS === 'android' && (
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>NOTIFICATIONS</Text>
-
-                        <View style={styles.cardGroup}>
-                            <View style={[styles.settingRow, styles.groupItem]}>
-                                <View style={styles.settingInfo}>
-                                    <Text style={styles.settingLabel}>Daily Reminder</Text>
-                                    <Text style={styles.settingDescription}>
-                                        Get reminded to mark attendance
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={notificationEnabled}
-                                    onValueChange={(value) => updateSetting('notificationEnabled', value)}
-                                    trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-                                    thumbColor={notificationEnabled ? COLORS.primary : COLORS.textMuted}
-                                />
-                            </View>
-
-                            {notificationEnabled && (
-                                <>
-                                    <View style={styles.divider} />
-                                    <TouchableOpacity style={styles.timePickerRow}>
-                                        <Text style={styles.timePickerLabel}>Remind me at</Text>
-                                        <View style={styles.timeBadge}>
-                                            <Text style={styles.timeText}>{formatTime(state.settings?.notificationTime || '18:00')}</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                </>
-                            )}
-
-                            <View style={styles.divider} />
-
-                            <View style={[styles.settingRow, styles.groupItem]}>
-                                <View style={styles.settingInfo}>
-                                    <Text style={styles.settingLabel}>Smart Alerts</Text>
-                                    <Text style={styles.settingDescription}>
-                                        Warn when subjects drop below threshold
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={smartAlertsEnabled}
-                                    onValueChange={(value) => updateSetting('smartAlertsEnabled', value)}
-                                    trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-                                    thumbColor={smartAlertsEnabled ? COLORS.primary : COLORS.textMuted}
-                                />
-                            </View>
-
-                            <View style={styles.divider} />
-
-                            <View style={[styles.settingRow, styles.groupItem]}>
-                                <View style={styles.settingInfo}>
-                                    <Text style={styles.settingLabel}>Weekly Summary</Text>
-                                    <Text style={styles.settingDescription}>
-                                        Get insights every Sunday
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={weeklySummaryEnabled}
-                                    onValueChange={(value) => updateSetting('weeklySummaryEnabled', value)}
-                                    trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-                                    thumbColor={weeklySummaryEnabled ? COLORS.primary : COLORS.textMuted}
-                                />
-                            </View>
-                        </View>
-                    </View>
-                )}
-
-                {/* Portal Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>PORTAL</Text>
-
-                    <View style={styles.cardGroup}>
-                        <View style={[styles.settingRow, styles.groupItem]}>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.cardTitle}>
-                                    Status: {state.settings?.erpConnected ? 'Connected ✅' : 'Disconnected ❌'}
-                                </Text>
-                                <Text style={styles.cardDescription}>
-                                    Portal updated: {state.settings?.lastErpSync ? new Date(state.settings.lastErpSync).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }) : 'Never'}
-                                </Text>
-                            </View>
-                            <TouchableOpacity 
-                                style={[styles.syncButton, isErpSyncing && styles.syncingButton]}
-                                onPress={() => triggerErpSync(true)}
-                                disabled={isErpSyncing}
-                            >
-                                <Text style={styles.syncButtonText}>
-                                    {isErpSyncing ? 'Syncing...' : 'Sync Now'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {state.settings?.erpConnected && (
-                            <>
-                                <View style={styles.divider} />
-                                <TouchableOpacity
-                                    style={[styles.groupItem, { paddingVertical: SPACING.sm }]}
-                                    onPress={() => {
-                                        showAlert(
-                                            'Refresh Calendar',
-                                            'This will clear portal subject links, re-match your subjects, and pull the full attendance calendar again. Use this if your calendar shows no data.',
-                                            [
-                                                { text: 'Cancel', style: 'cancel' },
-                                                {
-                                                    text: 'Re-sync',
-                                                    onPress: () => {
-                                                        // Clear erpSubjectId stamps so matcher runs fresh
-                                                        const cleared = state.subjects.map(s => ({ ...s, erpSubjectId: null }));
-                                                        dispatch({ type: 'SET_SUBJECTS', payload: cleared });
-                                                        // Force sync after a tick so state settles
-                                                        setTimeout(() => triggerErpSync(true), 300);
-                                                    }
-                                                }
-                                            ]
-                                        );
-                                    }}
-                                    disabled={isErpSyncing}
-                                >
-                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Refresh Calendar from Portal</Text>
-                                    <Text style={styles.chevron}>›</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
-                    </View>
-                </View>
-
-                {/* Timetable & Subjects Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>TIMETABLE & SUBJECTS</Text>
-                    <View style={styles.cardGroup}>
-                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditTimetable')}>
-                            <Text style={styles.linkText}>Edit Timetable</Text>
-                            <Text style={styles.chevron}>›</Text>
-                        </TouchableOpacity>
-                        <View style={styles.divider} />
-                        <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditSubjects')}>
-                            <Text style={styles.linkText}>Manage Subjects</Text>
-                            <Text style={styles.chevron}>›</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-
-
-                {/* Account Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ACCOUNT</Text>
-                    <View style={styles.accountActions}>
                         <TouchableOpacity style={[styles.loginButtonCard]} onPress={() => {
                             showAlert(
                                 'Switch Account',
@@ -467,6 +391,7 @@ const SettingsScreen = ({ navigation }) => {
                                 <Text style={styles.loginButtonCardDesc}>Switch to another account or sync from a different device</Text>
                             </View>
                         </TouchableOpacity>
+                        <View style={styles.divider} />
                         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                             <View style={styles.accountButtonContent}>
                                 <View style={styles.accountButtonTextContainer}>
@@ -475,7 +400,7 @@ const SettingsScreen = ({ navigation }) => {
                                 </View>
                             </View>
                         </TouchableOpacity>
-                        
+                        <View style={styles.divider} />
                         <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
                             <View style={styles.accountButtonContent}>
                                 <View style={styles.accountButtonTextContainer}>
@@ -588,11 +513,11 @@ const SettingsScreen = ({ navigation }) => {
 const getStyles = () => StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
     scrollView: { flex: 1 },
-    scrollContent: { paddingTop: SPACING.lg },
-    header: { paddingHorizontal: SPACING.lg, marginBottom: SPACING.lg },
+    scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xxl },
+    header: { paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.cardGap },
     headerTitle: { fontSize: FONT_SIZES.xl, fontWeight: '700', color: COLORS.textPrimary },
-    section: { marginBottom: SPACING.xl },
-    sectionTitle: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 0.5, paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
+    section: { marginBottom: SPACING.lg },
+    sectionTitle: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 0.5, paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm },
     card: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, ...SHADOWS.small },
     cardGroup: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.lg, overflow: 'hidden', ...SHADOWS.small },
     groupItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md },
@@ -773,20 +698,13 @@ const getStyles = () => StyleSheet.create({
     chevron: { fontSize: 20, color: COLORS.textMuted },
     dangerCard: { backgroundColor: COLORS.dangerLight, alignItems: 'center', paddingVertical: SPACING.md },
     dangerText: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.danger },
-    accountActions: { gap: SPACING.md, marginHorizontal: SPACING.lg },
     logoutButton: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1.5,
-        borderColor: COLORS.warning,
-        ...SHADOWS.small,
+        borderRadius: 0,
     },
     deleteButton: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1.5,
-        borderColor: COLORS.danger,
-        ...SHADOWS.small,
+        borderRadius: 0,
     },
     accountButtonContent: {
         flexDirection: 'row',
@@ -839,11 +757,8 @@ const getStyles = () => StyleSheet.create({
     // Login with Different Code card styles
     loginButtonCard: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1.5,
-        borderColor: COLORS.primary,
+        borderRadius: 0,
         padding: SPACING.md,
-        ...SHADOWS.small,
     },
     loginButtonCardTitle: {
         fontSize: FONT_SIZES.md,

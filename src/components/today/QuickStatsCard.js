@@ -23,7 +23,7 @@ const QuickStatsCard = ({ classCount, overallPercentage, portalStatus }) => {
                 <View style={styles.divider} />
 
                 <View style={[styles.statItem, styles.portalItem]}>
-                    <Text style={styles.portalStatus} numberOfLines={2}>{portalStatus}</Text>
+                    <Text style={styles.portalStatus} numberOfLines={1} adjustsFontSizeToFit>{portalStatus}</Text>
                 </View>
             </View>
         </View>
@@ -68,10 +68,11 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'flex-start',
     },
     portalStatus: {
-        fontSize: 11,
+        fontSize: 12,
         lineHeight: 15,
         color: COLORS.textSecondary,
-        fontWeight: '600',
+        fontWeight: '700',
+        width: '100%',
     },
 });
 

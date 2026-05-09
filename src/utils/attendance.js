@@ -9,11 +9,23 @@ export function calculatePercentage(attended, total) {
     return Math.round((attended / total) * 100 * 10) / 10;
 }
 
+function maxDateKey(a, b) {
+    if (!a) return b || null;
+    if (!b) return a;
+    return a > b ? a : b;
+}
+
+export function getErpCoverageDateForSubject(subjectId, state) {
+    const subjectSyncDate = state.settings?.lastSubjectSyncDates?.[subjectId] || null;
+    const globalSyncDate = state.latestErpDate || state.settings?.latestErpDate || null;
+    return maxDateKey(subjectSyncDate, globalSyncDate);
+}
+
 export function shouldCountLocalRecord(dateKey, subjectId, record, state) {
     if (!record || record.source === 'erp') return false;
 
-    const lastSubjectSyncDate = state.settings?.lastSubjectSyncDates?.[subjectId];
-    if (lastSubjectSyncDate && dateKey <= lastSubjectSyncDate) {
+    const coverageDate = getErpCoverageDateForSubject(subjectId, state);
+    if (coverageDate && dateKey <= coverageDate) {
         return false;
     }
 

@@ -575,8 +575,9 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.background,
     },
     scrollContent: {
-        paddingTop: 60,
-        paddingHorizontal: SPACING.lg,
+        paddingTop: SPACING.md,
+        paddingHorizontal: SPACING.screenPadding,
+        paddingBottom: SPACING.xxl,
     },
 
     // Step indicator

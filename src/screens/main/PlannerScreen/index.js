@@ -137,15 +137,15 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.sm,
+        paddingTop: SPACING.md,
+        paddingBottom: SPACING.xxl,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: SPACING.lg,
-        paddingTop: SPACING.xs,
-        marginBottom: SPACING.md,
+        marginBottom: SPACING.cardGap,
     },
     headerLeft: {
         flex: 1,

@@ -414,7 +414,7 @@ export default function InsightsScreen() {
 
 const getStyles = () => StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xl },
+    scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xxl },
 
     // Tab bar
     tabBar: {
@@ -449,7 +449,7 @@ const getStyles = () => StyleSheet.create({
     // Sections
     section: {
         marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.lg,
+        marginBottom: SPACING.cardGap,
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
@@ -521,7 +521,7 @@ const getStyles = () => StyleSheet.create({
     // ── End Game styles ──────────────────────────────────────────────
 
     // Verdict card
-    verdictCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.lg, borderWidth: 1, borderColor: COLORS.borderSubtle, borderLeftWidth: 4, ...SHADOWS.small },
+    verdictCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.cardGap, borderWidth: 1, borderColor: COLORS.borderSubtle, borderLeftWidth: 4, ...SHADOWS.small },
     verdictLabel: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: SPACING.xs },
     verdictText: { fontSize: FONT_SIZES.lg, fontWeight: '800', marginBottom: SPACING.md },
     verdictStats: { flexDirection: 'row', alignItems: 'center' },
@@ -543,7 +543,7 @@ const getStyles = () => StyleSheet.create({
     egSectionLabel: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm },
 
     // Subject cards
-    subjectCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.sm, borderWidth: 1, borderColor: COLORS.borderSubtle, borderLeftWidth: 4, ...SHADOWS.small },
+    subjectCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.cardGap, borderWidth: 1, borderColor: COLORS.borderSubtle, borderLeftWidth: 4, ...SHADOWS.small },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
     cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
     colorDot: { width: 8, height: 8, borderRadius: 4 },
