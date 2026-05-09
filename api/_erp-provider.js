@@ -134,13 +134,6 @@ async function fetchSummaryLegacy(session) {
 }
 
 async function fetchRegisterLegacy(session) {
-    const _regDiag = { steps: [] };
-
-    function logStep(name, data) {
-        _regDiag.steps.push({ name, ...data });
-        console.log(`[CAL-REG] ${name}:`, JSON.stringify(data));
-    }
-
     // Helper: check if HTML contains the register table structure
     function isRegisterTable(html) {
         return html && /id=['"]subject_\d+['"]/.test(html) && html.includes('<thead');
@@ -150,57 +143,48 @@ async function fetchRegisterLegacy(session) {
     function extractAllCookies(resp) {
         const cookies = [];
         try {
-            // Method 1: getSetCookie (Node 18.14+)
             if (typeof resp.headers.getSetCookie === 'function') {
-                const sc = resp.headers.getSetCookie();
-                if (sc && sc.length > 0) {
-                    for (const c of sc) {
-                        const name = c.split(';')[0];
-                        if (name) cookies.push(name);
-                    }
+                for (const c of resp.headers.getSetCookie()) {
+                    const name = c.split(';')[0];
+                    if (name) cookies.push(name);
                 }
             }
         } catch (e) { /* ignore */ }
-
         try {
-            // Method 2: raw() for node-fetch
             if (typeof resp.headers.raw === 'function') {
-                const raw = resp.headers.raw();
-                const setCookies = raw['set-cookie'] || [];
-                for (const c of setCookies) {
+                for (const c of (resp.headers.raw()['set-cookie'] || [])) {
                     const name = c.split(';')[0];
                     if (name && !cookies.includes(name)) cookies.push(name);
                 }
             }
         } catch (e) { /* ignore */ }
-
         try {
-            // Method 3: get('set-cookie') may return comma-joined or single
             const single = resp.headers.get('set-cookie');
             if (single) {
-                // Some implementations join multiple Set-Cookie headers with comma
-                const parts = single.split(/,(?=[^;]*=)/);
-                for (const c of parts) {
+                for (const c of single.split(/,(?=[^;]*=)/)) {
                     const name = c.trim().split(';')[0];
                     if (name && !cookies.includes(name)) cookies.push(name);
                 }
             }
         } catch (e) { /* ignore */ }
-
         return cookies.join('; ');
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    // STEP 1: WARMUP — Hit /mobile/showAttendance to establish server session
-    // This is REQUIRED before hitting chalkpadpro. The competitor does this
-    // via x-warmup-url/x-warmup-body headers in their proxy.
-    // ══════════════════════════════════════════════════════════════════
+    const registerBody = {
+        studentId: session.studentId,
+        sessionId: session.sessionId,
+        userId: session.userId,
+        apiKey: session.apiKey,
+        roleId: session.roleId,
+    };
+
+    // Step 1: Warmup — establishes server session needed for chalkpadpro
     let allCookies = '';
     try {
         const warmupResp = await fetch(`${ERP_BASE}/mobile/showAttendance`, {
             method: 'POST',
             headers: LEGACY_HEADERS,
-            redirect: 'manual', // Don't follow redirects, capture cookies
+            redirect: 'manual',
             body: encodeForm({
                 prevNext: '0',
                 userId: session.userId,
@@ -211,170 +195,72 @@ async function fetchRegisterLegacy(session) {
             }),
         });
         allCookies = extractAllCookies(warmupResp);
-        const warmupText = await warmupResp.text();
-        logStep('warmup', {
-            status: warmupResp.status,
-            ok: warmupResp.ok,
-            cookieCount: allCookies ? allCookies.split(';').length : 0,
-            cookies: allCookies ? allCookies.slice(0, 200) : 'NONE',
-            bodyLen: warmupText.length,
-            preview: warmupText.slice(0, 200),
-        });
-    } catch (err) {
-        logStep('warmup', { error: err.message });
-    }
+        await warmupResp.text(); // drain body
+    } catch (err) { /* warmup failure is non-fatal */ }
 
-    // ══════════════════════════════════════════════════════════════════
-    // STEP 2: HIT THE REGISTER — Exact same call as the competitor
-    // URL: /chalkpadpro/studentDetails/getAttendanceRegister
-    // Body: studentId + sessionId + userId + apiKey + roleId
-    // Cookies from warmup forwarded
-    // ══════════════════════════════════════════════════════════════════
-    const registerBody = {
-        studentId: session.studentId,
-        sessionId: session.sessionId,
-        userId: session.userId,
-        apiKey: session.apiKey,
-        roleId: session.roleId,
-    };
-
-    // Try with warmup cookies
+    // Step 2: Try register with warmup cookies
     try {
-        const regHeaders = {
-            ...LEGACY_HEADERS,
-            ...(allCookies ? { Cookie: allCookies } : {}),
-        };
         const regResp = await fetch(
             `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
             {
                 method: 'POST',
-                headers: regHeaders,
+                headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
                 body: encodeForm(registerBody),
             }
         );
-
-        // Capture any additional cookies from the register response
-        const regCookies = extractAllCookies(regResp);
         const regText = await regResp.text();
-        const isReg = isRegisterTable(regText);
-
-        logStep('register-with-cookies', {
-            status: regResp.status,
-            ok: regResp.ok,
-            htmlLen: regText.length,
-            isRegisterTable: isReg,
-            preview: regText.slice(0, 300) || 'EMPTY',
-            cookiesSent: allCookies ? allCookies.slice(0, 100) : 'NONE',
-            newCookies: regCookies ? regCookies.slice(0, 100) : 'NONE',
-        });
-
-        if (regResp.ok && regText && isReg) {
-            const payload = { content: regText };
-            return { response: regResp, payload, _regDiag, _source: 'chalkpadpro-register' };
+        if (regResp.ok && isRegisterTable(regText)) {
+            return { response: regResp, payload: { content: regText } };
         }
-    } catch (err) {
-        logStep('register-with-cookies', { error: err.message });
-    }
+    } catch (err) { /* try next */ }
 
-    // Try WITHOUT cookies (in case warmup cookies aren't needed)
+    // Step 3: Try register without cookies
     try {
         const regResp2 = await fetch(
             `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
-            {
-                method: 'POST',
-                headers: LEGACY_HEADERS,
-                body: encodeForm(registerBody),
-            }
+            { method: 'POST', headers: LEGACY_HEADERS, body: encodeForm(registerBody) }
         );
         const regText2 = await regResp2.text();
-        const isReg2 = isRegisterTable(regText2);
-
-        logStep('register-no-cookies', {
-            status: regResp2.status,
-            ok: regResp2.ok,
-            htmlLen: regText2.length,
-            isRegisterTable: isReg2,
-            preview: regText2.slice(0, 300) || 'EMPTY',
-        });
-
-        if (regResp2.ok && regText2 && isReg2) {
-            const payload = { content: regText2 };
-            return { response: regResp2, payload, _regDiag, _source: 'chalkpadpro-register-no-cookies' };
+        if (regResp2.ok && isRegisterTable(regText2)) {
+            return { response: regResp2, payload: { content: regText2 } };
         }
-    } catch (err) {
-        logStep('register-no-cookies', { error: err.message });
-    }
+    } catch (err) { /* try next */ }
 
-    // Try studentId ONLY (minimal payload)
+    // Step 4: Try studentId only
     try {
         const regResp3 = await fetch(
             `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
             {
                 method: 'POST',
-                headers: {
-                    ...LEGACY_HEADERS,
-                    ...(allCookies ? { Cookie: allCookies } : {}),
-                },
+                headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
                 body: encodeForm({ studentId: session.studentId }),
             }
         );
         const regText3 = await regResp3.text();
-        const isReg3 = isRegisterTable(regText3);
-
-        logStep('register-studentId-only', {
-            status: regResp3.status,
-            ok: regResp3.ok,
-            htmlLen: regText3.length,
-            isRegisterTable: isReg3,
-            preview: regText3.slice(0, 300) || 'EMPTY',
-        });
-
-        if (regResp3.ok && regText3 && isReg3) {
-            const payload = { content: regText3 };
-            return { response: regResp3, payload, _regDiag, _source: 'chalkpadpro-register-studentOnly' };
+        if (regResp3.ok && isRegisterTable(regText3)) {
+            return { response: regResp3, payload: { content: regText3 } };
         }
-    } catch (err) {
-        logStep('register-studentId-only', { error: err.message });
-    }
+    } catch (err) { /* fall through to summary fallback */ }
 
-    logStep('register-failed', { reason: 'all register attempts failed, falling back to summary cards' });
-
-    // ══════════════════════════════════════════════════════════════════
-    // FALLBACK: commonPageId 28 (summary cards with per-subject totals)
-    // ══════════════════════════════════════════════════════════════════
+    // Fallback: commonPageId 28 (summary cards with per-subject totals)
     try {
-        const cp28 = await postLegacy('/mobile/commonPage', {
+        return await postLegacy('/mobile/commonPage', {
             commonPageId: '28',
             device: 'android',
             userId: session.userId,
             sessionId: session.sessionId,
             roleId: session.roleId,
         });
-        const cp28Html = cp28.payload?.content || '';
-        logStep('commonPage-28-fallback', {
-            status: cp28.response.status,
-            ok: cp28.response.ok,
-            htmlLen: cp28Html.length,
-            hasSubjectCards: cp28Html.includes('tt-box-new'),
-        });
-        cp28._regDiag = _regDiag;
-        cp28._source = 'commonPage-28-summary';
-        return cp28;
-    } catch (err) {
-        logStep('commonPage-28-fallback', { error: err.message });
-    }
+    } catch (err) { /* ultimate fallback */ }
 
-    // Ultimate fallback
-    const fallback = await postLegacy('/mobile/commonPage', {
+    // Ultimate fallback: commonPageId 85
+    return postLegacy('/mobile/commonPage', {
         commonPageId: '85',
         device: 'android',
         userId: session.userId,
         sessionId: session.sessionId,
         roleId: session.roleId,
     });
-    fallback._regDiag = _regDiag;
-    fallback._source = 'commonPage-85-timetable';
-    return fallback;
 }
 
 module.exports = {
