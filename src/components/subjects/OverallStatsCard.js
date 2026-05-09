@@ -44,7 +44,7 @@ const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
                     activeOpacity={onBannerPress ? 0.7 : 1}
                 >
                     <Text style={styles.stalenessText}>
-                        Projected from recent marks. ERP is {staleness.maxGapDays} day{staleness.maxGapDays !== 1 ? 's' : ''} behind for {staleness.staleCount} subject{staleness.staleCount !== 1 ? 's' : ''}.
+                        Waiting for portal. Temporary marks are covering {staleness.staleCount} subject{staleness.staleCount !== 1 ? 's' : ''}.
                     </Text>
                     {onBannerPress && (
                         <Text style={styles.stalenessAction}>View math</Text>

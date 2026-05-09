@@ -506,7 +506,7 @@ function appReducer(state, action) {
                 }
             }
 
-            // Garbage Collection: Delete old invalid predictions (Cancelled/skipped classes)
+            // Garbage Collection: delete local bridge records once ERP has caught up.
             const newLastSyncDates = {
                 ...(state.settings?.lastSubjectSyncDates || {}),
                 ...lastSubjectSyncDates
@@ -517,11 +517,10 @@ function appReducer(state, action) {
                 const newDayData = { ...dayData };
                 
                 for (const [subjectId, record] of Object.entries(newDayData)) {
-                    if (record.source === 'prediction') {
+                    if (record.source === 'prediction' || record.source === 'manual') {
                         const syncDateForSubject = newLastSyncDates[subjectId];
-                        // If the prediction date is older than or equal to the last sync date,
-                        // and it wasn't overwritten by ERP above, it means the class was cancelled/skipped.
-                        // We must delete it.
+                        // If ERP now covers this date and did not overwrite the local record,
+                        // the local bridge is no longer authoritative.
                         if (syncDateForSubject && dateKey <= syncDateForSubject) {
                             delete newDayData[subjectId];
                             modified = true;

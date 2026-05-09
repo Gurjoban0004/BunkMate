@@ -8,7 +8,7 @@
  * Dismissed by the user (stored in settings.erpWelcomeCardDismissed).
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY, SHADOWS } from '../../theme/theme';
 import { getSubjectAttendance } from '../../utils/attendance';
@@ -59,10 +59,18 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
         };
     }, [state.subjects, state.attendanceRecords, state.settings?.dangerThreshold]);
 
+    const shouldShow = !!insights && state.settings?.erpConnected && !state.settings?.erpWelcomeCardDismissed;
+
+    useEffect(() => {
+        if (!shouldShow) return undefined;
+        const timer = setTimeout(() => {
+            onDismiss?.();
+        }, 8000);
+        return () => clearTimeout(timer);
+    }, [shouldShow, onDismiss]);
+
     // Don't render if not applicable
-    if (!insights) return null;
-    if (!state.settings?.erpConnected) return null;
-    if (state.settings?.erpWelcomeCardDismissed) return null;
+    if (!shouldShow) return null;
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '';

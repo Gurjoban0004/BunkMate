@@ -1,5 +1,6 @@
 import { getSubjectAttendance, calculatePercentage, getClassesForDay, calculateSkips } from './attendance';
 import { getDateKey } from './dateHelpers';
+import { toPlannerDateKey } from './planner/semesterWindow';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -402,7 +403,7 @@ export function getRemainingClassesUntilDate(state, endDateStr) {
 
     let safeGuard = 0;
     while (currentDate <= endDate && safeGuard < 200) {
-        const dateKey = currentDate.toISOString().split('T')[0];
+        const dateKey = toPlannerDateKey(currentDate);
         const isHoliday = holidays.includes(dateKey);
         
         if (!isHoliday) {
@@ -458,7 +459,8 @@ export function findLongWeekends(state, defaultThreshold = 75) {
             for (const subId in subjectUnitsFri) {
                 const stats = getSubjectAttendance(subId, state);
                 const tgt = state.subjects.find(s => s.id === subId)?.target || defaultThreshold;
-                if (!stats || calculateSkips(stats.attendedUnits, stats.totalUnits, tgt) < subjectUnitsFri[subId]) {
+                const skipInfo = stats ? calculateSkips(stats.attendedUnits, stats.totalUnits, tgt) : null;
+                if (!skipInfo || !Number.isFinite(skipInfo.count) || skipInfo.count < subjectUnitsFri[subId]) {
                     safeToSkipAllFri = false;
                     break;
                 }
@@ -481,7 +483,8 @@ export function findLongWeekends(state, defaultThreshold = 75) {
             for (const subId in subjectUnitsMon) {
                 const stats = getSubjectAttendance(subId, state);
                 const tgt = state.subjects.find(s => s.id === subId)?.target || defaultThreshold;
-                if (!stats || calculateSkips(stats.attendedUnits, stats.totalUnits, tgt) < subjectUnitsMon[subId]) {
+                const skipInfo = stats ? calculateSkips(stats.attendedUnits, stats.totalUnits, tgt) : null;
+                if (!skipInfo || !Number.isFinite(skipInfo.count) || skipInfo.count < subjectUnitsMon[subId]) {
                     safeToSkipAllMon = false;
                     break;
                 }

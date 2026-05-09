@@ -12,19 +12,17 @@
  */
 
 import { Platform } from 'react-native';
+import { buildApiUrl, getApiBaseUrl } from './apiConfig';
 
 const API_TIMEOUT = 20000; // 20 seconds
-
-// Web uses relative paths (same domain as Vercel deployment).
-// Native APK must use the absolute production URL.
-const API_BASE = Platform.OS === 'web' ? '' : 'https://presence-gurjobanpanjeta.vercel.app';
 
 async function apiCall(endpoint, body) {
     const controller = new AbortController();
     const timeoutId  = setTimeout(() => controller.abort(), API_TIMEOUT);
+    const requestUrl = buildApiUrl(endpoint, Platform.OS);
 
     try {
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        const response = await fetch(requestUrl, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(body),
@@ -32,10 +30,20 @@ async function apiCall(endpoint, body) {
         });
 
         clearTimeout(timeoutId);
-        const data = await response.json();
+        const responseText = await response.text();
+        let data = {};
+        try {
+            data = responseText ? JSON.parse(responseText) : {};
+        } catch {
+            data = { error: 'NON_JSON_RESPONSE', message: responseText };
+        }
 
         if (!response.ok) {
-            const error    = new Error(data.message || data.error || `HTTP ${response.status}`);
+            const protectedDeployment = response.status === 401 && /vercel|authentication|sso/i.test(responseText);
+            const message = protectedDeployment
+                ? `API host is protected and cannot be reached by the app. Disable Vercel Deployment Protection for ${getApiBaseUrl(Platform.OS)} or set EXPO_PUBLIC_API_BASE_URL to a public API deployment.`
+                : data.message || data.error || `HTTP ${response.status}`;
+            const error    = new Error(message);
             error.status   = response.status;
             error.code     = data.error;
             error.data     = data;
@@ -52,7 +60,7 @@ async function apiCall(endpoint, body) {
         }
         if (err.status) throw err; // already a structured API error
         // True network failure (no response at all)
-        const e = new Error(`Could not connect to ${endpoint}. Please check your internet connection.`);
+        const e = new Error(`Could not connect to ${requestUrl}. Please check your internet connection.`);
         e.code  = 'NETWORK_ERROR';
         e.cause = err.message;
         throw e;

@@ -226,9 +226,9 @@ export default function ERPConnectScreen({ navigation }) {
         <View style={styles.stepContainer}>
             <View style={styles.header}>
                 <Text style={styles.headerEmoji}>🔗</Text>
-                <Text style={styles.headerTitle}>Connect to ERP</Text>
+                <Text style={styles.headerTitle}>Connect Portal</Text>
                 <Text style={styles.headerSub}>
-                    Enter your college ERP credentials to automatically fetch your attendance data.
+                    Enter your college portal credentials to automatically fetch your attendance data.
                 </Text>
             </View>
 
@@ -239,7 +239,7 @@ export default function ERPConnectScreen({ navigation }) {
                         style={styles.input}
                         value={username}
                         onChangeText={(t) => { setUsername(t); setError(''); }}
-                        placeholder="Enter your ERP User ID"
+                        placeholder="Enter your portal User ID"
                         placeholderTextColor={COLORS.textMuted}
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -326,7 +326,7 @@ export default function ERPConnectScreen({ navigation }) {
                     <Text style={styles.headerEmoji}>📊</Text>
                     <Text style={styles.headerTitle}>Attendance Preview</Text>
                     <Text style={styles.headerSub}>
-                        Found {erpSubjects.length} subjects from ERP. Review before importing.
+                        Found {erpSubjects.length} subjects from the portal. Review before importing.
                     </Text>
                 </View>
 
@@ -353,7 +353,7 @@ export default function ERPConnectScreen({ navigation }) {
                                 </Text>
                                 {u.erpName !== u.subjectName && (
                                     <Text style={styles.previewMatch}>
-                                        ERP: {u.erpName}
+                                        Portal name: {u.erpName}
                                     </Text>
                                 )}
                             </View>
@@ -394,7 +394,7 @@ export default function ERPConnectScreen({ navigation }) {
                 <Text style={[styles.headerEmoji, { fontSize: 56 }]}>🎉</Text>
                 <Text style={styles.headerTitle}>All Synced!</Text>
                 <Text style={styles.headerSub}>
-                    Your attendance has been imported from the ERP portal.
+                    Your attendance has been imported from the portal.
                     {studentName ? `\n\nWelcome, ${studentName}!` : ''}
                 </Text>
             </View>

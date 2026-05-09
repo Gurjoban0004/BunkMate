@@ -9,6 +9,17 @@ export function calculatePercentage(attended, total) {
     return Math.round((attended / total) * 100 * 10) / 10;
 }
 
+export function shouldCountLocalRecord(dateKey, subjectId, record, state) {
+    if (!record || record.source === 'erp') return false;
+
+    const lastSubjectSyncDate = state.settings?.lastSubjectSyncDates?.[subjectId];
+    if (lastSubjectSyncDate && dateKey <= lastSubjectSyncDate) {
+        return false;
+    }
+
+    return true;
+}
+
 /**
  * Get full attendance stats for a single subject.
  * Combines initial values with all recorded attendance marks.
@@ -24,9 +35,8 @@ export function getSubjectAttendance(subjectId, state) {
 
     const records = state.attendanceRecords || {};
     const holidays = state.holidays || [];
-    // Option A: Just use `subject.initialAttended` (which is ERP's exact summary numbers) AND add ONLY 'prediction' marks.
-    // This perfectly solves double counting. The ERP calendar data just sits there for UI/History, 
-    // but the summary numbers are the source of truth.
+    // ERP summary totals are the source of truth. ERP calendar data is for
+    // history; local records are temporary bridges until ERP catches up.
     Object.entries(records).forEach(([dateKey, dayRecord]) => {
         // Skip holidays
         if (dayRecord._holiday) return;
@@ -37,11 +47,9 @@ export function getSubjectAttendance(subjectId, state) {
             // Skip cancelled individual classes
             if (record.status === 'cancelled') return;
 
-            // CRITICAL fix to prevent double-counting ERP records.
-            // `subject.initialTotal` already contains the ERP's total count.
-            // We ONLY add units that are local ('prediction' or 'manual' gap-days).
-            // 'erp' sourced daily records are purely for historic calendar UI.
-            if (record.source === 'erp') return;
+            // ERP totals are the baseline. Local records only count while they are
+            // newer than the latest ERP coverage date for this subject.
+            if (!shouldCountLocalRecord(dateKey, subjectId, record, state)) return;
 
             hasPredictions = true;
             recordedTotal += record.units;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, SHADOWS } from '../../theme/theme';
 
 const AddExtraClassButton = ({ onPress }) => {
     const styles = getStyles();
@@ -11,7 +11,6 @@ const AddExtraClassButton = ({ onPress }) => {
             activeOpacity={0.8}
         >
             <Text style={styles.icon}>+</Text>
-            <Text style={styles.text}>Add Extra Class</Text>
         </TouchableOpacity>
     );
 };
@@ -21,24 +20,20 @@ const getStyles = () => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: COLORS.cardBackground,
-        marginHorizontal: SPACING.screenPadding,
+        alignSelf: 'flex-end',
+        backgroundColor: COLORS.primary,
+        marginRight: SPACING.screenPadding,
         marginTop: SPACING.md,
-        paddingVertical: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         ...SHADOWS.small,
-        borderStyle: 'dashed',
     },
     icon: {
-        fontSize: 20,
-        fontWeight: '600',
-        color: COLORS.primary,
-        marginRight: SPACING.sm,
-    },
-    text: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '500',
-        color: COLORS.primary,
+        fontSize: 24,
+        lineHeight: 28,
+        fontWeight: '700',
+        color: COLORS.textOnPrimary,
     },
 });
 

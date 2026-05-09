@@ -2,19 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 
-const QuickStatsCard = ({ classCount, streak, overallPercentage }) => {
+const QuickStatsCard = ({ classCount, overallPercentage, portalStatus }) => {
     const styles = getStyles();
-
-    const streakEmoji = streak > 0 ? '🔥' : '—';
-    const streakDisplay = streak > 0 ? streak : '—';
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Today's Stats</Text>
-
             <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                    <Text style={styles.statEmoji}></Text>
                     <Text style={styles.statValue}>{classCount}</Text>
                     <Text style={styles.statLabel}>classes</Text>
                 </View>
@@ -22,17 +16,14 @@ const QuickStatsCard = ({ classCount, streak, overallPercentage }) => {
                 <View style={styles.divider} />
 
                 <View style={styles.statItem}>
-                    <Text style={styles.statEmoji}>{streakEmoji}</Text>
-                    <Text style={styles.statValue}>{streakDisplay}</Text>
-                    <Text style={styles.statLabel}>streak</Text>
+                    <Text style={styles.statValue}>{overallPercentage}%</Text>
+                    <Text style={styles.statLabel}>overall</Text>
                 </View>
 
                 <View style={styles.divider} />
 
-                <View style={styles.statItem}>
-                    <Text style={styles.statEmoji}>⚡</Text>
-                    <Text style={styles.statValue}>{overallPercentage}%</Text>
-                    <Text style={styles.statLabel}>overall</Text>
+                <View style={[styles.statItem, styles.portalItem]}>
+                    <Text style={styles.portalStatus} numberOfLines={2}>{portalStatus}</Text>
                 </View>
             </View>
         </View>
@@ -43,18 +34,11 @@ const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.cardPadding,
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.md,
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.cardGap,
         ...SHADOWS.small,
-    },
-    title: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
-        marginBottom: SPACING.sm,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
     },
     statsRow: {
         flexDirection: 'row',
@@ -65,12 +49,8 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         flex: 1,
     },
-    statEmoji: {
-        fontSize: 20,
-        marginBottom: 4,
-    },
     statValue: {
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: '700',
         color: COLORS.textPrimary,
     },
@@ -81,8 +61,17 @@ const getStyles = () => StyleSheet.create({
     },
     divider: {
         width: 1,
-        height: 40,
+        height: 28,
         backgroundColor: COLORS.border,
+    },
+    portalItem: {
+        alignItems: 'flex-start',
+    },
+    portalStatus: {
+        fontSize: 11,
+        lineHeight: 15,
+        color: COLORS.textSecondary,
+        fontWeight: '600',
     },
 });
 

@@ -23,9 +23,9 @@ export default function ProjectionTransparencyModal({ visible, onClose, breakdow
                     
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>The Math Behind the Magic ✨</Text>
+                        <Text style={styles.headerTitle}>How this number is calculated</Text>
                         <Text style={styles.headerSubtitle}>
-                            How your projected attendance is calculated while we wait for the university portal to update.
+                            Temporary marks count only until the portal catches up.
                         </Text>
                     </View>
 
@@ -33,10 +33,10 @@ export default function ProjectionTransparencyModal({ visible, onClose, breakdow
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionNumber}>1</Text>
-                            <Text style={styles.sectionTitle}>University Portal (ERP)</Text>
+                            <Text style={styles.sectionTitle}>Confirmed by portal</Text>
                         </View>
                         <View style={styles.dataRow}>
-                            <Text style={styles.dataText}>Base data from last sync</Text>
+                            <Text style={styles.dataText}>Base attendance</Text>
                             <View style={styles.mathBlock}>
                                 <Text style={styles.monospace}>[{String(erp.attended).padStart(2, ' ')} / {String(erp.total).padStart(2, ' ')}]</Text>
                                 <Text style={[styles.monospace, styles.percentageText]}>{erp.percentage.toFixed(1)}%</Text>
@@ -53,10 +53,10 @@ export default function ProjectionTransparencyModal({ visible, onClose, breakdow
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionNumber}>2</Text>
-                            <Text style={styles.sectionTitle}>Local Tracking</Text>
+                            <Text style={styles.sectionTitle}>Temporary marks</Text>
                         </View>
                         <View style={styles.localDataContainer}>
-                            <Text style={styles.localDesc}>Classes since last sync (Autopilot + You):</Text>
+                            <Text style={styles.localDesc}>Classes marked while waiting for portal:</Text>
                             
                             <View style={styles.localMathRow}>
                                 <Text style={[styles.monospace, styles.localValue, { color: COLORS.success }]}>+{local.attended}</Text>
@@ -85,7 +85,7 @@ export default function ProjectionTransparencyModal({ visible, onClose, breakdow
                     {/* Step 3: Result */}
                     <View style={[styles.section, styles.resultSection]}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>True Attendance</Text>
+                            <Text style={styles.sectionTitle}>Current estimate</Text>
                         </View>
                         <View style={styles.resultRow}>
                             <Text style={[styles.monospace, styles.resultMath]}>

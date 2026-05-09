@@ -250,7 +250,7 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
                                     )}
                                     <View style={[styles.sourcePill]}>
                                         <Text style={styles.sourcePillText}>
-                                            {state.attendanceRecords[selectedDay.dateKey]?.[subjectId]?.source === 'erp' ? 'Portal' : 'Manual'}
+                                            {state.attendanceRecords[selectedDay.dateKey]?.[subjectId]?.source === 'erp' ? 'Confirmed by portal' : 'Marked by you'}
                                         </Text>
                                     </View>
                                 </View>

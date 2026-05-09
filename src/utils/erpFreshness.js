@@ -6,7 +6,7 @@
  */
 
 import { getTodayKey, getTodayDayName } from './dateHelpers';
-import { getClassesForDay } from './attendance';
+import { shouldCountLocalRecord } from './attendance';
 
 /**
  * Calculates the freshness states for today's classes
@@ -97,9 +97,9 @@ export function calculateGlobalStaleness(state) {
     // Check if any predictions exist globally
     const records = state.attendanceRecords || {};
     outer:
-    for (const dayData of Object.values(records)) {
-        for (const record of Object.values(dayData)) {
-            if (record?.source === 'prediction') {
+    for (const [dateKey, dayData] of Object.entries(records)) {
+        for (const [subjectId, record] of Object.entries(dayData)) {
+            if (shouldCountLocalRecord(dateKey, subjectId, record, state)) {
                 result.isProjected = true;
                 break outer;
             }
@@ -129,4 +129,3 @@ export function calculateGlobalStaleness(state) {
 
     return result;
 }
-

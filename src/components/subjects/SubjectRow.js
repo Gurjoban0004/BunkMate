@@ -89,7 +89,7 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
                                 styles.sourceBadgeText,
                                 isErpSynced ? styles.sourceBadgeTextErp : styles.sourceBadgeTextManual,
                             ]}>
-                                {isErpSynced ? 'ERP synced' : 'Manual, pending sync'}
+                                {isErpSynced ? 'Confirmed by portal' : 'Marked by you · Waiting for portal'}
                             </Text>
                         </View>
                     </View>

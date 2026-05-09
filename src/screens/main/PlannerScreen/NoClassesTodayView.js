@@ -58,7 +58,7 @@ export default function NoClassesTodayView({ subjects, onSubjectPress }) {
             <View style={styles.hero}>
                 <Text style={styles.heroEmoji}>😎</Text>
                 <Text style={styles.heroText}>No classes today!</Text>
-                <Text style={styles.heroSub}>Here's how you're doing overall</Text>
+                <Text style={styles.heroSub}>Your quick check is below</Text>
             </View>
 
             {/* Overall stats */}
@@ -86,8 +86,8 @@ export default function NoClassesTodayView({ subjects, onSubjectPress }) {
 
             {/* Subject standings */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Subject Standings</Text>
-                {sortedSubjects.map(subject => {
+                <Text style={styles.sectionTitle}>Lowest subjects</Text>
+                {sortedSubjects.slice(0, 3).map(subject => {
                     const status = determineStatus(subject.percentage, subject.target);
                     return (
                         <TouchableOpacity

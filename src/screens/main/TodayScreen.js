@@ -15,16 +15,14 @@ import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
 import { getTodayClasses, getCurrentClassIndex, calculateOverallPercentage } from '../../utils/attendance';
 import { calculateFreshness } from '../../utils/erpFreshness';
-import { calculateOverallStreak } from '../../utils/streak';
 import { getUnmarkedCount } from '../../utils/backlog';
-import { getTodayKey, getTodayDayName, isPastTime } from '../../utils/dateHelpers';
+import { getTodayKey, getTodayDayName } from '../../utils/dateHelpers';
 import { getDayStatus } from '../../utils/planner.js';
-import { calculateBestBunkDay, generateWeeklyReport } from '../../utils/insights';
+import { generateWeeklyReport } from '../../utils/insights';
 import { deriveErpIntelligence } from '../../utils/erpIntelligence';
 
 // Components
 import QuickStatsCard from '../../components/today/QuickStatsCard';
-import StreakBanner from '../../components/today/StreakBanner';
 import SectionHeader from '../../components/today/SectionHeader';
 import ClassCard from '../../components/today/ClassCard';
 import BacklogBanner from '../../components/today/BacklogBanner';
@@ -33,10 +31,8 @@ import HolidayCard from '../../components/today/HolidayCard';
 import AddExtraClassButton from '../../components/today/AddExtraClassButton';
 import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
-import BestBunkDayCard from '../../components/insights/BestBunkDayCard';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
-import WeekInReviewCard from '../../components/today/WeekInReviewCard';
 import SmartInsightsCard from '../../components/today/SmartInsightsCard';
 import {
     DisplayMedium,
@@ -90,7 +86,6 @@ const TodayScreen = ({ navigation }) => {
     const freshnessMap = useMemo(() => calculateFreshness(state, todayClasses), [state, todayClasses]);
 
     // Calculate stats
-    const streak = calculateOverallStreak(state);
     const overallPercentage = calculateOverallPercentage(state);
     const classCount = todayClasses.length;
 
@@ -109,9 +104,6 @@ const TodayScreen = ({ navigation }) => {
     const dangerThreshold = state.settings?.dangerThreshold || 75;
     const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, dangerThreshold), [state, todayDayName, dangerThreshold]);
 
-    // Insights: Best Day to Bunk
-    const bunkData = useMemo(() => calculateBestBunkDay(state), [state.subjects, state.attendanceRecords, state.timetable, state.settings?.dangerThreshold]);
-
     // Insights: Weekly Report
     const weeklyReport = useMemo(() => generateWeeklyReport(state), [state.subjects, state.attendanceRecords, state.holidays, state.devDate]);
     const [showWeeklyReport, setShowWeeklyReport] = useState(true);
@@ -120,12 +112,24 @@ const TodayScreen = ({ navigation }) => {
     const erpIntel = useMemo(() => deriveErpIntelligence(state), [
         state.subjects, state.attendanceRecords, state.holidays, state.settings?.dangerThreshold,
     ]);
+    const urgentInsights = useMemo(
+        () => (erpIntel.smartInsights || []).filter(insight => insight.severity === 'danger'),
+        [erpIntel.smartInsights]
+    );
 
-    // Weekend detection (Sat = 6, Sun = 0)
-    const isWeekend = useMemo(() => {
-        const day = today.getDay();
-        return day === 0 || day === 6;
-    }, [today]);
+    const showWeeklyReportToday = showWeeklyReport && (today.getDay() === 0 || today.getDay() === 1);
+
+    const portalStatus = useMemo(() => {
+        if (!state.settings?.erpConnected) return 'Set up manually';
+        if (isErpSyncing) return 'Updating portal';
+        const syncDates = Object.values(state.settings?.lastSubjectSyncDates || {}).filter(Boolean).sort();
+        const latest = state.latestErpDate || syncDates[syncDates.length - 1];
+        if (!latest) return 'Waiting for portal';
+        if (latest >= todayKey) return 'Portal up to date';
+        const d = new Date(latest + 'T12:00:00');
+        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `Portal updated till ${label}`;
+    }, [state.settings?.erpConnected, state.settings?.lastSubjectSyncDates, state.latestErpDate, isErpSyncing, todayKey]);
 
     // Pull to refresh — also triggers ERP sync if connected
     const onRefresh = useCallback(() => {
@@ -136,9 +140,9 @@ const TodayScreen = ({ navigation }) => {
         setTimeout(() => setRefreshing(false), 800);
     }, [state.settings?.erpConnected, triggerErpSync]);
 
-    const handleDismissWelcomeCard = () => {
+    const handleDismissWelcomeCard = useCallback(() => {
         dispatch({ type: 'UPDATE_SETTINGS', payload: { erpWelcomeCardDismissed: true } });
-    };
+    }, [dispatch]);
 
     // Handlers
     const handleMarkAttendance = (subjectId, status, units) => {
@@ -306,34 +310,20 @@ const TodayScreen = ({ navigation }) => {
                 {/* Quick Stats */}
                 <QuickStatsCard
                     classCount={classCount}
-                    streak={streak}
                     overallPercentage={overallPercentage}
+                    portalStatus={portalStatus}
                 />
 
-                {/* Streak Banner */}
-                <StreakBanner streak={streak} />
-
-                {/* ── Weekend: Week in Review + Monday preview ── */}
-                {isWeekend && (
-                    <WeekInReviewCard
-                        state={state}
-                        onViewInsights={() => navigation.navigate('Insights')}
-                    />
-                )}
-
-                {/* ── Smart Insights highlights (all days) ── */}
-                {erpIntel.hasData && erpIntel.smartInsights.length > 0 && (
+                {/* ── Urgent insight only ── */}
+                {erpIntel.hasData && urgentInsights.length > 0 && (
                     <SmartInsightsCard
-                        insights={erpIntel.smartInsights}
+                        insights={urgentInsights}
                         onViewAll={() => navigation.navigate('Insights')}
                     />
                 )}
 
-                {/* Best Day to Bunk */}
-                <BestBunkDayCard bunkData={bunkData} />
-
                 {/* Weekly Report */}
-                {showWeeklyReport && (
+                {showWeeklyReportToday && (
                     <WeeklyReportCard
                         report={weeklyReport}
                         onDismiss={() => setShowWeeklyReport(false)}

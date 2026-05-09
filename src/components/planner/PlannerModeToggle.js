@@ -39,7 +39,7 @@ export default function PlannerModeToggle({ activeMode, onModeChange }) {
                 activeOpacity={0.7}
             >
                 <Text style={[styles.tabText, activeMode === 'skip' && styles.activeTabText]}>
-                    Skip?
+                    Can I miss?
                 </Text>
             </TouchableOpacity>
 
@@ -49,7 +49,7 @@ export default function PlannerModeToggle({ activeMode, onModeChange }) {
                 activeOpacity={0.7}
             >
                 <Text style={[styles.tabText, activeMode === 'fix' && styles.activeTabText]}>
-                    Fix
+                    Recover
                 </Text>
             </TouchableOpacity>
         </View>

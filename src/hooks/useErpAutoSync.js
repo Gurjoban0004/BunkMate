@@ -12,7 +12,6 @@
  *   - Partial data: overwrite ONLY subjects present in ERP response
  *   - Per-subject validation before applying
  *   - Change detection: skip subjects with identical data
- *   - Manual grace window: skip subjects manually updated < 2 min ago
  *   - Subject identity: subjectCode (preferred) → normalized name (fallback)
  *
  * ── Timing ───────────────────────────────────────────────────────────
@@ -42,7 +41,6 @@ const MIN_SYNC_INTERVAL_MS       = 60 * 1000;   // 60s debounce (successful sync
 const FOREGROUND_THROTTLE_MS     = 10 * 1000;   // 10s min gap between foreground syncs
 const PERIODIC_INTERVAL_MS       = 3  * 60 * 1000;  // 3 min periodic
 const KEEPALIVE_INTERVAL_MS      = 12 * 60 * 1000;  // 12 min keep-alive
-const MANUAL_GRACE_MS            = 2  * 60 * 1000;  // 2 min grace for manual entries
 
 export function useErpAutoSync(state, dispatch) {
     // ── Refs ─────────────────────────────────────────────────────
@@ -183,22 +181,12 @@ export function useErpAutoSync(state, dispatch) {
                 logger.info('➕', `Added ${mapping.newSubjects.length} new ERP subjects`);
             }
 
-            // Change detection + manual grace window
+            // Change detection
             const changedIds = [];
             if (mapping.matchedUpdates.length > 0) {
-                const nowMs = Date.now();
                 const filteredUpdates = mapping.matchedUpdates.filter(update => {
                     const existing = currentState.subjects.find(s => s.id === update.subjectId);
                     if (!existing) return true;
-
-                    // Skip subjects manually updated within the grace window
-                    if (existing.source === 'manual' && existing.lastUpdated) {
-                        const age = nowMs - new Date(existing.lastUpdated).getTime();
-                        if (age < MANUAL_GRACE_MS) {
-                            logger.info('🛡️', `Grace window: skipping ${existing.name} (${Math.round(age / 1000)}s old)`);
-                            return false;
-                        }
-                    }
 
                     // Skip if data is identical
                     if (

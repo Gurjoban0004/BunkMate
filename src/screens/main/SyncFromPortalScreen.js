@@ -142,7 +142,7 @@ export default function SyncFromPortalScreen({ navigation }) {
                         </Text>
                     </View>
 
-                    {/* Stale data warning */}
+                    {/* Portal delay warning */}
                     {isStale && (
                         <TouchableOpacity
                             style={styles.staleBanner}
@@ -150,7 +150,7 @@ export default function SyncFromPortalScreen({ navigation }) {
                             activeOpacity={0.8}
                         >
                             <Text style={styles.staleBannerText}>
-                                ⚠️ Data may be outdated — last synced {lastSyncLabel}. Tap to refresh.
+                                Portal may not be updated yet — last checked {lastSyncLabel}. Tap to refresh.
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -164,7 +164,7 @@ export default function SyncFromPortalScreen({ navigation }) {
                         </View>
                     )}
 
-                    {/* Auto-Sync from ERP Card */}
+                    {/* Auto-sync from portal card */}
                     <TouchableOpacity
                         style={styles.erpCard}
                         onPress={() => navigation.navigate('ERPConnect')}
@@ -173,7 +173,7 @@ export default function SyncFromPortalScreen({ navigation }) {
                         <View style={styles.erpCardContent}>
                             <Text style={styles.erpCardEmoji}>⚡</Text>
                             <View style={styles.erpCardText}>
-                                <Text style={styles.erpCardTitle}>Auto-Sync from ERP</Text>
+                                <Text style={styles.erpCardTitle}>Connect Portal</Text>
                                 <Text style={styles.erpCardSub}>
                                     Connect your college portal to fetch attendance automatically
                                 </Text>
@@ -184,7 +184,7 @@ export default function SyncFromPortalScreen({ navigation }) {
 
                     <View style={styles.orDivider}>
                         <View style={styles.orLine} />
-                        <Text style={styles.orText}>OR ENTER MANUALLY</Text>
+                        <Text style={styles.orText}>OR MARK BY YOURSELF</Text>
                         <View style={styles.orLine} />
                     </View>
 

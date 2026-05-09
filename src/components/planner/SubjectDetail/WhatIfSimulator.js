@@ -4,6 +4,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../th
 import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses } from '../../../utils/planner/attendanceCalculations';
 import { generateRecoveryPaths } from '../../../utils/planner/recoveryPlanner';
 import { useApp } from '../../../context/AppContext';
+import { getPlannerEndDate, getUpcomingSubjectClasses } from '../../../utils/planner/semesterWindow';
 
 /**
  * Interactive What-If Simulator with Skip/Attend stepper and dynamic predictions.
@@ -24,53 +25,25 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     const { state } = useApp();
     const [selectedDates, setSelectedDates] = useState({});
 
-    // Compute active steps combining manual slider and selected calendar dates
-    const selectedCount = Object.values(selectedDates).filter(Boolean).length;
-    
-    // Total offset is manual offset + selected calendar offsets
-    let finalOffset = simulationOffset;
-    if (mode === 'skip') {
-        finalOffset = simulationOffset - selectedCount;
-    } else {
-        finalOffset = simulationOffset + selectedCount;
-    }
-
-    const activeSteps = Math.abs(finalOffset);
-    const offset = finalOffset;
-
     // Find upcoming dates for this subject
     const upcomingDates = React.useMemo(() => {
-        const dates = [];
-        let d = new Date();
-        d.setHours(0,0,0,0);
-        d.setDate(d.getDate() + 1); // Start from tomorrow
-        
-        let count = 0;
-        let safeGuard = 0;
-        
-        while (count < 14 && safeGuard < 100) {
-            const dateStr = d.toISOString().split('T')[0];
-            const isHoliday = state.holidays?.includes(dateStr);
-            if (!isHoliday) {
-                const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
-                const classes = state.timetable[dayName] || [];
-                const subjectClasses = classes.filter(c => c.subjectId === subjectData.id);
-                if (subjectClasses.length > 0) {
-                    dates.push({
-                        date: new Date(d),
-                        units: subjectClasses.reduce((sum, c) => sum + (c.units || 1), 0)
-                    });
-                    count++;
-                }
-            }
-            d.setDate(d.getDate() + 1);
-            safeGuard++;
-        }
-        return dates;
-    }, [state.timetable, state.holidays, subjectData.id]);
+        return getUpcomingSubjectClasses(state, subjectData.id, { maxClasses: 14 });
+    }, [state, subjectData.id]);
+
+    const hasSemesterEndDate = !!getPlannerEndDate(state);
+    const futureClassUnits = upcomingDates.reduce((sum, item) => sum + (item.units || 1), 0);
+    const maxSimulatorSteps = hasSemesterEndDate ? futureClassUnits : 20;
+
+    // Compute active steps combining manual stepper and selected calendar classes.
+    const selectedUnits = upcomingDates.reduce((sum, item) => {
+        return selectedDates[item.classKey] ? sum + (item.units || 1) : sum;
+    }, 0);
+    const manualSteps = Math.abs(simulationOffset);
+    const activeSteps = Math.min(maxSimulatorSteps, manualSteps + selectedUnits);
+    const offset = mode === 'skip' ? -activeSteps : activeSteps;
 
     const toggleDate = (dateObj) => {
-        const key = dateObj.date.toISOString().split('T')[0];
+        const key = dateObj.classKey;
         setSelectedDates(prev => ({
             ...prev,
             [key]: !prev[key]
@@ -83,7 +56,8 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     const delta = (simulated.percentage - currentPercentage).toFixed(1);
 
     const handleStep = (val) => {
-        const newActive = Math.max(0, Math.min(20, activeSteps + val));
+        const maxManualSteps = Math.max(0, maxSimulatorSteps - selectedUnits);
+        const newActive = Math.max(0, Math.min(maxManualSteps, manualSteps + val));
         if (setSimulationOffset) {
             setSimulationOffset(mode === 'skip' ? -newActive : newActive);
         }
@@ -205,9 +179,10 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
 
             <View style={styles.stepperWrapper}>
                 <TouchableOpacity
-                    style={styles.stepperBtn}
+                    style={[styles.stepperBtn, manualSteps <= 0 && styles.stepperBtnDisabled]}
                     onPress={() => handleStep(-1)}
                     activeOpacity={0.7}
+                    disabled={manualSteps <= 0}
                 >
                     <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>-</Text>
                 </TouchableOpacity>
@@ -218,9 +193,10 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 </View>
 
                 <TouchableOpacity
-                    style={styles.stepperBtn}
+                    style={[styles.stepperBtn, activeSteps >= maxSimulatorSteps && styles.stepperBtnDisabled]}
                     onPress={() => handleStep(1)}
                     activeOpacity={0.7}
+                    disabled={activeSteps >= maxSimulatorSteps}
                 >
                     <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>+</Text>
                 </TouchableOpacity>
@@ -239,7 +215,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 <Text style={styles.sandboxTitle}>OR SELECT SPECIFIC CLASSES</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sandboxScroll}>
                     {upcomingDates.map((item, index) => {
-                        const key = item.date.toISOString().split('T')[0];
+                        const key = item.classKey;
                         const isSelected = !!selectedDates[key];
                         return (
                             <TouchableOpacity 
@@ -267,6 +243,9 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                         );
                     })}
                 </ScrollView>
+                {hasSemesterEndDate && upcomingDates.length === 0 && (
+                    <Text style={styles.sandboxEmptyText}>No more classes before semester end.</Text>
+                )}
             </View>
 
             <View style={styles.progressContainer}>
@@ -385,6 +364,9 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         ...SHADOWS.medium,
     },
+    stepperBtnDisabled: {
+        opacity: 0.4,
+    },
     stepperActionText: {
         fontSize: 36,
         fontWeight: 'bold',
@@ -477,6 +459,13 @@ const getStyles = () => StyleSheet.create({
         letterSpacing: 0,
         marginBottom: SPACING.sm,
         textAlign: 'center',
+    },
+    sandboxEmptyText: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textMuted,
+        fontWeight: '600',
+        textAlign: 'center',
+        paddingVertical: SPACING.sm,
     },
     sandboxScroll: {
         gap: SPACING.md,

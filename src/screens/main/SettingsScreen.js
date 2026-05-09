@@ -176,13 +176,13 @@ const SettingsScreen = ({ navigation }) => {
 
                 {/* Attendance Thresholds Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ATTENDANCE THRESHOLDS</Text>
+                    <Text style={styles.sectionTitle}>ATTENDANCE GOALS</Text>
                     
                     {/* Default Threshold Card */}
                     <View style={styles.card}>
                         <View style={styles.settingRow}>
                             <View style={styles.settingInfo}>
-                                <Text style={styles.cardTitle}>Default Threshold</Text>
+                                <Text style={styles.cardTitle}>Default Goal</Text>
                                 <Text style={styles.cardDescription}>Applied to all subjects unless customized</Text>
                             </View>
                             <TouchableOpacity 
@@ -196,7 +196,7 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
 
                     {/* Custom Thresholds Section */}
-                    <Text style={[styles.sectionTitle, { marginTop: SPACING.lg }]}>CUSTOM THRESHOLDS</Text>
+                    <Text style={[styles.sectionTitle, { marginTop: SPACING.lg }]}>SUBJECT GOALS</Text>
                     <View style={styles.cardGroup}>
                         {state.subjects.map((subject, index) => {
                             const currentTarget = subject.target || dangerThreshold;
@@ -367,9 +367,9 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 )}
 
-                {/* ERP Portal Section */}
+                {/* Portal Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>ERP PORTAL</Text>
+                    <Text style={styles.sectionTitle}>PORTAL</Text>
 
                     <View style={styles.cardGroup}>
                         <View style={[styles.settingRow, styles.groupItem]}>
@@ -378,7 +378,7 @@ const SettingsScreen = ({ navigation }) => {
                                     Status: {state.settings?.erpConnected ? 'Connected ✅' : 'Disconnected ❌'}
                                 </Text>
                                 <Text style={styles.cardDescription}>
-                                    Last synced: {state.settings?.lastErpSync ? new Date(state.settings.lastErpSync).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }) : 'Never'}
+                                    Portal updated: {state.settings?.lastErpSync ? new Date(state.settings.lastErpSync).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }) : 'Never'}
                                 </Text>
                             </View>
                             <TouchableOpacity 
@@ -399,8 +399,8 @@ const SettingsScreen = ({ navigation }) => {
                                     style={[styles.groupItem, { paddingVertical: SPACING.sm }]}
                                     onPress={() => {
                                         showAlert(
-                                            'Re-sync Calendar',
-                                            'This will clear all ERP subject links and re-match your subjects from scratch, then pull the full attendance calendar. Use this if your calendar shows no data.',
+                                            'Refresh Calendar',
+                                            'This will clear portal subject links, re-match your subjects, and pull the full attendance calendar again. Use this if your calendar shows no data.',
                                             [
                                                 { text: 'Cancel', style: 'cancel' },
                                                 {
@@ -418,7 +418,7 @@ const SettingsScreen = ({ navigation }) => {
                                     }}
                                     disabled={isErpSyncing}
                                 >
-                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Re-sync Calendar from Scratch</Text>
+                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Refresh Calendar from Portal</Text>
                                     <Text style={styles.chevron}>›</Text>
                                 </TouchableOpacity>
                             </>
@@ -431,7 +431,7 @@ const SettingsScreen = ({ navigation }) => {
                     <Text style={styles.sectionTitle}>TIMETABLE & SUBJECTS</Text>
                     <View style={styles.cardGroup}>
                         <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditTimetable')}>
-                            <Text style={styles.linkText}>Setup Timetable</Text>
+                            <Text style={styles.linkText}>Edit Timetable</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                         <View style={styles.divider} />

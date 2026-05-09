@@ -11,6 +11,8 @@ import PlannerModeToggle from '../../../components/planner/PlannerModeToggle';
 import SkipModeView from './SkipModeView';
 import FixModeView from './FixModeView';
 import NoClassesTodayView from './NoClassesTodayView';
+import BestBunkDayCard from '../../../components/insights/BestBunkDayCard';
+import { calculateBestBunkDay } from '../../../utils/insights';
 
 /**
  * Main Planner screen — container that switches between modes.
@@ -45,6 +47,10 @@ const PlannerScreen = ({ navigation }) => {
         () => hasClassesToday(subjects, activeDate),
         [subjects, activeDate]
     );
+    const bunkData = useMemo(
+        () => calculateBestBunkDay(state),
+        [state.subjects, state.attendanceRecords, state.timetable, state.settings?.dangerThreshold]
+    );
 
     const handleSubjectPress = (subject) => {
         navigation.navigate('PlannerSubjectDetail', {
@@ -77,9 +83,6 @@ const PlannerScreen = ({ navigation }) => {
                         <Text style={styles.headerTitle}>Planner</Text>
                         <Text style={styles.headerSubtitle}>{plannerSubtitle}</Text>
                     </View>
-                    <View style={styles.headerPill}>
-                        <Text style={styles.headerPillText}>{activeMode === 'skip' ? 'Skip' : 'Fix'}</Text>
-                    </View>
                 </View>
 
                 {/* Date */}
@@ -90,6 +93,10 @@ const PlannerScreen = ({ navigation }) => {
                     activeMode={activeMode}
                     onModeChange={setActiveMode}
                 />
+
+                {activeMode === 'skip' && (
+                    <BestBunkDayCard bunkData={bunkData} />
+                )}
 
                 {/* Mode Views */}
                 {activeMode === 'skip' && (
@@ -153,19 +160,6 @@ const getStyles = () => StyleSheet.create({
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginTop: 4,
-    },
-    headerPill: {
-        backgroundColor: COLORS.primaryLight,
-        borderRadius: 999,
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 7,
-        borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-    },
-    headerPillText: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '700',
-        color: COLORS.primaryDark,
     },
 });
 

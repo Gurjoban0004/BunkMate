@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
+import { shouldCountLocalRecord } from '../../utils/attendance';
 
 const CHART_HEIGHT = 100;
 
@@ -26,6 +27,7 @@ export default function AttendanceGraph({ subjectId, state, days = 14 }) {
         for (const dateKey of sortedDates) {
             const record = state.attendanceRecords[dateKey]?.[subjectId];
             if (!record) continue; // Skip days with no class for this subject
+            if (!shouldCountLocalRecord(dateKey, subjectId, record, state)) continue;
 
             const date = new Date(dateKey + 'T12:00:00');
             const units = record.units || 1;

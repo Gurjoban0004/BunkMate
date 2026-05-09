@@ -54,7 +54,7 @@ export default function ErpReauthModal() {
             return;
         }
         if (!expired?.persistentToken || !expired?.authUserId) {
-            setError('Session data missing. Please reconnect ERP from Settings.');
+            setError('Session data missing. Please reconnect the portal from Settings.');
             return;
         }
 
@@ -114,7 +114,7 @@ export default function ErpReauthModal() {
                     <Text style={styles.emoji}>🔑</Text>
                     <Text style={styles.title}>Session Expired</Text>
                     <Text style={styles.subtitle}>
-                        Your ERP session has expired{studentLabel ? ` ${studentLabel}` : ''}.{'\n'}
+                        Your portal session has expired{studentLabel ? ` ${studentLabel}` : ''}.{'\n'}
                         Enter the OTP sent to your registered number to continue syncing.
                     </Text>
 

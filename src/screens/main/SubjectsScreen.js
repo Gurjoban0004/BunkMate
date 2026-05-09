@@ -17,7 +17,6 @@ import { calculateGlobalStaleness } from '../../utils/erpFreshness';
 import OverallStatsCard from '../../components/subjects/OverallStatsCard';
 import SubjectRow from '../../components/subjects/SubjectRow';
 import CalendarView from '../../components/subjects/CalendarView';
-import TimetableGrid from '../../components/subjects/TimetableGrid';
 import ProjectionTransparencyModal from '../../components/insights/ProjectionTransparencyModal';
 import { calculateProjectionBreakdown } from '../../utils/transparency';
 
@@ -131,8 +130,17 @@ const SubjectsScreen = ({ navigation }) => {
             >
                 {/* Header */}
                 <View style={styles.headerContainer}>
-                    <Text style={styles.headerTitle}>Subjects</Text>
-                    <Text style={styles.headerSubtitle}>Your attendance portfolio</Text>
+                    <View style={styles.headerRow}>
+                        <Text style={styles.headerTitle}>Subjects</Text>
+                        <TouchableOpacity
+                            style={styles.headerAction}
+                            onPress={() => setViewMode(viewMode === 'calendar' ? 'list' : 'calendar')}
+                        >
+                            <Text style={styles.headerActionText}>
+                                {viewMode === 'calendar' ? 'List' : 'Calendar'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* Overall Stats Card */}
@@ -143,54 +151,6 @@ const SubjectsScreen = ({ navigation }) => {
                     onBannerPress={() => setTransparencyVisible(true)}
                 />
 
-                {/* View Toggle */}
-                <View style={styles.toggleContainer}>
-                    <TouchableOpacity
-                        style={[
-                            styles.toggleButton,
-                            viewMode === 'list' && styles.toggleButtonActive,
-                        ]}
-                        onPress={() => setViewMode('list')}
-                    >
-                        <Text style={[
-                            styles.toggleText,
-                            viewMode === 'list' && styles.toggleTextActive,
-                        ]}>
-                            List
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[
-                            styles.toggleButton,
-                            viewMode === 'calendar' && styles.toggleButtonActive,
-                        ]}
-                        onPress={() => setViewMode('calendar')}
-                    >
-                        <Text style={[
-                            styles.toggleText,
-                            viewMode === 'calendar' && styles.toggleTextActive,
-                        ]}>
-                            Calendar
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[
-                            styles.toggleButton,
-                            viewMode === 'timetable' && styles.toggleButtonActive,
-                        ]}
-                        onPress={() => setViewMode('timetable')}
-                    >
-                        <Text style={[
-                            styles.toggleText,
-                            viewMode === 'timetable' && styles.toggleTextActive,
-                        ]}>
-                            Timetable
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
                 {viewMode === 'list' ? (
                     <>
                         {/* Danger Section */}
@@ -199,7 +159,7 @@ const SubjectsScreen = ({ navigation }) => {
                                 <View style={styles.sectionHeader}>
                                     <View style={[styles.sectionRule, styles.sectionRuleDanger]} />
                                     <Text style={styles.sectionTitle}>
-                                        NEEDS ATTENTION
+                                        Needs Attention
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeDanger]}>
                                         <Text style={styles.sectionBadgeText}>
@@ -226,7 +186,7 @@ const SubjectsScreen = ({ navigation }) => {
                                 <View style={styles.sectionHeader}>
                                     <View style={[styles.sectionRule, styles.sectionRuleEdge]} />
                                     <Text style={styles.sectionTitle}>
-                                        ON THE EDGE
+                                        Almost Low
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeEdge]}>
                                         <Text style={styles.sectionBadgeText}>
@@ -253,7 +213,7 @@ const SubjectsScreen = ({ navigation }) => {
                                 <View style={styles.sectionHeader}>
                                     <View style={[styles.sectionRule, styles.sectionRuleSafe]} />
                                     <Text style={styles.sectionTitle}>
-                                        ON TRACK
+                                        Safe
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeSafe]}>
                                         <Text style={styles.sectionBadgeText}>
@@ -274,13 +234,8 @@ const SubjectsScreen = ({ navigation }) => {
                             </View>
                         )}
                     </>
-                ) : viewMode === 'calendar' ? (
-                    <CalendarView state={state} />
                 ) : (
-                    <TimetableGrid
-                        state={state}
-                        onCellPress={(subject) => handleSubjectPress(subject)}
-                    />
+                    <CalendarView state={state} />
                 )}
 
                 {/* Bottom Padding */}
@@ -313,47 +268,29 @@ const getStyles = () => StyleSheet.create({
         paddingTop: SPACING.xs,
         paddingBottom: SPACING.md,
     },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
     headerTitle: {
         fontSize: 26,
         fontWeight: '800',
         letterSpacing: 0,
         color: COLORS.textPrimary,
     },
-    headerSubtitle: {
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textSecondary,
-        marginTop: 4,
-    },
-    toggleContainer: {
-        flexDirection: 'row',
-        marginHorizontal: SPACING.screenPadding,
-        marginTop: SPACING.md,
-        marginBottom: SPACING.sm,
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: 4,
+    headerAction: {
+        paddingHorizontal: SPACING.md,
+        paddingVertical: 7,
+        borderRadius: BORDER_RADIUS.full,
         borderWidth: 1,
         borderColor: COLORS.borderSubtle,
-    },
-    toggleButton: {
-        flex: 1,
-        paddingVertical: SPACING.sm,
-        alignItems: 'center',
-        borderRadius: BORDER_RADIUS.sm,
-    },
-    toggleButtonActive: {
         backgroundColor: COLORS.cardBackground,
-        borderWidth: 1,
-        borderColor: COLORS.border,
     },
-    toggleText: {
+    headerActionText: {
         fontSize: FONT_SIZES.sm,
-        fontWeight: '500',
-        color: COLORS.textSecondary,
-    },
-    toggleTextActive: {
+        fontWeight: '700',
         color: COLORS.textPrimary,
-        fontWeight: '600',
     },
     section: {
         marginTop: SPACING.md,

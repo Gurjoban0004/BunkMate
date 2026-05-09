@@ -4,6 +4,7 @@
  */
 
 import { calculateRecoveryClasses, calculateSkipAllowance } from './attendanceCalculations';
+import { getPlannerEndDate, parseLocalDate, toPlannerDateKey } from './semesterWindow';
 
 /**
  * Generate recovery paths for a subject at multiple target levels.
@@ -69,6 +70,8 @@ function getSpecificClassesForRecovery(subject, count) {
     const classes = [];
     let checkDate = new Date();
     const maxDaysToCheck = 90;
+    const endDate = getPlannerEndDate(subject);
+    const holidays = subject.holidays || [];
 
     const { schedule } = subject;
     if (!schedule || !schedule.slots || schedule.slots.length === 0) return classes;
@@ -78,10 +81,21 @@ function getSpecificClassesForRecovery(subject, count) {
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     for (let i = 0; i < maxDaysToCheck && classes.length < count; i++) {
-        const dayOfWeek = checkDate.getDay();
-        const matchingSlot = schedule.slots.find(slot => slot.day === dayOfWeek);
+        if (endDate && parseLocalDate(checkDate) > endDate) break;
 
-        if (matchingSlot) {
+        const dateKey = toPlannerDateKey(checkDate);
+        if (holidays.includes(dateKey)) {
+            const nextDay = new Date(checkDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            checkDate = nextDay;
+            continue;
+        }
+
+        const dayOfWeek = checkDate.getDay();
+        const matchingSlots = schedule.slots.filter(slot => slot.day === dayOfWeek);
+
+        matchingSlots.forEach(matchingSlot => {
+            if (classes.length >= count) return;
             const classDateTime = new Date(checkDate);
             const [hours, minutes] = matchingSlot.time.split(':');
             classDateTime.setHours(parseInt(hours), parseInt(minutes), 0);
@@ -96,7 +110,7 @@ function getSpecificClassesForRecovery(subject, count) {
                     isNext: classes.length === 0,
                 });
             }
-        }
+        });
 
         const nextDay = new Date(checkDate);
         nextDay.setDate(nextDay.getDate() + 1);

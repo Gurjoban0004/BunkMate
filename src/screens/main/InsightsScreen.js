@@ -129,7 +129,7 @@ export default function InsightsScreen() {
         return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
 
-    const { weekdayPatterns, subjectTrends, recentRhythm, semesterSummary, smartInsights } = intel;
+    const { weekdayPatterns, subjectTrends, semesterSummary, smartInsights } = intel;
     const maxDayTotal = Math.max(...Object.values(weekdayPatterns?.byDay || {}).map(d => d.total), 1);
 
     return (
@@ -182,27 +182,6 @@ export default function InsightsScreen() {
                                 </View>
                             )}
 
-                            {/* Semester at a glance */}
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Semester at a glance</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.glanceScroll}>
-                                    {[
-                                        { icon: '📚', value: semesterSummary.totalClasses, label: 'Total Classes', color: COLORS.primary },
-                                        { icon: '🎯', value: semesterSummary.overallPercentage + '%', label: 'Overall Rate', color: semesterSummary.overallPercentage >= threshold ? COLORS.success : COLORS.danger },
-                                        { icon: '✅', value: semesterSummary.totalPresent, label: 'Present', color: COLORS.success },
-                                        { icon: '❌', value: semesterSummary.totalAbsent, label: 'Missed', color: COLORS.danger },
-                                    ].map((item, i) => (
-                                        <View key={i} style={styles.glanceCard}>
-                                            <View style={[styles.glanceIconBg, { backgroundColor: item.color + '15' }]}>
-                                                <Text style={styles.glanceIcon}>{item.icon}</Text>
-                                            </View>
-                                            <Text style={[styles.glanceValue, { color: item.color }]}>{item.value}</Text>
-                                            <Text style={styles.glanceLabel}>{item.label}</Text>
-                                        </View>
-                                    ))}
-                                </ScrollView>
-                            </View>
-
                             {/* Weekday patterns */}
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>Weekday patterns</Text>
@@ -250,19 +229,6 @@ export default function InsightsScreen() {
                                                 </View>
                                             );
                                         })}
-                                </View>
-                            )}
-
-                            {/* Recent rhythm */}
-                            {recentRhythm.total >= 5 && (
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Recent rhythm</Text>
-                                    <Text style={styles.sectionSubtitle}>Last {recentRhythm.total} classes: {recentRhythm.presentCount} present, {recentRhythm.absentCount} absent</Text>
-                                    <View style={styles.rhythmRow}>
-                                        {recentRhythm.events.slice(-15).map((ev, i) => (
-                                            <View key={i} style={[styles.rhythmDot, { backgroundColor: ev.status === 'present' ? COLORS.success : ev.status === 'absent' ? COLORS.danger : COLORS.textMuted }]} />
-                                        ))}
-                                    </View>
                                 </View>
                             )}
 

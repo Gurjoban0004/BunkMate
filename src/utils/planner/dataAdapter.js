@@ -149,6 +149,8 @@ export function getSubjectPlannerData(subjectId, state) {
         target,
         history,
         schedule,
+        semesterEndDate: state.settings?.semesterEndDate || null,
+        holidays: state.holidays || [],
     };
 }
 

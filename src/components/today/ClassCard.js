@@ -255,8 +255,8 @@ const ClassCard = ({
                         ]}>
                             <Text style={markedStatus === 'present' ? styles.presentButtonText : styles.absentButtonText}>
                                 {markedStatus === 'present' ? '✓ Present' : '✕ Absent'}
-                                {isSyncedFromErp && ' (ERP)'}
-                                {isPredicted && !isSyncedFromErp && ' (Predicted)'}
+                                {isSyncedFromErp && ' · Confirmed by portal'}
+                                {isPredicted && !isSyncedFromErp && ' · Temporary mark'}
                             </Text>
                         </View>
 

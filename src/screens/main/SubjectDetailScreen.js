@@ -1,13 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
 import { calculateSubjectStreak, getStreakMessage } from '../../utils/streak';
-import ProgressBar from '../../components/common/ProgressBar';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import AttendanceGraph from '../../components/subjects/AttendanceGraph';
 import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
@@ -18,6 +16,7 @@ export default function SubjectDetailScreen({ route }) {
     const { subjectId } = route.params;
     const { state, dispatch } = useApp();
     const [editModal, setEditModal] = useState(null); // { date, record }
+    const [showAllHistory, setShowAllHistory] = useState(false);
 
     const subject = state.subjects.find((s) => s.id === subjectId);
     const subjectColor = subject?.color || COLORS.primary;
@@ -105,7 +104,7 @@ export default function SubjectDetailScreen({ route }) {
                 <StatusHeader subjectData={subjectDataForHeader} />
 
                 {/* Streak */}
-                {streakMsg && (
+                {streak >= 5 && streakMsg && (
                     <Card style={styles.streakCard}>
                         <Text style={styles.streakText}>{streakMsg}</Text>
                         <Text style={styles.streakCount}>{streak} classes in a row</Text>
@@ -131,12 +130,6 @@ export default function SubjectDetailScreen({ route }) {
                     </Card>
                 )}
 
-                {/* Attendance Graph */}
-                <Card style={styles.graphCard}>
-                    <Text style={styles.sectionTitle}>Attendance Trend</Text>
-                    <AttendanceGraph subjectId={subjectId} state={state} days={14} />
-                </Card>
-
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>
                     <Text style={styles.sectionTitle}>Calendar</Text>
@@ -147,7 +140,7 @@ export default function SubjectDetailScreen({ route }) {
                 {recentRecords.length > 0 && (
                     <View style={styles.historySection}>
                         <Text style={styles.sectionTitle}>Recent Attendance</Text>
-                        {recentRecords.map((rec, idx) => (
+                        {(showAllHistory ? recentRecords : recentRecords.slice(0, 5)).map((rec, idx) => (
                             <View key={idx} style={styles.historyRow}>
                                 <View>
                                     <Text style={styles.historyDate}>{formatRecordDate(rec.date)}</Text>
@@ -168,7 +161,16 @@ export default function SubjectDetailScreen({ route }) {
                                 </View>
                             </View>
                         ))}
-                        <Text style={styles.editHint}>Records older than 2 weeks cannot be edited</Text>
+                        {recentRecords.length > 5 && (
+                            <TouchableOpacity
+                                style={styles.showMoreButton}
+                                onPress={() => setShowAllHistory(!showAllHistory)}
+                            >
+                                <Text style={styles.showMoreText}>
+                                    {showAllHistory ? 'Show less' : `View all ${recentRecords.length}`}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 )}
             </ScrollView>
@@ -184,6 +186,7 @@ export default function SubjectDetailScreen({ route }) {
                                 <Text style={styles.modalCurrent}>
                                     Current: {editModal.status === 'present' ? 'Present' : editModal.status === 'cancelled' ? 'Cancelled' : 'Absent'}
                                 </Text>
+                                <Text style={styles.editHint}>Only recent marks can be edited.</Text>
 
                                 <Text style={styles.modalLabel}>Change to:</Text>
                                 <View style={styles.modalActions}>
@@ -278,9 +281,6 @@ const getStyles = () => StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold', 
     },
-    graphCard: {
-        marginBottom: SPACING.md,
-    },
     calendarCard: {
         marginBottom: SPACING.md,
     },
@@ -331,7 +331,19 @@ const getStyles = () => StyleSheet.create({
         ...TYPOGRAPHY.caption,
         color: COLORS.textMuted,
         marginTop: SPACING.xs,
+        marginBottom: SPACING.md,
         textAlign: 'center',
+    },
+    showMoreButton: {
+        alignSelf: 'center',
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.sm,
+        marginTop: SPACING.xs,
+    },
+    showMoreText: {
+        ...TYPOGRAPHY.caption,
+        color: COLORS.primary,
+        fontWeight: '700',
     },
     // Edit Modal
     modalOverlay: {
