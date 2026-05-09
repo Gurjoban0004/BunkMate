@@ -24,11 +24,9 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
         if (status === 'edge') {
             return "Can't skip";
         }
-        // skipInfo.count is in periods (units). Label as "periods" to avoid
-        // confusion with physical classes (a 2-hr class = 2 periods).
         const count = skipInfo.count;
         if (count === 0) return "Can't skip";
-        return `${count} period${count !== 1 ? 's' : ''} free`;
+        return `Can skip ${count}`;
     };
 
     const statusColor = getStatusColor();

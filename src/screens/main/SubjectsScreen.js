@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
+import { getSubjectAttendance, calculateSkips, getSubjectUnits } from '../../utils/attendance';
 import { calculateGlobalStaleness } from '../../utils/erpFreshness';
 
 // Components
@@ -42,12 +42,23 @@ const SubjectsScreen = ({ navigation }) => {
         return state.subjects.map(subject => {
             const stats = getSubjectAttendance(subject.id, state);
             const target = subject.target || dangerThreshold;
-            // Guard: getSubjectAttendance returns null if subject not found (shouldn't happen
-            // here since we're iterating state.subjects, but guard anyway)
             const attendedUnits = stats?.attendedUnits ?? 0;
             const totalUnits = stats?.totalUnits ?? 0;
             const percentage = stats?.percentage ?? 0;
             const skipInfo = calculateSkips(attendedUnits, totalUnits, target);
+
+            // How many periods make up one physical class for this subject.
+            // e.g. a 2-hr class = 2 periods → unitsPerClass = 2
+            // We use this to convert "periods can skip" → "physical classes can skip".
+            const unitsPerClass = Math.max(1, getSubjectUnits(subject.id, state));
+
+            // Convert period-based skip count to physical class count
+            const physicalSkipInfo = {
+                ...skipInfo,
+                count: skipInfo.count === Infinity
+                    ? Infinity
+                    : Math.floor(skipInfo.count / unitsPerClass),
+            };
 
             return {
                 ...subject,
@@ -55,7 +66,7 @@ const SubjectsScreen = ({ navigation }) => {
                 totalUnits,
                 percentage,
                 hasPredictions: stats?.hasPredictions ?? false,
-                skipInfo,
+                skipInfo: physicalSkipInfo,
                 resolvedTarget: target,
             };
         });

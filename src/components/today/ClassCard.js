@@ -239,7 +239,7 @@ const ClassCard = ({
                 {isDanger && !markedStatus && (
                     <View style={styles.warningRow}>
                         <Text style={styles.warningText}>
-                            Attend {classesNeeded} more period{classesNeeded !== 1 ? 's' : ''} to reach {dangerThreshold}%
+                            Attend {classesNeeded} more to reach {dangerThreshold}%
                         </Text>
                     </View>
                 )}
