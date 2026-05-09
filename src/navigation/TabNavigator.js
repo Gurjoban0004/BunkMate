@@ -13,7 +13,6 @@ import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
 import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
-import EndGameScreen from '../screens/main/EndGameScreen';
 import InsightsScreen from '../screens/main/InsightsScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
@@ -143,11 +142,6 @@ function SettingsStackScreen() {
                 name="AttendanceStats"
                 component={AttendanceStatsScreen}
                 options={{ title: 'Log Past Attendance' }}
-            />
-            <SettingsStack.Screen
-                name="EndGame"
-                component={EndGameScreen}
-                options={{ title: 'End Game Calculator' }}
             />
             <SettingsStack.Screen
                 name="SyncFromPortal"
