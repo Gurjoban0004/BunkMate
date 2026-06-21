@@ -10,7 +10,7 @@ import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
-import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
+
 import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
@@ -184,7 +184,7 @@ export default function WebTabNavigator() {
             case 'Settings': screen = <SettingsScreen {...props} />; break;
             case 'EditTimetable': screen = <EditTimetableScreen {...props} />; break;
             case 'EditSubjects': screen = <EditSubjectsScreen {...props} />; break;
-            case 'AttendanceStats': screen = <AttendanceStatsScreen {...props} />; break;
+
             case 'SyncFromPortal': screen = <SyncFromPortalScreen {...props} />; break;
             case 'ERPConnect': screen = <ERPConnectScreen {...props} />; break;
             case 'Insights': screen = <InsightsScreen {...props} />; break;
