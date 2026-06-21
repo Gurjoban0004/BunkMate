@@ -267,7 +267,7 @@ export default function ERPSetupScreen({ navigation }) {
                             onPress={() => setShowPassword(!showPassword)}
                         >
                             <Text style={styles.eyeIcon}>
-                                {showPassword ? '🙈' : '👁️'}
+                                {showPassword ? 'Hide' : 'Show'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -275,7 +275,7 @@ export default function ERPSetupScreen({ navigation }) {
             </View>
 
             <View style={styles.securityBadge}>
-                <Text style={styles.securityIcon}>🔒</Text>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.success, marginRight: SPACING.xs }} />
                 <Text style={styles.securityText}>
                     Your credentials are encrypted and stored securely. You won't need to login again.
                 </Text>
@@ -328,7 +328,7 @@ export default function ERPSetupScreen({ navigation }) {
         return (
             <View style={styles.formSection}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionEmoji}>📊</Text>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary, marginRight: SPACING.xs }} />
                     <Text style={styles.sectionTitle}>Your Attendance</Text>
                     <Text style={styles.sectionSub}>
                         Found {erpSubjects.length} subjects from ERP.
@@ -439,7 +439,7 @@ export default function ERPSetupScreen({ navigation }) {
                     {/* Error */}
                     {error ? (
                         <View style={styles.errorBox}>
-                            <Text style={styles.errorText}>⚠️ {error}</Text>
+                            <Text style={styles.errorText}>{error}</Text>
                         </View>
                     ) : null}
 

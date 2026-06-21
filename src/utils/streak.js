@@ -168,10 +168,10 @@ export function calculateSubjectStreak(subjectId, state) {
  */
 export function getStreakMessage(streak) {
     if (streak < 3) return null;
-    if (streak >= 100) return '🔥 Perfect attendance!';
-    if (streak >= 50) return '🔥 Legendary!';
-    if (streak >= 25) return '🔥 Unstoppable!';
-    if (streak >= 10) return '🔥 On fire!';
-    if (streak >= 5) return '🔥 Nice start!';
-    return '🔥 Keep it going!';
+    if (streak >= 100) return 'Perfect attendance!';
+    if (streak >= 50) return 'Legendary streak!';
+    if (streak >= 25) return 'Unstoppable!';
+    if (streak >= 10) return 'On fire!';
+    if (streak >= 5) return 'Nice streak!';
+    return 'Keep it going!';
 }

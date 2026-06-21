@@ -25,7 +25,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                 <View style={[styles.compactCard, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.success }]}>
                     <View style={styles.compactRow}>
                         <Text style={[styles.compactLabel, { color: COLORS.textSecondary }]}>
-                            ⚡ Setup Day
+                            Setup Day
                         </Text>
                         <Text style={[styles.compactAnswer, { color: COLORS.textSecondary }]}>
                             Already Counted
@@ -40,8 +40,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
 
     const config = {
         safe: {
-            emoji: '✅',
-            title: 'YES — Skip the whole day!',
+            title: 'Yes, skip the whole day',
             shortTitle: 'YES',
             subtitle: `All ${classes.length} classes are safe to miss`,
             bg: COLORS.successLight,
@@ -49,8 +48,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
             textColor: COLORS.successDark,
         },
         partial: {
-            emoji: '⚠️',
-            title: 'PARTIAL — Skip some classes',
+            title: 'Partial — skip some classes',
             shortTitle: 'PARTIAL',
             subtitle: `${safeCount} safe to skip, ${riskyCount} must attend`,
             bg: COLORS.warningLight,
@@ -58,9 +56,8 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
             textColor: COLORS.warningDark,
         },
         risky: {
-            emoji: '🚨',
-            title: 'NO — Attend today',
-            shortTitle: '🚨 NO',
+            title: 'No — attend today',
+            shortTitle: 'NO',
             subtitle: `${riskyCount} subjects are at risk`,
             bg: COLORS.dangerLight,
             border: COLORS.danger,
@@ -87,7 +84,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                 >
                     <View style={styles.compactRow}>
                         <Text style={[styles.compactLabel, { color: cfg.textColor }]}>
-                            ⚡ Can I skip today?
+                            Can I skip today?
                         </Text>
                         <Text style={[styles.compactAnswer, { color: cfg.textColor }]}>
                             {cfg.shortTitle}
@@ -106,7 +103,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                 onPress={compact ? toggleExpand : undefined}
                 activeOpacity={compact ? 0.7 : 1}
             >
-                <Text style={styles.question}>⚡ Can I skip today?</Text>
+                <Text style={styles.question}>Can I skip today?</Text>
 
                 <View style={styles.answerRow}>
                     <Text style={[styles.answerTitle, { color: cfg.textColor }]}>
@@ -123,9 +120,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                     <View style={styles.classBreakdown}>
                         {classes.map((cls) => (
                             <View key={cls.subjectId} style={styles.classRow}>
-                                <Text style={styles.classEmoji}>
-                                    {cls.safe ? '✅' : cls.newPercentage >= 73 ? '⚠️' : '🚨'}
-                                </Text>
+                                <View style={[styles.classDot, { backgroundColor: cls.safe ? COLORS.success : cls.newPercentage >= 73 ? COLORS.warning : COLORS.danger }]} />
                                 <Text style={styles.className}>{cls.subjectName}</Text>
                                 <Text style={styles.classTime}>
                                     {cls.startTime}–{cls.endTime}
@@ -224,9 +219,11 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: 'rgba(0,0,0,0.06)',
     },
-    classEmoji: {
-        fontSize: 14,
-        width: 24,
+    classDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginRight: SPACING.sm,
     },
     className: {
         flex: 1,

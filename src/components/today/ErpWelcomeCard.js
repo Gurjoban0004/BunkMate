@@ -171,12 +171,12 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     title: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.primary,
         fontWeight: '700',
     },
     subtitle: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         marginTop: 2,
     },
@@ -210,7 +210,7 @@ const getStyles = () => StyleSheet.create({
         letterSpacing: -0.5,
     },
     statLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         marginTop: 2,
     },
@@ -244,7 +244,7 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '600',
     },
     footnote: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         marginTop: SPACING.sm,
         fontStyle: 'italic',

@@ -37,6 +37,13 @@ function TabIcon({ label, focused }) {
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
         ),
+        Insights: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+        ),
     };
 
     return (
@@ -53,6 +60,7 @@ export default function WebTabNavigator() {
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }],
         Subjects: [{ name: 'SubjectsList', params: {} }],
+        Insights: [{ name: 'InsightsMain', params: {} }],
     });
 
     const activeStack = stacks[currentTab];
@@ -69,7 +77,7 @@ export default function WebTabNavigator() {
             const handlePopState = (event) => {
                 const state = event.state;
                 if (state && state.tab && typeof state.index === 'number') {
-                    const tab = ['Today', 'Subjects'].includes(state.tab) ? state.tab : 'Today';
+                    const tab = ['Today', 'Subjects', 'Insights'].includes(state.tab) ? state.tab : 'Today';
                     setCurrentTab(tab);
                     setStacks(prev => {
                         const tabStack = prev[tab];
@@ -86,6 +94,7 @@ export default function WebTabNavigator() {
                     setStacks({
                         Today: [{ name: 'TodayMain', params: {} }],
                         Subjects: [{ name: 'SubjectsList', params: {} }],
+                        Insights: [{ name: 'InsightsMain', params: {} }],
                     });
                 }
             };
@@ -99,7 +108,7 @@ export default function WebTabNavigator() {
 
     const mockNavigation = useMemo(() => ({
         navigate: (screenOrTabName, params = {}) => {
-            if (['Today', 'Subjects'].includes(screenOrTabName)) {
+            if (['Today', 'Subjects', 'Insights'].includes(screenOrTabName)) {
                 setCurrentTab(screenOrTabName);
                 if (Platform.OS === 'web') {
                     window.history.pushState({ tab: screenOrTabName, index: stacksRef.current[screenOrTabName].length - 1 }, '', `?tab=${screenOrTabName}`);
@@ -187,7 +196,7 @@ export default function WebTabNavigator() {
 
             case 'SyncFromPortal': screen = <SyncFromPortalScreen {...props} />; break;
             case 'ERPConnect': screen = <ERPConnectScreen {...props} />; break;
-            case 'Insights': screen = <InsightsScreen {...props} />; break;
+            case 'InsightsMain': screen = <InsightsScreen {...props} />; break;
             default: screen = <TodayScreen {...props} />; break;
         }
 
@@ -207,7 +216,7 @@ export default function WebTabNavigator() {
             </View>
 
             <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'web' && typeof window !== 'undefined' && window.navigator?.standalone ? 20 : 4) }]}>
-                {['Today', 'Subjects'].map((tabName) => {
+                {['Today', 'Subjects', 'Insights'].map((tabName) => {
                     const focused = currentTab === tabName;
                     return (
                         <TouchableOpacity
@@ -256,7 +265,7 @@ const getStyles = () => StyleSheet.create({
         paddingVertical: 4,
     },
     tabLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         marginTop: 4,
         fontWeight: '500',
     },

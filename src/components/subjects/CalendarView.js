@@ -315,7 +315,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textMuted,
     },
     monthTitle: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
         textAlign: 'center',
         flex: 1,
@@ -326,7 +326,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.xs,
     },
     dayHeader: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         width: `${100 / 7}%`,
         textAlign: 'center',
@@ -396,7 +396,7 @@ const getStyles = () => StyleSheet.create({
         gap: 2,
     },
     legendText: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         fontSize: 11,
     },
@@ -423,7 +423,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     dayDetailDate: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
         marginBottom: SPACING.md,
     },
@@ -483,7 +483,7 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '500',
     },
     dayDetailEmpty: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         textAlign: 'center',
         marginTop: SPACING.md,

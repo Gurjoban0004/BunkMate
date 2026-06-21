@@ -150,13 +150,13 @@ const EditSubjectsScreen = ({ navigation }) => {
                                         style={styles.actionButton}
                                         onPress={() => openModal(subject)}
                                     >
-                                        <Text style={styles.actionIcon}>✏️</Text>
+                                        <Text style={styles.actionIcon}>Edit</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
-                                        style={styles.actionButton}
+                                        style={[styles.actionButton, { backgroundColor: COLORS.dangerLight }]}
                                         onPress={() => handleDelete(subject)}
                                     >
-                                        <Text style={styles.actionIcon}>🗑️</Text>
+                                        <Text style={[styles.actionIcon, { color: COLORS.danger }]}>Delete</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>

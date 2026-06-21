@@ -366,11 +366,11 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     emptyText: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
     },
     emptySubtext: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textSecondary,
         marginTop: SPACING.xs,
     },
@@ -382,7 +382,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     sectionHeader: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
     },
     holidayBtn: {
@@ -427,18 +427,18 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     className: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textPrimary,
         fontWeight: '600',
     },
     classTime: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textSecondary,
         marginTop: 2,
         marginLeft: 12,
     },
     markedLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textSecondary,
         textTransform: 'capitalize',
     },
@@ -498,7 +498,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: 4,
     },
     heroTitle: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         fontWeight: '700',
         color: COLORS.primary,
     },
@@ -514,11 +514,11 @@ const getStyles = () => StyleSheet.create({
         color: '#FFFFFF',
     },
     heroSubtitle: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textSecondary,
     },
     skipText: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textSecondary,
         textDecorationLine: 'underline', 
     },
@@ -575,7 +575,7 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     statusLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textSecondary,
         marginBottom: 4,
     },
@@ -642,7 +642,7 @@ const getStyles = () => StyleSheet.create({
     },
     undoBtnText: {
         color: COLORS.textSecondary,
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         textDecorationLine: 'underline',
     },
     approvedRow: {
@@ -675,11 +675,11 @@ const getStyles = () => StyleSheet.create({
         ...SHADOWS.small,
     },
     summaryTitle: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         marginBottom: SPACING.sm,
     },
     summaryStat: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textSecondary,
         marginBottom: 4,
     },

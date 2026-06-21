@@ -294,7 +294,7 @@ export function generateInsights(patterns, subject) {
     if (patterns.streaks?.current?.type === 'present' && patterns.streaks.current.count >= 5) {
         insights.push({
             type: 'success',
-            text: `🔥 ${patterns.streaks.current.count} classes attended in a row! Keep it up!`,
+            text: `${patterns.streaks.current.count} classes attended in a row — keep it up!`,
         });
     }
 

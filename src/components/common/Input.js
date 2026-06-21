@@ -106,6 +106,6 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.sm,
 
 
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
     },
 });

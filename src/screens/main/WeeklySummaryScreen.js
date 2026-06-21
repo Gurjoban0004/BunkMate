@@ -52,7 +52,7 @@ export default function WeeklySummaryScreen({ navigation }) {
                 {/* Streak */}
                 {streak >= 3 && (
                     <Card style={styles.streakCard}>
-                        <Text style={styles.streakEmoji}>🔥</Text>
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.warning, marginRight: SPACING.sm }} />
                         <View>
                             <Text style={styles.streakTitle}>Current Streak</Text>
                             <Text style={styles.streakCount}>{streak} classes in a row!</Text>
@@ -70,7 +70,6 @@ export default function WeeklySummaryScreen({ navigation }) {
                                     <View style={styles.nameRow}>
                                         <View style={[styles.colorDot, { backgroundColor: sub.color || COLORS.primary }]} />
                                         <Text style={styles.subjectName}>
-                                            {idx === 0 ? '🏆 ' : idx === summary.sortedSubjects.length - 1 ? '' : ''}
                                             {sub.name}
                                         </Text>
                                     </View>
@@ -160,7 +159,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     statsText: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textSecondary,
     },
     textGreen: { color: COLORS.success },
@@ -178,16 +177,16 @@ const getStyles = () => StyleSheet.create({
         fontSize: 32,
     },
     streakTitle: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         fontWeight: '600',
         color: COLORS.warningDark,
     },
     streakCount: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.warning,
     },
     sectionTitle: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
         marginTop: SPACING.md,
         marginBottom: SPACING.sm,
@@ -218,12 +217,12 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     subjectName: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textPrimary,
         fontWeight: '600',
     },
     subjectPct: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         fontWeight: '700',
     },
     subjectProgress: {
@@ -237,7 +236,7 @@ const getStyles = () => StyleSheet.create({
 
     },
     tipTitle: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         fontWeight: '600',
         color: COLORS.primary,
         marginBottom: SPACING.xs,
@@ -261,7 +260,7 @@ const getStyles = () => StyleSheet.create({
         fontSize: 20,
     },
     dayLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
     },
     actions: {

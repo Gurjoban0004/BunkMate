@@ -109,13 +109,13 @@ const getStyles = () => StyleSheet.create({
         overflow: 'hidden',
     },
     title: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         textAlign: 'center',
         marginTop: SPACING.lg,
         paddingHorizontal: SPACING.md,
     },
     message: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         textAlign: 'left',
         color: COLORS.textSecondary,
         marginTop: SPACING.sm,
@@ -139,7 +139,7 @@ const getStyles = () => StyleSheet.create({
         borderLeftColor: COLORS.border,
     },
     buttonText: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         fontWeight: '600',
         color: COLORS.primary,
     },

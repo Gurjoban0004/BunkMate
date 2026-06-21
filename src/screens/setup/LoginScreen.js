@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   subtitle: {
-    ...TYPOGRAPHY.body,
+    ...TYPOGRAPHY.bodyMedium,
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.danger,
   },
   errorText: {
-    ...TYPOGRAPHY.caption,
+    ...TYPOGRAPHY.captionMedium,
     color: COLORS.danger,
     marginTop: SPACING.sm,
     textAlign: 'center',

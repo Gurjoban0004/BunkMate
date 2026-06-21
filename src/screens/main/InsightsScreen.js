@@ -106,12 +106,11 @@ export default function InsightsScreen() {
                                     {smartInsights.map((insight, i) => {
                                         const isDanger = insight.severity === 'danger';
                                         const isWarning = insight.severity === 'warning';
-                                        const icon = isDanger ? '⚠️' : isWarning ? '📉' : '💡';
                                         const color = isDanger ? COLORS.danger : isWarning ? COLORS.warning : COLORS.primary;
                                         return (
                                             <View key={i} style={styles.cleanInsightRow}>
-                                                <View style={[styles.cleanInsightIconWrapper, { backgroundColor: color + '15' }]}>
-                                                    <Text style={styles.cleanInsightIcon}>{icon}</Text>
+                                                <View style={[styles.cleanInsightIconWrapper, { backgroundColor: color + '20' }]}>
+                                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
                                                 </View>
                                                 <Text style={styles.cleanInsightText}>{insight.text}</Text>
                                             </View>
@@ -215,7 +214,7 @@ export default function InsightsScreen() {
                             <View style={styles.verdictStat}><Text style={[styles.verdictStatNum, { color: COLORS.success }]}>{endGameStats.totalCanSkip}</Text><Text style={styles.verdictStatLabel}>can skip</Text></View>
                         </View>
                         {endGameStats.isExactMath && endGameStats.daysLeft != null && (
-                            <Text style={styles.exactMathNote}>📅 Exact math — {endGameStats.daysLeft} days until semester ends</Text>
+                            <Text style={styles.exactMathNote}>{endGameStats.daysLeft} days until semester ends</Text>
                         )}
                     </View>
 
@@ -227,8 +226,8 @@ export default function InsightsScreen() {
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: SPACING.lg, gap: SPACING.md }}>
                                 {longWeekends.map((lw, idx) => (
                                     <View key={idx} style={styles.lwCard}>
-                                        <View style={styles.lwEmojiBg}>
-                                            <Text style={styles.lwEmoji}>🏖️</Text>
+                                        <View style={[styles.lwEmojiBg, { backgroundColor: COLORS.primaryLight }]}>
+                                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary }} />
                                         </View>
                                         <Text style={styles.lwDate}>{lw.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
                                         <Text style={styles.lwType}>Take {lw.type} off</Text>
@@ -250,7 +249,7 @@ export default function InsightsScreen() {
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                            <Text style={styles.endDateHint}>💡 Set semester end date in Settings for exact numbers</Text>
+                            <Text style={styles.endDateHint}>Set semester end date in Settings for exact numbers</Text>
                         </View>
                     )}
 
@@ -285,7 +284,6 @@ export default function InsightsScreen() {
                                 {isExpanded && (
                                     <View style={styles.expandedSection}>
                                         <View style={[styles.strategyBox, { borderColor: riskColor, backgroundColor: riskColor + '12' }]}>
-                                            <Text style={styles.strategyEmoji}>{strategy.emoji}</Text>
                                             <View style={{ flex: 1 }}>
                                                 <Text style={[styles.strategyHeadline, { color: riskColor }]}>{strategy.headline}</Text>
                                                 <Text style={styles.strategyDetail}>{strategy.detail}</Text>
@@ -323,7 +321,7 @@ export default function InsightsScreen() {
                                                             <View key={n} style={[styles.consequenceChip, { borderColor: passes ? COLORS.success : COLORS.danger, backgroundColor: passes ? COLORS.successLight : COLORS.dangerLight }]}>
                                                                 <Text style={styles.consequenceN}>Skip {n}</Text>
                                                                 <Text style={[styles.consequencePct, { color: passes ? COLORS.successDark : COLORS.danger }]}>{finalPct.toFixed(1)}%</Text>
-                                                                <Text style={[styles.consequenceVerdict, { color: passes ? COLORS.successDark : COLORS.danger }]}>{passes ? '✓ Pass' : '✗ Fail'}</Text>
+                                                                <Text style={[styles.consequenceVerdict, { color: passes ? COLORS.successDark : COLORS.danger }]}>{passes ? 'Pass' : 'Fail'}</Text>
                                                             </View>
                                                         );
                                                     })}
@@ -339,8 +337,8 @@ export default function InsightsScreen() {
                     <View style={styles.footerNote}>
                         <Text style={styles.footerNoteText}>
                             {endGameStats.isExactMath
-                                ? '✅ Exact calculation based on your timetable until the semester end date.'
-                                : '⚠️ Estimated based on weekly timetable × weeks remaining. Set semester end date in Settings for exact numbers.'}
+                                ? 'Exact calculation based on your timetable until the semester end date.'
+                                : 'Estimated based on weekly timetable × weeks remaining. Set semester end date in Settings for exact numbers.'}
                         </Text>
                     </View>
                     <View style={{ height: 100 }} />
@@ -393,8 +391,8 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.lg,
         ...SHADOWS.small,
     },
-    sectionTitle: { ...TYPOGRAPHY.headerSmall, color: COLORS.textPrimary, marginBottom: 4 },
-    sectionSubtitle: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, marginBottom: SPACING.md },
+    sectionTitle: { ...TYPOGRAPHY.headingSmall, color: COLORS.textPrimary, marginBottom: 4 },
+    sectionSubtitle: { ...TYPOGRAPHY.captionMedium, color: COLORS.textMuted, marginBottom: SPACING.md },
 
     // Smart insights
     cleanInsightRow: {
@@ -409,7 +407,6 @@ const getStyles = () => StyleSheet.create({
         ...SHADOWS.small,
     },
     cleanInsightIconWrapper: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: SPACING.sm },
-    cleanInsightIcon: { fontSize: 14 },
     cleanInsightText: { flex: 1, fontSize: FONT_SIZES.sm, color: COLORS.textPrimary, lineHeight: 20 },
 
     // Glance cards
@@ -449,12 +446,12 @@ const getStyles = () => StyleSheet.create({
     subjectBarTrack: { height: 8, borderRadius: 4, backgroundColor: COLORS.inputBackground, overflow: 'hidden', position: 'relative' },
     subjectBarFill: { height: '100%', borderRadius: 4 },
     thresholdLine: { position: 'absolute', top: -1, width: 1.5, height: 10, backgroundColor: COLORS.textMuted, opacity: 0.5 },
-    subjectMeta: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, marginTop: 4 },
+    subjectMeta: { ...TYPOGRAPHY.captionMedium, color: COLORS.textMuted, marginTop: 4 },
 
     // Empty
     emptyCard: { margin: SPACING.screenPadding, padding: SPACING.xl, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, alignItems: 'center', ...SHADOWS.small },
-    emptyTitle: { ...TYPOGRAPHY.headerSmall, color: COLORS.textPrimary, marginBottom: SPACING.sm },
-    emptyText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22 },
+    emptyTitle: { ...TYPOGRAPHY.headingSmall, color: COLORS.textPrimary, marginBottom: SPACING.sm },
+    emptyText: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22 },
 
     // ── End Game styles ──────────────────────────────────────────────
 
@@ -501,7 +498,6 @@ const getStyles = () => StyleSheet.create({
     // Expanded
     expandedSection: { marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
     strategyBox: { flexDirection: 'row', gap: SPACING.sm, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, borderWidth: 1, marginBottom: SPACING.md },
-    strategyEmoji: { fontSize: 20, marginTop: 2 },
     strategyHeadline: { fontSize: FONT_SIZES.md, fontWeight: '800', marginBottom: 4 },
     strategyDetail: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary, lineHeight: 18, marginBottom: 4 },
     strategyAction: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, fontStyle: 'italic' },
@@ -531,7 +527,6 @@ const getStyles = () => StyleSheet.create({
     // Long Weekends
     lwCard: { backgroundColor: COLORS.cardBackground, padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, borderWidth: 1, borderColor: COLORS.borderSubtle, minWidth: 140, ...SHADOWS.small },
     lwEmojiBg: { width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.primary + '15', alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.sm },
-    lwEmoji: { fontSize: 16 },
     lwDate: { fontSize: FONT_SIZES.md, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 2 },
     lwType: { fontSize: FONT_SIZES.xs, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 4 },
     lwClasses: { fontSize: FONT_SIZES.xs, color: COLORS.primary, fontWeight: '700' },

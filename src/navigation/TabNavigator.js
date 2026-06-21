@@ -17,8 +17,9 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import { COLORS } from '../theme/theme';
 
 const Tab = createBottomTabNavigator();
-const SubjectsStack = createStackNavigator();
 const TodayStack = createStackNavigator();
+const SubjectsStack = createStackNavigator();
+const InsightsStack = createStackNavigator();
 
 function TodayStackScreen() {
     return (
@@ -92,6 +93,21 @@ function SubjectsStackScreen() {
     );
 }
 
+function InsightsStackScreen() {
+    return (
+        <ErrorBoundary screen screenName="Insights">
+        <InsightsStack.Navigator screenOptions={{ headerShown: false }}>
+            <InsightsStack.Screen name="InsightsMain" component={InsightsScreen} />
+            <InsightsStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+            <InsightsStack.Screen name="EditTimetable" component={EditTimetableScreen} options={{ title: 'Edit Timetable' }} />
+            <InsightsStack.Screen name="EditSubjects" component={EditSubjectsScreen} options={{ title: 'Edit Subjects' }} />
+            <InsightsStack.Screen name="SyncFromPortal" component={SyncFromPortalScreen} options={{ title: 'Sync from Portal' }} />
+            <InsightsStack.Screen name="ERPConnect" component={ERPConnectScreen} options={{ title: 'Connect ERP' }} />
+        </InsightsStack.Navigator>
+        </ErrorBoundary>
+    );
+}
+
 function TabIcon({ label, focused }) {
     const color = focused ? COLORS.primary : COLORS.textSecondary;
     const strokeWidth = focused ? 2 : 1.5;
@@ -110,6 +126,13 @@ function TabIcon({ label, focused }) {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+        ),
+        Insights: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
             </svg>
         ),
     };
@@ -159,11 +182,8 @@ export default function TabNavigator() {
             })}
         >
             <Tab.Screen name="Today" component={TodayStackScreen} />
-            <Tab.Screen
-                name="Subjects"
-                component={SubjectsStackScreen}
-                options={{ title: 'Subjects' }}
-            />
+            <Tab.Screen name="Subjects" component={SubjectsStackScreen} options={{ title: 'Subjects' }} />
+            <Tab.Screen name="Insights" component={InsightsStackScreen} />
         </Tab.Navigator>
     );
 }

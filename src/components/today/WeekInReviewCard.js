@@ -198,12 +198,12 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     title: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
         fontWeight: '700',
     },
     subtitle: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         marginTop: 2,
     },
@@ -239,7 +239,7 @@ const getStyles = () => StyleSheet.create({
         marginTop: 4,
     },
     statLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         fontWeight: '500',
     },
@@ -259,7 +259,7 @@ const getStyles = () => StyleSheet.create({
         flexShrink: 0,
     },
     highlightLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         fontWeight: '600',
         width: 36,
@@ -282,7 +282,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: 2,
     },
     mondayText: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
     },
 });

@@ -166,12 +166,13 @@ export default function SubjectDetailScreen({ route }) {
                                     </Text>
                                 </View>
                                 <View style={styles.historyRight}>
-                                    <Text style={[styles.historyStatus, rec.status === 'present' ? styles.textGreen : rec.status === 'cancelled' ? styles.textDisabled : styles.textRed]}>
-                                        {rec.status === 'present' ? '✅' : rec.status === 'cancelled' ? '🚫' : '❌'}
+                                    <View style={[styles.statusDot, { backgroundColor: rec.status === 'present' ? COLORS.success : rec.status === 'cancelled' ? COLORS.textMuted : COLORS.danger }]} />
+                                    <Text style={[styles.historyStatus, { color: rec.status === 'present' ? COLORS.successDark : rec.status === 'cancelled' ? COLORS.textMuted : COLORS.danger }]}>
+                                        {rec.status === 'present' ? 'P' : rec.status === 'cancelled' ? 'C' : 'A'}
                                     </Text>
                                     {rec.canEdit && (
                                         <TouchableOpacity onPress={() => handleEdit(rec)} style={styles.editBtn}>
-                                            <Text style={styles.editBtnText}>✏️</Text>
+                                            <Text style={styles.editBtnText}>Edit</Text>
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -247,7 +248,7 @@ const getStyles = () => StyleSheet.create({
         paddingTop: SPACING.md,
     },
     errorText: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textSecondary,
         textAlign: 'center',
         marginTop: SPACING.xxl,
@@ -263,12 +264,12 @@ const getStyles = () => StyleSheet.create({
 
     },
     streakText: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         fontWeight: '600',
         color: COLORS.warningDark,
     },
     streakCount: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.warning,
         fontWeight: '600',
     },
@@ -290,7 +291,7 @@ const getStyles = () => StyleSheet.create({
         borderWidth: 1,
     },
     skipLabel: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textSecondary,
     },
     skipNumber: {
@@ -304,7 +305,7 @@ const getStyles = () => StyleSheet.create({
         marginTop: SPACING.sm,
     },
     sectionTitle: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
         marginBottom: SPACING.md,
     },
@@ -325,7 +326,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textPrimary,
     },
     historyUnits: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         marginTop: 2,
     },
@@ -334,17 +335,26 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         gap: SPACING.sm,
     },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
     historyStatus: {
-        fontSize: 16,
+        fontSize: 12,
+        fontWeight: '700',
     },
     editBtn: {
-        padding: SPACING.xs,
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: SPACING.xs,
     },
     editBtnText: {
-        fontSize: 14,
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.primary,
     },
     editHint: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         marginTop: SPACING.xs,
         marginBottom: SPACING.md,
@@ -357,7 +367,7 @@ const getStyles = () => StyleSheet.create({
         marginTop: SPACING.xs,
     },
     showMoreText: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.primary,
         fontWeight: '700',
     },
@@ -376,7 +386,7 @@ const getStyles = () => StyleSheet.create({
         maxWidth: 360,
     },
     modalTitle: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
         marginBottom: SPACING.xs,
     },
@@ -386,12 +396,12 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     modalCurrent: {
-        ...TYPOGRAPHY.body,
+        ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textPrimary,
         marginBottom: SPACING.md,
     },
     modalLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textSecondary,
         marginBottom: SPACING.sm,
     },
@@ -417,7 +427,7 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
     },
     modalOptionText: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         fontWeight: '600',
         color: COLORS.textPrimary,
     },

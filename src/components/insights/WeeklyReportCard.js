@@ -45,7 +45,6 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
 
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerEmoji}>📊</Text>
                 <View>
                     <Text style={styles.headerTitle}>Your Week in Review</Text>
                     <Text style={styles.headerDate}>
@@ -64,7 +63,6 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
 
             {/* Personality */}
             <View style={styles.personalityBadge}>
-                <Text style={styles.personalityEmoji}>{personality.emoji}</Text>
                 <View style={styles.personalityContent}>
                     <Text style={styles.personalityTitle}>{personality.title}</Text>
                     <Text style={styles.personalityDesc}>{personality.description}</Text>
@@ -129,15 +127,15 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
             {/* Footer stats */}
             <View style={styles.footerRow}>
                 <View style={styles.footerStat}>
-                    <Text style={styles.footerStatValue}>🔥 {streak}</Text>
+                    <Text style={styles.footerStatValue}>{streak}</Text>
                     <Text style={styles.footerStatLabel}>Streak</Text>
                 </View>
                 <View style={styles.footerStat}>
-                    <Text style={styles.footerStatValue}>📅 {daysTracked}</Text>
+                    <Text style={styles.footerStatValue}>{daysTracked}</Text>
                     <Text style={styles.footerStatLabel}>Days tracked</Text>
                 </View>
                 <View style={styles.footerStat}>
-                    <Text style={styles.footerStatValue}>📈 {weekAttended}</Text>
+                    <Text style={styles.footerStatValue}>{weekAttended}</Text>
                     <Text style={styles.footerStatLabel}>Attended</Text>
                 </View>
             </View>
@@ -149,11 +147,11 @@ const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
-        marginTop: SPACING.md,
+        marginBottom: SPACING.cardGap,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
+        padding: SPACING.md,
         borderWidth: 1,
-        borderColor: COLORS.borderLight,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     dismissBtn: {
@@ -177,10 +175,6 @@ const getStyles = () => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: SPACING.md,
-    },
-    headerEmoji: {
-        fontSize: 20,
-        marginRight: SPACING.sm,
     },
     headerTitle: {
         fontSize: FONT_SIZES.md,
@@ -213,10 +207,6 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.sm,
         marginBottom: SPACING.md,
-    },
-    personalityEmoji: {
-        fontSize: 24,
-        marginRight: SPACING.sm,
     },
     personalityContent: {
         flex: 1,

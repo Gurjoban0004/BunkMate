@@ -149,7 +149,7 @@ const getStyles = () => StyleSheet.create({
         position: 'absolute',
         right: 0,
         top: -14,
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.danger,
         fontSize: 10,
     },
@@ -170,7 +170,7 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 3,
     },
     dayLabel: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         fontSize: 9,
         marginTop: 2,
@@ -192,7 +192,7 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     legendText: {
-        ...TYPOGRAPHY.caption,
+        ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
         fontSize: 10,
     },

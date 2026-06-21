@@ -18,10 +18,7 @@ import { calculateFreshness } from '../../utils/erpFreshness';
 import { getUnmarkedCount } from '../../utils/backlog';
 import { getTodayKey, getTodayDayName } from '../../utils/dateHelpers';
 import { getDayStatus } from '../../utils/planner.js';
-import { getEndGameStats } from '../../utils/planner.js';
-import { generateWeeklyReport, calculateBestBunkDay } from '../../utils/insights';
-import { deriveErpIntelligence } from '../../utils/erpIntelligence';
-import { getRiskLevel } from '../../utils/endgame';
+import { generateWeeklyReport } from '../../utils/insights';
 
 // Components
 import QuickStatsCard from '../../components/today/QuickStatsCard';
@@ -34,18 +31,12 @@ import AddExtraClassButton from '../../components/today/AddExtraClassButton';
 import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
-import BestBunkDayCard from '../../components/insights/BestBunkDayCard';
 import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
-import CompactInsightChip from '../../components/common/CompactInsightChip';
-import EndGameSummaryCard from '../../components/today/EndGameSummaryCard';
 import ProfileAvatar from '../../components/common/ProfileAvatar';
 import {
     DisplayMedium,
-    HeadingMedium,
-    HeadingSmall,
     BodyMedium,
     BodySmall,
-    CaptionMedium
 } from '../../components/common/Typography';
 import { showAlert } from '../../utils/alert';
 
@@ -109,33 +100,11 @@ const TodayScreen = ({ navigation }) => {
     const dangerThreshold = state.settings?.dangerThreshold || 75;
     const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, dangerThreshold), [state, todayDayName, dangerThreshold]);
 
-    // Insights: Weekly Report
+    // Weekly Report — show Fri through Mon
     const weeklyReport = useMemo(() => generateWeeklyReport(state), [state.subjects, state.attendanceRecords, state.holidays, state.devDate]);
     const [showWeeklyReport, setShowWeeklyReport] = useState(true);
-
-    // ERP Intelligence — weekday patterns, trends, smart insights
-    const erpIntel = useMemo(() => deriveErpIntelligence(state), [
-        state.subjects, state.attendanceRecords, state.holidays, state.settings?.dangerThreshold,
-    ]);
-    const allInsights = erpIntel.smartInsights || [];
-
-    // Best bunk day
-    const bunkData = useMemo(() => calculateBestBunkDay(state), [state.subjects, state.attendanceRecords, state.timetable, state.settings?.dangerThreshold]);
-
-    // End-game stats
-    const endGameStats = useMemo(() => getEndGameStats(state, dangerThreshold), [state, dangerThreshold]);
-    const overallRisk = useMemo(() => {
-        if (!endGameStats.results?.length) return 'comfortable';
-        const worst = endGameStats.results.reduce((w, r) => {
-            if (!r) return w;
-            const lvl = getRiskLevel(r.canSkip, r.mustAttend, r.remainingUnits);
-            const order = { impossible: 0, critical: 1, tight: 2, moderate: 3, comfortable: 4 };
-            return (order[lvl] ?? 4) < (order[w] ?? 4) ? lvl : w;
-        }, 'comfortable');
-        return worst;
-    }, [endGameStats]);
-
-    const showWeeklyReportToday = showWeeklyReport && (today.getDay() === 0 || today.getDay() === 1);
+    const dayOfWeek = today.getDay();
+    const showWeeklyReportToday = showWeeklyReport && (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0 || dayOfWeek === 1);
 
     const portalStatus = useMemo(() => {
         if (!state.settings?.erpConnected) return 'Manual';
@@ -298,12 +267,12 @@ const TodayScreen = ({ navigation }) => {
                 <View style={styles.header}>
                     <View style={{ flex: 1 }}>
                         <DisplayMedium style={styles.greeting}>
-                            {greeting.text} {greeting.emoji}
+                            {greeting.text}
                         </DisplayMedium>
                         <BodyMedium color="textSecondary" style={styles.date}>{dateString}</BodyMedium>
                         {isErpSyncing && (
                             <BodySmall color="textMuted" style={{ marginTop: 4 }}>
-                                🔄 Syncing from portal...
+                                Syncing from portal...
                             </BodySmall>
                         )}
                     </View>
@@ -332,29 +301,6 @@ const TodayScreen = ({ navigation }) => {
                         dayStatus={todaySkipStatus}
                         compact={true}
                     />
-                )}
-
-                {/* Best Bunk Day */}
-                {bunkData?.bestDay && <BestBunkDayCard bunkData={bunkData} />}
-
-                {/* End-Game Summary */}
-                {endGameStats.results?.length > 0 && (
-                    <EndGameSummaryCard
-                        overallRisk={overallRisk}
-                        totalRemaining={endGameStats.totalRemaining}
-                        totalMustAttend={endGameStats.totalMustAttend}
-                        totalCanSkip={endGameStats.totalCanSkip}
-                        daysLeft={endGameStats.daysLeft}
-                    />
-                )}
-
-                {/* Smart Insights as compact chips */}
-                {erpIntel.hasData && allInsights.length > 0 && (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.md }}>
-                        {allInsights.slice(0, 4).map((insight, i) => (
-                            <CompactInsightChip key={i} icon={insight.severity === 'danger' ? '⚠️' : insight.severity === 'warning' ? '📉' : '✅'} label={insight.text} severity={insight.severity} />
-                        ))}
-                    </View>
                 )}
 
                 {/* Weekly Report */}
@@ -576,14 +522,14 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.md,
+        paddingTop: SPACING.lg,
         paddingBottom: SPACING.xxl,
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         paddingHorizontal: SPACING.screenPadding,
-        paddingBottom: SPACING.md,
+        paddingBottom: SPACING.lg,
     },
     setupDayCard: {
         marginHorizontal: SPACING.screenPadding,

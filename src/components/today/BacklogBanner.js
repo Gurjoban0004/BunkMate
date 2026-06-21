@@ -7,7 +7,7 @@ const BacklogBanner = ({ count, onPress }) => {
     return (
         <TouchableOpacity style={styles.container} onPress={onPress}>
             <View style={styles.content}>
-                <Text style={styles.icon}>⚠️</Text>
+                <View style={styles.iconDot} />
                 <View style={styles.textContainer}>
                     <Text style={styles.title}>
                         You have {count} unmarked {count === 1 ? 'class' : 'classes'}
@@ -39,8 +39,11 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         flex: 1,
     },
-    icon: {
-        fontSize: 24,
+    iconDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: COLORS.warning,
         marginRight: SPACING.sm,
     },
     textContainer: {

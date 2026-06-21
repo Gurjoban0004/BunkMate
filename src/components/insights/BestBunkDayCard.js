@@ -25,7 +25,6 @@ const BestBunkDayCard = ({ bunkData }) => {
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerIcon}>💡</Text>
                 <Text style={styles.headerTitle}>Best Day to Skip</Text>
             </View>
 
@@ -48,7 +47,7 @@ const BestBunkDayCard = ({ bunkData }) => {
                 <Text style={{ color: isSafe ? COLORS.success : COLORS.danger, fontWeight: '700' }}>
                     {bestDayNewPct}%
                 </Text>
-                {isSafe ? ' (still safe ✅)' : ' (risky ⚠️)'}
+                {isSafe ? ' (still safe)' : ' (risky)'}
             </Text>
 
             {/* Mini week bar */}
@@ -82,21 +81,17 @@ const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
-        marginTop: SPACING.md,
+        marginBottom: SPACING.cardGap,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
+        padding: SPACING.md,
         borderWidth: 1,
-        borderColor: COLORS.borderLight,
+        borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: SPACING.sm,
-    },
-    headerIcon: {
-        fontSize: 16,
-        marginRight: SPACING.xs,
     },
     headerTitle: {
         fontSize: FONT_SIZES.sm,

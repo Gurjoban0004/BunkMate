@@ -111,7 +111,6 @@ export default function ErpReauthModal() {
             >
                 <View style={styles.sheet}>
                     {/* Header */}
-                    <Text style={styles.emoji}>🔑</Text>
                     <Text style={styles.title}>Session Expired</Text>
                     <Text style={styles.subtitle}>
                         Your portal session has expired{studentLabel ? ` ${studentLabel}` : ''}.{'\n'}

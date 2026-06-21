@@ -93,7 +93,7 @@ const getStyles = () => StyleSheet.create({
         textAlign: 'center',
     },
     title: {
-        ...TYPOGRAPHY.headerSmall,
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
         flex: 1,
     },
