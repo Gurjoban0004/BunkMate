@@ -5,8 +5,6 @@ import { Text, View, Platform } from 'react-native';
 import TodayScreen from '../screens/main/TodayScreen';
 import SubjectsScreen from '../screens/main/SubjectsScreen';
 import SubjectDetailScreen from '../screens/main/SubjectDetailScreen';
-import PlannerScreen from '../screens/main/PlannerScreen';
-import PlannerSubjectDetail from '../screens/main/PlannerScreen/PlannerSubjectDetail';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
@@ -17,15 +15,11 @@ import InsightsScreen from '../screens/main/InsightsScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
-import { useApp } from '../context/AppContext';
 import { COLORS } from '../theme/theme';
 
 const Tab = createBottomTabNavigator();
 const SubjectsStack = createStackNavigator();
 const TodayStack = createStackNavigator();
-const PlannerStack = createStackNavigator();
-const SettingsStack = createStackNavigator();
-const InsightsStack = createStackNavigator();
 
 function TodayStackScreen() {
     return (
@@ -55,6 +49,15 @@ function TodayStackScreen() {
                 component={InsightsScreen}
                 options={{ title: 'Insights' }}
             />
+            <TodayStack.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{ title: 'Settings' }}
+            />
+            <TodayStack.Screen name="EditTimetable" component={EditTimetableScreen} options={{ title: 'Edit Timetable' }} />
+            <TodayStack.Screen name="EditSubjects" component={EditSubjectsScreen} options={{ title: 'Edit Subjects' }} />
+            <TodayStack.Screen name="SyncFromPortal" component={SyncFromPortalScreen} options={{ title: 'Sync from Portal' }} />
+            <TodayStack.Screen name="ERPConnect" component={ERPConnectScreen} options={{ title: 'Connect ERP' }} />
         </TodayStack.Navigator>
         </ErrorBoundary>
     );
@@ -80,97 +83,12 @@ function SubjectsStackScreen() {
                     title: route.params?.subjectName || 'Subject',
                 })}
             />
+            <SubjectsStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+            <SubjectsStack.Screen name="EditTimetable" component={EditTimetableScreen} options={{ title: 'Edit Timetable' }} />
+            <SubjectsStack.Screen name="EditSubjects" component={EditSubjectsScreen} options={{ title: 'Edit Subjects' }} />
+            <SubjectsStack.Screen name="SyncFromPortal" component={SyncFromPortalScreen} options={{ title: 'Sync from Portal' }} />
+            <SubjectsStack.Screen name="ERPConnect" component={ERPConnectScreen} options={{ title: 'Connect ERP' }} />
         </SubjectsStack.Navigator>
-        </ErrorBoundary>
-    );
-}
-
-function PlannerStackScreen() {
-    return (
-        <ErrorBoundary screen screenName="Planner">
-        <PlannerStack.Navigator
-            screenOptions={{
-                headerShown: false,
-            }}
-        >
-            <PlannerStack.Screen
-                name="PlannerMain"
-                component={PlannerScreen}
-                options={{ headerShown: false }}
-            />
-            <PlannerStack.Screen
-                name="PlannerSubjectDetail"
-                component={PlannerSubjectDetail}
-                options={({ route }) => ({
-                    title: route.params?.subjectName || 'Subject',
-                })}
-            />
-        </PlannerStack.Navigator>
-        </ErrorBoundary>
-    );
-}
-
-function SettingsStackScreen() {
-    return (
-        <ErrorBoundary screen screenName="Settings">
-        <SettingsStack.Navigator
-            screenOptions={{
-                headerShown: false,
-            }}
-        >
-            <SettingsStack.Screen
-                name="SettingsMain"
-                component={SettingsScreen}
-                options={{ headerShown: false }}
-            />
-            <SettingsStack.Screen
-                name="EditTimetable"
-                component={EditTimetableScreen}
-                options={{ title: 'Edit Timetable' }}
-            />
-            <SettingsStack.Screen
-                name="EditSubjects"
-                component={EditSubjectsScreen}
-                options={{ title: 'Edit Subjects' }}
-            />
-            <SettingsStack.Screen
-                name="PastAttendance"
-                component={PastAttendanceScreen}
-                options={{ title: 'Mark Past Attendance' }}
-            />
-            <SettingsStack.Screen
-                name="AttendanceStats"
-                component={AttendanceStatsScreen}
-                options={{ title: 'Log Past Attendance' }}
-            />
-            <SettingsStack.Screen
-                name="SyncFromPortal"
-                component={SyncFromPortalScreen}
-                options={{ title: 'Sync from Portal' }}
-            />
-            <SettingsStack.Screen
-                name="ERPConnect"
-                component={ERPConnectScreen}
-                options={{ title: 'Connect ERP' }}
-            />
-        </SettingsStack.Navigator>
-        </ErrorBoundary>
-    );
-}
-
-function InsightsStackScreen() {
-    return (
-        <ErrorBoundary screen screenName="Insights">
-        <InsightsStack.Navigator
-            screenOptions={{
-                headerShown: false,
-            }}
-        >
-            <InsightsStack.Screen
-                name="InsightsMain"
-                component={InsightsScreen}
-            />
-        </InsightsStack.Navigator>
         </ErrorBoundary>
     );
 }
@@ -195,25 +113,6 @@ function TabIcon({ label, focused }) {
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
         ),
-        Planner: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-        ),
-        Insights: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                <line x1="9" y1="9" x2="15" y2="9"></line>
-                <line x1="12" y1="6" x2="12" y2="12"></line>
-            </svg>
-        ),
-        Settings: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-        ),
     };
 
     return (
@@ -230,12 +129,9 @@ function TabIcon({ label, focused }) {
 }
 
 export default function TabNavigator() {
-    const { state } = useApp();
-    const initialRoute = state.settings?.landingPage === 'planner' ? 'Planner' : 'Today';
-
     return (
         <Tab.Navigator
-            initialRouteName={initialRoute}
+            initialRouteName="Today"
             screenOptions={({ route }) => ({
                 tabBarIcon: ({ focused }) => (
                     <TabIcon label={route.name} focused={focused} />
@@ -269,13 +165,6 @@ export default function TabNavigator() {
                 component={SubjectsStackScreen}
                 options={{ title: 'Subjects' }}
             />
-            <Tab.Screen
-                name="Planner"
-                component={PlannerStackScreen}
-                options={{ title: 'Planner' }}
-            />
-            <Tab.Screen name="Insights" component={InsightsStackScreen} />
-            <Tab.Screen name="Settings" component={SettingsStackScreen} />
         </Tab.Navigator>
     );
 }

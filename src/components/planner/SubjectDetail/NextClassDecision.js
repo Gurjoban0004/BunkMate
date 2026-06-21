@@ -2,11 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
 import { calculateSkipImpact, calculateAttendImpact, determineStatus } from '../../../utils/planner/attendanceCalculations';
-import { getNextClass, formatRelativeDate } from '../../../utils/planner/scheduleProcessor';
 
-/**
- * Skip vs Attend decision buttons with impact preview.
- */
 export default function NextClassDecision({ subjectData }) {
     const styles = getStyles();
     const { attended, total, target } = subjectData;
@@ -14,74 +10,19 @@ export default function NextClassDecision({ subjectData }) {
     const skipImpact = calculateSkipImpact(attended, total);
     const attendImpact = calculateAttendImpact(attended, total);
     const skipStatus = determineStatus(skipImpact.newPercentage, target);
-    const attendStatus = determineStatus(attendImpact.newPercentage, target);
-    const nextClass = getNextClass(subjectData);
-    const recommendation = skipStatus === 'danger'
-        ? 'Attending is the safer call today.'
-        : skipStatus === 'warning'
-            ? 'Skipping is possible, but it puts this subject on the edge.'
-            : 'Safe to skip this class.';
-    const recommendationColor = skipStatus === 'danger'
-        ? COLORS.danger
-        : skipStatus === 'warning'
-            ? COLORS.warningDark
-            : COLORS.successDark;
 
     return (
         <View style={styles.container}>
-            <View style={styles.headerRow}>
-                <View>
-                    <Text style={styles.title}>Next Class</Text>
-                    {nextClass && (
-                        <Text style={styles.nextLabel}>
-                            {nextClass.isToday ? `Today at ${nextClass.time}` :
-                                nextClass.isTomorrow ? `Tomorrow at ${nextClass.time}` :
-                                    `${formatRelativeDate(nextClass.date)} at ${nextClass.time}`
-                            }
-                        </Text>
-                    )}
-                </View>
+            <View style={[styles.half, { borderLeftColor: COLORS.danger }]}>
+                <Text style={styles.label}>Skip</Text>
+                <Text style={[styles.pct, { color: skipStatus === 'danger' ? COLORS.danger : COLORS.warningDark }]}>{skipImpact.newPercentage.toFixed(1)}%</Text>
+                <Text style={[styles.delta, { color: COLORS.danger }]}>{skipImpact.change}%</Text>
             </View>
-
-            <View style={styles.recommendationRow}>
-                <View style={[styles.recommendationDot, { backgroundColor: recommendationColor }]} />
-                <Text style={[styles.recommendationText, { color: recommendationColor }]}>
-                    {recommendation}
-                </Text>
-            </View>
-
-            <View style={styles.optionsRow}>
-                <View style={[styles.option, styles.skipOption]}>
-                    <Text style={styles.optionLabel}>If you skip</Text>
-                    <Text style={[styles.optionPercentage, {
-                        color: skipStatus === 'danger' ? COLORS.danger : COLORS.warningDark
-                    }]}>
-                        {skipImpact.newPercentage.toFixed(1)}%
-                    </Text>
-                    <Text style={[styles.optionChange, {
-                        color: COLORS.danger
-                    }]}>
-                        {skipImpact.change}%
-                    </Text>
-                </View>
-
-                <View style={styles.vsDivider}>
-                    <Text style={styles.vsText}>vs</Text>
-                </View>
-
-                <View style={[styles.option, styles.attendOption]}>
-                    <Text style={styles.optionLabel}>If you attend</Text>
-                    <Text style={[styles.optionPercentage, {
-                        color: attendStatus === 'safe' ? COLORS.successDark : COLORS.warningDark
-                    }]}>
-                        {attendImpact.newPercentage.toFixed(1)}%
-                    </Text>
-                    <Text style={[styles.optionChange, {
-                        color: COLORS.success
-                    }]}>
-                        +{attendImpact.change}%
-                    </Text>
-                </View>
+            <Text style={styles.vs}>vs</Text>
+            <View style={[styles.half, { borderLeftColor: COLORS.success }]}>
+                <Text style={styles.label}>Attend</Text>
+                <Text style={[styles.pct, { color: COLORS.successDark }]}>{attendImpact.newPercentage.toFixed(1)}%</Text>
+                <Text style={[styles.delta, { color: COLORS.success }]}>+{attendImpact.change}%</Text>
             </View>
         </View>
     );
@@ -89,98 +30,15 @@ export default function NextClassDecision({ subjectData }) {
 
 const getStyles = () => StyleSheet.create({
     container: {
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.md,
-        marginBottom: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-        ...SHADOWS.small,
+        flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm, gap: SPACING.xs,
     },
-    headerRow: {
-        marginBottom: SPACING.sm,
+    half: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
+        backgroundColor: COLORS.cardBackground, padding: SPACING.sm, borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1, borderColor: COLORS.borderSubtle, borderLeftWidth: 3, ...SHADOWS.small,
     },
-    title: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '700',
-        color: COLORS.textPrimary,
-        marginBottom: SPACING.xs,
-    },
-    nextLabel: {
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textSecondary,
-    },
-    recommendationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: SPACING.sm,
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.sm,
-        marginBottom: SPACING.md,
-    },
-    recommendationDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    recommendationText: {
-        flex: 1,
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '700',
-        lineHeight: 17,
-    },
-    optionsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: SPACING.xs,
-    },
-    option: {
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: SPACING.md,
-        borderRadius: BORDER_RADIUS.md,
-        backgroundColor: COLORS.cardBackground,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderLeftWidth: 3,
-    },
-    skipOption: {
-        borderLeftColor: COLORS.danger,
-    },
-    attendOption: {
-        borderLeftColor: COLORS.success,
-    },
-    vsDivider: {
-        backgroundColor: COLORS.cardBackground,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    vsText: {
-        fontSize: FONT_SIZES.xs,
-        fontWeight: '600',
-        color: COLORS.textMuted,
-    },
-    optionLabel: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
-        textTransform: 'uppercase',
-        marginBottom: SPACING.xs,
-    },
-    optionPercentage: {
-        fontSize: FONT_SIZES.lg,
-        fontWeight: 'bold',
-    },
-    optionChange: {
-        fontSize: FONT_SIZES.xs,
-        fontWeight: '600',
-    },
+    label: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', width: 36 },
+    pct: { fontSize: FONT_SIZES.md, fontWeight: '800' },
+    delta: { fontSize: FONT_SIZES.xs, fontWeight: '700' },
+    vs: { fontSize: FONT_SIZES.xs, fontWeight: '600', color: COLORS.textMuted },
 });

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutAnimation } f
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
 import { getDayRecommendation } from '../../utils/planner.js';
 
-const QuickAnswerCard = ({ dayStatus, compact = false, onPlannerPress }) => {
+const QuickAnswerCard = ({ dayStatus, compact = false }) => {
     const [expanded, setExpanded] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -155,13 +155,6 @@ const QuickAnswerCard = ({ dayStatus, compact = false, onPlannerPress }) => {
                             <Text style={styles.collapseText}>Collapse ↑</Text>
                         </TouchableOpacity>
                     )}
-                    {onPlannerPress && (
-                        <TouchableOpacity onPress={onPlannerPress}>
-                            <Text style={[styles.plannerLink, { color: COLORS.primary }]}>
-                                See Full Plan in Planner →
-                            </Text>
-                        </TouchableOpacity>
-                    )}
                 </View>
             </TouchableOpacity>
         </Animated.View>
@@ -276,10 +269,6 @@ const styles = StyleSheet.create({
         fontSize: FONT_SIZES.sm,
         color: COLORS.textMuted,
         fontWeight: '500',
-    },
-    plannerLink: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
     },
 });
 

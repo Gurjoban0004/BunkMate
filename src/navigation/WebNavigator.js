@@ -4,11 +4,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import LoginScreen from '../screens/setup/LoginScreen';
 import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
-import SubjectListScreen from '../screens/setup/SubjectListScreen';
-import TimeSlotsScreen from '../screens/setup/TimeSlotsScreen';
-import TimetableBuilderScreen from '../screens/setup/TimetableBuilderScreen';
-import AttendanceStatsScreen from '../screens/setup/AttendanceStatsScreen';
-import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
+
 
 import { COLORS } from '../theme/theme';
 import { useApp } from '../context/AppContext';
@@ -111,11 +107,7 @@ export default function WebNavigator() {
             case 'Login': screen = <LoginScreen {...props} />; break;
             case 'ERPSetup': screen = <ERPSetupScreen {...props} />; break;
             case 'Welcome': screen = <WelcomeScreen {...props} />; break;
-            case 'TimeSlots': screen = <TimeSlotsScreen {...props} />; break;
-            case 'SubjectList': screen = <SubjectListScreen {...props} />; break;
-            case 'TimetableBuilder': screen = <TimetableBuilderScreen {...props} />; break;
-            case 'AttendanceStats': screen = <AttendanceStatsScreen {...props} />; break;
-            case 'SetupComplete': screen = <SetupCompleteScreen {...props} />; break;
+
             default: screen = <WelcomeScreen {...props} />; break;
         }
 

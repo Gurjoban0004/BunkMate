@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -6,8 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TodayScreen from '../screens/main/TodayScreen';
 import SubjectsScreen from '../screens/main/SubjectsScreen';
 import SubjectDetailScreen from '../screens/main/SubjectDetailScreen';
-import PlannerScreen from '../screens/main/PlannerScreen';
-import PlannerSubjectDetail from '../screens/main/PlannerScreen/PlannerSubjectDetail';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
@@ -17,8 +15,6 @@ import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import InsightsScreen from '../screens/main/InsightsScreen';
-
-import { useApp } from '../context/AppContext';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 
@@ -41,25 +37,6 @@ function TabIcon({ label, focused }) {
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
         ),
-        Planner: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-        ),
-        Settings: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-        ),
-        Insights: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                <line x1="9" y1="9" x2="15" y2="9"></line>
-                <line x1="12" y1="6" x2="12" y2="12"></line>
-            </svg>
-        ),
     };
 
     return (
@@ -72,17 +49,10 @@ function TabIcon({ label, focused }) {
 export default function WebTabNavigator() {
     const styles = getStyles();
     const insets = useSafeAreaInsets();
-    const { state } = useApp();
-
-    const defaultTab = state.settings?.landingPage === 'planner' ? 'Planner' : 'Today';
-
-    const [currentTab, setCurrentTab] = useState(defaultTab);
+    const [currentTab, setCurrentTab] = useState('Today');
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }],
         Subjects: [{ name: 'SubjectsList', params: {} }],
-        Planner: [{ name: 'PlannerMain', params: {} }],
-        Insights: [{ name: 'InsightsMain', params: {} }],
-        Settings: [{ name: 'SettingsMain', params: {} }],
     });
 
     const activeStack = stacks[currentTab];
@@ -99,13 +69,14 @@ export default function WebTabNavigator() {
             const handlePopState = (event) => {
                 const state = event.state;
                 if (state && state.tab && typeof state.index === 'number') {
-                    setCurrentTab(state.tab);
+                    const tab = ['Today', 'Subjects'].includes(state.tab) ? state.tab : 'Today';
+                    setCurrentTab(tab);
                     setStacks(prev => {
-                        const tabStack = prev[state.tab];
-                        if (state.index < tabStack.length) {
+                        const tabStack = prev[tab];
+                        if (tabStack && state.index < tabStack.length) {
                             return {
                                 ...prev,
-                                [state.tab]: tabStack.slice(0, state.index + 1)
+                                [tab]: tabStack.slice(0, state.index + 1)
                             };
                         }
                         return prev;
@@ -115,9 +86,6 @@ export default function WebTabNavigator() {
                     setStacks({
                         Today: [{ name: 'TodayMain', params: {} }],
                         Subjects: [{ name: 'SubjectsList', params: {} }],
-                        Planner: [{ name: 'PlannerMain', params: {} }],
-                        Insights: [{ name: 'InsightsMain', params: {} }],
-                        Settings: [{ name: 'SettingsMain', params: {} }],
                     });
                 }
             };
@@ -131,7 +99,7 @@ export default function WebTabNavigator() {
 
     const mockNavigation = useMemo(() => ({
         navigate: (screenOrTabName, params = {}) => {
-            if (['Today', 'Subjects', 'Planner', 'Insights', 'Settings'].includes(screenOrTabName)) {
+            if (['Today', 'Subjects'].includes(screenOrTabName)) {
                 setCurrentTab(screenOrTabName);
                 if (Platform.OS === 'web') {
                     window.history.pushState({ tab: screenOrTabName, index: stacksRef.current[screenOrTabName].length - 1 }, '', `?tab=${screenOrTabName}`);
@@ -213,15 +181,13 @@ export default function WebTabNavigator() {
             case 'WeeklySummary': screen = <WeeklySummaryScreen {...props} />; break;
             case 'SubjectsList': screen = <SubjectsScreen {...props} />; break;
             case 'SubjectDetail': screen = <SubjectDetailScreen {...props} />; break;
-            case 'PlannerMain': screen = <PlannerScreen {...props} />; break;
-            case 'PlannerSubjectDetail': screen = <PlannerSubjectDetail {...props} />; break;
-            case 'SettingsMain': screen = <SettingsScreen {...props} />; break;
+            case 'Settings': screen = <SettingsScreen {...props} />; break;
             case 'EditTimetable': screen = <EditTimetableScreen {...props} />; break;
             case 'EditSubjects': screen = <EditSubjectsScreen {...props} />; break;
             case 'AttendanceStats': screen = <AttendanceStatsScreen {...props} />; break;
             case 'SyncFromPortal': screen = <SyncFromPortalScreen {...props} />; break;
             case 'ERPConnect': screen = <ERPConnectScreen {...props} />; break;
-            case 'InsightsMain': screen = <InsightsScreen {...props} />; break;
+            case 'Insights': screen = <InsightsScreen {...props} />; break;
             default: screen = <TodayScreen {...props} />; break;
         }
 
@@ -241,7 +207,7 @@ export default function WebTabNavigator() {
             </View>
 
             <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'web' && typeof window !== 'undefined' && window.navigator?.standalone ? 20 : 4) }]}>
-                {['Today', 'Subjects', 'Planner', 'Insights', 'Settings'].map((tabName) => {
+                {['Today', 'Subjects'].map((tabName) => {
                     const focused = currentTab === tabName;
                     return (
                         <TouchableOpacity

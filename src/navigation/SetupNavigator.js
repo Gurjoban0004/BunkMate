@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import LoginScreen from '../screens/setup/LoginScreen';
 import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
-import SetupCompleteScreen from '../screens/setup/SetupCompleteScreen';
+
 import { COLORS } from '../theme/theme';
 
 const Stack = createStackNavigator();
@@ -80,11 +80,6 @@ export default function SetupNavigator() {
                 options={{ headerShown: false }}
             />
 
-            <Stack.Screen
-                name="SetupComplete"
-                component={SetupCompleteScreen}
-                options={{ headerShown: false }}
-            />
         </Stack.Navigator>
     );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView, LayoutAnimation } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
 import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses } from '../../../utils/planner/attendanceCalculations';
 import { generateRecoveryPaths } from '../../../utils/planner/recoveryPlanner';
@@ -140,66 +140,44 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
 
     const insight = getInsight();
 
+    const [showDates, setShowDates] = useState(false);
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Smart Simulator</Text>
+                <Text style={styles.title}>Simulator</Text>
                 <View style={styles.modeSwitch}>
-                    <TouchableOpacity
-                        style={[styles.modeBtn, mode === 'skip' && styles.modeBtnActive]}
-                        onPress={() => handleModeChange('skip')}
-                    >
+                    <TouchableOpacity style={[styles.modeBtn, mode === 'skip' && styles.modeBtnActive]} onPress={() => handleModeChange('skip')}>
                         <Text style={[styles.modeBtnText, mode === 'skip' && styles.modeBtnTextActive]}>SKIP</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.modeBtn, mode === 'attend' && styles.modeBtnActive]}
-                        onPress={() => handleModeChange('attend')}
-                    >
+                    <TouchableOpacity style={[styles.modeBtn, mode === 'attend' && styles.modeBtnActive]} onPress={() => handleModeChange('attend')}>
                         <Text style={[styles.modeBtnText, mode === 'attend' && styles.modeBtnTextActive]}>ATTEND</Text>
                     </TouchableOpacity>
                 </View>
             </View>
 
-            <View style={styles.resultBox}>
-                <Text style={styles.resultLabel}>PREDICTED ATTENDANCE</Text>
-                <View style={styles.resultMainRow}>
-                    <Text style={[styles.resultMain, {
-                        color: simulated.percentage < target ? COLORS.danger : COLORS.textPrimary
-                    }]}>
-                        {simulated.percentage.toFixed(1)}
+            {/* Compact result + stepper in one block */}
+            <View style={styles.compactResultRow}>
+                <View style={styles.stepperWrapper}>
+                    <TouchableOpacity style={[styles.stepperBtn, manualSteps <= 0 && styles.stepperBtnDisabled]} onPress={() => handleStep(-1)} disabled={manualSteps <= 0}>
+                        <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>-</Text>
+                    </TouchableOpacity>
+                    <View style={styles.stepperValueContainer}>
+                        <Text style={styles.stepperValue}>{activeSteps}</Text>
+                        <Text style={styles.stepperUnit}>classes</Text>
+                    </View>
+                    <TouchableOpacity style={[styles.stepperBtn, activeSteps >= maxSimulatorSteps && styles.stepperBtnDisabled]} onPress={() => handleStep(1)} disabled={activeSteps >= maxSimulatorSteps}>
+                        <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>+</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.resultBox}>
+                    <Text style={[styles.resultMain, { color: simulated.percentage < target ? COLORS.danger : COLORS.textPrimary }]}>
+                        {simulated.percentage.toFixed(1)}%
                     </Text>
-                    <Text style={styles.percentSymbol}>%</Text>
+                    <Text style={[styles.resultDelta, { color: delta > 0 ? COLORS.success : delta < 0 ? COLORS.danger : COLORS.textMuted }]}>
+                        {delta > 0 ? '+' : ''}{delta}%
+                    </Text>
                 </View>
-                <Text style={[styles.resultDelta, {
-                    color: delta > 0 ? COLORS.success : delta < 0 ? COLORS.danger : COLORS.textMuted
-                }]}>
-                    {delta > 0 ? '+' : ''}{delta}%
-                </Text>
-            </View>
-
-            <View style={styles.stepperWrapper}>
-                <TouchableOpacity
-                    style={[styles.stepperBtn, manualSteps <= 0 && styles.stepperBtnDisabled]}
-                    onPress={() => handleStep(-1)}
-                    activeOpacity={0.7}
-                    disabled={manualSteps <= 0}
-                >
-                    <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>-</Text>
-                </TouchableOpacity>
-
-                <View style={styles.stepperValueContainer}>
-                    <Text style={styles.stepperValue}>{activeSteps}</Text>
-                    <Text style={styles.stepperUnit}>CLASSES</Text>
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.stepperBtn, activeSteps >= maxSimulatorSteps && styles.stepperBtnDisabled]}
-                    onPress={() => handleStep(1)}
-                    activeOpacity={0.7}
-                    disabled={activeSteps >= maxSimulatorSteps}
-                >
-                    <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>+</Text>
-                </TouchableOpacity>
             </View>
 
             <View style={styles.insightPill}>
@@ -210,50 +188,29 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 </Text>
             </View>
 
-            {/* Interactive Timetable Sandbox */}
-            <View style={styles.sandboxContainer}>
-                <Text style={styles.sandboxTitle}>OR SELECT SPECIFIC CLASSES</Text>
+            {/* Collapsible date picker */}
+            <TouchableOpacity onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowDates(!showDates); }} style={styles.dateToggle}>
+                <Text style={styles.dateToggleText}>Select dates {showDates ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+            {showDates && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sandboxScroll}>
                     {upcomingDates.map((item, index) => {
                         const key = item.classKey;
                         const isSelected = !!selectedDates[key];
                         return (
-                            <TouchableOpacity 
-                                key={index}
-                                style={[
-                                    styles.sandboxDateCard,
-                                    isSelected && (mode === 'skip' ? styles.sandboxDateCardSkip : styles.sandboxDateCardAttend)
-                                ]}
-                                onPress={() => toggleDate(item)}
-                            >
-                                <Text style={[styles.sandboxDayText, isSelected && styles.sandboxTextActive]}>
-                                    {item.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
-                                </Text>
-                                <Text style={[styles.sandboxDateText, isSelected && styles.sandboxTextActive]}>
-                                    {item.date.getDate()} {item.date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-                                </Text>
-                                {isSelected && (
-                                    <View style={styles.sandboxCheck}>
-                                        <Text style={styles.sandboxCheckIcon}>
-                                            {mode === 'skip' ? '✕' : '✓'}
-                                        </Text>
-                                    </View>
-                                )}
+                            <TouchableOpacity key={index} style={[styles.sandboxDateCard, isSelected && (mode === 'skip' ? styles.sandboxDateCardSkip : styles.sandboxDateCardAttend)]} onPress={() => toggleDate(item)}>
+                                <Text style={[styles.sandboxDayText, isSelected && styles.sandboxTextActive]}>{item.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</Text>
+                                <Text style={[styles.sandboxDateText, isSelected && styles.sandboxTextActive]}>{item.date.getDate()}</Text>
+                                {isSelected && <View style={styles.sandboxCheck}><Text style={styles.sandboxCheckIcon}>{mode === 'skip' ? '✕' : '✓'}</Text></View>}
                             </TouchableOpacity>
                         );
                     })}
                 </ScrollView>
-                {hasSemesterEndDate && upcomingDates.length === 0 && (
-                    <Text style={styles.sandboxEmptyText}>No more classes before semester end.</Text>
-                )}
-            </View>
+            )}
 
             <View style={styles.progressContainer}>
                 <View style={styles.progressBg}>
-                    <Animated.View style={[styles.progressFill, {
-                        width: `${Math.min(100, simulated.percentage)}%`,
-                        backgroundColor: simulated.percentage < target ? COLORS.danger : COLORS.success
-                    }]} />
+                    <Animated.View style={[styles.progressFill, { width: `${Math.min(100, simulated.percentage)}%`, backgroundColor: simulated.percentage < target ? COLORS.danger : COLORS.success }]} />
                     <View style={[styles.targetMarker, { left: `${target}%` }]} />
                 </View>
                 <View style={styles.progressRow}>
@@ -261,265 +218,51 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                     <Text style={styles.progressLabel}>Target: {target}%</Text>
                 </View>
             </View>
-
         </View>
     );
 }
 
 const getStyles = () => StyleSheet.create({
     container: {
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
-        marginBottom: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-        ...SHADOWS.small,
+        backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md,
+        marginBottom: SPACING.md, borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small,
     },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: SPACING.lg,
-    },
-    title: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '700',
-        color: COLORS.textPrimary,
-    },
-    modeSwitch: {
-        flexDirection: 'row',
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.full,
-        padding: 4,
-        borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-    },
-    modeBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: BORDER_RADIUS.full,
-    },
-    modeBtnActive: {
-        backgroundColor: COLORS.cardBackground,
-        ...SHADOWS.small,
-    },
-    modeBtnText: {
-        fontSize: 10,
-        fontWeight: '800',
-        color: COLORS.textMuted,
-        letterSpacing: 0,
-    },
-    modeBtnTextActive: {
-        color: COLORS.textPrimary,
-    },
-    resultBox: {
-        alignItems: 'center',
-        marginBottom: SPACING.xl,
-        marginTop: SPACING.md,
-    },
-    resultLabel: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: COLORS.textMuted,
-        letterSpacing: 0,
-        marginBottom: 8,
-    },
-    resultMainRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-    },
-    resultMain: {
-        fontSize: 72,
-        fontWeight: '900',
-        lineHeight: 76,
-        letterSpacing: 0,
-    },
-    percentSymbol: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: COLORS.textSecondary,
-        marginTop: 8,
-        marginLeft: 2,
-    },
-    resultDelta: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '700',
-        marginTop: 4,
-    },
-    stepperWrapper: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: SPACING.xl,
-        marginBottom: SPACING.xl,
-    },
-    stepperBtn: {
-        width: 60,
-        height: 60,
-        borderRadius: 24,
-        backgroundColor: COLORS.cardBackground,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...SHADOWS.medium,
-    },
-    stepperBtnDisabled: {
-        opacity: 0.4,
-    },
-    stepperActionText: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        marginTop: -4,
-    },
-    stepperValueContainer: {
-        alignItems: 'center',
-        minWidth: 80,
-    },
-    stepperValue: {
-        fontSize: 64,
-        fontWeight: '900',
-        lineHeight: 68,
-        color: COLORS.textPrimary,
-    },
-    stepperUnit: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: COLORS.textMuted,
-        letterSpacing: 0,
-        marginTop: 2,
-    },
-    insightPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.inputBackground,
-        paddingHorizontal: SPACING.lg,
-        paddingVertical: 14,
-        borderRadius: BORDER_RADIUS.lg,
-        alignSelf: 'center',
-        gap: SPACING.md,
-        marginBottom: SPACING.xxl,
-        borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-    },
-    insightDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    insightText: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
-        lineHeight: 18,
-    },
-    progressContainer: {
-        backgroundColor: COLORS.background,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
-    },
-    progressBg: {
-        height: 8,
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: 4,
-        marginBottom: SPACING.md,
-        position: 'relative',
-    },
-    progressFill: {
-        height: '100%',
-        borderRadius: 4,
-    },
-    targetMarker: {
-        position: 'absolute',
-        top: -4,
-        bottom: -4,
-        width: 3,
-        backgroundColor: COLORS.textSecondary,
-        zIndex: 1,
-        borderRadius: 2,
-    },
-    progressRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    progressLabel: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: COLORS.textMuted,
-        textTransform: 'uppercase',
-        letterSpacing: 0,
-    },
-    sandboxContainer: {
-        marginBottom: SPACING.xl,
-    },
-    sandboxTitle: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: COLORS.textMuted,
-        letterSpacing: 0,
-        marginBottom: SPACING.sm,
-        textAlign: 'center',
-    },
-    sandboxEmptyText: {
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textMuted,
-        fontWeight: '600',
-        textAlign: 'center',
-        paddingVertical: SPACING.sm,
-    },
-    sandboxScroll: {
-        gap: SPACING.md,
-        paddingHorizontal: SPACING.xs,
-        paddingBottom: SPACING.sm,
-    },
-    sandboxDateCard: {
-        backgroundColor: COLORS.inputBackground,
-        paddingVertical: SPACING.md,
-        paddingHorizontal: SPACING.lg,
-        borderRadius: BORDER_RADIUS.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-        minWidth: 70,
-        position: 'relative',
-    },
-    sandboxDateCardSkip: {
-        backgroundColor: COLORS.dangerLight,
-        borderColor: COLORS.danger,
-    },
-    sandboxDateCardAttend: {
-        backgroundColor: COLORS.successLight,
-        borderColor: COLORS.success,
-    },
-    sandboxDayText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: COLORS.textSecondary,
-    },
-    sandboxDateText: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: COLORS.textPrimary,
-        marginTop: 2,
-    },
-    sandboxTextActive: {
-        color: COLORS.textPrimary,
-    },
-    sandboxCheck: {
-        position: 'absolute',
-        top: -6,
-        right: -6,
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        backgroundColor: COLORS.textPrimary,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    sandboxCheckIcon: {
-        color: COLORS.cardBackground,
-        fontSize: 10,
-        fontWeight: 'bold',
-    }
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.md },
+    title: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.textPrimary },
+    modeSwitch: { flexDirection: 'row', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.full, padding: 3, borderWidth: 1, borderColor: COLORS.borderSubtle },
+    modeBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: BORDER_RADIUS.full },
+    modeBtnActive: { backgroundColor: COLORS.cardBackground, ...SHADOWS.small },
+    modeBtnText: { fontSize: 10, fontWeight: '800', color: COLORS.textMuted },
+    modeBtnTextActive: { color: COLORS.textPrimary },
+    compactResultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.md },
+    resultBox: { alignItems: 'flex-end' },
+    resultMain: { fontSize: 36, fontWeight: '900', lineHeight: 40 },
+    resultDelta: { fontSize: FONT_SIZES.sm, fontWeight: '700', marginTop: 2 },
+    stepperWrapper: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+    stepperBtn: { width: 40, height: 40, borderRadius: 16, backgroundColor: COLORS.cardBackground, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
+    stepperBtnDisabled: { opacity: 0.4 },
+    stepperActionText: { fontSize: 24, fontWeight: 'bold', marginTop: -2 },
+    stepperValueContainer: { alignItems: 'center', minWidth: 50 },
+    stepperValue: { fontSize: 32, fontWeight: '900', lineHeight: 36, color: COLORS.textPrimary },
+    stepperUnit: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted, marginTop: 1 },
+    insightPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.inputBackground, paddingHorizontal: SPACING.md, paddingVertical: 10, borderRadius: BORDER_RADIUS.md, gap: SPACING.sm, marginBottom: SPACING.md, borderWidth: 1, borderColor: COLORS.borderSubtle },
+    insightDot: { width: 6, height: 6, borderRadius: 3 },
+    insightText: { fontSize: FONT_SIZES.xs, fontWeight: '600', color: COLORS.textSecondary, lineHeight: 16, flex: 1 },
+    dateToggle: { alignItems: 'center', paddingVertical: SPACING.xs, marginBottom: SPACING.sm },
+    dateToggleText: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted },
+    progressContainer: { backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md, padding: SPACING.sm },
+    progressBg: { height: 6, backgroundColor: COLORS.inputBackground, borderRadius: 3, marginBottom: SPACING.sm, position: 'relative' },
+    progressFill: { height: '100%', borderRadius: 3 },
+    targetMarker: { position: 'absolute', top: -3, bottom: -3, width: 2, backgroundColor: COLORS.textSecondary, zIndex: 1, borderRadius: 1 },
+    progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    progressLabel: { fontSize: 10, fontWeight: '700', color: COLORS.textMuted },
+    sandboxScroll: { gap: SPACING.sm, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.sm },
+    sandboxDateCard: { backgroundColor: COLORS.inputBackground, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: BORDER_RADIUS.md, alignItems: 'center', borderWidth: 1, borderColor: COLORS.borderSubtle, minWidth: 56, position: 'relative' },
+    sandboxDateCardSkip: { backgroundColor: COLORS.dangerLight, borderColor: COLORS.danger },
+    sandboxDateCardAttend: { backgroundColor: COLORS.successLight, borderColor: COLORS.success },
+    sandboxDayText: { fontSize: 10, fontWeight: '700', color: COLORS.textSecondary },
+    sandboxDateText: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary, marginTop: 1 },
+    sandboxTextActive: { color: COLORS.textPrimary },
+    sandboxCheck: { position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: 8, backgroundColor: COLORS.textPrimary, alignItems: 'center', justifyContent: 'center' },
+    sandboxCheckIcon: { color: COLORS.cardBackground, fontSize: 9, fontWeight: 'bold' },
 });

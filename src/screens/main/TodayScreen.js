@@ -18,8 +18,10 @@ import { calculateFreshness } from '../../utils/erpFreshness';
 import { getUnmarkedCount } from '../../utils/backlog';
 import { getTodayKey, getTodayDayName } from '../../utils/dateHelpers';
 import { getDayStatus } from '../../utils/planner.js';
-import { generateWeeklyReport } from '../../utils/insights';
+import { getEndGameStats } from '../../utils/planner.js';
+import { generateWeeklyReport, calculateBestBunkDay } from '../../utils/insights';
 import { deriveErpIntelligence } from '../../utils/erpIntelligence';
+import { getRiskLevel } from '../../utils/endgame';
 
 // Components
 import QuickStatsCard from '../../components/today/QuickStatsCard';
@@ -32,8 +34,11 @@ import AddExtraClassButton from '../../components/today/AddExtraClassButton';
 import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
+import BestBunkDayCard from '../../components/insights/BestBunkDayCard';
 import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
-import SmartInsightsCard from '../../components/today/SmartInsightsCard';
+import CompactInsightChip from '../../components/common/CompactInsightChip';
+import EndGameSummaryCard from '../../components/today/EndGameSummaryCard';
+import ProfileAvatar from '../../components/common/ProfileAvatar';
 import {
     DisplayMedium,
     HeadingMedium,
@@ -112,10 +117,23 @@ const TodayScreen = ({ navigation }) => {
     const erpIntel = useMemo(() => deriveErpIntelligence(state), [
         state.subjects, state.attendanceRecords, state.holidays, state.settings?.dangerThreshold,
     ]);
-    const urgentInsights = useMemo(
-        () => (erpIntel.smartInsights || []).filter(insight => insight.severity === 'danger'),
-        [erpIntel.smartInsights]
-    );
+    const allInsights = erpIntel.smartInsights || [];
+
+    // Best bunk day
+    const bunkData = useMemo(() => calculateBestBunkDay(state), [state.subjects, state.attendanceRecords, state.timetable, state.settings?.dangerThreshold]);
+
+    // End-game stats
+    const endGameStats = useMemo(() => getEndGameStats(state, dangerThreshold), [state, dangerThreshold]);
+    const overallRisk = useMemo(() => {
+        if (!endGameStats.results?.length) return 'comfortable';
+        const worst = endGameStats.results.reduce((w, r) => {
+            if (!r) return w;
+            const lvl = getRiskLevel(r.canSkip, r.mustAttend, r.remainingUnits);
+            const order = { impossible: 0, critical: 1, tight: 2, moderate: 3, comfortable: 4 };
+            return (order[lvl] ?? 4) < (order[w] ?? 4) ? lvl : w;
+        }, 'comfortable');
+        return worst;
+    }, [endGameStats]);
 
     const showWeeklyReportToday = showWeeklyReport && (today.getDay() === 0 || today.getDay() === 1);
 
@@ -278,15 +296,18 @@ const TodayScreen = ({ navigation }) => {
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <DisplayMedium style={styles.greeting}>
-                        {greeting.text} {greeting.emoji}
-                    </DisplayMedium>
-                    <BodyMedium color="textSecondary" style={styles.date}>{dateString}</BodyMedium>
-                    {isErpSyncing && (
-                        <BodySmall color="textMuted" style={{ marginTop: 4 }}>
-                            🔄 Syncing from portal...
-                        </BodySmall>
-                    )}
+                    <View style={{ flex: 1 }}>
+                        <DisplayMedium style={styles.greeting}>
+                            {greeting.text} {greeting.emoji}
+                        </DisplayMedium>
+                        <BodyMedium color="textSecondary" style={styles.date}>{dateString}</BodyMedium>
+                        {isErpSyncing && (
+                            <BodySmall color="textMuted" style={{ marginTop: 4 }}>
+                                🔄 Syncing from portal...
+                            </BodySmall>
+                        )}
+                    </View>
+                    <ProfileAvatar name={state.userName} onPress={() => navigation.navigate('Settings')} />
                 </View>
 
                 {/* Deletion Warning Banner */}
@@ -298,15 +319,6 @@ const TodayScreen = ({ navigation }) => {
                     onDismiss={handleDismissWelcomeCard}
                 />
 
-                {/* Quick Answer Card */}
-                {!isHoliday && todayClasses.length > 0 && (
-                    <QuickAnswerCard
-                        dayStatus={todaySkipStatus}
-                        compact={true}
-                        onPlannerPress={() => navigation.navigate('Planner')}
-                    />
-                )}
-
                 {/* Quick Stats */}
                 <QuickStatsCard
                     classCount={classCount}
@@ -314,12 +326,35 @@ const TodayScreen = ({ navigation }) => {
                     portalStatus={portalStatus}
                 />
 
-                {/* ── Urgent insight only ── */}
-                {erpIntel.hasData && urgentInsights.length > 0 && (
-                    <SmartInsightsCard
-                        insights={urgentInsights}
-                        onViewAll={() => navigation.navigate('Insights')}
+                {/* Quick Answer Card */}
+                {!isHoliday && todayClasses.length > 0 && (
+                    <QuickAnswerCard
+                        dayStatus={todaySkipStatus}
+                        compact={true}
                     />
+                )}
+
+                {/* Best Bunk Day */}
+                {bunkData?.bestDay && <BestBunkDayCard bunkData={bunkData} />}
+
+                {/* End-Game Summary */}
+                {endGameStats.results?.length > 0 && (
+                    <EndGameSummaryCard
+                        overallRisk={overallRisk}
+                        totalRemaining={endGameStats.totalRemaining}
+                        totalMustAttend={endGameStats.totalMustAttend}
+                        totalCanSkip={endGameStats.totalCanSkip}
+                        daysLeft={endGameStats.daysLeft}
+                    />
+                )}
+
+                {/* Smart Insights as compact chips */}
+                {erpIntel.hasData && allInsights.length > 0 && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.md }}>
+                        {allInsights.slice(0, 4).map((insight, i) => (
+                            <CompactInsightChip key={i} icon={insight.severity === 'danger' ? '⚠️' : insight.severity === 'warning' ? '📉' : '✅'} label={insight.text} severity={insight.severity} />
+                        ))}
+                    </View>
                 )}
 
                 {/* Weekly Report */}
@@ -545,6 +580,8 @@ const getStyles = () => StyleSheet.create({
         paddingBottom: SPACING.xxl,
     },
     header: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
         paddingHorizontal: SPACING.screenPadding,
         paddingBottom: SPACING.md,
     },

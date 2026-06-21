@@ -39,7 +39,6 @@ const SettingsScreen = ({ navigation }) => {
         smartAlertsEnabled = true,
         weeklySummaryEnabled = true,
         theme = 'light',
-        landingPage = 'today',
         semesterEndDate = null,
     } = state.settings || {};
 
@@ -249,27 +248,6 @@ const SettingsScreen = ({ navigation }) => {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>APP</Text>
                     <View style={styles.cardGroup}>
-                        <View style={[styles.settingRow, styles.groupItem]}>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.cardTitle}>Start on</Text>
-                            </View>
-                            <View style={styles.optionsGroupSmall}>
-                                <TouchableOpacity
-                                    style={[styles.smallOptionBtn, landingPage === 'today' && styles.optionButtonActive]}
-                                    onPress={() => updateSetting('landingPage', 'today')}
-                                >
-                                    <Text style={[styles.optionText, landingPage === 'today' && styles.optionTextActive]}>Today</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.smallOptionBtn, landingPage === 'planner' && styles.optionButtonActive]}
-                                    onPress={() => updateSetting('landingPage', 'planner')}
-                                >
-                                    <Text style={[styles.optionText, landingPage === 'planner' && styles.optionTextActive]}>Planner</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <View style={styles.divider} />
                         <View style={[styles.settingRow, styles.groupItem]}>
                             <View style={styles.settingInfo}>
                                 <Text style={styles.cardTitle}>Theme</Text>

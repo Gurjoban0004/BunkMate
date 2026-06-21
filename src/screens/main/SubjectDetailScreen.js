@@ -10,6 +10,13 @@ import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import StatusHeader from '../../components/planner/SubjectDetail/StatusHeader';
+import NextClassDecision from '../../components/planner/SubjectDetail/NextClassDecision';
+import RecoveryPaths from '../../components/planner/SubjectDetail/RecoveryPaths';
+import WhatIfSimulator from '../../components/planner/SubjectDetail/WhatIfSimulator';
+import Next7DaysView from '../../components/planner/SubjectDetail/Next7DaysView';
+import PatternsInsights from '../../components/planner/SubjectDetail/PatternsInsights';
+import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
+import { simulateAttendance } from '../../utils/planner/attendanceCalculations';
 
 export default function SubjectDetailScreen({ route }) {
     const styles = getStyles();
@@ -72,6 +79,15 @@ export default function SubjectDetailScreen({ route }) {
         target: target
     }), [subject, subjectColor, stats, target]);
 
+    // Planner data for merged components
+    const plannerData = useMemo(() => getSubjectPlannerData(subjectId, state), [subjectId, state]);
+    const [simulationOffset, setSimulationOffset] = useState(0);
+    const simulatedData = useMemo(() => {
+        if (!plannerData || simulationOffset === 0) return plannerData;
+        const sim = simulateAttendance(plannerData.attended, plannerData.total, simulationOffset);
+        return { ...plannerData, attended: sim.attended, total: sim.total, percentage: sim.percentage };
+    }, [plannerData, simulationOffset]);
+
     const handleEdit = (rec) => {
         setEditModal(rec);
     };
@@ -111,13 +127,30 @@ export default function SubjectDetailScreen({ route }) {
                     </Card>
                 )}
 
-                {/* Skip calculation — removed, use Planner tab for skip analysis */}
+                {/* Planner: Next class decision */}
+                {simulatedData && <NextClassDecision subjectData={simulatedData} />}
+
+                {/* Planner: Recovery paths */}
+                {simulatedData && <RecoveryPaths subjectData={simulatedData} />}
+
+                {/* Planner: What-If Simulator */}
+                {plannerData && (
+                    <WhatIfSimulator
+                        subjectData={plannerData}
+                        simulatedSubjectData={simulatedData}
+                        simulationOffset={simulationOffset}
+                        setSimulationOffset={setSimulationOffset}
+                    />
+                )}
 
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>
                     <Text style={styles.sectionTitle}>Calendar</Text>
                     <CalendarView subjectId={subjectId} state={state} />
                 </Card>
+
+                {simulatedData && <Next7DaysView subjectData={simulatedData} />}
+                {simulatedData && <PatternsInsights subjectData={simulatedData} />}
 
                 {/* Recent history with edit */}
                 {recentRecords.length > 0 && (
