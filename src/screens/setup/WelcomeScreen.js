@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 
 export default function WelcomeScreen({ navigation }) {
     return (
@@ -10,7 +10,11 @@ export default function WelcomeScreen({ navigation }) {
                 {/* Hero Section */}
                 <View style={styles.hero}>
                     <View style={styles.logoPill}>
-                        <Text style={styles.logoEmoji}>📋</Text>
+                        <View style={styles.logoOuterRing}>
+                            <View style={styles.logoInnerRing}>
+                                <View style={styles.logoCoreDot} />
+                            </View>
+                        </View>
                     </View>
                     <Text style={styles.appName}>Presence</Text>
                     <Text style={styles.tagline}>Attendance, solved.</Text>
@@ -29,8 +33,6 @@ export default function WelcomeScreen({ navigation }) {
                     >
                         <Text style={styles.primaryButtonText}>Login</Text>
                     </TouchableOpacity>
-
-
 
                     {/* Tertiary — Already have a code */}
                     <TouchableOpacity
@@ -65,29 +67,51 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     logoPill: {
-        width: 72,
-        height: 72,
-        borderRadius: 22,
-        backgroundColor: COLORS.primaryLight,
+        width: 80,
+        height: 80,
+        borderRadius: 24,
+        backgroundColor: COLORS.cardBackground,
+        borderWidth: 1,
+        borderColor: COLORS.border,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: SPACING.lg,
         ...SHADOWS.medium,
     },
-    logoEmoji: {
-        fontSize: 36,
+    logoOuterRing: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        borderWidth: 2,
+        borderColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoInnerRing: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: COLORS.primaryLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoCoreDot: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: COLORS.primary,
     },
     appName: {
+        ...TYPOGRAPHY.displayLarge,
         fontSize: 36,
-        fontWeight: '800',
+        lineHeight: 40,
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
     },
     tagline: {
-        fontSize: FONT_SIZES.md,
+        ...TYPOGRAPHY.bodyLarge,
         color: COLORS.textSecondary,
-        marginTop: 4,
-        fontWeight: '500',
+        marginTop: 6,
     },
 
     // Actions
@@ -103,8 +127,7 @@ const styles = StyleSheet.create({
     },
     primaryButtonText: {
         color: '#FFFFFF',
-        fontSize: FONT_SIZES.md,
-        fontWeight: '700',
+        ...TYPOGRAPHY.labelLarge,
     },
 
     tertiaryLink: {
@@ -112,12 +135,12 @@ const styles = StyleSheet.create({
         paddingVertical: SPACING.md,
     },
     tertiaryText: {
-        fontSize: FONT_SIZES.sm,
+        ...TYPOGRAPHY.bodySmall,
         color: COLORS.textSecondary,
         textAlign: 'center',
     },
     tertiaryHighlight: {
         color: COLORS.primary,
-        fontWeight: '600',
+        ...TYPOGRAPHY.labelSmall,
     },
 });

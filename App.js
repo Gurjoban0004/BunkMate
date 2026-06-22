@@ -13,6 +13,9 @@ import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { setGlobalWebAlert } from './src/utils/alert';
 import ErpReauthModal from './src/components/erp/ErpReauthModal';
 import { registerBackgroundSync, setupNotifications } from './src/services/backgroundTasks';
+import { useFonts } from 'expo-font';
+import { Outfit_800ExtraBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 
 // ─── Web: Disable react-native-screens on web ─────────────────────────────────
 // react-native-screens injects ScreenContainer divs that leave ghost overlay
@@ -87,6 +90,15 @@ if (Platform.OS === 'web') {
 }
 
 function AppContent() {
+    const [fontsLoaded] = useFonts({
+        'Outfit-ExtraBold': Outfit_800ExtraBold,
+        'Outfit-Bold': Outfit_700Bold,
+        'Inter-Regular': Inter_400Regular,
+        'Inter-Medium': Inter_500Medium,
+        'Inter-SemiBold': Inter_600SemiBold,
+        'Inter-Bold': Inter_700Bold,
+    });
+
     const { state, dispatch, isLoading, runAutopilotCheck } = useApp();
     const [devReady, setDevReady] = useState(!DEV_MODE || !SKIP_SETUP);
 
@@ -133,7 +145,7 @@ function AppContent() {
         }
     }, []);
 
-    if (isLoading || !devReady) {
+    if (isLoading || !devReady || !fontsLoaded) {
         return <BrandLoader />;
     }
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { parseTimeToMinutes } from '../../utils/dateHelpers';
 
 const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTime, nextClassInfo }) => {
@@ -105,19 +105,18 @@ const getStyles = () => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 12,
     },
     label: {
-        fontSize: 12,
-        fontWeight: '700',
+        ...TYPOGRAPHY.labelMedium,
         color: COLORS.textPrimary,
     },
     timeInfo: {
-        fontSize: 10,
+        ...TYPOGRAPHY.captionSmall,
         color: COLORS.textSecondary,
     },
     track: {
-        height: 28,
+        height: 36,
         width: '100%',
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
@@ -136,14 +135,13 @@ const getStyles = () => StyleSheet.create({
         borderRightColor: COLORS.border,
     },
     blockLabel: {
-        fontSize: 10,
-        fontWeight: '700',
+        ...TYPOGRAPHY.micro,
         color: COLORS.textSecondary,
-        paddingHorizontal: 2,
+        paddingHorizontal: 4,
     },
     timeMarker: {
         position: 'absolute',
-        top: -2,
+        top: -4,
         bottom: 0,
         width: 2,
         alignItems: 'center',

@@ -7,7 +7,7 @@ import {
     Animated,
 } from 'react-native';
 import { triggerHaptic } from '../../utils/haptics';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, TYPOGRAPHY } from '../../theme/theme';
 import { getSubjectAttendance } from '../../utils/attendance';
 import { getTodayKey, formatTimeRange } from '../../utils/dateHelpers';
 
@@ -278,16 +278,16 @@ const getStyles = () => StyleSheet.create({
     },
     colorDot: {
         position: 'absolute',
-        left: 12,
-        top: 14,
+        left: 16,
+        top: 20,
         width: 8,
         height: 8,
         borderRadius: 4,
     },
     content: {
         flex: 1,
-        padding: 12,
-        paddingLeft: 28,
+        padding: 16,
+        paddingLeft: 36,
     },
     headerRow: {
         flexDirection: 'row',
@@ -298,19 +298,16 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     subjectName: {
-        fontSize: 14,
-        fontWeight: '700',
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
-        lineHeight: 18,
     },
     timeRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 2,
+        marginTop: 4,
     },
     time: {
-        fontSize: 11,
-        fontWeight: '500',
+        ...TYPOGRAPHY.bodySmall,
         color: COLORS.textSecondary,
     },
     durationBadge: {
@@ -321,11 +318,8 @@ const getStyles = () => StyleSheet.create({
         marginLeft: SPACING.sm,
     },
     durationBadgeText: {
-        fontSize: 9,
-        fontWeight: '700',
+        ...TYPOGRAPHY.micro,
         color: COLORS.textSecondary,
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
     },
     statusTag: {
         paddingHorizontal: 6,
@@ -335,15 +329,12 @@ const getStyles = () => StyleSheet.create({
         marginLeft: SPACING.sm,
     },
     statusTagText: {
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
+        ...TYPOGRAPHY.micro,
     },
     progressRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 14,
     },
     progressBarTrack: {
         flex: 1,
@@ -362,12 +353,10 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     percentage: {
-        fontSize: 14,
-        fontWeight: '800',
+        ...TYPOGRAPHY.displaySmall,
         color: COLORS.textPrimary,
         minWidth: 44,
         textAlign: 'right',
-        letterSpacing: -0.3,
     },
     changeBadge: {
         marginLeft: 4,
@@ -376,9 +365,7 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     changeText: {
-        fontSize: 9,
-        fontWeight: '700',
-        letterSpacing: 0.2,
+        ...TYPOGRAPHY.micro,
     },
     warningRow: {
         marginTop: 8,
@@ -390,18 +377,17 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.warning,
     },
     warningText: {
-        fontSize: 11,
+        ...TYPOGRAPHY.labelSmall,
         color: COLORS.warningDark,
-        fontWeight: '600',
     },
     buttonRow: {
         flexDirection: 'row',
-        marginTop: 10,
+        marginTop: 14,
         gap: SPACING.sm,
     },
     actionButton: {
         flex: 1,
-        paddingVertical: 8,
+        paddingVertical: 12,
         borderRadius: BORDER_RADIUS.sm,
         alignItems: 'center',
         justifyContent: 'center',
@@ -412,10 +398,8 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.success,
     },
     presentButtonText: {
-        fontSize: 12,
-        fontWeight: '700',
+        ...TYPOGRAPHY.labelMedium,
         color: COLORS.successDark,
-        letterSpacing: 0.2,
     },
     absentButton: {
         backgroundColor: COLORS.dangerLight,
@@ -423,10 +407,8 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.danger,
     },
     absentButtonText: {
-        fontSize: 12,
-        fontWeight: '700',
+        ...TYPOGRAPHY.labelMedium,
         color: COLORS.dangerDark,
-        letterSpacing: 0.2,
     },
     undoButton: {
         backgroundColor: COLORS.inputBackground,
@@ -434,19 +416,15 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.border,
     },
     undoButtonText: {
-        fontSize: 12,
-        fontWeight: '600',
+        ...TYPOGRAPHY.labelMedium,
         color: COLORS.textSecondary,
     },
     preCountedBadge: {
         marginTop: 8,
     },
     preCountedText: {
-        fontSize: 10,
-        fontWeight: '700',
+        ...TYPOGRAPHY.micro,
         color: COLORS.success,
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
     },
 });
 
