@@ -341,6 +341,7 @@ export default function InsightsScreen() {
                 </View>
                 <View style={{ height: 100 }} />
             </ScrollView>
+        </SafeAreaView>
     );
 }
 
