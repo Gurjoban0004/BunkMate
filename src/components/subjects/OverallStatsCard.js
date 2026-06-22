@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
     const styles = getStyles();
@@ -59,23 +59,25 @@ const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
-        borderRadius: BORDER_RADIUS.lg,
+        borderRadius: BORDER_RADIUS.md,
         padding: SPACING.lg,
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-        ...SHADOWS.small,
+        borderColor: COLORS.border,
     },
     title: {
-        fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
-        color: COLORS.textSecondary,
+        fontSize: 11,
+        fontWeight: '700',
+        color: COLORS.textMuted,
         marginBottom: SPACING.sm,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     percentage: {
-        fontSize: 38,
+        fontSize: 26,
         fontWeight: '800',
         marginBottom: SPACING.sm,
+        letterSpacing: -0.5,
     },
     percentageSafe: {
         color: COLORS.success,
@@ -85,15 +87,15 @@ const getStyles = () => StyleSheet.create({
     },
     progressBar: {
         width: '100%',
-        height: 8,
+        height: 6,
         backgroundColor: COLORS.inputBackground,
-        borderRadius: 4,
+        borderRadius: 3,
         overflow: 'hidden',
         marginBottom: SPACING.sm,
     },
     progressFill: {
         height: '100%',
-        borderRadius: 4,
+        borderRadius: 3,
     },
     marksText: {
         fontSize: FONT_SIZES.sm,

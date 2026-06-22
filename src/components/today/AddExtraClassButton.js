@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING } from '../../theme/theme';
 
 const AddExtraClassButton = ({ onPress }) => {
     const styles = getStyles();
@@ -27,7 +27,8 @@ const getStyles = () => StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        ...SHADOWS.small,
+        borderWidth: 1,
+        borderColor: COLORS.primaryDark,
     },
     icon: {
         fontSize: 24,

@@ -315,11 +315,10 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         backgroundColor: COLORS.cardBackground,
         padding: SPACING.md,
-        borderRadius: 8,
+        borderRadius: BORDER_RADIUS.sm,
         marginBottom: SPACING.sm,
-
-
-        ...SHADOWS.small,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     historyDate: {
         ...TYPOGRAPHY.bodySmall,

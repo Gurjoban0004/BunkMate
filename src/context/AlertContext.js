@@ -105,7 +105,8 @@ const getStyles = () => StyleSheet.create({
         width: 300,
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,
-        ...SHADOWS.medium,
+        borderWidth: 1,
+        borderColor: COLORS.border,
         overflow: 'hidden',
     },
     title: {

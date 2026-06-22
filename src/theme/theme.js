@@ -418,30 +418,33 @@ export const SPACING = {
 // ─────────────────────────────────────────────────────────────
 
 export const TYPOGRAPHY = {
-    // Hero numbers (attendance %, big stats)
-    displayLarge:  { fontSize: 40, fontWeight: '800', lineHeight: 48, letterSpacing: -0.5 },
-    displayMedium: { fontSize: 32, fontWeight: '700', lineHeight: 40, letterSpacing: -0.25 },
-    displaySmall:  { fontSize: 28, fontWeight: '700', lineHeight: 36 },
+    // Hero numbers (attendance %, big stats) — Outfit 22-26px, 800
+    displayLarge:  { fontSize: 26, fontWeight: '800', lineHeight: 29, letterSpacing: -0.5 },
+    displayMedium: { fontSize: 22, fontWeight: '800', lineHeight: 24, letterSpacing: -0.5 },
+    displaySmall:  { fontSize: 18, fontWeight: '800', lineHeight: 20, letterSpacing: -0.3 },
 
-    // Section and card headers
-    headingLarge:  { fontSize: 24, fontWeight: '600', lineHeight: 32 },
-    headingMedium: { fontSize: 20, fontWeight: '600', lineHeight: 28 },
-    headingSmall:  { fontSize: 18, fontWeight: '600', lineHeight: 24 },
+    // Section and card headers — Outfit 16-20px, 800
+    headingLarge:  { fontSize: 20, fontWeight: '800', lineHeight: 26, letterSpacing: -0.3 },
+    headingMedium: { fontSize: 16, fontWeight: '800', lineHeight: 22, letterSpacing: -0.3 },
+    headingSmall:  { fontSize: 14, fontWeight: '700', lineHeight: 18 },
 
-    // Body copy
-    bodyLarge:     { fontSize: 18, fontWeight: '400', lineHeight: 26 },
-    bodyMedium:    { fontSize: 16, fontWeight: '400', lineHeight: 24 },
-    bodySmall:     { fontSize: 14, fontWeight: '400', lineHeight: 20 },
+    // Body copy — Inter 12-14px, 500
+    bodyLarge:     { fontSize: 16, fontWeight: '500', lineHeight: 22 },
+    bodyMedium:    { fontSize: 14, fontWeight: '500', lineHeight: 20 },
+    bodySmall:     { fontSize: 12, fontWeight: '500', lineHeight: 17 },
 
-    // Labels, buttons, chips
-    labelLarge:    { fontSize: 16, fontWeight: '600', lineHeight: 20, letterSpacing: 0.1 },
-    labelMedium:   { fontSize: 14, fontWeight: '600', lineHeight: 18, letterSpacing: 0.1 },
-    labelSmall:    { fontSize: 12, fontWeight: '600', lineHeight: 16, letterSpacing: 0.2 },
+    // Labels, buttons, chips — Inter 12-14px, 600-700
+    labelLarge:    { fontSize: 14, fontWeight: '700', lineHeight: 18, letterSpacing: 0.1 },
+    labelMedium:   { fontSize: 12, fontWeight: '700', lineHeight: 16, letterSpacing: 0.1 },
+    labelSmall:    { fontSize: 11, fontWeight: '700', lineHeight: 14, letterSpacing: 0.2 },
 
     // Captions, hints
-    captionLarge:  { fontSize: 14, fontWeight: '400', lineHeight: 18, letterSpacing: 0.1 },
-    captionMedium: { fontSize: 12, fontWeight: '400', lineHeight: 16, letterSpacing: 0.2 },
-    captionSmall:  { fontSize: 10, fontWeight: '400', lineHeight: 14, letterSpacing: 0.3 },
+    captionLarge:  { fontSize: 12, fontWeight: '500', lineHeight: 16, letterSpacing: 0.1 },
+    captionMedium: { fontSize: 11, fontWeight: '500', lineHeight: 14, letterSpacing: 0.2 },
+    captionSmall:  { fontSize: 10, fontWeight: '500', lineHeight: 13, letterSpacing: 0.3 },
+
+    // Micro badges — Inter 9-10px, 700, uppercase
+    micro:         { fontSize: 9, fontWeight: '700', lineHeight: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
 };
 
 // Convenience scale — matches the named steps above.

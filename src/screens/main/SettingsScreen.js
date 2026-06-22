@@ -451,7 +451,7 @@ const SettingsScreen = ({ navigation }) => {
                                 {editingSubject ? `Target: ${editingSubject.name}` : 'Default Target'}
                             </Text>
                             <TouchableOpacity onPress={() => setThresholdModalVisible(false)}>
-                                <Text style={styles.modalCloseText}>✕</Text>
+                                <Text style={styles.modalCloseText}>CLOSE</Text>
                             </TouchableOpacity>
                         </View>
                         
@@ -532,16 +532,16 @@ const getStyles = () => StyleSheet.create({
     scrollView: { flex: 1 },
     scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xxl },
     header: { paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.cardGap },
-    headerTitle: { fontSize: FONT_SIZES.xl, fontWeight: '700', color: COLORS.textPrimary },
+    headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, letterSpacing: -0.3 },
     section: { marginBottom: SPACING.lg },
-    sectionTitle: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 0.5, paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm },
-    card: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, ...SHADOWS.small },
-    cardGroup: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.lg, overflow: 'hidden', ...SHADOWS.small },
+    sectionTitle: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm },
+    card: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.md, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
+    cardGroup: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.md, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
     groupItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md },
     divider: { height: 1, backgroundColor: COLORS.border, marginLeft: SPACING.md },
     cardTitle: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 4 },
     cardDescription: { fontSize: FONT_SIZES.xs, color: COLORS.textSecondary, marginBottom: SPACING.md },
-    timePickerModalContent: { backgroundColor: COLORS.cardBackground, padding: SPACING.xl, borderRadius: BORDER_RADIUS.lg, width: '90%', maxWidth: 400, ...SHADOWS.large },
+    timePickerModalContent: { backgroundColor: COLORS.cardBackground, padding: SPACING.xl, borderRadius: BORDER_RADIUS.md, width: '90%', maxWidth: 400, borderWidth: 1, borderColor: COLORS.border },
     timeInputContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: SPACING.xl },
     customTimeInput: { width: 60, height: 60, backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, fontSize: 32, fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center' },
     timeColon: { fontSize: 32, fontWeight: '700', color: COLORS.textPrimary, marginHorizontal: SPACING.sm },
@@ -676,7 +676,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOWS.small,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     stepperControlText: {
         fontSize: 24,
@@ -688,9 +689,10 @@ const getStyles = () => StyleSheet.create({
         minWidth: 100,
     },
     stepperValueText: {
-        fontSize: 40,
+        fontSize: 26,
         fontWeight: '800',
         color: COLORS.primary,
+        letterSpacing: -0.5,
     },
     stepperValueLabel: {
         fontSize: 12,
@@ -859,11 +861,10 @@ const getStyles = () => StyleSheet.create({
     // Login button styles
     loginButton: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
+        borderRadius: BORDER_RADIUS.md,
         padding: SPACING.lg,
         borderWidth: 1,
         borderColor: COLORS.primary,
-        ...SHADOWS.small,
     },
     loginButtonText: {
         fontSize: FONT_SIZES.md,
@@ -884,7 +885,7 @@ const getStyles = () => StyleSheet.create({
     modalContent: { backgroundColor: COLORS.cardBackground, borderTopLeftRadius: BORDER_RADIUS.xl, borderTopRightRadius: BORDER_RADIUS.xl, padding: SPACING.xl, paddingBottom: Platform.OS === 'ios' ? 40 : SPACING.xl },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
     modalTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700', color: COLORS.textPrimary },
-    modalCloseText: { fontSize: 24, color: COLORS.textMuted },
+    modalCloseText: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5 },
     modalSubtitle: { fontSize: FONT_SIZES.sm, color: COLORS.danger, marginBottom: SPACING.lg },
     backupInput: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: SPACING.md, fontSize: FONT_SIZES.sm, color: COLORS.textPrimary, minHeight: 100, textAlignVertical: 'top', marginBottom: SPACING.lg, ...Platform.select({ web: { outlineStyle: 'none' } }) },
     modalActions: { flexDirection: 'row', gap: SPACING.md },

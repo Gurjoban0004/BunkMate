@@ -10,7 +10,7 @@
 
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../../theme/theme';
 import { getSubjectAttendance } from '../../utils/attendance';
 
 export default function ErpWelcomeCard({ state, onDismiss }) {
@@ -156,13 +156,10 @@ const getStyles = () => StyleSheet.create({
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.md,
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
+        borderRadius: BORDER_RADIUS.md,
         padding: SPACING.lg,
         borderWidth: 1,
-        borderColor: COLORS.primary + '30',
-        borderLeftWidth: 3,
-        borderLeftColor: COLORS.primary,
-        ...SHADOWS.small,
+        borderColor: COLORS.primary,
     },
     headerRow: {
         flexDirection: 'row',

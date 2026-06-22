@@ -150,8 +150,9 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     bigPercentage: {
-        fontSize: 48,
-        fontWeight: 'bold',
+        fontSize: 26,
+        fontWeight: '800',
+        letterSpacing: -0.5,
         marginBottom: SPACING.sm,
     },
     progressBar: {
@@ -196,9 +197,8 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.sm,
         marginBottom: SPACING.sm,
-
-
-        ...SHADOWS.small,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     subjectHeader: {
         flexDirection: 'row',

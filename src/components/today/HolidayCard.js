@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 const HolidayCard = ({ onUndo }) => {
     const styles = getStyles();
@@ -20,19 +20,17 @@ const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.primaryLight,
         marginHorizontal: SPACING.screenPadding,
-        borderRadius: BORDER_RADIUS.lg,
+        borderRadius: BORDER_RADIUS.md,
         padding: SPACING.xl,
         alignItems: 'center',
-        ...SHADOWS.small,
-    },
-    emoji: {
-        fontSize: 64,
-        marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
     },
     title: {
-        fontSize: FONT_SIZES.xl,
-        fontWeight: '700',
+        fontSize: 16,
+        fontWeight: '800',
         color: COLORS.primary,
+        letterSpacing: -0.3,
     },
     subtitle: {
         fontSize: FONT_SIZES.md,
@@ -44,9 +42,9 @@ const getStyles = () => StyleSheet.create({
         paddingVertical: SPACING.sm,
         paddingHorizontal: SPACING.lg,
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-
-
+        borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     undoText: {
         fontSize: FONT_SIZES.sm,

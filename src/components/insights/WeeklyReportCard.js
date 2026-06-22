@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 /**
  * WeeklyReportCard — Beautiful weekly attendance summary.
@@ -39,7 +39,7 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
             {/* Dismiss */}
             {onDismiss && (
                 <TouchableOpacity style={styles.dismissBtn} onPress={onDismiss}>
-                    <Text style={styles.dismissText}>✕</Text>
+                    <Text style={styles.dismissText}>CLOSE</Text>
                 </TouchableOpacity>
             )}
 
@@ -148,28 +148,31 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.cardGap,
-        borderRadius: BORDER_RADIUS.lg,
+        borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
         borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-        ...SHADOWS.small,
+        borderColor: COLORS.border,
     },
     dismissBtn: {
         position: 'absolute',
         top: 12,
         right: 12,
         zIndex: 1,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: BORDER_RADIUS.sm,
         backgroundColor: COLORS.inputBackground,
+        borderWidth: 1,
+        borderColor: COLORS.border,
         alignItems: 'center',
         justifyContent: 'center',
     },
     dismissText: {
-        fontSize: 12,
+        fontSize: 9,
+        fontWeight: '700',
         color: COLORS.textMuted,
-        fontWeight: '600',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
     header: {
         flexDirection: 'row',
@@ -177,28 +180,34 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     headerTitle: {
-        fontSize: FONT_SIZES.md,
+        fontSize: 16,
         fontWeight: '800',
         color: COLORS.textPrimary,
+        letterSpacing: -0.3,
     },
     headerDate: {
         fontSize: 11,
+        fontWeight: '500',
         color: COLORS.textSecondary,
-        marginTop: 1,
+        marginTop: 2,
+        letterSpacing: 0.2,
     },
     heroSection: {
         alignItems: 'center',
         marginBottom: SPACING.md,
     },
     heroPercentage: {
-        fontSize: 42,
+        fontSize: 26,
         fontWeight: '800',
         color: COLORS.textPrimary,
+        letterSpacing: -0.5,
     },
     heroLabel: {
-        fontSize: FONT_SIZES.xs,
+        fontSize: 11,
+        fontWeight: '500',
         color: COLORS.textSecondary,
         marginTop: 2,
+        letterSpacing: 0.2,
     },
     personalityBadge: {
         flexDirection: 'row',
@@ -258,8 +267,9 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     statValue: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
+        letterSpacing: -0.3,
     },
     barSection: {
         marginBottom: SPACING.md,

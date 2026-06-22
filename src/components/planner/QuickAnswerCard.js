@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutAnimation } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { getDayRecommendation } from '../../utils/planner.js';
 
 const QuickAnswerCard = ({ dayStatus, compact = false }) => {
@@ -147,7 +147,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                 <View style={styles.actionsRow}>
                     {compact && expanded && (
                         <TouchableOpacity onPress={toggleExpand}>
-                            <Text style={styles.collapseText}>Collapse ↑</Text>
+                            <Text style={styles.collapseText}>Collapse</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -163,7 +163,6 @@ const styles = StyleSheet.create({
         padding: SPACING.md,
         borderRadius: BORDER_RADIUS.lg,
         borderWidth: 1,
-        ...SHADOWS.small,
     },
     compactRow: {
         flexDirection: 'row',
@@ -185,12 +184,11 @@ const styles = StyleSheet.create({
     },
     card: {
         backgroundColor: COLORS.cardBackground,
-        marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.lg,
+        marginHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.md,
         borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.lg,
         borderWidth: 1,
-        ...SHADOWS.medium,
     },
     question: {
         fontSize: FONT_SIZES.sm,
@@ -243,8 +241,10 @@ const styles = StyleSheet.create({
     recommendationBox: {
         marginTop: SPACING.md,
         padding: SPACING.sm,
-        backgroundColor: 'rgba(255,255,255,0.5)',
+        backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     recommendationLabel: {
         fontSize: FONT_SIZES.xs,

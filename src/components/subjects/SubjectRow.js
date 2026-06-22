@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import ProgressRing from '../common/ProgressRing';
 import SkipGauge from '../common/SkipGauge';
 
@@ -62,20 +62,20 @@ const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row', alignItems: 'center', gap: SPACING.md,
         backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.sm, padding: SPACING.md, borderRadius: BORDER_RADIUS.lg,
-        borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small,
+        marginBottom: SPACING.sm, padding: SPACING.md, borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1, borderColor: COLORS.border,
     },
     content: { flex: 1 },
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    name: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, flex: 1 },
-    marksText: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, fontWeight: '600' },
+    name: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary, flex: 1 },
+    marksText: { fontSize: 11, color: COLORS.textMuted, fontWeight: '500', letterSpacing: 0.2 },
     bottomRow: { flexDirection: 'row', alignItems: 'center', marginTop: SPACING.xs, gap: SPACING.sm },
-    actionBadge: { paddingHorizontal: SPACING.sm, paddingVertical: 3, borderRadius: BORDER_RADIUS.full },
-    actionBadgeDanger: { backgroundColor: COLORS.dangerLight },
-    actionBadgeEdge: { backgroundColor: COLORS.warningLight },
-    actionBadgeSafe: { backgroundColor: COLORS.successLight },
-    actionText: { fontSize: 10, fontWeight: '700', color: COLORS.textPrimary },
-    sourceText: { fontSize: 9, fontWeight: '600', color: COLORS.textMuted, marginTop: 2 },
+    actionBadge: { paddingHorizontal: SPACING.sm, paddingVertical: 3, borderRadius: BORDER_RADIUS.sm, borderWidth: 1, borderColor: 'transparent' },
+    actionBadgeDanger: { backgroundColor: COLORS.dangerLight, borderColor: COLORS.danger },
+    actionBadgeEdge: { backgroundColor: COLORS.warningLight, borderColor: COLORS.warning },
+    actionBadgeSafe: { backgroundColor: COLORS.successLight, borderColor: COLORS.success },
+    actionText: { fontSize: 9, fontWeight: '700', color: COLORS.textPrimary, letterSpacing: 0.3 },
+    sourceText: { fontSize: 9, fontWeight: '700', color: COLORS.textMuted, marginTop: 2, letterSpacing: 0.5, textTransform: 'uppercase' },
 });
 
 export default SubjectRow;

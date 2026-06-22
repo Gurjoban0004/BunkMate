@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS } from '../../theme/theme';
 
 const SectionHeader = ({ title, classCount, onHolidayPress, showHoliday = true, onCancelClassPress, showCancelClass = true }) => {
     const styles = getStyles();
@@ -51,22 +51,22 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     title: {
-        fontSize: 14,
+        fontSize: 11,
         fontWeight: '700',
-        color: COLORS.textSecondary,
+        color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     badge: {
         backgroundColor: COLORS.primary,
-        borderRadius: 10,
-        paddingHorizontal: 8,
+        borderRadius: BORDER_RADIUS.full,
+        paddingHorizontal: 7,
         paddingVertical: 2,
         marginLeft: SPACING.sm,
     },
     badgeText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 10,
+        fontWeight: '700',
         color: COLORS.textOnPrimary,
     },
     rightActions: {
@@ -75,12 +75,14 @@ const getStyles = () => StyleSheet.create({
     },
     actionButton: {
         paddingHorizontal: SPACING.sm,
-        paddingVertical: 6,
+        paddingVertical: 5,
         backgroundColor: COLORS.inputBackground,
-        borderRadius: 12,
+        borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     actionText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
         color: COLORS.textSecondary,
     },
