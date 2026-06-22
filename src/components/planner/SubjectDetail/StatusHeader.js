@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../../theme/theme';
 import PlannerProgressBar from '../shared/PlannerProgressBar';
 import { determineStatus } from '../../../utils/planner/attendanceCalculations';
 
@@ -49,7 +49,7 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.lg,
         marginBottom: SPACING.md,
         borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
+        borderColor: COLORS.border,
         ...SHADOWS.small,
     },
     titleRow: {
@@ -62,18 +62,18 @@ const getStyles = () => StyleSheet.create({
         width: 10,
         height: 10,
         borderRadius: 5,
-        marginTop: 7,
+        marginTop: 6,
     },
     name: {
-        fontSize: FONT_SIZES.lg,
-        lineHeight: 22,
-        fontWeight: '700',
+        ...TYPOGRAPHY.headingMedium,
         color: COLORS.textPrimary,
         flex: 1,
     },
     bigPercentage: {
-        fontSize: 56,
-        lineHeight: 62,
+        fontSize: 54,
+        lineHeight: 58,
+        letterSpacing: -1,
+        fontFamily: 'Outfit-ExtraBold',
         fontWeight: '800',
         marginBottom: SPACING.md,
     },
@@ -85,9 +85,8 @@ const getStyles = () => StyleSheet.create({
         flexWrap: 'wrap',
     },
     stat: {
-        fontSize: FONT_SIZES.sm,
+        ...TYPOGRAPHY.bodySmall,
         color: COLORS.textSecondary,
-        fontWeight: '500',
     },
     statSep: {
         color: COLORS.textMuted,

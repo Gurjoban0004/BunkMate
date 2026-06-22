@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../../theme/theme';
 import { generateRecoveryPaths, generateRewards } from '../../../utils/planner/recoveryPlanner';
 
 export default function RecoveryPaths({ subjectData }) {
@@ -59,22 +59,88 @@ export default function RecoveryPaths({ subjectData }) {
 
 const getStyles = () => StyleSheet.create({
     strip: {
-        backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.md, padding: SPACING.md,
-        marginBottom: SPACING.sm, borderLeftWidth: 4, borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small,
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.md,
+        padding: 16,
+        marginBottom: SPACING.md,
+        borderLeftWidth: 4,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        ...SHADOWS.small,
     },
-    stripRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    stripText: { fontSize: FONT_SIZES.sm, fontWeight: '700', flex: 1 },
-    chevron: { fontSize: 10, color: COLORS.textMuted, marginLeft: SPACING.sm },
-    expandedContent: { marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle },
-    pathRow: { marginBottom: SPACING.sm },
-    pathHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-    pathMarker: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.inputBackground, borderWidth: 1, borderColor: COLORS.borderSubtle },
-    pathMarkerPrimary: { backgroundColor: COLORS.warning, borderColor: COLORS.warning },
-    pathMarkerText: { fontSize: FONT_SIZES.xs, fontWeight: '800', color: COLORS.textSecondary },
-    pathMarkerTextPrimary: { color: COLORS.textPrimary },
-    pathTarget: { fontSize: FONT_SIZES.sm, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 4 },
-    classesPreview: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-    classChip: { backgroundColor: COLORS.inputBackground, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4 },
-    classChipText: { fontSize: 9, fontWeight: '600', color: COLORS.textSecondary },
-    moreText: { fontSize: 9, color: COLORS.textMuted, alignSelf: 'center' },
+    stripRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    stripText: {
+        ...TYPOGRAPHY.labelLarge,
+        flex: 1,
+    },
+    chevron: {
+        ...TYPOGRAPHY.bodySmall,
+        color: COLORS.textMuted,
+        marginLeft: SPACING.sm,
+    },
+    expandedContent: {
+        marginTop: SPACING.md,
+        paddingTop: SPACING.sm,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+    },
+    pathRow: {
+        marginBottom: SPACING.sm,
+    },
+    pathHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    pathMarker: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.inputBackground,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    pathMarkerPrimary: {
+        backgroundColor: COLORS.warning,
+        borderColor: COLORS.warning,
+    },
+    pathMarkerText: {
+        ...TYPOGRAPHY.captionSmall,
+        fontWeight: '800',
+        color: COLORS.textSecondary,
+    },
+    pathMarkerTextPrimary: {
+        color: COLORS.textPrimary,
+    },
+    pathTarget: {
+        ...TYPOGRAPHY.labelLarge,
+        color: COLORS.textPrimary,
+        marginBottom: 4,
+    },
+    classesPreview: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 4,
+    },
+    classChip: {
+        backgroundColor: COLORS.inputBackground,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: 4,
+    },
+    classChipText: {
+        ...TYPOGRAPHY.micro,
+        color: COLORS.textSecondary,
+    },
+    moreText: {
+        ...TYPOGRAPHY.micro,
+        color: COLORS.textMuted,
+        alignSelf: 'center',
+    },
 });
