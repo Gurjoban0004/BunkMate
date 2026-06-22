@@ -72,7 +72,8 @@ export default function InsightsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Tab bar */}
+            {/* Tab bar — commented out to consolidate screens into a single view */}
+            {/*
             <View style={styles.tabBar}>
                 <TouchableOpacity style={[styles.tab, activeTab === 'insights' && styles.tabActive]} onPress={() => setActiveTab('insights')}>
                     <Text style={[styles.tabText, activeTab === 'insights' && styles.tabTextActive]}>Insights</Text>
@@ -81,270 +82,265 @@ export default function InsightsScreen() {
                     <Text style={[styles.tabText, activeTab === 'endgame' && styles.tabTextActive]}>End Game</Text>
                 </TouchableOpacity>
             </View>
+            */}
 
-            {/* ── INSIGHTS TAB ─────────────────────────────────── */}
-            {activeTab === 'insights' && (
-                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    <DisplayMedium style={styles.title}>Insights</DisplayMedium>
-                    {intel.hasData && (
-                        <BodySmall color="textMuted" style={styles.subtitle}>
-                            {formatDate(semesterSummary.earliestDate)} — {formatDate(semesterSummary.latestDate)} · {semesterSummary.totalDays} days tracked
-                        </BodySmall>
-                    )}
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <DisplayMedium style={styles.title}>Insights</DisplayMedium>
+                {intel.hasData && (
+                    <BodySmall color="textMuted" style={styles.subtitle}>
+                        {formatDate(semesterSummary.earliestDate)} — {formatDate(semesterSummary.latestDate)} · {semesterSummary.totalDays} days tracked
+                    </BodySmall>
+                )}
 
-                    {!intel.hasData ? (
-                        <View style={styles.emptyCard}>
-                            <Text style={styles.emptyTitle}>No insights yet</Text>
-                            <Text style={styles.emptyText}>Insights appear after your first portal sync.{'\n'}Pull to refresh on the Today screen to sync.</Text>
-                        </View>
-                    ) : (
-                        <>
-                            {/* Smart Insights */}
-                            {smartInsights.length > 0 && (
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>What we found</Text>
-                                    {smartInsights.map((insight, i) => {
-                                        const isDanger = insight.severity === 'danger';
-                                        const isWarning = insight.severity === 'warning';
-                                        const color = isDanger ? COLORS.danger : isWarning ? COLORS.warning : COLORS.primary;
-                                        return (
-                                            <View key={i} style={styles.cleanInsightRow}>
-                                                <View style={[styles.cleanInsightIconWrapper, { backgroundColor: color + '20' }]}>
-                                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-                                                </View>
-                                                <Text style={styles.cleanInsightText}>{insight.text}</Text>
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-                            )}
-
-                            {/* Weekday patterns */}
-                            <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Weekday patterns</Text>
-                                <Text style={styles.sectionSubtitle}>{weekdayPatterns.worstDayName ? `${weekdayPatterns.worstDayName} is your weakest day` : 'Consistent across all days'}</Text>
-                                <View style={styles.barsContainer}>
-                                    {[1, 2, 3, 4, 5].map(dayIdx => {
-                                        const data = weekdayPatterns.byDay[dayIdx];
-                                        if (!data || data.total === 0) return null;
-                                        const barHeight = Math.max(8, (data.total / maxDayTotal) * 100);
-                                        const presentRatio = data.present / data.total;
-                                        const isWorst = dayIdx === weekdayPatterns.worstDayIndex;
-                                        const barColor = data.percentage < 70 ? COLORS.danger : data.percentage < threshold ? COLORS.warning : COLORS.success;
-                                        return (
-                                            <View key={dayIdx} style={styles.barCol}>
-                                                <Text style={[styles.barPct, isWorst && { color: COLORS.danger, fontWeight: '700' }]}>{data.percentage?.toFixed(0)}%</Text>
-                                                <View style={[styles.barTrack, { height: barHeight }]}>
-                                                    <View style={[styles.barFill, { height: (presentRatio * 100) + '%', backgroundColor: barColor }]} />
-                                                </View>
-                                                <Text style={[styles.barLabel, isWorst && { color: COLORS.danger, fontWeight: '700' }]}>{data.name?.slice(0, 3)}</Text>
-                                            </View>
-                                        );
-                                    })}
-                                </View>
+                {!intel.hasData ? (
+                    <View style={styles.emptyCard}>
+                        <Text style={styles.emptyTitle}>No insights yet</Text>
+                        <Text style={styles.emptyText}>Insights appear after your first portal sync.{'\n'}Pull to refresh on the Today screen to sync.</Text>
+                    </View>
+                ) : (
+                    <>
+                        {/* 1. Overall verdict (Semester Outlook) */}
+                        <View style={styles.verdictCard}>
+                            <Text style={styles.verdictLabel}>SEMESTER OUTLOOK</Text>
+                            <Text style={[styles.verdictText, { color: getRiskColor(overallRisk) }]}>{OVERALL_MESSAGES[overallRisk]}</Text>
+                            <View style={styles.verdictStats}>
+                                <View style={styles.verdictStat}><Text style={styles.verdictStatNum}>{endGameStats.totalRemaining}</Text><Text style={styles.verdictStatLabel}>classes left</Text></View>
+                                <View style={styles.verdictDivider} />
+                                <View style={styles.verdictStat}><Text style={[styles.verdictStatNum, { color: COLORS.danger }]}>{endGameStats.totalMustAttend}</Text><Text style={styles.verdictStatLabel}>must attend</Text></View>
+                                <View style={styles.verdictDivider} />
+                                <View style={styles.verdictStat}><Text style={[styles.verdictStatNum, { color: COLORS.success }]}>{endGameStats.totalCanSkip}</Text><Text style={styles.verdictStatLabel}>can skip</Text></View>
                             </View>
-
-                            {/* Subject trends */}
-                            {Object.values(subjectTrends).filter(t => t.direction !== 'stable' || Math.abs(t.delta) > 2).length > 1 && (
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Subject trends</Text>
-                                    <Text style={styles.sectionSubtitle}>First half vs second half of semester</Text>
-                                    {Object.values(subjectTrends)
-                                        .filter(t => t.direction !== 'stable' || Math.abs(t.delta) > 2)
-                                        .sort((a, b) => a.delta - b.delta)
-                                        .map((trend, i) => {
-                                            const sub = state.subjects.find(s => s.id === trend.subjectId);
-                                            const arrow = trend.direction === 'improving' ? '↑' : trend.direction === 'declining' ? '↓' : '→';
-                                            const color = trend.direction === 'improving' ? COLORS.success : trend.direction === 'declining' ? COLORS.danger : COLORS.textMuted;
-                                            return (
-                                                <View key={i} style={styles.trendRow}>
-                                                    <View style={[styles.trendDot, { backgroundColor: sub?.color || COLORS.primary }]} />
-                                                    <Text style={styles.trendName} numberOfLines={1}>{trend.name}</Text>
-                                                    <Text style={[styles.trendArrow, { color }]}>{arrow}</Text>
-                                                    <Text style={[styles.trendDelta, { color }]}>{trend.delta > 0 ? '+' : ''}{trend.delta.toFixed(0)}%</Text>
-                                                    <Text style={styles.trendRange}>{trend.firstHalfPct.toFixed(0)}% → {trend.secondHalfPct.toFixed(0)}%</Text>
-                                                </View>
-                                            );
-                                        })}
-                                </View>
+                            {endGameStats.isExactMath && endGameStats.daysLeft != null && (
+                                <Text style={styles.exactMathNote}>{endGameStats.daysLeft} days until semester ends</Text>
                             )}
+                        </View>
 
-                            {/* Subject breakdown */}
+                        {/* 2. Smart Insights (What we found) — commented out as requested */}
+                        {/*
+                        {smartInsights.length > 0 && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Subject breakdown</Text>
-                                {subjectStats.map(sub => {
-                                    const isAtRisk = sub.percentage < threshold;
+                                <Text style={styles.sectionTitle}>What we found</Text>
+                                {smartInsights.map((insight, i) => {
+                                    const isDanger = insight.severity === 'danger';
+                                    const isWarning = insight.severity === 'warning';
+                                    const color = isDanger ? COLORS.danger : isWarning ? COLORS.warning : COLORS.primary;
                                     return (
-                                        <View key={sub.id} style={styles.subjectRow}>
-                                            <View style={styles.subjectInfo}>
-                                                <View style={[styles.subjectDot, { backgroundColor: sub.color }]} />
-                                                <Text style={styles.subjectName} numberOfLines={1}>{sub.name}</Text>
-                                                <Text style={[styles.subjectPct, isAtRisk && { color: COLORS.danger }]}>{sub.percentage.toFixed(1)}%</Text>
+                                        <View key={i} style={styles.cleanInsightRow}>
+                                            <View style={[styles.cleanInsightIconWrapper, { backgroundColor: color + '20' }]}>
+                                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
                                             </View>
-                                            <View style={styles.subjectBarTrack}>
-                                                <View style={[styles.subjectBarFill, { width: Math.min(sub.percentage, 100) + '%', backgroundColor: isAtRisk ? COLORS.danger : sub.color }]} />
-                                                <View style={[styles.thresholdLine, { left: threshold + '%' }]} />
-                                            </View>
-                                            <Text style={styles.subjectMeta}>{sub.attended}/{sub.total} classes</Text>
+                                            <Text style={styles.cleanInsightText}>{insight.text}</Text>
                                         </View>
                                     );
                                 })}
                             </View>
-                        </>
-                    )}
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-            )}
-
-            {/* ── END GAME TAB ─────────────────────────────────── */}
-            {activeTab === 'endgame' && (
-                <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                    <DisplayMedium style={styles.title}>End Game</DisplayMedium>
-                    <BodySmall color="textMuted" style={styles.subtitle}>What can you skip and still pass?</BodySmall>
-
-                    {/* Overall verdict */}
-                    <View style={[styles.verdictCard, { borderLeftColor: getRiskColor(overallRisk) }]}>
-                        <Text style={styles.verdictLabel}>SEMESTER OUTLOOK</Text>
-                        <Text style={[styles.verdictText, { color: getRiskColor(overallRisk) }]}>{OVERALL_MESSAGES[overallRisk]}</Text>
-                        <View style={styles.verdictStats}>
-                            <View style={styles.verdictStat}><Text style={styles.verdictStatNum}>{endGameStats.totalRemaining}</Text><Text style={styles.verdictStatLabel}>classes left</Text></View>
-                            <View style={styles.verdictDivider} />
-                            <View style={styles.verdictStat}><Text style={[styles.verdictStatNum, { color: COLORS.danger }]}>{endGameStats.totalMustAttend}</Text><Text style={styles.verdictStatLabel}>must attend</Text></View>
-                            <View style={styles.verdictDivider} />
-                            <View style={styles.verdictStat}><Text style={[styles.verdictStatNum, { color: COLORS.success }]}>{endGameStats.totalCanSkip}</Text><Text style={styles.verdictStatLabel}>can skip</Text></View>
-                        </View>
-                        {endGameStats.isExactMath && endGameStats.daysLeft != null && (
-                            <Text style={styles.exactMathNote}>{endGameStats.daysLeft} days until semester ends</Text>
                         )}
-                    </View>
+                        */}
 
-                    {/* Intelligent stuff: Long Weekends */}
-                    {longWeekends.length > 0 && (
+                        {/* 3. Weekday patterns — Kept */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Smart Opportunities</Text>
-                            <Text style={styles.sectionSubtitle}>We found upcoming long weekends you can safely take off.</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: SPACING.lg, gap: SPACING.md }}>
-                                {longWeekends.map((lw, idx) => (
-                                    <View key={idx} style={styles.lwCard}>
-                                        <View style={[styles.lwEmojiBg, { backgroundColor: COLORS.primaryLight }]}>
-                                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary }} />
+                            <Text style={styles.sectionTitle}>Weekday patterns</Text>
+                            <Text style={styles.sectionSubtitle}>{weekdayPatterns.worstDayName ? `${weekdayPatterns.worstDayName} is your weakest day` : 'Consistent across all days'}</Text>
+                            <View style={styles.barsContainer}>
+                                {[1, 2, 3, 4, 5].map(dayIdx => {
+                                    const data = weekdayPatterns.byDay[dayIdx];
+                                    if (!data || data.total === 0) return null;
+                                    const barHeight = Math.max(8, (data.total / maxDayTotal) * 100);
+                                    const presentRatio = data.present / data.total;
+                                    const isWorst = dayIdx === weekdayPatterns.worstDayIndex;
+                                    const barColor = data.percentage < 70 ? COLORS.danger : data.percentage < threshold ? COLORS.warning : COLORS.success;
+                                    return (
+                                        <View key={dayIdx} style={styles.barCol}>
+                                            <Text style={[styles.barPct, isWorst && { color: COLORS.danger, fontWeight: '700' }]}>{data.percentage?.toFixed(0)}%</Text>
+                                            <View style={[styles.barTrack, { height: barHeight }]}>
+                                                <View style={[styles.barFill, { height: (presentRatio * 100) + '%', backgroundColor: barColor }]} />
+                                            </View>
+                                            <Text style={[styles.barLabel, isWorst && { color: COLORS.danger, fontWeight: '700' }]}>{data.name?.slice(0, 3)}</Text>
                                         </View>
-                                        <Text style={styles.lwDate}>{lw.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
-                                        <Text style={styles.lwType}>Take {lw.type} off</Text>
-                                        <Text style={styles.lwClasses}>Skip {lw.classesToSkip} classes</Text>
-                                    </View>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
-
-                    {/* Weeks selector */}
-                    {!hasEndDate && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Weeks remaining (estimate)</Text>
-                            <View style={styles.weeksRow}>
-                                {WEEK_OPTIONS.map(w => (
-                                    <TouchableOpacity key={w} style={[styles.weekButton, weeksLeft === w && styles.weekButtonActive]} onPress={() => setWeeksLeft(w)}>
-                                        <Text style={[styles.weekButtonText, weeksLeft === w && styles.weekButtonTextActive]}>{w}w</Text>
-                                    </TouchableOpacity>
-                                ))}
+                                    );
+                                })}
                             </View>
-                            <Text style={styles.endDateHint}>Set semester end date in Settings for exact numbers</Text>
                         </View>
-                    )}
 
-                    {/* Per-subject cards */}
-                    <Text style={styles.egSectionLabel}>PER SUBJECT STRATEGY</Text>
-                    {sortedResults.map(subject => {
-                        const risk = getRiskLevel(subject.canSkip, subject.mustAttend, subject.remainingUnits);
-                        const riskColor = getRiskColor(risk);
-                        const strategy = getSkipStrategy(subject, threshold);
-                        const isExpanded = expandedSubject === subject.id;
-                        return (
-                            <TouchableOpacity key={subject.id} style={[styles.subjectCard, { borderLeftColor: riskColor }]} onPress={() => setExpandedSubject(isExpanded ? null : subject.id)} activeOpacity={0.8}>
-                                <View style={styles.cardHeader}>
-                                    <View style={styles.cardHeaderLeft}>
-                                        <View style={[styles.colorDot, { backgroundColor: subject.color }]} />
-                                        <Text style={styles.cardSubjectName} numberOfLines={1}>{subject.name}</Text>
-                                    </View>
-                                    <View style={styles.cardHeaderRight}>
-                                        <Text style={[styles.riskLabel, { color: riskColor }]}>{getRiskLabel(risk)}</Text>
-                                        <Text style={styles.expandChevron}>{isExpanded ? '▲' : '▼'}</Text>
-                                    </View>
-                                </View>
-                                <View style={styles.summaryRow}>
-                                    <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.percentage.toFixed(1)}%</Text><Text style={styles.summaryLabel}>now</Text></View>
-                                    <Text style={styles.summaryArrowText}>→</Text>
-                                    <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: COLORS.danger }]}>{subject.mustAttend}</Text><Text style={styles.summaryLabel}>must attend</Text></View>
-                                    <View style={styles.summaryDivider} />
-                                    <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: riskColor }]}>{subject.canSkip}</Text><Text style={styles.summaryLabel}>can skip</Text></View>
-                                    <View style={styles.summaryDivider} />
-                                    <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.remainingUnits}</Text><Text style={styles.summaryLabel}>remaining</Text></View>
-                                </View>
-                                {isExpanded && (
-                                    <View style={styles.expandedSection}>
-                                        <View style={[styles.strategyBox, { borderColor: riskColor, backgroundColor: riskColor + '12' }]}>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={[styles.strategyHeadline, { color: riskColor }]}>{strategy.headline}</Text>
-                                                <Text style={styles.strategyDetail}>{strategy.detail}</Text>
-                                                <Text style={styles.strategyAction}>{strategy.action}</Text>
+                        {/* 4. Subject trends — do not need to be shown unless we have at least 2 months (60 days) of data */}
+                        {semesterSummary.totalDays >= 60 && Object.values(subjectTrends).filter(t => t.direction !== 'stable' || Math.abs(t.delta) > 2).length > 1 && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>Subject trends</Text>
+                                <Text style={styles.sectionSubtitle}>First half vs second half of semester</Text>
+                                {Object.values(subjectTrends)
+                                    .filter(t => t.direction !== 'stable' || Math.abs(t.delta) > 2)
+                                    .sort((a, b) => a.delta - b.delta)
+                                    .map((trend, i) => {
+                                        const sub = state.subjects.find(s => s.id === trend.subjectId);
+                                        const arrow = trend.direction === 'improving' ? '↑' : trend.direction === 'declining' ? '↓' : '→';
+                                        const color = trend.direction === 'improving' ? COLORS.success : trend.direction === 'declining' ? COLORS.danger : COLORS.textMuted;
+                                        return (
+                                            <View key={i} style={styles.trendRow}>
+                                                <View style={[styles.trendDot, { backgroundColor: sub?.color || COLORS.primary }]} />
+                                                <Text style={styles.trendName} numberOfLines={1}>{trend.name}</Text>
+                                                <Text style={[styles.trendArrow, { color }]}>{arrow}</Text>
+                                                <Text style={[styles.trendDelta, { color }]}>{trend.delta > 0 ? '+' : ''}{trend.delta.toFixed(0)}%</Text>
+                                                <Text style={styles.trendRange}>{trend.firstHalfPct.toFixed(0)}% → {trend.secondHalfPct.toFixed(0)}%</Text>
                                             </View>
+                                        );
+                                    })}
+                            </View>
+                        )}
+
+                        {/* Smart Opportunities (Long Weekends) — commented out as requested */}
+                        {/*
+                        {longWeekends.length > 0 && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>Smart Opportunities</Text>
+                                <Text style={styles.sectionSubtitle}>We found upcoming long weekends you can safely take off.</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: SPACING.lg, gap: SPACING.md }}>
+                                    {longWeekends.map((lw, idx) => (
+                                        <View key={idx} style={styles.lwCard}>
+                                            <View style={[styles.lwEmojiBg, { backgroundColor: COLORS.primaryLight }]}>
+                                                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary }} />
+                                            </View>
+                                            <Text style={styles.lwDate}>{lw.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
+                                            <Text style={styles.lwType}>Take {lw.type} off</Text>
+                                            <Text style={styles.lwClasses}>Skip {lw.classesToSkip} classes</Text>
                                         </View>
-                                        
-                                        {/* Weekly Burn Plan */}
-                                        {subject.canSkip > 0 && subject.weeklyUnits > 0 && (
-                                            <View style={styles.planSection}>
-                                                <Text style={styles.consequenceTitle}>RECOMMENDED WEEKLY PLAN:</Text>
-                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.planScroll}>
-                                                    {getWeeklyBurnPlan(subject.canSkip, endGameStats.weeksLeft, subject.weeklyUnits).map((p, i) => (
-                                                        <View key={p.week} style={[styles.planChip, p.skips > 0 ? styles.planChipActive : styles.planChipEmpty]}>
-                                                            <Text style={styles.planWeekText}>Wk {p.week}</Text>
-                                                            <Text style={[styles.planSkipText, p.skips > 0 && {color: COLORS.primary}]}>{p.skips > 0 ? `Skip ${p.skips}` : 'Attend'}</Text>
-                                                        </View>
-                                                    ))}
-                                                </ScrollView>
-                                            </View>
-                                        )}
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+                        */}
 
-                                        {risk !== 'impossible' && (
-                                            <View style={styles.consequenceSection}>
-                                                <Text style={styles.consequenceTitle}>IF YOU SKIP N CLASSES:</Text>
-                                                <View style={styles.consequenceRow}>
-                                                    {[1, 2, 3, 5].filter(n => n <= subject.remainingUnits).map(n => {
-                                                        const attendIfSkipN = subject.remainingUnits - n;
-                                                        const finalAttended = subject.attendedUnits + attendIfSkipN;
-                                                        const finalTotal = subject.totalUnits + subject.remainingUnits;
-                                                        const finalPct = calculatePercentage(finalAttended, finalTotal);
-                                                        const tgt = subject.target || threshold;
-                                                        const passes = finalPct >= tgt;
-                                                        return (
-                                                            <View key={n} style={[styles.consequenceChip, { borderColor: passes ? COLORS.success : COLORS.danger, backgroundColor: passes ? COLORS.successLight : COLORS.dangerLight }]}>
-                                                                <Text style={styles.consequenceN}>Skip {n}</Text>
-                                                                <Text style={[styles.consequencePct, { color: passes ? COLORS.successDark : COLORS.danger }]}>{finalPct.toFixed(1)}%</Text>
-                                                                <Text style={[styles.consequenceVerdict, { color: passes ? COLORS.successDark : COLORS.danger }]}>{passes ? 'Pass' : 'Fail'}</Text>
-                                                            </View>
-                                                        );
-                                                    })}
+                        {/* 5. Weeks selector (Estimate) */}
+                        {!hasEndDate && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>Weeks remaining (estimate)</Text>
+                                <View style={styles.weeksRow}>
+                                    {WEEK_OPTIONS.map(w => (
+                                        <TouchableOpacity key={w} style={[styles.weekButton, weeksLeft === w && styles.weekButtonActive]} onPress={() => setWeeksLeft(w)}>
+                                            <Text style={[styles.weekButtonText, weeksLeft === w && styles.weekButtonTextActive]}>{w}w</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                                <Text style={styles.endDateHint}>Set semester end date in Settings for exact numbers</Text>
+                            </View>
+                        )}
+
+                        {/* 6. Per-subject strategy cards */}
+                        <Text style={styles.egSectionLabel}>PER SUBJECT STRATEGY</Text>
+                        {sortedResults.map(subject => {
+                            const risk = getRiskLevel(subject.canSkip, subject.mustAttend, subject.remainingUnits);
+                            const riskColor = getRiskColor(risk);
+                            const strategy = getSkipStrategy(subject, threshold);
+                            const isExpanded = expandedSubject === subject.id;
+                            return (
+                                <TouchableOpacity key={subject.id} style={styles.subjectCard} onPress={() => setExpandedSubject(isExpanded ? null : subject.id)} activeOpacity={0.8}>
+                                    <View style={styles.cardHeader}>
+                                        <View style={styles.cardHeaderLeft}>
+                                            <View style={[styles.colorDot, { backgroundColor: subject.color }]} />
+                                            <Text style={styles.cardSubjectName} numberOfLines={1}>{subject.name}</Text>
+                                        </View>
+                                        <View style={styles.cardHeaderRight}>
+                                            <Text style={[styles.riskLabel, { color: riskColor }]}>{getRiskLabel(risk)}</Text>
+                                            <Text style={styles.expandChevron}>{isExpanded ? '▲' : '▼'}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.summaryRow}>
+                                        <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.percentage.toFixed(1)}%</Text><Text style={styles.summaryLabel}>now</Text></View>
+                                        <Text style={styles.summaryArrowText}>→</Text>
+                                        <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: COLORS.danger }]}>{subject.mustAttend}</Text><Text style={styles.summaryLabel}>must attend</Text></View>
+                                        <View style={styles.summaryDivider} />
+                                        <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: riskColor }]}>{subject.canSkip}</Text><Text style={styles.summaryLabel}>can skip</Text></View>
+                                        <View style={styles.summaryDivider} />
+                                        <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.remainingUnits}</Text><Text style={styles.summaryLabel}>remaining</Text></View>
+                                    </View>
+                                    {isExpanded && (
+                                        <View style={styles.expandedSection}>
+                                            <View style={[styles.strategyBox, { borderColor: riskColor, backgroundColor: riskColor + '12' }]}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={[styles.strategyHeadline, { color: riskColor }]}>{strategy.headline}</Text>
+                                                    <Text style={styles.strategyDetail}>{strategy.detail}</Text>
+                                                    <Text style={styles.strategyAction}>{strategy.action}</Text>
                                                 </View>
                                             </View>
-                                        )}
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                        );
-                    })}
+                                            
+                                            {/* Weekly Burn Plan */}
+                                            {subject.canSkip > 0 && subject.weeklyUnits > 0 && (
+                                                <View style={styles.planSection}>
+                                                    <Text style={styles.consequenceTitle}>RECOMMENDED WEEKLY PLAN:</Text>
+                                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.planScroll}>
+                                                        {getWeeklyBurnPlan(subject.canSkip, endGameStats.weeksLeft, subject.weeklyUnits).map((p, i) => (
+                                                            <View key={p.week} style={[styles.planChip, p.skips > 0 ? styles.planChipActive : styles.planChipEmpty]}>
+                                                                <Text style={styles.planWeekText}>Wk {p.week}</Text>
+                                                                <Text style={[styles.planSkipText, p.skips > 0 && {color: COLORS.primary}]}>{p.skips > 0 ? `Skip ${p.skips}` : 'Attend'}</Text>
+                                                            </View>
+                                                        ))}
+                                                    </ScrollView>
+                                                </View>
+                                            )}
 
-                    <View style={styles.footerNote}>
-                        <Text style={styles.footerNoteText}>
-                            {endGameStats.isExactMath
-                                ? 'Exact calculation based on your timetable until the semester end date.'
-                                : 'Estimated based on weekly timetable × weeks remaining. Set semester end date in Settings for exact numbers.'}
-                        </Text>
-                    </View>
-                    <View style={{ height: 100 }} />
-                </ScrollView>
-            )}
-        </SafeAreaView>
+                                            {risk !== 'impossible' && (
+                                                <View style={styles.consequenceSection}>
+                                                    <Text style={styles.consequenceTitle}>IF YOU SKIP N CLASSES:</Text>
+                                                    <View style={styles.consequenceRow}>
+                                                        {[1, 2, 3, 5].filter(n => n <= subject.remainingUnits).map(n => {
+                                                            const attendIfSkipN = subject.remainingUnits - n;
+                                                            const finalAttended = subject.attendedUnits + attendIfSkipN;
+                                                            const finalTotal = subject.totalUnits + subject.remainingUnits;
+                                                            const finalPct = calculatePercentage(finalAttended, finalTotal);
+                                                            const tgt = subject.target || threshold;
+                                                            const passes = finalPct >= tgt;
+                                                            return (
+                                                                <View key={n} style={[styles.consequenceChip, { borderColor: passes ? COLORS.success : COLORS.danger, backgroundColor: passes ? COLORS.successLight : COLORS.dangerLight }]}>
+                                                                    <Text style={styles.consequenceN}>Skip {n}</Text>
+                                                                    <Text style={[styles.consequencePct, { color: passes ? COLORS.successDark : COLORS.danger }]}>{finalPct.toFixed(1)}%</Text>
+                                                                    <Text style={[styles.consequenceVerdict, { color: passes ? COLORS.successDark : COLORS.danger }]}>{passes ? 'Pass' : 'Fail'}</Text>
+                                                                </View>
+                                                            );
+                                                        })}
+                                                    </View>
+                                                </View>
+                                            )}
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
+
+                        {/* Subject breakdown progress bars — commented out in favor of the richer per-subject strategy cards */}
+                        {/*
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>Subject breakdown</Text>
+                            {subjectStats.map(sub => {
+                                const isAtRisk = sub.percentage < threshold;
+                                return (
+                                    <View key={sub.id} style={styles.subjectRow}>
+                                        <View style={styles.subjectInfo}>
+                                            <View style={[styles.subjectDot, { backgroundColor: sub.color }]}/ >
+                                            <Text style={styles.subjectName} numberOfLines={1}>{sub.name}</Text>
+                                            <Text style={[styles.subjectPct, isAtRisk && { color: COLORS.danger }]}>{sub.percentage.toFixed(1)}%</Text>
+                                        </View>
+                                        <View style={styles.subjectBarTrack}>
+                                            <View style={[styles.subjectBarFill, { width: Math.min(sub.percentage, 100) + '%', backgroundColor: isAtRisk ? COLORS.danger : sub.color }]} />
+                                            <View style={[styles.thresholdLine, { left: threshold + '%' }]} />
+                                        </View>
+                                        <Text style={styles.subjectMeta}>{sub.attended}/{sub.total} classes</Text>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                        */}
+                    </>
+                )}
+
+                {/* Footer Note */}
+                <View style={styles.footerNote}>
+                    <Text style={styles.footerNoteText}>
+                        {endGameStats.isExactMath
+                            ? 'Exact calculation based on your timetable until the semester end date.'
+                            : 'Estimated based on weekly timetable × weeks remaining. Set semester end date in Settings for exact numbers.'}
+                    </Text>
+                </View>
+                <View style={{ height: 100 }} />
+            </ScrollView>
     );
 }
 
@@ -456,7 +452,7 @@ const getStyles = () => StyleSheet.create({
     // ── End Game styles ──────────────────────────────────────────────
 
     // Verdict card
-    verdictCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.cardGap, borderWidth: 1, borderColor: COLORS.borderSubtle, borderLeftWidth: 4, ...SHADOWS.small },
+    verdictCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.cardGap, borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small },
     verdictLabel: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: SPACING.xs },
     verdictText: { fontSize: FONT_SIZES.lg, fontWeight: '800', marginBottom: SPACING.md },
     verdictStats: { flexDirection: 'row', alignItems: 'center' },
@@ -478,7 +474,7 @@ const getStyles = () => StyleSheet.create({
     egSectionLabel: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm },
 
     // Subject cards
-    subjectCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.cardGap, borderWidth: 1, borderColor: COLORS.borderSubtle, borderLeftWidth: 4, ...SHADOWS.small },
+    subjectCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.cardGap, borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
     cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
     colorDot: { width: 8, height: 8, borderRadius: 4 },
