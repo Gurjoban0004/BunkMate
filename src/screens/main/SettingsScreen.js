@@ -13,7 +13,7 @@ import {
     Switch
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS, PALETTES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { clearAppState, saveAppState, deleteUserAccount } from '../../storage/storage';
 import { showAlert } from '../../utils/alert';
@@ -39,6 +39,7 @@ const SettingsScreen = ({ navigation }) => {
         smartAlertsEnabled = true,
         weeklySummaryEnabled = true,
         theme = 'light',
+        uiPalette = 'chalkpad',
         semesterEndDate = null,
     } = state.settings || {};
 
@@ -266,6 +267,44 @@ const SettingsScreen = ({ navigation }) => {
                                     <Text style={[styles.optionText, theme === 'dark' && styles.optionTextActive]}>Dark</Text>
                                 </TouchableOpacity>
                             </View>
+                        </View>
+
+                        <View style={styles.divider} />
+
+                        {/* UI Palette Picker */}
+                        <View style={styles.paletteSection}>
+                            <Text style={styles.paletteSectionLabel}>UI Palette</Text>
+                            {Object.values(PALETTES).map((palette) => {
+                                const isActive = uiPalette === palette.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={palette.id}
+                                        style={[styles.paletteCard, isActive && styles.paletteCardActive]}
+                                        onPress={() => updateSetting('uiPalette', palette.id)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.paletteSwatches}>
+                                            {palette.swatches.map((color, i) => (
+                                                <View
+                                                    key={i}
+                                                    style={[styles.paletteDot, { backgroundColor: color }]}
+                                                />
+                                            ))}
+                                        </View>
+                                        <View style={styles.paletteInfo}>
+                                            <Text style={[styles.paletteName, isActive && styles.paletteNameActive]}>
+                                                {palette.name}
+                                            </Text>
+                                            <Text style={styles.paletteDesc}>{palette.description}</Text>
+                                        </View>
+                                        {isActive && (
+                                            <View style={styles.paletteCheck}>
+                                                <Text style={styles.paletteCheckText}>&#10003;</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
 
                         {Platform.OS === 'android' && (
@@ -668,6 +707,74 @@ const getStyles = () => StyleSheet.create({
     customTargetValue: { fontSize: FONT_SIZES.sm, color: COLORS.primary, fontWeight: '700' },
     optionsGroupSmall: { flexDirection: 'row', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: 4 },
     smallOptionBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: BORDER_RADIUS.sm, alignItems: 'center' },
+
+    // Palette Picker
+    paletteSection: {
+        padding: SPACING.md,
+        gap: SPACING.sm,
+    },
+    paletteSectionLabel: {
+        fontSize: FONT_SIZES.xs,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4,
+    },
+    paletteCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.md,
+        padding: SPACING.sm + 4,
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    paletteCardActive: {
+        borderColor: COLORS.primary,
+        backgroundColor: COLORS.primaryLight,
+    },
+    paletteSwatches: {
+        flexDirection: 'row',
+        gap: 4,
+    },
+    paletteDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.08)',
+    },
+    paletteInfo: {
+        flex: 1,
+    },
+    paletteName: {
+        fontSize: FONT_SIZES.sm,
+        fontWeight: '600',
+        color: COLORS.textPrimary,
+    },
+    paletteNameActive: {
+        fontWeight: '700',
+    },
+    paletteDesc: {
+        fontSize: 10,
+        color: COLORS.textSecondary,
+        marginTop: 1,
+    },
+    paletteCheck: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    paletteCheckText: {
+        color: COLORS.textOnPrimary,
+        fontSize: 12,
+        fontWeight: '700',
+    },
     timePickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
     timePickerLabel: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary },
     timeBadge: { backgroundColor: COLORS.primaryLight, paddingHorizontal: SPACING.md, paddingVertical: 6, borderRadius: BORDER_RADIUS.sm },

@@ -92,7 +92,8 @@ function AppContent() {
 
     // Process theme dynamically on every render
     const currentTheme = state?.settings?.theme || 'light';
-    applyTheme(currentTheme);
+    const currentPalette = state?.settings?.uiPalette || 'chalkpad';
+    applyTheme(currentTheme, currentPalette);
 
     useEffect(() => {
         if (DEV_MODE && SKIP_SETUP && !isLoading && !devReady) {

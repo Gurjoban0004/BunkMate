@@ -13,7 +13,7 @@ import {
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
-import { getTodayClasses, getCurrentClassIndex, calculateOverallPercentage } from '../../utils/attendance';
+import { getTodayClasses, getCurrentClassIndex } from '../../utils/attendance';
 import { calculateFreshness } from '../../utils/erpFreshness';
 import { getUnmarkedCount } from '../../utils/backlog';
 import { getTodayKey, getTodayDayName } from '../../utils/dateHelpers';
@@ -21,7 +21,7 @@ import { getDayStatus } from '../../utils/planner.js';
 import { generateWeeklyReport } from '../../utils/insights';
 
 // Components
-import QuickStatsCard from '../../components/today/QuickStatsCard';
+import TodayScheduleBar from '../../components/today/TodayScheduleBar';
 import SectionHeader from '../../components/today/SectionHeader';
 import ClassCard from '../../components/today/ClassCard';
 import BacklogBanner from '../../components/today/BacklogBanner';
@@ -82,7 +82,6 @@ const TodayScreen = ({ navigation }) => {
     const freshnessMap = useMemo(() => calculateFreshness(state, todayClasses), [state, todayClasses]);
 
     // Calculate stats
-    const overallPercentage = calculateOverallPercentage(state);
     const classCount = todayClasses.length;
 
     // Check if today is holiday
@@ -106,17 +105,22 @@ const TodayScreen = ({ navigation }) => {
     const dayOfWeek = today.getDay();
     const showWeeklyReportToday = showWeeklyReport && (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0 || dayOfWeek === 1);
 
-    const portalStatus = useMemo(() => {
-        if (!state.settings?.erpConnected) return 'Manual';
-        if (isErpSyncing) return 'Updating';
-        const syncDates = Object.values(state.settings?.lastSubjectSyncDates || {}).filter(Boolean).sort();
-        const latest = state.latestErpDate || syncDates[syncDates.length - 1];
-        if (!latest) return 'Waiting';
-        if (latest >= todayKey) return 'Portal: Today';
-        const d = new Date(latest + 'T12:00:00');
-        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        return `Portal: ${label}`;
-    }, [state.settings?.erpConnected, state.settings?.lastSubjectSyncDates, state.latestErpDate, isErpSyncing, todayKey]);
+    const nextClassInfo = useMemo(() => {
+        if (!todayClasses || todayClasses.length === 0) return null;
+        const nowMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+        for (const c of todayClasses) {
+            const [h, m] = c.startTime.split(':').map(Number);
+            const startMins = h * 60 + m;
+            if (startMins > nowMins) {
+                const hour12 = h % 12 || 12;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const mins = m > 0 ? `:${String(m).padStart(2, '0')}` : '';
+                return `${c.subjectName.split(' ')[0]} begins at ${hour12}${mins} ${ampm}`;
+            }
+        }
+        return null;
+    }, [todayClasses, currentTime]);
+
 
     // Pull to refresh — also triggers ERP sync if connected
     const onRefresh = useCallback(() => {
@@ -288,11 +292,13 @@ const TodayScreen = ({ navigation }) => {
                     onDismiss={handleDismissWelcomeCard}
                 />
 
-                {/* Quick Stats */}
-                <QuickStatsCard
-                    classCount={classCount}
-                    overallPercentage={overallPercentage}
-                    portalStatus={portalStatus}
+                {/* Today's Schedule Bar */}
+                <TodayScheduleBar
+                    todayClasses={todayClasses}
+                    attendanceRecords={state.attendanceRecords}
+                    todayKey={todayKey}
+                    currentTime={currentTime}
+                    nextClassInfo={nextClassInfo}
                 />
 
                 {/* Quick Answer Card */}
