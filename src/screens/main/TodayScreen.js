@@ -280,7 +280,6 @@ const TodayScreen = ({ navigation }) => {
                             </BodySmall>
                         )}
                     </View>
-                    <ProfileAvatar name={state.userName} onPress={() => navigation.navigate('Settings')} />
                 </View>
 
                 {/* Deletion Warning Banner */}
@@ -440,6 +439,16 @@ const TodayScreen = ({ navigation }) => {
                 )}
 
 
+                {/* Settings Footer */}
+                <TouchableOpacity
+                    style={styles.settingsFooter}
+                    onPress={() => navigation.navigate('Settings')}
+                    activeOpacity={0.7}
+                >
+                    <ProfileAvatar name={state.userName} size={24} onPress={() => navigation.navigate('Settings')} />
+                    <Text style={styles.settingsFooterText}>Settings</Text>
+                </TouchableOpacity>
+
                 {/* Bottom Padding */}
                 <View style={styles.bottomPadding} />
             </ScrollView>
@@ -535,7 +544,7 @@ const getStyles = () => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: SPACING.screenPadding,
-        paddingBottom: SPACING.lg,
+        paddingBottom: 40,
     },
     setupDayCard: {
         marginHorizontal: SPACING.screenPadding,
@@ -601,6 +610,19 @@ const getStyles = () => StyleSheet.create({
     },
     bottomPadding: {
         height: 100,
+    },
+    settingsFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: SPACING.xl,
+        gap: SPACING.sm,
+    },
+    settingsFooterText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.textMuted,
+        letterSpacing: 0.5,
     },
     // Modal styles
     modalOverlay: {

@@ -154,10 +154,10 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
 const getStyles = () => StyleSheet.create({
     card: {
         marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md,
+        marginBottom: SPACING.cardGap,
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.lg,
+        padding: SPACING.md,
         borderWidth: 1,
         borderColor: COLORS.primary,
     },

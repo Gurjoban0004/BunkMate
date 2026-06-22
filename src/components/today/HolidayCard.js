@@ -20,8 +20,9 @@ const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.primaryLight,
         marginHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.cardGap,
         borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.xl,
+        padding: SPACING.md,
         alignItems: 'center',
         borderWidth: 1,
         borderColor: COLORS.primary,

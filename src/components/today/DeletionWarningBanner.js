@@ -72,10 +72,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFBE6', // Light warning yellow
     borderWidth: 1,
     borderColor: '#FFE58F', // Border warning yellow
-    borderRadius: BORDER_RADIUS.lg,
+    borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
-    marginBottom: SPACING.md,
-    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.cardGap,
+    marginHorizontal: SPACING.screenPadding,
     ...Platform.select({
       ios: {
         shadowColor: '#000',

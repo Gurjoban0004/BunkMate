@@ -14,17 +14,18 @@ export const getGreeting = (name, devDate = null) => {
         greeting = 'Good evening';
         emoji = '🌅';
     } else {
-        greeting = 'Good night';
-        emoji = '🌙';
+        greeting = 'Hello';
+        emoji = '👋';
     }
 
-    // Title case the name (DB often stores ALL CAPS)
-    const titleName = name
+    // Extract first name only (e.g. "GURJOBAN SINGH" -> "Gurjoban")
+    const firstName = (name || 'there').trim().split(/\s+/)[0];
+    const titleName = firstName
         .toLowerCase()
         .replace(/\b\w/g, c => c.toUpperCase());
 
     return {
-        text: `${greeting}, ${titleName}!`,
+        text: `${greeting}, ${titleName}`,
         emoji,
     };
 };

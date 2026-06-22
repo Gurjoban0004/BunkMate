@@ -94,7 +94,7 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
 const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
+        borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.cardGap,

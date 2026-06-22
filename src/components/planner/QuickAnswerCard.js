@@ -159,9 +159,9 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
 const styles = StyleSheet.create({
     compactCard: {
         marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md,
+        marginBottom: SPACING.cardGap,
         padding: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
+        borderRadius: BORDER_RADIUS.md,
         borderWidth: 1,
     },
     compactRow: {
@@ -185,9 +185,9 @@ const styles = StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
+        marginBottom: SPACING.cardGap,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.md,
         borderWidth: 1,
     },
     question: {
