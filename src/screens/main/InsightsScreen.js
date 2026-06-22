@@ -101,14 +101,26 @@ export default function InsightsScreen() {
                     <>
                         {/* 1. Overall verdict (Semester Outlook) */}
                         <View style={styles.verdictCard}>
-                            <Text style={styles.verdictLabel}>SEMESTER OUTLOOK</Text>
+                            <Text style={styles.verdictLabel}>Semester Outlook</Text>
                             <Text style={[styles.verdictText, { color: getRiskColor(overallRisk) }]}>{OVERALL_MESSAGES[overallRisk]}</Text>
+                            
+                            <View style={styles.statsDivider} />
+
                             <View style={styles.verdictStats}>
-                                <View style={styles.verdictStat}><Text style={styles.verdictStatNum}>{endGameStats.totalRemaining}</Text><Text style={styles.verdictStatLabel}>classes left</Text></View>
+                                <View style={styles.verdictStat}>
+                                    <Text style={styles.verdictStatNum}>{endGameStats.totalRemaining}</Text>
+                                    <Text style={styles.verdictStatLabel}>classes left</Text>
+                                </View>
                                 <View style={styles.verdictDivider} />
-                                <View style={styles.verdictStat}><Text style={[styles.verdictStatNum, { color: COLORS.danger }]}>{endGameStats.totalMustAttend}</Text><Text style={styles.verdictStatLabel}>must attend</Text></View>
+                                <View style={styles.verdictStat}>
+                                    <Text style={[styles.verdictStatNum, { color: COLORS.danger }]}>{endGameStats.totalMustAttend}</Text>
+                                    <Text style={styles.verdictStatLabel}>must attend</Text>
+                                </View>
                                 <View style={styles.verdictDivider} />
-                                <View style={styles.verdictStat}><Text style={[styles.verdictStatNum, { color: COLORS.success }]}>{endGameStats.totalCanSkip}</Text><Text style={styles.verdictStatLabel}>can skip</Text></View>
+                                <View style={styles.verdictStat}>
+                                    <Text style={[styles.verdictStatNum, { color: COLORS.success }]}>{endGameStats.totalCanSkip}</Text>
+                                    <Text style={styles.verdictStatLabel}>can skip</Text>
+                                </View>
                             </View>
                             {endGameStats.isExactMath && endGameStats.daysLeft != null && (
                                 <Text style={styles.exactMathNote}>{endGameStats.daysLeft} days until semester ends</Text>
@@ -225,7 +237,7 @@ export default function InsightsScreen() {
                         )}
 
                         {/* 6. Per-subject strategy cards */}
-                        <Text style={styles.egSectionLabel}>PER SUBJECT STRATEGY</Text>
+                        <Text style={styles.egSectionLabel}>Subject Strategies</Text>
                         {sortedResults.map(subject => {
                             const risk = getRiskLevel(subject.canSkip, subject.mustAttend, subject.remainingUnits);
                             const riskColor = getRiskColor(risk);
@@ -239,22 +251,24 @@ export default function InsightsScreen() {
                                             <Text style={styles.cardSubjectName} numberOfLines={1}>{subject.name}</Text>
                                         </View>
                                         <View style={styles.cardHeaderRight}>
-                                            <Text style={[styles.riskLabel, { color: riskColor }]}>{getRiskLabel(risk)}</Text>
+                                            <View style={[styles.riskBadge, { borderColor: riskColor, backgroundColor: riskColor + '12' }]}>
+                                                <Text style={[styles.riskLabel, { color: riskColor }]}>{getRiskLabel(risk)}</Text>
+                                            </View>
                                             <Text style={styles.expandChevron}>{isExpanded ? '▲' : '▼'}</Text>
                                         </View>
                                     </View>
                                     <View style={styles.summaryRow}>
-                                        <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.percentage.toFixed(1)}%</Text><Text style={styles.summaryLabel}>now</Text></View>
+                                        <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.percentage.toFixed(1)}%</Text><Text style={styles.summaryLabel}>Current</Text></View>
                                         <Text style={styles.summaryArrowText}>→</Text>
-                                        <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: COLORS.danger }]}>{subject.mustAttend}</Text><Text style={styles.summaryLabel}>must attend</Text></View>
+                                        <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: COLORS.danger }]}>{subject.mustAttend}</Text><Text style={styles.summaryLabel}>Must Attend</Text></View>
                                         <View style={styles.summaryDivider} />
-                                        <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: riskColor }]}>{subject.canSkip}</Text><Text style={styles.summaryLabel}>can skip</Text></View>
+                                        <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: riskColor }]}>{subject.canSkip}</Text><Text style={styles.summaryLabel}>Can Skip</Text></View>
                                         <View style={styles.summaryDivider} />
-                                        <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.remainingUnits}</Text><Text style={styles.summaryLabel}>remaining</Text></View>
+                                        <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.remainingUnits}</Text><Text style={styles.summaryLabel}>Remaining</Text></View>
                                     </View>
                                     {isExpanded && (
                                         <View style={styles.expandedSection}>
-                                            <View style={[styles.strategyBox, { borderColor: riskColor, backgroundColor: riskColor + '12' }]}>
+                                            <View style={styles.strategyBox}>
                                                 <View style={{ flex: 1 }}>
                                                     <Text style={[styles.strategyHeadline, { color: riskColor }]}>{strategy.headline}</Text>
                                                     <Text style={styles.strategyDetail}>{strategy.detail}</Text>
@@ -265,7 +279,7 @@ export default function InsightsScreen() {
                                             {/* Weekly Burn Plan */}
                                             {subject.canSkip > 0 && subject.weeklyUnits > 0 && (
                                                 <View style={styles.planSection}>
-                                                    <Text style={styles.consequenceTitle}>RECOMMENDED WEEKLY PLAN:</Text>
+                                                    <Text style={styles.consequenceTitle}>Recommended Plan</Text>
                                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.planScroll}>
                                                         {getWeeklyBurnPlan(subject.canSkip, endGameStats.weeksLeft, subject.weeklyUnits).map((p, i) => (
                                                             <View key={p.week} style={[styles.planChip, p.skips > 0 ? styles.planChipActive : styles.planChipEmpty]}>
@@ -276,10 +290,10 @@ export default function InsightsScreen() {
                                                     </ScrollView>
                                                 </View>
                                             )}
-
+ 
                                             {risk !== 'impossible' && (
                                                 <View style={styles.consequenceSection}>
-                                                    <Text style={styles.consequenceTitle}>IF YOU SKIP N CLASSES:</Text>
+                                                    <Text style={styles.consequenceTitle}>Bunk Impact Simulator</Text>
                                                     <View style={styles.consequenceRow}>
                                                         {[1, 2, 3, 5].filter(n => n <= subject.remainingUnits).map(n => {
                                                             const attendIfSkipN = subject.remainingUnits - n;
@@ -289,7 +303,7 @@ export default function InsightsScreen() {
                                                             const tgt = subject.target || threshold;
                                                             const passes = finalPct >= tgt;
                                                             return (
-                                                                <View key={n} style={[styles.consequenceChip, { borderColor: passes ? COLORS.success : COLORS.danger, backgroundColor: passes ? COLORS.successLight : COLORS.dangerLight }]}>
+                                                                 <View key={n} style={[styles.consequenceChip, { borderColor: passes ? COLORS.success : COLORS.danger, backgroundColor: passes ? COLORS.successLight : COLORS.dangerLight }]}>
                                                                     <Text style={styles.consequenceN}>Skip {n}</Text>
                                                                     <Text style={[styles.consequencePct, { color: passes ? COLORS.successDark : COLORS.danger }]}>{finalPct.toFixed(1)}%</Text>
                                                                     <Text style={[styles.consequenceVerdict, { color: passes ? COLORS.successDark : COLORS.danger }]}>{passes ? 'Pass' : 'Fail'}</Text>
@@ -453,15 +467,71 @@ const getStyles = () => StyleSheet.create({
     // ── End Game styles ──────────────────────────────────────────────
 
     // Verdict card
-    verdictCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.cardGap, borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small },
-    verdictLabel: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: SPACING.xs },
-    verdictText: { fontSize: FONT_SIZES.lg, fontWeight: '800', marginBottom: SPACING.md },
-    verdictStats: { flexDirection: 'row', alignItems: 'center' },
-    verdictStat: { flex: 1, alignItems: 'center' },
-    verdictStatNum: { fontSize: FONT_SIZES.xl, fontWeight: '800', color: COLORS.textPrimary },
-    verdictStatLabel: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: 2 },
-    verdictDivider: { width: 1, height: 32, backgroundColor: COLORS.border },
-    exactMathNote: { fontSize: FONT_SIZES.xs, color: COLORS.primary, marginTop: SPACING.sm, fontWeight: '600' },
+    verdictCard: {
+        marginHorizontal: SPACING.screenPadding,
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.lg,
+        marginBottom: SPACING.cardGap,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        ...SHADOWS.small,
+    },
+    verdictLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 6,
+    },
+    verdictText: {
+        fontSize: 15,
+        fontWeight: '600',
+        lineHeight: 20,
+        color: COLORS.textPrimary,
+        marginBottom: SPACING.md,
+    },
+    statsDivider: {
+        height: 1,
+        backgroundColor: COLORS.border,
+        marginBottom: SPACING.md,
+        opacity: 0.8,
+    },
+    verdictStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+    },
+    verdictStat: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    verdictStatNum: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: COLORS.textPrimary,
+    },
+    verdictStatLabel: {
+        fontSize: 10,
+        color: COLORS.textSecondary,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+        marginTop: 2,
+    },
+    verdictDivider: {
+        width: 1,
+        height: 24,
+        backgroundColor: COLORS.border,
+    },
+    exactMathNote: {
+        fontSize: 11,
+        color: COLORS.primary,
+        marginTop: SPACING.md,
+        textAlign: 'center',
+        fontWeight: '600',
+    },
 
     // Weeks selector
     weeksRow: { flexDirection: 'row', gap: SPACING.sm },
@@ -472,50 +542,188 @@ const getStyles = () => StyleSheet.create({
     endDateHint: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: SPACING.sm },
 
     // EG section label
-    egSectionLabel: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm },
+    egSectionLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        paddingHorizontal: SPACING.screenPadding,
+        marginBottom: SPACING.sm,
+        marginTop: SPACING.md,
+    },
 
     // Subject cards
-    subjectCard: { marginHorizontal: SPACING.screenPadding, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.cardGap, borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+    subjectCard: {
+        marginHorizontal: SPACING.screenPadding,
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.md,
+        marginBottom: SPACING.cardGap,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        ...SHADOWS.small,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.md,
+    },
     cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
     colorDot: { width: 8, height: 8, borderRadius: 4 },
-    cardSubjectName: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.textPrimary, flex: 1 },
-    cardHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-    riskLabel: { fontSize: FONT_SIZES.xs, fontWeight: '700' },
-    expandChevron: { fontSize: 10, color: COLORS.textMuted },
+    cardSubjectName: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: COLORS.textPrimary,
+        flex: 1,
+    },
+    cardHeaderRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.xs,
+    },
+    riskBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: BORDER_RADIUS.full,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    riskLabel: {
+        fontSize: 9,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+    },
+    expandChevron: {
+        fontSize: 10,
+        color: COLORS.textMuted,
+        marginLeft: 4,
+    },
 
     // Summary row
-    summaryRow: { flexDirection: 'row', alignItems: 'center' },
+    summaryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        paddingVertical: 4,
+    },
     summaryItem: { flex: 1, alignItems: 'center' },
-    summaryNum: { fontSize: FONT_SIZES.md, fontWeight: '800', color: COLORS.textPrimary },
-    summaryLabel: { fontSize: 9, color: COLORS.textMuted, marginTop: 1, textAlign: 'center' },
-    summaryArrowText: { fontSize: FONT_SIZES.sm, color: COLORS.textMuted, paddingHorizontal: 4 },
-    summaryDivider: { width: 1, height: 24, backgroundColor: COLORS.border },
+    summaryNum: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: COLORS.textPrimary,
+    },
+    summaryLabel: {
+        fontSize: 9,
+        color: COLORS.textMuted,
+        marginTop: 2,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+        fontWeight: '600',
+    },
+    summaryArrowText: {
+        fontSize: 12,
+        color: COLORS.textMuted,
+        paddingHorizontal: 2,
+    },
+    summaryDivider: {
+        width: 1,
+        height: 20,
+        backgroundColor: COLORS.border,
+    },
 
     // Expanded
-    expandedSection: { marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
-    strategyBox: { flexDirection: 'row', gap: SPACING.sm, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, borderWidth: 1, marginBottom: SPACING.md },
-    strategyHeadline: { fontSize: FONT_SIZES.md, fontWeight: '800', marginBottom: 4 },
-    strategyDetail: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary, lineHeight: 18, marginBottom: 4 },
-    strategyAction: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, fontStyle: 'italic' },
+    expandedSection: {
+        marginTop: SPACING.md,
+        paddingTop: SPACING.md,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.borderSubtle,
+    },
+    strategyBox: {
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        backgroundColor: COLORS.inputBackground,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        marginBottom: SPACING.md,
+    },
+    strategyHeadline: {
+        fontSize: 13,
+        fontWeight: '800',
+        marginBottom: 4,
+    },
+    strategyDetail: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        lineHeight: 17,
+        marginBottom: 4,
+    },
+    strategyAction: {
+        fontSize: 11,
+        color: COLORS.textMuted,
+        fontStyle: 'italic',
+    },
 
     // Plan
-    planSection: { marginTop: SPACING.xs, marginBottom: SPACING.md },
+    planSection: {
+        marginTop: SPACING.sm,
+        marginBottom: SPACING.md,
+    },
     planScroll: { gap: SPACING.sm, paddingRight: SPACING.md },
-    planChip: { alignItems: 'center', paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
-    planChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '12' },
-    planChipEmpty: { borderColor: COLORS.borderSubtle, backgroundColor: COLORS.inputBackground },
-    planWeekText: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 2 },
-    planSkipText: { fontSize: FONT_SIZES.sm, fontWeight: '800', color: COLORS.textMuted },
+    planChip: {
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1,
+        minWidth: 70,
+    },
+    planChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
+    planChipEmpty: { borderColor: COLORS.border, backgroundColor: COLORS.inputBackground },
+    planWeekText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.textSecondary,
+        marginBottom: 2,
+    },
+    planSkipText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: COLORS.textMuted,
+    },
 
     // Consequence simulator
-    consequenceSection: { marginTop: SPACING.xs },
-    consequenceTitle: { fontSize: FONT_SIZES.xs, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: SPACING.sm },
+    consequenceSection: {
+        marginTop: SPACING.sm,
+    },
+    consequenceTitle: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+        marginBottom: SPACING.sm,
+    },
     consequenceRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
-    consequenceChip: { flex: 1, minWidth: 70, alignItems: 'center', padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
-    consequenceN: { fontSize: FONT_SIZES.xs, fontWeight: '600', color: COLORS.textSecondary, marginBottom: 2 },
-    consequencePct: { fontSize: FONT_SIZES.lg, fontWeight: '800' },
-    consequenceVerdict: { fontSize: 10, fontWeight: '700', marginTop: 2 },
+    consequenceChip: { flex: 1, minWidth: 75, alignItems: 'center', padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
+    consequenceN: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.textSecondary,
+        marginBottom: 2,
+    },
+    consequencePct: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    consequenceVerdict: {
+        fontSize: 9,
+        fontWeight: '700',
+        marginTop: 2,
+    },
 
     // Footer
     footerNote: { marginHorizontal: SPACING.screenPadding, marginTop: SPACING.md, padding: SPACING.md, backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md },

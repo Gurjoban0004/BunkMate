@@ -57,8 +57,6 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.cardGap,
         borderWidth: 1,
         borderColor: COLORS.borderSubtle,
-        borderLeftWidth: 3,
-        borderLeftColor: COLORS.danger,
         ...SHADOWS.small,
     },
     header: {

@@ -134,11 +134,11 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
                 <Text style={styles.monthTitle}>{monthName}</Text>
                 <TouchableOpacity
                     onPress={() => setMonthOffset(monthOffset + 1)}
-                    style={styles.navBtn}
+                    style={[styles.navBtn, monthOffset >= 0 && styles.navBtnDisabled]}
                     disabled={monthOffset >= 0}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
-                    <Text style={[styles.navBtnText, monthOffset >= 0 && styles.navBtnDisabled]}>›</Text>
+                    <Text style={styles.navBtnText}>›</Text>
                 </TouchableOpacity>
             </View>
 
@@ -292,7 +292,27 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
 
 const getStyles = () => StyleSheet.create({
     container: {
+        backgroundColor: COLORS.cardBackground,
+        marginHorizontal: SPACING.screenPadding,
+        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.border,
         marginBottom: SPACING.md,
+        ...Platform.select({
+            ios: {
+                shadowColor: COLORS.shadow,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 3,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 2px 4px rgba(15,23,42,0.05)',
+            }
+        }),
     },
     monthNav: {
         flexDirection: 'row',
@@ -302,20 +322,27 @@ const getStyles = () => StyleSheet.create({
         paddingHorizontal: 2,
     },
     navBtn: {
-        padding: SPACING.xs,
-        width: 36,
+        width: 32,
+        height: 32,
+        borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        backgroundColor: COLORS.inputBackground,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     navBtnText: {
-        fontSize: 24,
-        color: COLORS.primary,
-        fontWeight: '600',
+        fontSize: 18,
+        color: COLORS.textPrimary,
+        fontWeight: '700',
+        marginTop: Platform.OS === 'ios' ? -2 : 0,
     },
     navBtnDisabled: {
-        color: COLORS.textMuted,
+        opacity: 0.4,
     },
     monthTitle: {
-        ...TYPOGRAPHY.headingSmall,
+        fontSize: 15,
+        fontWeight: '800',
         color: COLORS.textPrimary,
         textAlign: 'center',
         flex: 1,
@@ -376,11 +403,20 @@ const getStyles = () => StyleSheet.create({
         flexWrap: 'wrap',
         gap: SPACING.sm,
         marginTop: SPACING.md,
+        paddingTop: SPACING.sm,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.borderSubtle,
     },
     legendItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: BORDER_RADIUS.full,
+        backgroundColor: COLORS.inputBackground,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     legendDot: {
         width: 8,
@@ -396,9 +432,11 @@ const getStyles = () => StyleSheet.create({
         gap: 2,
     },
     legendText: {
-        ...TYPOGRAPHY.captionMedium,
-        color: COLORS.textMuted,
-        fontSize: 11,
+        fontSize: 10,
+        fontWeight: '700',
+        color: COLORS.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
     },
     // Modal / day detail sheet
     modalOverlay: {

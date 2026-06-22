@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
@@ -24,6 +24,7 @@ export default function SubjectDetailScreen({ route }) {
     const { state, dispatch } = useApp();
     const [editModal, setEditModal] = useState(null); // { date, record }
     const [showAllHistory, setShowAllHistory] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
 
     const subject = state.subjects.find((s) => s.id === subjectId);
     const subjectColor = subject?.color || COLORS.primary;
@@ -119,14 +120,6 @@ export default function SubjectDetailScreen({ route }) {
                 {/* Main stats */}
                 <StatusHeader subjectData={subjectDataForHeader} />
 
-                {/* Streak */}
-                {streak >= 5 && streakMsg && (
-                    <Card style={styles.streakCard}>
-                        <Text style={styles.streakText}>{streakMsg}</Text>
-                        <Text style={styles.streakCount}>{streak} classes in a row</Text>
-                    </Card>
-                )}
-
                 {/* Planner: Next class decision */}
                 {simulatedData && <NextClassDecision subjectData={simulatedData} />}
 
@@ -149,44 +142,58 @@ export default function SubjectDetailScreen({ route }) {
                     <CalendarView subjectId={subjectId} state={state} />
                 </Card>
 
-                {simulatedData && <Next7DaysView subjectData={simulatedData} />}
                 {simulatedData && <PatternsInsights subjectData={simulatedData} />}
 
                 {/* Recent history with edit */}
                 {recentRecords.length > 0 && (
                     <View style={styles.historySection}>
-                        <Text style={styles.sectionTitle}>Recent Attendance</Text>
-                        {(showAllHistory ? recentRecords : recentRecords.slice(0, 5)).map((rec, idx) => (
-                            <View key={idx} style={styles.historyRow}>
-                                <View>
-                                    <Text style={styles.historyDate}>{formatRecordDate(rec.date)}</Text>
-                                    <Text style={styles.historyUnits}>
-                                        {rec.units} {rec.units === 1 ? 'hr' : 'hrs'}
-                                        {rec.isExtra ? ' · Extra' : ''}
-                                    </Text>
-                                </View>
-                                <View style={styles.historyRight}>
-                                    <View style={[styles.statusDot, { backgroundColor: rec.status === 'present' ? COLORS.success : rec.status === 'cancelled' ? COLORS.textMuted : COLORS.danger }]} />
-                                    <Text style={[styles.historyStatus, { color: rec.status === 'present' ? COLORS.successDark : rec.status === 'cancelled' ? COLORS.textMuted : COLORS.danger }]}>
-                                        {rec.status === 'present' ? 'P' : rec.status === 'cancelled' ? 'C' : 'A'}
-                                    </Text>
-                                    {rec.canEdit && (
-                                        <TouchableOpacity onPress={() => handleEdit(rec)} style={styles.editBtn}>
-                                            <Text style={styles.editBtnText}>Edit</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
+                        <TouchableOpacity
+                            style={styles.historyHeaderToggle}
+                            onPress={() => {
+                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                setShowHistory(!showHistory);
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Recent Attendance</Text>
+                            <Text style={styles.toggleChevron}>{showHistory ? '▲' : '▼'}</Text>
+                        </TouchableOpacity>
+
+                        {showHistory && (
+                            <View style={styles.historyContent}>
+                                {(showAllHistory ? recentRecords : recentRecords.slice(0, 5)).map((rec, idx) => (
+                                    <View key={idx} style={styles.historyRow}>
+                                        <View>
+                                            <Text style={styles.historyDate}>{formatRecordDate(rec.date)}</Text>
+                                            <Text style={styles.historyUnits}>
+                                                {rec.units} {rec.units === 1 ? 'hr' : 'hrs'}
+                                                {rec.isExtra ? ' · Extra' : ''}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.historyRight}>
+                                            <View style={[styles.statusDot, { backgroundColor: rec.status === 'present' ? COLORS.success : rec.status === 'cancelled' ? COLORS.textMuted : COLORS.danger }]} />
+                                            <Text style={[styles.historyStatus, { color: rec.status === 'present' ? COLORS.successDark : rec.status === 'cancelled' ? COLORS.textMuted : COLORS.danger }]}>
+                                                {rec.status === 'present' ? 'P' : rec.status === 'cancelled' ? 'C' : 'A'}
+                                            </Text>
+                                            {rec.canEdit && (
+                                                <TouchableOpacity onPress={() => handleEdit(rec)} style={styles.editBtn}>
+                                                    <Text style={styles.editBtnText}>Edit</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                    </View>
+                                ))}
+                                {recentRecords.length > 5 && (
+                                    <TouchableOpacity
+                                        style={styles.showMoreButton}
+                                        onPress={() => setShowAllHistory(!showAllHistory)}
+                                    >
+                                        <Text style={styles.showMoreText}>
+                                            {showAllHistory ? 'Show less' : `View all ${recentRecords.length}`}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
-                        ))}
-                        {recentRecords.length > 5 && (
-                            <TouchableOpacity
-                                style={styles.showMoreButton}
-                                onPress={() => setShowAllHistory(!showAllHistory)}
-                            >
-                                <Text style={styles.showMoreText}>
-                                    {showAllHistory ? 'Show less' : `View all ${recentRecords.length}`}
-                                </Text>
-                            </TouchableOpacity>
                         )}
                     </View>
                 )}
@@ -303,6 +310,20 @@ const getStyles = () => StyleSheet.create({
     },
     historySection: {
         marginTop: SPACING.sm,
+    },
+    historyHeaderToggle: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+    },
+    toggleChevron: {
+        fontSize: 12,
+        color: COLORS.textMuted,
+        fontWeight: 'bold',
+    },
+    historyContent: {
+        marginTop: SPACING.xs,
     },
     sectionTitle: {
         ...TYPOGRAPHY.headingSmall,

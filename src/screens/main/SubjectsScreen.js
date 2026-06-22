@@ -7,6 +7,7 @@ import {
     ScrollView,
     TouchableOpacity,
     RefreshControl,
+    Platform,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
@@ -111,6 +112,7 @@ const SubjectsScreen = ({ navigation }) => {
             total: totalUnitsVal,
             percentage: parseFloat(pct.toFixed(1)),
             dangerCount: categorizedSubjects.danger.length,
+            edgeCount: categorizedSubjects.edge.length,
             safeCount: categorizedSubjects.safe.length,
         };
     }, [subjectsWithStats, categorizedSubjects]);
@@ -143,12 +145,38 @@ const SubjectsScreen = ({ navigation }) => {
                 <View style={styles.headerContainer}>
                     <View style={styles.headerRow}>
                         <Text style={styles.headerTitle}>Subjects</Text>
+                    </View>
+                    
+                    {/* View Mode Segmented Control */}
+                    <View style={styles.toggleContainer}>
                         <TouchableOpacity
-                            style={styles.headerAction}
-                            onPress={() => setViewMode(viewMode === 'calendar' ? 'list' : 'calendar')}
+                            style={[
+                                styles.toggleTab,
+                                viewMode === 'list' && styles.toggleTabActive
+                            ]}
+                            onPress={() => setViewMode('list')}
+                            activeOpacity={0.8}
                         >
-                            <Text style={styles.headerActionText}>
-                                {viewMode === 'calendar' ? 'List' : 'Calendar'}
+                            <Text style={[
+                                styles.toggleTabText,
+                                viewMode === 'list' && styles.toggleTabTextActive
+                            ]}>
+                                Subjects List
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.toggleTab,
+                                viewMode === 'calendar' && styles.toggleTabActive
+                            ]}
+                            onPress={() => setViewMode('calendar')}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={[
+                                styles.toggleTabText,
+                                viewMode === 'calendar' && styles.toggleTabTextActive
+                            ]}>
+                                Attendance Heatmap
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -246,7 +274,15 @@ const SubjectsScreen = ({ navigation }) => {
                         )}
                     </>
                 ) : (
-                    <CalendarView state={state} />
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <View style={[styles.sectionRule, styles.sectionRuleSafe]} />
+                            <Text style={styles.sectionTitle}>
+                                Daily History Heatmap
+                            </Text>
+                        </View>
+                        <CalendarView state={state} />
+                    </View>
                 )}
 
                 {/* Bottom Padding */}
@@ -290,18 +326,49 @@ const getStyles = () => StyleSheet.create({
         letterSpacing: 0,
         color: COLORS.textPrimary,
     },
-    headerAction: {
-        paddingHorizontal: SPACING.md,
-        paddingVertical: 7,
-        borderRadius: BORDER_RADIUS.full,
+    toggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        padding: 4,
+        marginTop: SPACING.md,
         borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
-        backgroundColor: COLORS.cardBackground,
+        borderColor: COLORS.border,
     },
-    headerActionText: {
+    toggleTab: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    toggleTabActive: {
+        backgroundColor: COLORS.cardBackground,
+        borderColor: COLORS.border,
+        ...Platform.select({
+            ios: {
+                shadowColor: COLORS.shadow,
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 1,
+            },
+            android: {
+                elevation: 1,
+            },
+            web: {
+                boxShadow: '0px 1px 2px rgba(15,23,42,0.05)',
+            }
+        }),
+    },
+    toggleTabText: {
         fontSize: FONT_SIZES.sm,
-        fontWeight: '700',
+        fontWeight: '600',
+        color: COLORS.textMuted,
+    },
+    toggleTabTextActive: {
         color: COLORS.textPrimary,
+        fontWeight: '700',
     },
     section: {
         marginTop: SPACING.cardGap,

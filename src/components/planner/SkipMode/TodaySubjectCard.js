@@ -30,7 +30,7 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
 
     return (
         <TouchableOpacity
-            style={[styles.card, { borderLeftColor: borderColor }]}
+            style={styles.card}
             onPress={onPress}
             activeOpacity={0.7}
         >
@@ -77,7 +77,6 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.md,
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.cardGap,
-        borderLeftWidth: 4,
         borderWidth: 1,
         borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,

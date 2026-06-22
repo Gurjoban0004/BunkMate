@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
     const styles = getStyles();
-    const { attended, total, percentage, dangerCount, safeCount } = stats;
+    const { attended, total, percentage, dangerCount, edgeCount, safeCount } = stats;
     const numericPercentage = parseFloat(percentage);
     const isAboveThreshold = numericPercentage >= threshold;
 
@@ -12,30 +12,66 @@ const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Overall standing</Text>
+            <View style={styles.row}>
+                {/* Left Column: Average Attendance */}
+                <View style={styles.leftCol}>
+                    <Text style={styles.columnTitle}>Avg. Attendance</Text>
+                    <Text style={[
+                        styles.percentage,
+                        isAboveThreshold ? styles.percentageSafe : styles.percentageDanger,
+                    ]}>
+                        {percentage}%
+                    </Text>
 
-            <Text style={[
-                styles.percentage,
-                isAboveThreshold ? styles.percentageSafe : styles.percentageDanger,
-            ]}>
-                {percentage}%
-            </Text>
+                    <View style={styles.progressBar}>
+                        <View
+                            style={[
+                                styles.progressFill,
+                                {
+                                    width: `${Math.min(numericPercentage, 100)}%`,
+                                    backgroundColor: isAboveThreshold ? COLORS.success : COLORS.danger,
+                                },
+                            ]}
+                        />
+                    </View>
 
-            <View style={styles.progressBar}>
-                <View
-                    style={[
-                        styles.progressFill,
-                        {
-                            width: `${Math.min(numericPercentage, 100)}%`,
-                            backgroundColor: isAboveThreshold ? COLORS.success : COLORS.danger,
-                        },
-                    ]}
-                />
+                    <Text style={styles.marksText}>
+                        {attended} / {total} classes
+                    </Text>
+                    <Text style={styles.goalText}>
+                        Goal: {threshold}%
+                    </Text>
+                </View>
+
+                {/* Vertical Divider */}
+                <View style={styles.divider} />
+
+                {/* Right Column: Subject Health */}
+                <View style={styles.rightCol}>
+                    <Text style={styles.columnTitle}>Subject Health</Text>
+
+                    <View style={styles.healthRow}>
+                        <View style={[styles.healthDot, { backgroundColor: COLORS.danger }]} />
+                        <Text style={styles.healthLabel}>
+                            {dangerCount} Below Goal
+                        </Text>
+                    </View>
+
+                    <View style={styles.healthRow}>
+                        <View style={[styles.healthDot, { backgroundColor: COLORS.warning }]} />
+                        <Text style={styles.healthLabel}>
+                            {edgeCount} On Edge
+                        </Text>
+                    </View>
+
+                    <View style={styles.healthRow}>
+                        <View style={[styles.healthDot, { backgroundColor: COLORS.success }]} />
+                        <Text style={styles.healthLabel}>
+                            {safeCount} Safe
+                        </Text>
+                    </View>
+                </View>
             </View>
-
-            <Text style={styles.marksText}>
-                {attended} / {total} classes  ·  Goal {threshold}%
-            </Text>
 
             {showStaleness && (
                 <TouchableOpacity 
@@ -60,24 +96,55 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
         borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.lg,
-        alignItems: 'center',
+        padding: SPACING.md,
         borderWidth: 1,
         borderColor: COLORS.border,
+        ...Platform.select({
+            ios: {
+                shadowColor: COLORS.shadow,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 3,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 2px 4px rgba(15,23,42,0.05)',
+            }
+        }),
     },
-    title: {
-        fontSize: 11,
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    leftCol: {
+        flex: 1.2,
+        paddingRight: SPACING.sm,
+    },
+    rightCol: {
+        flex: 1,
+        paddingLeft: SPACING.md,
+        justifyContent: 'center',
+    },
+    divider: {
+        width: 1,
+        height: 70,
+        backgroundColor: COLORS.border,
+    },
+    columnTitle: {
+        fontSize: 10,
         fontWeight: '700',
         color: COLORS.textMuted,
-        marginBottom: SPACING.sm,
+        marginBottom: SPACING.xs,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     percentage: {
-        fontSize: 26,
+        fontSize: 28,
         fontWeight: '800',
-        marginBottom: SPACING.sm,
         letterSpacing: -0.5,
+        marginVertical: 2,
     },
     percentageSafe: {
         color: COLORS.success,
@@ -87,22 +154,46 @@ const getStyles = () => StyleSheet.create({
     },
     progressBar: {
         width: '100%',
-        height: 6,
+        height: 4,
         backgroundColor: COLORS.inputBackground,
-        borderRadius: 3,
+        borderRadius: 2,
         overflow: 'hidden',
-        marginBottom: SPACING.sm,
+        marginVertical: SPACING.xs,
     },
     progressFill: {
         height: '100%',
-        borderRadius: 3,
+        borderRadius: 2,
     },
     marksText: {
         fontSize: FONT_SIZES.sm,
+        color: COLORS.textPrimary,
+        fontWeight: '600',
+    },
+    goalText: {
+        fontSize: 10,
         color: COLORS.textSecondary,
+        fontWeight: '500',
+        marginTop: 1,
+    },
+    healthRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 4,
+        gap: SPACING.xs,
+    },
+    healthDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+    },
+    healthLabel: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        fontWeight: '600',
     },
     stalenessBanner: {
-        marginTop: SPACING.sm,
+        marginTop: SPACING.md,
+        width: '100%',
         paddingHorizontal: SPACING.sm,
         paddingVertical: 6,
         backgroundColor: COLORS.warningLight,

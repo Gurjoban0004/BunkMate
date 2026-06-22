@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     tick: { position: 'absolute', top: 0, bottom: 0, width: 1, backgroundColor: COLORS.cardBackground },
     count: { fontSize: FONT_SIZES.sm, fontWeight: '800', minWidth: 20, textAlign: 'right' },
     compactRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    compactTrack: { width: 32, height: 6, backgroundColor: COLORS.inputBackground, borderRadius: 3, overflow: 'hidden' },
+    compactTrack: { width: 70, height: 6, backgroundColor: COLORS.inputBackground, borderRadius: 3, overflow: 'hidden' },
     compactFill: { height: '100%', borderRadius: 3 },
     compactCount: { fontSize: 10, fontWeight: '800' },
 });

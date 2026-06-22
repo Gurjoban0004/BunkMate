@@ -24,7 +24,7 @@ export default function OtherSubjectCard({ subjectData, onPress }) {
 
     return (
         <TouchableOpacity
-            style={[styles.card, { borderLeftColor: borderColor }]}
+            style={styles.card}
             onPress={onPress}
             activeOpacity={0.7}
         >
@@ -56,7 +56,6 @@ const getStyles = () => StyleSheet.create({
         paddingHorizontal: SPACING.md,
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.cardGap,
-        borderLeftWidth: 3,
         borderWidth: 1,
         borderColor: COLORS.borderSubtle,
         ...SHADOWS.small,
