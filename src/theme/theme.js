@@ -417,34 +417,40 @@ export const SPACING = {
 // Single source of truth — use TYPOGRAPHY everywhere.
 // ─────────────────────────────────────────────────────────────
 
+const SERIF_FONT = Platform.select({
+    ios: 'Times New Roman',
+    android: 'serif',
+    default: 'Times New Roman',
+});
+
 export const TYPOGRAPHY = {
     // Hero numbers (attendance %, big stats) — Outfit 22-26px, 800
-    displayLarge:  { fontFamily: 'Outfit-ExtraBold', fontSize: 26, fontWeight: '800', lineHeight: 29, letterSpacing: -0.5 },
-    displayMedium: { fontFamily: 'Outfit-ExtraBold', fontSize: 22, fontWeight: '800', lineHeight: 24, letterSpacing: -0.5 },
-    displaySmall:  { fontFamily: 'Outfit-Bold', fontSize: 18, fontWeight: '800', lineHeight: 20, letterSpacing: -0.3 },
+    displayLarge:  { fontFamily: SERIF_FONT, fontSize: 26, fontWeight: '800', lineHeight: 29, letterSpacing: -0.5 },
+    displayMedium: { fontFamily: SERIF_FONT, fontSize: 22, fontWeight: '800', lineHeight: 24, letterSpacing: -0.5 },
+    displaySmall:  { fontFamily: SERIF_FONT, fontSize: 18, fontWeight: '800', lineHeight: 20, letterSpacing: -0.3 },
 
     // Section and card headers — Outfit 16-20px, 800
-    headingLarge:  { fontFamily: 'Outfit-ExtraBold', fontSize: 20, fontWeight: '800', lineHeight: 26, letterSpacing: -0.3 },
-    headingMedium: { fontFamily: 'Outfit-Bold', fontSize: 16, fontWeight: '800', lineHeight: 22, letterSpacing: -0.3 },
-    headingSmall:  { fontFamily: 'Outfit-Bold', fontSize: 14, fontWeight: '700', lineHeight: 18 },
+    headingLarge:  { fontFamily: SERIF_FONT, fontSize: 20, fontWeight: '800', lineHeight: 26, letterSpacing: -0.3 },
+    headingMedium: { fontFamily: SERIF_FONT, fontSize: 16, fontWeight: '800', lineHeight: 22, letterSpacing: -0.3 },
+    headingSmall:  { fontFamily: SERIF_FONT, fontSize: 14, fontWeight: '700', lineHeight: 18 },
 
     // Body copy — Inter 12-14px, 500
-    bodyLarge:     { fontFamily: 'Inter-Medium', fontSize: 16, fontWeight: '500', lineHeight: 22 },
-    bodyMedium:    { fontFamily: 'Inter-Medium', fontSize: 14, fontWeight: '500', lineHeight: 20 },
-    bodySmall:     { fontFamily: 'Inter-Medium', fontSize: 12, fontWeight: '500', lineHeight: 17 },
+    bodyLarge:     { fontFamily: SERIF_FONT, fontSize: 16, fontWeight: '500', lineHeight: 22 },
+    bodyMedium:    { fontFamily: SERIF_FONT, fontSize: 14, fontWeight: '500', lineHeight: 20 },
+    bodySmall:     { fontFamily: SERIF_FONT, fontSize: 12, fontWeight: '500', lineHeight: 17 },
 
     // Labels, buttons, chips — Inter 12-14px, 600-700
-    labelLarge:    { fontFamily: 'Inter-Bold', fontSize: 14, fontWeight: '700', lineHeight: 18, letterSpacing: 0.1 },
-    labelMedium:   { fontFamily: 'Inter-SemiBold', fontSize: 12, fontWeight: '700', lineHeight: 16, letterSpacing: 0.1 },
-    labelSmall:    { fontFamily: 'Inter-SemiBold', fontSize: 11, fontWeight: '700', lineHeight: 14, letterSpacing: 0.2 },
+    labelLarge:    { fontFamily: SERIF_FONT, fontSize: 14, fontWeight: '700', lineHeight: 18, letterSpacing: 0.1 },
+    labelMedium:   { fontFamily: SERIF_FONT, fontSize: 12, fontWeight: '700', lineHeight: 16, letterSpacing: 0.1 },
+    labelSmall:    { fontFamily: SERIF_FONT, fontSize: 11, fontWeight: '700', lineHeight: 14, letterSpacing: 0.2 },
 
     // Captions, hints
-    captionLarge:  { fontFamily: 'Inter-Medium', fontSize: 12, fontWeight: '500', lineHeight: 16, letterSpacing: 0.1 },
-    captionMedium: { fontFamily: 'Inter-Medium', fontSize: 11, fontWeight: '500', lineHeight: 14, letterSpacing: 0.2 },
-    captionSmall:  { fontFamily: 'Inter-Medium', fontSize: 10, fontWeight: '500', lineHeight: 13, letterSpacing: 0.3 },
+    captionLarge:  { fontFamily: SERIF_FONT, fontSize: 12, fontWeight: '500', lineHeight: 16, letterSpacing: 0.1 },
+    captionMedium: { fontFamily: SERIF_FONT, fontSize: 11, fontWeight: '500', lineHeight: 14, letterSpacing: 0.2 },
+    captionSmall:  { fontFamily: SERIF_FONT, fontSize: 10, fontWeight: '500', lineHeight: 13, letterSpacing: 0.3 },
 
     // Micro badges — Inter 9-10px, 700, uppercase
-    micro:         { fontFamily: 'Inter-Bold', fontSize: 9, fontWeight: '700', lineHeight: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
+    micro:         { fontFamily: SERIF_FONT, fontSize: 9, fontWeight: '700', lineHeight: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
 };
 
 // Convenience scale — matches the named steps above.

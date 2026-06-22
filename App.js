@@ -52,11 +52,9 @@ if (Platform.OS === 'web') {
 if (Platform.OS === 'web') {
     const style = document.createElement('style');
     style.textContent = `
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&display=swap');
-
         /* Global Font Override */
         * {
-            font-family: 'Cormorant Garamond', serif !important;
+            font-family: 'Times New Roman', Times, serif !important;
         }
 
         /* ── Core input fix ───────────────────────────────────────────────
@@ -98,12 +96,12 @@ if (Platform.OS === 'web') {
 
 function AppContent() {
     const [fontsLoaded] = useFonts({
-        'Outfit-ExtraBold': 'https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_hg9GnM.ttf',
-        'Outfit-Bold': 'https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_hg9GnM.ttf',
-        'Inter-Regular': 'https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_v86GnM.ttf',
-        'Inter-Medium': 'https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_v86GnM.ttf',
-        'Inter-SemiBold': 'https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_iE9GnM.ttf',
-        'Inter-Bold': 'https://fonts.gstatic.com/s/cormorantgaramond/v21/co3umX5slCNuHLi8bLeY9MK7whWMhyjypVO7abI26QOD_hg9GnM.ttf',
+        'Outfit-ExtraBold': Outfit_800ExtraBold,
+        'Outfit-Bold': Outfit_700Bold,
+        'Inter-Regular': Inter_400Regular,
+        'Inter-Medium': Inter_500Medium,
+        'Inter-SemiBold': Inter_600SemiBold,
+        'Inter-Bold': Inter_700Bold,
     });
 
     const { state, dispatch, isLoading, runAutopilotCheck } = useApp();
