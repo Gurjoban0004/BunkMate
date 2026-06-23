@@ -13,13 +13,17 @@ import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import InsightsScreen from '../screens/main/InsightsScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
+import AdminScreen from '../screens/main/AdminScreen';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { COLORS } from '../theme/theme';
+import { useApp } from '../context/AppContext';
+import { isAdminRollNumber } from '../services/adminService';
 
 const Tab = createBottomTabNavigator();
 const TodayStack = createStackNavigator();
 const SubjectsStack = createStackNavigator();
 const InsightsStack = createStackNavigator();
+const AdminStack = createStackNavigator();
 
 function TodayStackScreen() {
     return (
@@ -108,6 +112,16 @@ function InsightsStackScreen() {
     );
 }
 
+function AdminStackScreen() {
+    return (
+        <ErrorBoundary screen screenName="Admin">
+        <AdminStack.Navigator screenOptions={{ headerShown: false }}>
+            <AdminStack.Screen name="AdminMain" component={AdminScreen} />
+        </AdminStack.Navigator>
+        </ErrorBoundary>
+    );
+}
+
 function TabIcon({ label, focused }) {
     const color = focused ? COLORS.primary : COLORS.textSecondary;
     const strokeWidth = focused ? 2 : 1.5;
@@ -135,6 +149,11 @@ function TabIcon({ label, focused }) {
                 <line x1="6" y1="20" x2="6" y2="14"></line>
             </svg>
         ),
+        Admin: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+        ),
     };
 
     return (
@@ -151,6 +170,9 @@ function TabIcon({ label, focused }) {
 }
 
 export default function TabNavigator() {
+    const { state } = useApp();
+    const isAdmin = isAdminRollNumber(state.erpRollNumber);
+
     return (
         <Tab.Navigator
             initialRouteName="Today"
@@ -181,6 +203,7 @@ export default function TabNavigator() {
             <Tab.Screen name="Today" component={TodayStackScreen} />
             <Tab.Screen name="Subjects" component={SubjectsStackScreen} options={{ title: 'Subjects' }} />
             <Tab.Screen name="Insights" component={InsightsStackScreen} />
+            {isAdmin && <Tab.Screen name="Admin" component={AdminStackScreen} />}
         </Tab.Navigator>
     );
 }

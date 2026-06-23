@@ -121,6 +121,14 @@ export async function erpFetchCalendar(token, persistentToken = null) {
 }
 
 /**
+ * Fetch the weekly timetable from the ERP.
+ * Same session-refresh behaviour as erpFetchAttendance.
+ */
+export async function erpFetchTimetable(token, persistentToken = null) {
+    return apiCall('/api/erp-timetable', { token, persistentToken });
+}
+
+/**
  * Lightweight keep-alive ping — fetches a minimal ERP page to keep the
  * session warm. Called every 10–15 minutes while the app is active.
  * Failures are silently ignored — this is best-effort only.

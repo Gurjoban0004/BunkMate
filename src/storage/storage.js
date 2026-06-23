@@ -62,6 +62,18 @@ export async function saveAppState(state) {
             }, { merge: true })
             .then(() => logger.info('✅', `State synced to cloud (${semesterId})`))
             .catch(err => logger.warn('⚠️ Cloud sync failed (will retry later):', err));
+
+            // Update root user profile with roll number and batch group for admin analytics
+            if (state.erpRollNumber) {
+                const yearPrefix = state.erpRollNumber.substring(0, 2);
+                const fullYear = parseInt(yearPrefix, 10) >= 50 ? `19${yearPrefix}` : `20${yearPrefix}`;
+                const userRef = doc(db, 'users', state.userId);
+                setDoc(userRef, {
+                    erpRollNumber: state.erpRollNumber,
+                    batchGroup: `Batch ${fullYear}`,
+                    lastActive: serverTimestamp(),
+                }, { merge: true }).catch(() => {});
+            }
         }
     } catch (e) {
         logger.error('❌ Failed to save state:', e);

@@ -147,6 +147,11 @@ export default function ERPConnectScreen({ navigation }) {
             dispatch({ type: 'SET_USER_NAME', payload: studentName });
         }
 
+        // Save roll number for admin detection
+        if (username.trim()) {
+            dispatch({ type: 'SET_ERP_ROLL_NUMBER', payload: username.trim() });
+        }
+
         setStep(STEP_SUCCESS);
 
         // After import, trigger calendar sync in background

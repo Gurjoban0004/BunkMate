@@ -33,8 +33,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { AppState } from 'react-native';
 import { getErpToken, getErpPersistentToken } from '../storage/erpTokenStorage';
-import { erpFetchAttendance, erpFetchCalendar, erpKeepAlive } from '../services/erpService';
-import { mapErpToAppState, buildResyncPayload, mapCalendarToRecords, validateErpSubject, buildErpNameMap } from '../utils/erpAttendanceMapper';
+import { erpFetchAttendance, erpFetchCalendar, erpFetchTimetable, erpKeepAlive } from '../services/erpService';
+import { mapErpToAppState, buildResyncPayload, mapCalendarToRecords, mapTimetableToState, validateErpSubject, buildErpNameMap } from '../utils/erpAttendanceMapper';
 import { logger } from '../utils/logger';
 
 const MIN_SYNC_INTERVAL_MS       = 60 * 1000;   // 60s debounce (successful syncs)
@@ -296,6 +296,52 @@ export function useErpAutoSync(state, dispatch) {
                 registerUnavailable = true;
                 setSyncError('Totals synced, attendance register unavailable.');
                 setSyncStatus({ calendarSyncStatus: 'failed' });
+            }
+
+            // ── Step 3: Timetable (once per 24h, non-blocking) ────
+            const TIMETABLE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+            const lastTtFetch = currentState.timetableMeta?.fetchedAt;
+            const ttSource = currentState.timetableMeta?.source;
+            const shouldFetchTimetable = (
+                !lastTtFetch ||
+                (ttSource !== 'erp' && ttSource !== 'manual') ||
+                (Date.now() - new Date(lastTtFetch).getTime()) > TIMETABLE_INTERVAL_MS
+            );
+
+            if (shouldFetchTimetable) {
+                try {
+                    const ttData = await erpFetchTimetable(token, persistentToken);
+
+                    if (ttData.sessionExpired) {
+                        logger.warn('⏭️ Timetable fetch: session expired, will retry next cycle');
+                    } else if (ttData.success && ttData.source !== 'empty') {
+                        const mapped = mapTimetableToState(ttData.timetable, ttData.timeSlots, latestSubjects);
+
+                        if (mapped.newSubjects.length > 0) {
+                            latestSubjects = [...latestSubjects, ...mapped.newSubjects];
+                            dispatch({ type: 'SET_SUBJECTS', payload: latestSubjects });
+                        }
+
+                        dispatch({
+                            type: 'ERP_SET_TIMETABLE',
+                            payload: {
+                                timetable: mapped.timetable,
+                                timeSlots: mapped.timeSlots,
+                                source: ttData.source,
+                                fetchedAt: ttData.fetchedAt,
+                                timesAreInferred: ttData.timesAreInferred || false,
+                                periodDefinitions: ttData.timeSlots,
+                                erpEndpoint: ttData._diag?.source || null,
+                            },
+                        });
+                        logger.info('✅', 'ERP timetable synced');
+                    } else if (ttData.success && ttData.source === 'empty') {
+                        dispatch({ type: 'ERP_TIMETABLE_EMPTY', payload: { fetchedAt: ttData.fetchedAt } });
+                        logger.info('📅', 'ERP timetable empty (vacation)');
+                    }
+                } catch (ttErr) {
+                    logger.warn('⚠️ Timetable fetch failed (non-critical):', ttErr.message);
+                }
             }
 
             // ── Commit success ────────────────────────────────────

@@ -263,6 +263,142 @@ async function fetchRegisterLegacy(session) {
     });
 }
 
+async function fetchTimetableLegacy(session) {
+    function extractAllCookies(resp) {
+        const cookies = [];
+        try {
+            if (typeof resp.headers.getSetCookie === 'function') {
+                for (const c of resp.headers.getSetCookie()) {
+                    const name = c.split(';')[0];
+                    if (name) cookies.push(name);
+                }
+            }
+        } catch (e) { /* ignore */ }
+        try {
+            if (typeof resp.headers.raw === 'function') {
+                for (const c of (resp.headers.raw()['set-cookie'] || [])) {
+                    const name = c.split(';')[0];
+                    if (name && !cookies.includes(name)) cookies.push(name);
+                }
+            }
+        } catch (e) { /* ignore */ }
+        try {
+            const single = resp.headers.get('set-cookie');
+            if (single) {
+                for (const c of single.split(/,(?=[^;]*=)/)) {
+                    const name = c.trim().split(';')[0];
+                    if (name && !cookies.includes(name)) cookies.push(name);
+                }
+            }
+        } catch (e) { /* ignore */ }
+        return cookies.join('; ');
+    }
+
+    function isTimetableContent(html) {
+        if (!html || html.length < 100) return false;
+        const lower = html.toLowerCase();
+        const hasDayKeywords = /\b(monday|tuesday|wednesday|thursday|friday|saturday|mon|tue|wed|thu|fri|sat)\b/i.test(html);
+        const hasPeriodIndicator = /\b(period|slot|lecture)\b/i.test(html) ||
+            /\d{1,2}[:.]\d{2}\s*[-–]\s*\d{1,2}[:.]\d{2}/.test(html);
+        const hasSubjectContent = /\d{2}[A-Z]{2,}\d{4}/.test(html) || lower.includes('subject');
+        // Must NOT be just the attendance register
+        const isRegister = /id=['"]subject_\d+['"]/.test(html) && html.includes('<thead');
+        return hasDayKeywords && (hasPeriodIndicator || hasSubjectContent) && !isRegister;
+    }
+
+    const baseBody = {
+        studentId: session.studentId,
+        sessionId: session.sessionId,
+        userId: session.userId,
+        apiKey: session.apiKey,
+        roleId: session.roleId,
+    };
+
+    const _diag = { triedEndpoints: [], source: null };
+
+    // Step 1: Warmup — establish server session cookies
+    let allCookies = '';
+    try {
+        const warmupResp = await fetch(`${ERP_BASE}/mobile/showAttendance`, {
+            method: 'POST',
+            headers: LEGACY_HEADERS,
+            redirect: 'manual',
+            body: encodeForm({
+                prevNext: '0',
+                userId: session.userId,
+                sessionId: session.sessionId,
+                apiKey: session.apiKey,
+                roleId: session.roleId,
+                month: '',
+            }),
+        });
+        allCookies = extractAllCookies(warmupResp);
+        await warmupResp.text();
+    } catch (err) { /* warmup failure non-fatal */ }
+
+    // Candidate endpoints to try
+    const candidates = [
+        { path: '/chalkpadpro/studentDetails/studentTimeTable', method: 'POST' },
+        { path: '/chalkpadpro/studentDetails/getTimeTable', method: 'POST' },
+        { path: '/chalkpadpro/studentDetails/getStudentTimeTable', method: 'POST' },
+        { path: '/chalkpadpro/studentDetails/display', method: 'POST' },
+    ];
+
+    // Try each candidate with cookies first, then without
+    for (const candidate of candidates) {
+        _diag.triedEndpoints.push(candidate.path);
+        try {
+            const resp = await fetch(`${ERP_BASE}${candidate.path}`, {
+                method: candidate.method,
+                headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
+                body: encodeForm(baseBody),
+            });
+            const text = await resp.text();
+            if (resp.ok && isTimetableContent(text)) {
+                _diag.source = candidate.path;
+                return { response: resp, payload: { content: text }, _diag };
+            }
+        } catch (err) { /* try next */ }
+    }
+
+    // Try commonPageId values that might return timetable
+    const timetablePageIds = ['30', '31', '45', '50', '60', '70', '80', '90'];
+    for (const pageId of timetablePageIds) {
+        _diag.triedEndpoints.push(`/mobile/commonPage?id=${pageId}`);
+        try {
+            const { response, payload } = await postLegacy('/mobile/commonPage', {
+                commonPageId: pageId,
+                device: 'android',
+                userId: session.userId,
+                sessionId: session.sessionId,
+                roleId: session.roleId,
+            });
+            const content = payload?.content || '';
+            if (response.ok && isTimetableContent(content)) {
+                _diag.source = `/mobile/commonPage:${pageId}`;
+                return { response, payload, _diag };
+            }
+        } catch (err) { /* try next */ }
+    }
+
+    // Last resort: try /display without timetable detection (return whatever it gives)
+    try {
+        const resp = await fetch(`${ERP_BASE}/chalkpadpro/studentDetails/display`, {
+            method: 'POST',
+            headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
+            body: encodeForm(baseBody),
+        });
+        const text = await resp.text();
+        if (resp.ok && text.length > 500) {
+            _diag.source = '/chalkpadpro/studentDetails/display (fallback)';
+            return { response: resp, payload: { content: text }, _diag };
+        }
+    } catch (err) { /* fall through */ }
+
+    _diag.source = null;
+    return { response: { ok: false }, payload: { content: '' }, _diag };
+}
+
 module.exports = {
     LEGACY_HEADERS,
     encodeForm,
@@ -272,4 +408,5 @@ module.exports = {
     verifyOtpLegacy,
     fetchSummaryLegacy,
     fetchRegisterLegacy,
+    fetchTimetableLegacy,
 };

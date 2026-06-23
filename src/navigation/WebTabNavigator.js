@@ -15,8 +15,11 @@ import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
 import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import InsightsScreen from '../screens/main/InsightsScreen';
+import AdminScreen from '../screens/main/AdminScreen';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
+import { useApp } from '../context/AppContext';
+import { isAdminRollNumber } from '../services/adminService';
 
 function TabIcon({ label, focused }) {
     const color = focused ? COLORS.primary : COLORS.textSecondary;
@@ -44,6 +47,11 @@ function TabIcon({ label, focused }) {
                 <line x1="6" y1="20" x2="6" y2="14"></line>
             </svg>
         ),
+        Admin: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+        ),
     };
 
     return (
@@ -56,11 +64,14 @@ function TabIcon({ label, focused }) {
 export default function WebTabNavigator() {
     const styles = getStyles();
     const insets = useSafeAreaInsets();
+    const { state: appState } = useApp();
+    const isAdmin = isAdminRollNumber(appState.erpRollNumber);
     const [currentTab, setCurrentTab] = useState('Today');
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }],
         Subjects: [{ name: 'SubjectsList', params: {} }],
         Insights: [{ name: 'InsightsMain', params: {} }],
+        Admin: [{ name: 'AdminMain', params: {} }],
     });
 
     const activeStack = stacks[currentTab];
@@ -77,7 +88,7 @@ export default function WebTabNavigator() {
             const handlePopState = (event) => {
                 const state = event.state;
                 if (state && state.tab && typeof state.index === 'number') {
-                    const tab = ['Today', 'Subjects', 'Insights'].includes(state.tab) ? state.tab : 'Today';
+                    const tab = ['Today', 'Subjects', 'Insights', 'Admin'].includes(state.tab) ? state.tab : 'Today';
                     setCurrentTab(tab);
                     setStacks(prev => {
                         const tabStack = prev[tab];
@@ -95,6 +106,7 @@ export default function WebTabNavigator() {
                         Today: [{ name: 'TodayMain', params: {} }],
                         Subjects: [{ name: 'SubjectsList', params: {} }],
                         Insights: [{ name: 'InsightsMain', params: {} }],
+                        Admin: [{ name: 'AdminMain', params: {} }],
                     });
                 }
             };
@@ -108,7 +120,7 @@ export default function WebTabNavigator() {
 
     const mockNavigation = useMemo(() => ({
         navigate: (screenOrTabName, params = {}) => {
-            if (['Today', 'Subjects', 'Insights'].includes(screenOrTabName)) {
+            if (['Today', 'Subjects', 'Insights', 'Admin'].includes(screenOrTabName)) {
                 setCurrentTab(screenOrTabName);
                 if (Platform.OS === 'web') {
                     window.history.pushState({ tab: screenOrTabName, index: stacksRef.current[screenOrTabName].length - 1 }, '', `?tab=${screenOrTabName}`);
@@ -197,6 +209,7 @@ export default function WebTabNavigator() {
             case 'SyncFromPortal': screen = <SyncFromPortalScreen {...props} />; break;
             case 'ERPConnect': screen = <ERPConnectScreen {...props} />; break;
             case 'InsightsMain': screen = <InsightsScreen {...props} />; break;
+            case 'AdminMain': screen = <AdminScreen {...props} />; break;
             default: screen = <TodayScreen {...props} />; break;
         }
 
@@ -216,7 +229,7 @@ export default function WebTabNavigator() {
             </View>
 
             <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'web' && typeof window !== 'undefined' && window.navigator?.standalone ? 20 : 4) }]}>
-                {['Today', 'Subjects', 'Insights'].map((tabName) => {
+                {['Today', 'Subjects', 'Insights', ...(isAdmin ? ['Admin'] : [])].map((tabName) => {
                     const focused = currentTab === tabName;
                     return (
                         <TouchableOpacity

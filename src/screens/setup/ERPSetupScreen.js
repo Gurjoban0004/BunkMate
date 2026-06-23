@@ -127,6 +127,11 @@ export default function ERPSetupScreen({ navigation }) {
                 dispatch({ type: 'SET_USER_NAME', payload: studentName });
             }
 
+            // Save roll number for admin detection
+            if (username.trim()) {
+                dispatch({ type: 'SET_ERP_ROLL_NUMBER', payload: username.trim() });
+            }
+
             // Set ERP connected
             dispatch({
                 type: 'UPDATE_SETTINGS',

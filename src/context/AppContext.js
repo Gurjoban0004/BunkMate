@@ -66,6 +66,9 @@ const initialState = {
     trackingStartDate: null,      // Date from which to track attendance
     todayIncludedInSetup: false,  // Was today's attendance included in initial numbers?
 
+    // Admin
+    erpRollNumber: null,          // Roll number from ERP login (e.g. '2410990296')
+
     // Dev Mode
     devDate: null,                // Simulated date for time travel
 
@@ -84,6 +87,17 @@ const initialState = {
 
     // Latest date for which ERP register data exists — drives CalendarView auto-jump
     latestErpDate: null,
+
+    // Timetable metadata — tracks source and freshness
+    timetableMeta: {
+        source: 'none',          // 'erp' | 'derived' | 'manual' | 'none'
+        fetchedAt: null,         // ISO string — last successful ERP timetable fetch
+        derivedAt: null,         // ISO string — last heuristic derivation
+        erpEndpoint: null,       // which endpoint worked (for diagnostics)
+        isEmpty: false,          // true if ERP returned valid structure but no data (vacation)
+        timesAreInferred: false, // true if period times are guessed, not from ERP
+        periodDefinitions: [],   // raw period defs from ERP: [{ number, start, end }]
+    },
 };
 
 function appReducer(state, action) {
@@ -106,6 +120,35 @@ function appReducer(state, action) {
                 timetable: {
                     ...state.timetable,
                     [action.payload.day]: action.payload.slots,
+                },
+                timetableMeta: { ...state.timetableMeta, source: 'manual' },
+            };
+
+        case 'ERP_SET_TIMETABLE': {
+            const { timetable: erpTimetable, timeSlots: erpTimeSlots, source: ttSource, fetchedAt: ttFetchedAt, periodDefinitions, timesAreInferred, erpEndpoint } = action.payload;
+            return {
+                ...state,
+                timetable: erpTimetable,
+                timeSlots: erpTimeSlots,
+                timetableMeta: {
+                    source: 'erp',
+                    fetchedAt: ttFetchedAt,
+                    derivedAt: state.timetableMeta?.derivedAt || null,
+                    erpEndpoint: erpEndpoint || null,
+                    isEmpty: false,
+                    timesAreInferred: timesAreInferred || false,
+                    periodDefinitions: periodDefinitions || [],
+                },
+            };
+        }
+
+        case 'ERP_TIMETABLE_EMPTY':
+            return {
+                ...state,
+                timetableMeta: {
+                    ...state.timetableMeta,
+                    fetchedAt: action.payload.fetchedAt,
+                    isEmpty: true,
                 },
             };
 
@@ -426,14 +469,19 @@ function appReducer(state, action) {
             }
 
             // ── Auto-generate timetable from ERP calendar data ──────────
-            // If the user set up via ERP (no manual timetable), derive which subjects
-            // appear on which days of the week so Today screen shows classes.
-            // Only do this if the timetable is currently empty (all days have 0 slots).
+            // Derive which subjects appear on which days so Today screen shows classes.
+            // Only run if timetable is empty OR was previously derived (never overwrite 'erp' or 'manual').
             const timetableIsEmpty = Object.values(state.timetable).every(slots => !slots || slots.length === 0);
+            const timetableSource = state.timetableMeta?.source || 'none';
+            const canDeriveFromHistory = (
+                (timetableIsEmpty || timetableSource === 'derived' || timetableSource === 'none')
+                && timetableSource !== 'erp' && timetableSource !== 'manual'
+            );
             let nextTimetable = state.timetable;
             let nextTimeSlots = state.timeSlots;
+            let nextTimetableMeta = state.timetableMeta || initialState.timetableMeta;
 
-            if (timetableIsEmpty && Object.keys(erpRecords).length > 0) {
+            if (canDeriveFromHistory && Object.keys(erpRecords).length > 0) {
                 const DAY_NAMES_MAP = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
                 // Count how many times each subject appears on each day of week
                 const subjectDayCount = {}; // { subjectId: { dayName: count } }
@@ -510,6 +558,7 @@ function appReducer(state, action) {
                 if (derivedSomething) {
                     nextTimetable = newTimetable;
                     nextTimeSlots = newTimeSlots;
+                    nextTimetableMeta = { ...nextTimetableMeta, source: 'derived', derivedAt: new Date().toISOString() };
                 }
             }
 
@@ -546,6 +595,7 @@ function appReducer(state, action) {
                 attendanceRecords: nextRecords,
                 timetable: nextTimetable,
                 timeSlots: nextTimeSlots,
+                timetableMeta: nextTimetableMeta,
                 trackingStartDate: newTrackingStart || state.trackingStartDate,
                 latestErpDate: nextLatestErpDate,
                 settings: {
@@ -590,6 +640,7 @@ function appReducer(state, action) {
                 ...loaded,
                 settings,
                 timetable: { ...initialState.timetable, ...(loaded.timetable || {}) },
+                timetableMeta: { ...initialState.timetableMeta, ...(loaded.timetableMeta || {}) },
                 // Always reset sync status on load — it's transient UI state
                 erpSync: { ...initialState.erpSync, lastGlobalSyncAt: loaded.erpSync?.lastGlobalSyncAt || null },
                 // Always clear pending OTP state on load — stale authUserId is useless after restart
@@ -598,6 +649,9 @@ function appReducer(state, action) {
                 isAuthenticated: !!(loaded.userId),
             };
         }
+
+        case 'SET_ERP_ROLL_NUMBER':
+            return { ...state, erpRollNumber: action.payload };
 
         case 'SET_DEV_DATE':
             return {

@@ -224,6 +224,108 @@ export function buildErpNameMap(matchedUpdates, newSubjects) {
 }
 
 /**
+ * Map ERP timetable response into app state format.
+ *
+ * Takes the raw timetable from /api/erp-timetable and converts it into
+ * the { timetable, timeSlots } shape used by AppContext.
+ *
+ * @param {Object} erpTimetable - { Monday: [{subjectName, subjectCode, period, startTime, endTime}], ... }
+ * @param {Array}  erpTimeSlots - [{ id, start, end }] from the API
+ * @param {Array}  existingSubjects - current app subjects
+ * @returns {{ timetable, timeSlots, newSubjects }}
+ */
+export function mapTimetableToState(erpTimetable, erpTimeSlots, existingSubjects) {
+    const timetable = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [] };
+    const newSubjects = [];
+
+    const usedColors = new Set(existingSubjects.map(s => s.color));
+    const availableColors = (COLORS.subjectPalette || []).filter(c => !usedColors.has(c));
+    let colorIndex = 0;
+
+    const allSubjects = [...existingSubjects];
+    const createdCodes = new Set();
+
+    for (const [dayName, entries] of Object.entries(erpTimetable)) {
+        if (!timetable[dayName]) continue;
+
+        for (const entry of entries) {
+            const candidates = entry.classes || [{ subjectName: entry.subjectName, subjectCode: entry.subjectCode }];
+
+            let bestCandidate = null;
+            let bestMatch = null;
+            let bestScore = 0;
+
+            for (const candidate of candidates) {
+                const erpSub = {
+                    name: candidate.subjectName || '',
+                    code: candidate.subjectCode || '',
+                    erpSubjectId: candidate.subjectCode || null,
+                };
+                // Empty matchedIds — same subject legitimately appears in multiple cells
+                const { match, score } = findBestMatch(erpSub, allSubjects, new Set());
+                if (match && score > bestScore) {
+                    bestCandidate = candidate;
+                    bestMatch = match;
+                    bestScore = score;
+                }
+            }
+
+            let subjectId;
+            if (bestMatch) {
+                subjectId = bestMatch.id;
+            } else if (candidates.length > 1) {
+                // Multi-class cell, none match enrolled subjects — skip
+                continue;
+            } else {
+                // Single-class cell, no match — create new subject
+                const candidate = candidates[0];
+                const codeKey = candidate.subjectCode || candidate.subjectName;
+
+                if (createdCodes.has(codeKey)) {
+                    const existing = allSubjects.find(s =>
+                        (s.code && s.code === candidate.subjectCode) ||
+                        (s.name === candidate.subjectName)
+                    );
+                    if (existing) {
+                        subjectId = existing.id;
+                    } else {
+                        continue;
+                    }
+                } else {
+                    const color = availableColors[colorIndex % availableColors.length]
+                        || (COLORS.subjectPalette || ['#85C1E9'])[colorIndex % (COLORS.subjectPalette?.length || 1)];
+                    colorIndex++;
+
+                    const newSub = {
+                        id: generateId(),
+                        name: candidate.subjectName,
+                        code: candidate.subjectCode,
+                        teacher: '',
+                        color,
+                        initialAttended: 0,
+                        initialTotal: 0,
+                        target: 75,
+                        erpSubjectId: candidate.subjectCode || null,
+                        source: 'erp',
+                        lastUpdated: new Date().toISOString(),
+                    };
+
+                    newSubjects.push(newSub);
+                    allSubjects.push(newSub);
+                    createdCodes.add(codeKey);
+                    subjectId = newSub.id;
+                }
+            }
+
+            const slotId = erpTimeSlots[entry.period - 1]?.id || `erp-period-${entry.period}`;
+            timetable[dayName].push({ slotId, subjectId });
+        }
+    }
+
+    return { timetable, timeSlots: erpTimeSlots, newSubjects };
+}
+
+/**
  * Map ERP calendar data into Presence attendanceRecords format.
  *
  * REBUILT FROM SCRATCH — previous versions failed because they tried to match

@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read/write their own data
+    match /users/{userId} {
+      allow read, write: if true;
+
+      match /semesters/{semId} {
+        allow read, write: if true;
+      }
+    }
+
+    // Telemetry — any authenticated write, admin reads via server
+    match /telemetry/{userId}/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Admin config — anyone can read (gates need this), only server can write
+    match /admin/config {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Admin analytics cache — only server can write, admin reads via server
+    match /admin/analytics {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Announcements — anyone can read active ones, only server can write
+    match /admin/announcements/items/{annId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Revoked users — anyone can read (gates check this), only server can write
+    match /admin/revokedUsers/items/{rollNumber} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Downtime events — admin reads client-side, only server can write
+    match /admin/downtime/events/{eventId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

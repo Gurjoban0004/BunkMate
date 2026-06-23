@@ -29,6 +29,7 @@ import EmptyDay from '../../components/today/EmptyDay';
 import HolidayCard from '../../components/today/HolidayCard';
 import AddExtraClassButton from '../../components/today/AddExtraClassButton';
 import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
+import AnnouncementBanner from '../../components/today/AnnouncementBanner';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
@@ -284,6 +285,9 @@ const TodayScreen = ({ navigation }) => {
 
                 {/* Deletion Warning Banner */}
                 <DeletionWarningBanner />
+
+                {/* Global Admin Announcements */}
+                <AnnouncementBanner />
 
                 {/* ERP Welcome Card — shown once after first sync */}
                 <ErpWelcomeCard
