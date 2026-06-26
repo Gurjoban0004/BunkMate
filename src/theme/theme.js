@@ -1,7 +1,7 @@
 // Presence Design System — Multi-Palette Theme Engine
 // Single source of truth for all visual constants.
 // NEVER hardcode colors, spacing, or radii in components.
-import { Platform } from 'react-native';
+import { Platform, Easing } from 'react-native';
 
 // ─────────────────────────────────────────────────────────────
 // 1. PALETTE DEFINITIONS
@@ -530,8 +530,13 @@ export const GLASS = {
 // ─────────────────────────────────────────────────────────────
 
 export const MOTION = {
-    pressOpacity: 0.72,
+    pressOpacity: 0.92,
     spring:       { tension: 120, friction: 8 },
     duration:     { fast: 150, normal: 250, slow: 400 },
-    easing:       { enter: 'ease-out', exit: 'ease-in', standard: 'ease-in-out' },
+    easing: {
+        enter:  Easing.out(Easing.cubic),
+        exit:   Easing.in(Easing.quad),
+        press:  Easing.out(Easing.quad),
+        snappy: Easing.bezier(0.16, 1, 0.3, 1),
+    },
 };

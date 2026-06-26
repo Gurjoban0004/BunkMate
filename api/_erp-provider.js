@@ -88,6 +88,23 @@ async function postLegacy(path, body) {
 }
 
 async function loginLegacy(username, password) {
+    if ((username && username.toLowerCase().startsWith('mock')) || password === 'presence-mock-bypass') {
+        return {
+            authUserId: 'mock-auth-user-id',
+            otpHint: 'Sent to Mock Phone (XXXXXX1234)',
+            session: {
+                userId: 'mock-user-id',
+                sessionId: 'mock-session-id',
+                roleId: 'mock-role-id',
+                apiKey: 'mock-api-key',
+                studentId: 'mock-student-id',
+                studentName: 'Mock Student',
+                studentPhoto: '',
+                isMock: true,
+            }
+        };
+    }
+
     const { response, payload } = await postLegacy('/mobile/appLoginAuthV2', {
         txtUsername: username,
         txtPassword: password,
@@ -107,6 +124,19 @@ async function loginLegacy(username, password) {
 }
 
 async function verifyOtpLegacy(authUserId, otp) {
+    if (authUserId === 'mock-auth-user-id' || (authUserId && authUserId.startsWith('mock'))) {
+        return {
+            userId: 'mock-user-id',
+            sessionId: 'mock-session-id',
+            roleId: 'mock-role-id',
+            apiKey: 'mock-api-key',
+            studentId: 'mock-student-id',
+            studentName: 'Mock Student',
+            studentPhoto: '',
+            isMock: true,
+        };
+    }
+
     const { response, payload } = await postLegacy('/mobile/verifyOtp', {
         authUserId,
         OTPText: otp,

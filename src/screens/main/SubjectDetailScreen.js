@@ -139,7 +139,7 @@ export default function SubjectDetailScreen({ route }) {
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>
                     <Text style={styles.sectionTitle}>Calendar</Text>
-                    <CalendarView subjectId={subjectId} state={state} />
+                    <CalendarView subjectId={subjectId} state={state} flat={true} />
                 </Card>
 
                 {simulatedData && <PatternsInsights subjectData={simulatedData} />}

@@ -5,6 +5,7 @@ import {
     TouchableOpacity,
     StyleSheet,
     Animated,
+    Easing,
 } from 'react-native';
 import { triggerHaptic } from '../../utils/haptics';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, TYPOGRAPHY } from '../../theme/theme';
@@ -42,6 +43,13 @@ const ClassCard = ({
     const isEdge = percentage >= dangerThreshold && percentage < dangerThreshold + 3;
 
     const scaleAnim = useRef(new Animated.Value(1)).current;
+    const attendScale = useRef(new Animated.Value(1)).current;
+    const bunkScale = useRef(new Animated.Value(1)).current;
+
+    const makeButtonHandlers = (btnScale) => ({
+        onPressIn: () => Animated.timing(btnScale, { toValue: 0.95, duration: 80, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(),
+        onPressOut: () => Animated.timing(btnScale, { toValue: 1, duration: 150, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(),
+    });
 
     const [previousPercentage, setPreviousPercentage] = useState(percentage);
     const [showChange, setShowChange] = useState(false);
@@ -233,19 +241,25 @@ const ClassCard = ({
                 ) : (
                     <View style={styles.buttonRow}>
                         <TouchableOpacity
-                            style={[styles.actionButton, styles.presentButton]}
                             onPress={() => handleMark('present')}
-                            activeOpacity={0.7}
+                            activeOpacity={0.95}
+                            style={{ flex: 1 }}
+                            {...makeButtonHandlers(attendScale)}
                         >
-                            <Text style={styles.presentButtonText}>Attend</Text>
+                            <Animated.View style={[styles.actionButton, styles.presentButton, { transform: [{ scale: attendScale }] }]}>
+                                <Text style={styles.presentButtonText}>Attend</Text>
+                            </Animated.View>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.actionButton, styles.absentButton]}
                             onPress={() => handleMark('absent')}
-                            activeOpacity={0.7}
+                            activeOpacity={0.95}
+                            style={{ flex: 1 }}
+                            {...makeButtonHandlers(bunkScale)}
                         >
-                            <Text style={styles.absentButtonText}>Bunk</Text>
+                            <Animated.View style={[styles.actionButton, styles.absentButton, { transform: [{ scale: bunkScale }] }]}>
+                                <Text style={styles.absentButtonText}>Bunk</Text>
+                            </Animated.View>
                         </TouchableOpacity>
                     </View>
                 )}

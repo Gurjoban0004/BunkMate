@@ -63,11 +63,12 @@ module.exports = async function handler(req, res) {
             studentId:    session.studentId,
             studentName:  session.studentName,
             studentPhoto: session.studentPhoto,
+            isMock:       session.isMock || false,
         });
 
         // Persistent token — stores credentials for auto re-login, no expiry
         const persistentToken = (username && password)
-            ? encryptPersistent({ username, password, studentName: session.studentName })
+            ? encryptPersistent({ username, password, studentName: session.studentName, isMock: session.isMock || false })
             : null;
 
         return res.status(200).json({

@@ -97,6 +97,7 @@ module.exports = async function handler(req, res) {
                 studentId:    session.studentId,
                 studentName,
                 studentPhoto: session.studentPhoto,
+                isMock:       creds.isMock || session.isMock || false,
             });
 
             // Re-encrypt persistent token to update studentName if it changed
@@ -104,6 +105,7 @@ module.exports = async function handler(req, res) {
                 username: creds.username,
                 password: creds.password,
                 studentName,
+                isMock:       creds.isMock || session.isMock || false,
             });
 
             return res.status(200).json({

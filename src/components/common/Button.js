@@ -1,6 +1,6 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import React, { useRef } from 'react';
+import { TouchableOpacity, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, MOTION } from '../../theme/theme';
 
 export default function Button({
     title,
@@ -10,28 +10,51 @@ export default function Button({
     style,
 }) {
     const styles = getStyles();
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const onPressIn = () => {
+        Animated.timing(scale, {
+            toValue: 0.96,
+            duration: 80,
+            easing: MOTION.easing.press,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const onPressOut = () => {
+        Animated.timing(scale, {
+            toValue: 1,
+            duration: 150,
+            easing: MOTION.easing.enter,
+            useNativeDriver: true,
+        }).start();
+    };
+
     return (
-        <TouchableOpacity
-            style={[
-                styles.button,
-                variant === 'primary' && styles.primary,
-                variant === 'secondary' && styles.secondary,
-                disabled && styles.disabled,
-                style,
-            ]}
-            onPress={onPress}
-            disabled={disabled}
-            activeOpacity={0.7}
-        >
-            <Text
+        <Animated.View style={[{ transform: [{ scale }] }, style]}>
+            <TouchableOpacity
                 style={[
-                    styles.text,
-                    variant === 'secondary' && styles.secondaryText,
+                    styles.button,
+                    variant === 'primary' && styles.primary,
+                    variant === 'secondary' && styles.secondary,
+                    disabled && styles.disabled,
                 ]}
+                onPress={onPress}
+                onPressIn={onPressIn}
+                onPressOut={onPressOut}
+                disabled={disabled}
+                activeOpacity={MOTION.pressOpacity}
             >
-                {title}
-            </Text>
-        </TouchableOpacity>
+                <Text
+                    style={[
+                        styles.text,
+                        variant === 'secondary' && styles.secondaryText,
+                    ]}
+                >
+                    {title}
+                </Text>
+            </TouchableOpacity>
+        </Animated.View>
     );
 }
 
@@ -48,8 +71,6 @@ const getStyles = () => StyleSheet.create({
     },
     secondary: {
         backgroundColor: 'transparent',
-        
-        
         ...SHADOWS.small,
     },
     disabled: {

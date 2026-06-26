@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView, LayoutAnimation } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../../theme/theme';
 import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses } from '../../../utils/planner/attendanceCalculations';
 import { generateRecoveryPaths } from '../../../utils/planner/recoveryPlanner';
 import { useApp } from '../../../context/AppContext';
-import { getPlannerEndDate, getUpcomingSubjectClasses } from '../../../utils/planner/semesterWindow';
+import { getPlannerEndDate, getPlannableSubjectClasses } from '../../../utils/planner/semesterWindow';
 
 /**
  * Interactive What-If Simulator with Skip/Attend stepper and dynamic predictions.
@@ -16,38 +17,35 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     // 'skip' or 'attend' (fix)
     const [mode, setMode] = useState(initialMode === 'skip' ? 'skip' : 'attend');
 
+    const navigation = useNavigation();
+
     const handleModeChange = (newMode) => {
         setMode(newMode);
         if (setSimulationOffset) setSimulationOffset(0);
-        setSelectedDates({}); // Clear selected dates on mode switch
     };
 
     const { state } = useApp();
-    const [selectedDates, setSelectedDates] = useState({});
 
-    // Find upcoming dates for this subject
-    const upcomingDates = React.useMemo(() => {
-        return getUpcomingSubjectClasses(state, subjectData.id, { maxClasses: 14 });
-    }, [state, subjectData.id]);
-
+    // Cap the quick stepper by the real upcoming class load (timetable when
+    // present, assumed weekdays otherwise) so it can't promise impossible skips.
+    const plannableClasses = React.useMemo(
+        () => getPlannableSubjectClasses(state, subjectData.id, { maxClasses: 60 }),
+        [state, subjectData.id]
+    );
     const hasSemesterEndDate = !!getPlannerEndDate(state);
-    const futureClassUnits = upcomingDates.reduce((sum, item) => sum + (item.units || 1), 0);
-    const maxSimulatorSteps = hasSemesterEndDate ? futureClassUnits : 20;
+    const futureClassUnits = plannableClasses.reduce((sum, item) => sum + (item.units || 1), 0);
+    const maxSimulatorSteps = Math.min(40, futureClassUnits > 0 ? futureClassUnits : 20);
 
-    // Compute active steps combining manual stepper and selected calendar classes.
-    const selectedUnits = upcomingDates.reduce((sum, item) => {
-        return selectedDates[item.classKey] ? sum + (item.units || 1) : sum;
-    }, 0);
     const manualSteps = Math.abs(simulationOffset);
-    const activeSteps = Math.min(maxSimulatorSteps, manualSteps + selectedUnits);
+    const activeSteps = Math.min(maxSimulatorSteps, manualSteps);
     const offset = mode === 'skip' ? -activeSteps : activeSteps;
 
-    const toggleDate = (dateObj) => {
-        const key = dateObj.classKey;
-        setSelectedDates(prev => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
+    const openCalendarPlanner = () => {
+        navigation.navigate('SubjectPlanner', {
+            subjectId: subjectData.id,
+            subjectName: subjectData.name,
+            initialMode: mode,
+        });
     };
 
     // Simulation Data
@@ -56,8 +54,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     const delta = (simulated.percentage - currentPercentage).toFixed(1);
 
     const handleStep = (val) => {
-        const maxManualSteps = Math.max(0, maxSimulatorSteps - selectedUnits);
-        const newActive = Math.max(0, Math.min(maxManualSteps, manualSteps + val));
+        const newActive = Math.max(0, Math.min(maxSimulatorSteps, manualSteps + val));
         if (setSimulationOffset) {
             setSimulationOffset(mode === 'skip' ? -newActive : newActive);
         }
@@ -140,8 +137,6 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
 
     const insight = getInsight();
 
-    const [showDates, setShowDates] = useState(false);
-
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -188,25 +183,17 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 </Text>
             </View>
 
-            {/* Collapsible date picker */}
-            <TouchableOpacity onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowDates(!showDates); }} style={styles.dateToggle}>
-                <Text style={styles.dateToggleText}>Select dates {showDates ? '▲' : '▼'}</Text>
+            {/* Pick specific classes on a calendar */}
+            <TouchableOpacity
+                onPress={openCalendarPlanner}
+                style={styles.planCta}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Plan specific classes on a calendar"
+            >
+                <Text style={styles.planCtaText}>Plan on a calendar</Text>
+                <Text style={styles.planCtaArrow}>→</Text>
             </TouchableOpacity>
-            {showDates && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sandboxScroll}>
-                    {upcomingDates.map((item, index) => {
-                        const key = item.classKey;
-                        const isSelected = !!selectedDates[key];
-                        return (
-                            <TouchableOpacity key={index} style={[styles.sandboxDateCard, isSelected && (mode === 'skip' ? styles.sandboxDateCardSkip : styles.sandboxDateCardAttend)]} onPress={() => toggleDate(item)}>
-                                <Text style={[styles.sandboxDayText, isSelected && styles.sandboxTextActive]}>{item.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</Text>
-                                <Text style={[styles.sandboxDateText, isSelected && styles.sandboxTextActive]}>{item.date.getDate()}</Text>
-                                {isSelected && <View style={styles.sandboxCheck}><Text style={styles.sandboxCheckIcon}>{mode === 'skip' ? '✕' : '✓'}</Text></View>}
-                            </TouchableOpacity>
-                        );
-                    })}
-                </ScrollView>
-            )}
 
             <View style={styles.progressContainer}>
                 <View style={styles.progressBg}>
@@ -348,14 +335,25 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textSecondary,
         flex: 1,
     },
-    dateToggle: {
+    planCta: {
+        flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: SPACING.xs,
-        marginBottom: SPACING.sm,
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 11,
+        marginBottom: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        backgroundColor: COLORS.inputBackground,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
-    dateToggleText: {
-        ...TYPOGRAPHY.labelSmall,
-        color: COLORS.primary,
+    planCtaText: {
+        ...TYPOGRAPHY.labelMedium,
+        color: COLORS.primaryDark,
+    },
+    planCtaArrow: {
+        ...TYPOGRAPHY.labelMedium,
+        color: COLORS.primaryDark,
     },
     progressContainer: {
         backgroundColor: COLORS.background,
@@ -389,57 +387,5 @@ const getStyles = () => StyleSheet.create({
     progressLabel: {
         ...TYPOGRAPHY.captionSmall,
         color: COLORS.textMuted,
-    },
-    sandboxScroll: {
-        gap: SPACING.sm,
-        paddingHorizontal: SPACING.xs,
-        paddingBottom: SPACING.sm,
-    },
-    sandboxDateCard: {
-        backgroundColor: COLORS.inputBackground,
-        paddingVertical: SPACING.sm,
-        paddingHorizontal: SPACING.md,
-        borderRadius: BORDER_RADIUS.md,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        minWidth: 56,
-        position: 'relative',
-    },
-    sandboxDateCardSkip: {
-        backgroundColor: COLORS.dangerLight,
-        borderColor: COLORS.danger,
-    },
-    sandboxDateCardAttend: {
-        backgroundColor: COLORS.successLight,
-        borderColor: COLORS.success,
-    },
-    sandboxDayText: {
-        ...TYPOGRAPHY.micro,
-        color: COLORS.textSecondary,
-    },
-    sandboxDateText: {
-        ...TYPOGRAPHY.headingSmall,
-        color: COLORS.textPrimary,
-        marginTop: 1,
-    },
-    sandboxTextActive: {
-        color: COLORS.textPrimary,
-    },
-    sandboxCheck: {
-        position: 'absolute',
-        top: -5,
-        right: -5,
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: COLORS.textPrimary,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    sandboxCheckIcon: {
-        color: COLORS.cardBackground,
-        fontSize: 9,
-        fontWeight: 'bold',
     },
 });

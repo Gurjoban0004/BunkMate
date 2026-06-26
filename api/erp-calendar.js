@@ -225,6 +225,90 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
     }
 
+    if (session.isMock) {
+        const calendar = {};
+        const subjects = [
+            { name: 'Database Management Systems', code: 'CS201', erpSubjectId: '101', attended: 24, total: 30, percentage: 80, teacher: 'Dr. John Doe', absent: 6 },
+            { name: 'Data Structures & Algorithms', code: 'CS202', erpSubjectId: '102', attended: 22, total: 32, percentage: 68.8, teacher: 'Prof. Jane Smith', absent: 10 },
+            { name: 'Discrete Mathematics', code: 'MA201', erpSubjectId: '103', attended: 21, total: 28, percentage: 75, teacher: 'Dr. Alan Turing', absent: 7 },
+            { name: 'Computer Networks', code: 'CS203', erpSubjectId: '104', attended: 31, total: 35, percentage: 88.6, teacher: 'Prof. Grace Hopper', absent: 4 },
+            { name: 'Web Development', code: 'CS204', erpSubjectId: '105', attended: 22, total: 24, percentage: 91.7, teacher: 'Dr. Tim Berners-Lee', absent: 2 }
+        ];
+
+        const dailySchedule = {
+            1: [ // Monday
+                { name: 'Database Management Systems', code: 'CS201', id: '101', period: 1 },
+                { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 2 },
+                { name: 'Computer Networks', code: 'CS203', id: '104', period: 4 }
+            ],
+            2: [ // Tuesday
+                { name: 'Discrete Mathematics', code: 'MA201', id: '103', period: 1 },
+                { name: 'Web Development', code: 'CS204', id: '105', period: 3 }
+            ],
+            3: [ // Wednesday
+                { name: 'Database Management Systems', code: 'CS201', id: '101', period: 1 },
+                { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 2 },
+                { name: 'Computer Networks', code: 'CS203', id: '104', period: 4 }
+            ],
+            4: [ // Thursday
+                { name: 'Discrete Mathematics', code: 'MA201', id: '103', period: 1 },
+                { name: 'Web Development', code: 'CS204', id: '105', period: 3 }
+            ],
+            5: [ // Friday
+                { name: 'Database Management Systems', code: 'CS201', id: '101', period: 2 },
+                { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 3 },
+                { name: 'Web Development', code: 'CS204', id: '105', period: 5 }
+            ],
+            6: [] // Saturday
+        };
+
+        const today = new Date();
+        let latestDateStr = null;
+
+        for (let i = 40; i >= 1; i--) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            const dayOfWeek = date.getDay();
+            if (dayOfWeek === 0) continue;
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const dayNum = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${dayNum}`;
+            if (!latestDateStr || dateStr > latestDateStr) latestDateStr = dateStr;
+
+            const classesToday = dailySchedule[dayOfWeek] || [];
+            if (classesToday.length === 0) continue;
+
+            calendar[dateStr] = {};
+            for (const cls of classesToday) {
+                let status = 'present';
+                const dateVal = date.getDate() + date.getMonth() * 31 + date.getFullYear();
+                if (cls.code === 'CS201' && dateVal % 5 === 0) status = 'absent';
+                else if (cls.code === 'CS202' && dateVal % 3 === 0) status = 'absent';
+                else if (cls.code === 'MA201' && dateVal % 4 === 0) status = 'absent';
+                else if (cls.code === 'CS203' && dateVal % 9 === 0) status = 'absent';
+                else if (cls.code === 'CS204' && dateVal % 12 === 0) status = 'absent';
+
+                calendar[dateStr][cls.name] = {
+                    status,
+                    code: cls.code,
+                    erpSubjectId: cls.id,
+                    period: cls.period,
+                    units: 1
+                };
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            calendar,
+            subjects,
+            latestDate: latestDateStr,
+            fetchedAt: new Date().toISOString()
+        });
+    }
+
     async function fetchCalendarV2(sess) {
         return fetch(`${ERP_BASE}/mobilev2/commonPage`, {
             method: 'POST',

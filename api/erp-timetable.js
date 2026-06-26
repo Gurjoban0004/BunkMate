@@ -324,6 +324,50 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
     }
 
+    if (session.isMock) {
+        const timetable = {
+            Monday: [
+                { subjectName: 'Database Management Systems', subjectCode: 'CS201', period: 1, startTime: '09:00', endTime: '09:50' },
+                { subjectName: 'Data Structures & Algorithms', subjectCode: 'CS202', period: 2, startTime: '10:00', endTime: '10:50' },
+                { subjectName: 'Computer Networks', subjectCode: 'CS203', period: 4, startTime: '12:00', endTime: '12:50' }
+            ],
+            Tuesday: [
+                { subjectName: 'Discrete Mathematics', subjectCode: 'MA201', period: 1, startTime: '09:00', endTime: '09:50' },
+                { subjectName: 'Web Development', subjectCode: 'CS204', period: 3, startTime: '11:00', endTime: '11:50' }
+            ],
+            Wednesday: [
+                { subjectName: 'Database Management Systems', subjectCode: 'CS201', period: 1, startTime: '09:00', endTime: '09:50' },
+                { subjectName: 'Data Structures & Algorithms', subjectCode: 'CS202', period: 2, startTime: '10:00', endTime: '10:50' },
+                { subjectName: 'Computer Networks', subjectCode: 'CS203', period: 4, startTime: '12:00', endTime: '12:50' }
+            ],
+            Thursday: [
+                { subjectName: 'Discrete Mathematics', subjectCode: 'MA201', period: 1, startTime: '09:00', endTime: '09:50' },
+                { subjectName: 'Web Development', subjectCode: 'CS204', period: 3, startTime: '11:00', endTime: '11:50' }
+            ],
+            Friday: [
+                { subjectName: 'Database Management Systems', subjectCode: 'CS201', period: 2, startTime: '10:00', endTime: '10:50' },
+                { subjectName: 'Data Structures & Algorithms', subjectCode: 'CS202', period: 3, startTime: '11:00', endTime: '11:50' },
+                { subjectName: 'Web Development', subjectCode: 'CS204', period: 5, startTime: '13:40', endTime: '14:30' }
+            ],
+            Saturday: []
+        };
+        const timeSlots = [
+            { id: 'erp-period-1', start: '09:00', end: '09:50' },
+            { id: 'erp-period-2', start: '10:00', end: '10:50' },
+            { id: 'erp-period-3', start: '11:00', end: '11:50' },
+            { id: 'erp-period-4', start: '12:00', end: '12:50' },
+            { id: 'erp-period-5', start: '13:40', end: '14:30' }
+        ];
+        return res.status(200).json({
+            success: true,
+            timetable,
+            timeSlots,
+            source: 'mock-erp-provider',
+            timesAreInferred: false,
+            fetchedAt: new Date().toISOString()
+        });
+    }
+
     try {
         const erpResult = await fetchTimetableLegacy(session);
         const diag = erpResult._diag || {};

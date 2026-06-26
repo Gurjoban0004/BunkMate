@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text, View, Platform } from 'react-native';
+import { Text, View, Platform, Pressable, Animated, Easing } from 'react-native';
 import TodayScreen from '../screens/main/TodayScreen';
 import SubjectsScreen from '../screens/main/SubjectsScreen';
 import SubjectDetailScreen from '../screens/main/SubjectDetailScreen';
+import SubjectPlannerScreen from '../screens/main/SubjectPlannerScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
@@ -87,6 +88,13 @@ function SubjectsStackScreen() {
                     title: route.params?.subjectName || 'Subject',
                 })}
             />
+            <SubjectsStack.Screen
+                name="SubjectPlanner"
+                component={SubjectPlannerScreen}
+                options={({ route }) => ({
+                    title: route.params?.subjectName || 'Plan classes',
+                })}
+            />
             <SubjectsStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
             <SubjectsStack.Screen name="EditTimetable" component={EditTimetableScreen} options={{ title: 'Edit Timetable' }} />
             <SubjectsStack.Screen name="EditSubjects" component={EditSubjectsScreen} options={{ title: 'Edit Subjects' }} />
@@ -119,6 +127,28 @@ function AdminStackScreen() {
             <AdminStack.Screen name="AdminMain" component={AdminScreen} />
         </AdminStack.Navigator>
         </ErrorBoundary>
+    );
+}
+
+function AnimatedTabButton({ children, style, onPress, onLongPress, ...rest }) {
+    const scale = useRef(new Animated.Value(1)).current;
+    return (
+        <Pressable
+            onPress={onPress}
+            onLongPress={onLongPress}
+            onPressIn={() =>
+                Animated.timing(scale, { toValue: 0.88, duration: 80, easing: Easing.out(Easing.quad), useNativeDriver: true }).start()
+            }
+            onPressOut={() =>
+                Animated.timing(scale, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start()
+            }
+            style={style}
+            {...rest}
+        >
+            <Animated.View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', transform: [{ scale }] }}>
+                {children}
+            </Animated.View>
+        </Pressable>
     );
 }
 
@@ -177,6 +207,7 @@ export default function TabNavigator() {
         <Tab.Navigator
             initialRouteName="Today"
             screenOptions={({ route }) => ({
+                tabBarButton: (props) => <AnimatedTabButton {...props} />,
                 tabBarIcon: ({ focused }) => (
                     <TabIcon label={route.name} focused={focused} />
                 ),

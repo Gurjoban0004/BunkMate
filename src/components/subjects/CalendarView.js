@@ -12,7 +12,7 @@ const CELL_SIZE = 32;
  * @param {object} state - full AppContext state
  * @param {string|null} subjectColor - accent color for subject mode
  */
-export default function CalendarView({ subjectId, state, subjectColor }) {
+export default function CalendarView({ subjectId, state, subjectColor, flat = false }) {
     const styles = getStyles();
 
     // ── Compute initial month offset to jump to latest ERP data ──────
@@ -121,7 +121,7 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={flat ? styles.flatContainer : styles.container}>
             {/* Month navigation */}
             <View style={styles.monthNav}>
                 <TouchableOpacity
@@ -291,6 +291,13 @@ export default function CalendarView({ subjectId, state, subjectColor }) {
 }
 
 const getStyles = () => StyleSheet.create({
+    flatContainer: {
+        backgroundColor: 'transparent',
+        marginHorizontal: 0,
+        padding: 0,
+        borderWidth: 0,
+        marginBottom: 0,
+    },
     container: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,

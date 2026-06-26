@@ -88,3 +88,65 @@ export function getUpcomingSubjectClasses(state, subjectId, options = {}) {
 
     return classes;
 }
+
+/**
+ * Plannable upcoming classes for the calendar planner.
+ *
+ * Prefers the real timetable when one exists (delegates to
+ * getUpcomingSubjectClasses). Until a timetable is connected, falls back to
+ * treating every upcoming weekday (Mon–Fri, excluding holidays and anything
+ * past the semester end) as one assumed 1-unit class so the student can still
+ * plan ahead. Assumed classes are flagged `assumed: true` so the UI can stay
+ * honest about the estimate.
+ *
+ * @returns {Array<{subjectId, classKey, date, dateKey, dayName, units, assumed}>}
+ */
+export function getPlannableSubjectClasses(state, subjectId, options = {}) {
+    const {
+        fromDate = new Date(),
+        maxClasses = 60,
+        maxDays = 140,
+    } = options;
+
+    if (!subjectId) return [];
+
+    // Real timetable wins when present.
+    const real = getUpcomingSubjectClasses(state, subjectId, { fromDate, maxClasses, maxDays });
+    if (real.length > 0) {
+        return real.map((cls) => ({ ...cls, assumed: false }));
+    }
+
+    // Fallback: no timetable yet — assume weekday classes.
+    const classes = [];
+    const holidays = state.holidays || [];
+    const endDate = getPlannerEndDate(state);
+    const cursor = new Date(fromDate);
+    cursor.setHours(0, 0, 0, 0);
+    cursor.setDate(cursor.getDate() + 1); // start tomorrow
+
+    let safeGuard = 0;
+    while (classes.length < maxClasses && safeGuard < maxDays) {
+        if (endDate && cursor > endDate) break;
+
+        const dayOfWeek = cursor.getDay();
+        const dateKey = toPlannerDateKey(cursor);
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        if (!isWeekend && !holidays.includes(dateKey)) {
+            classes.push({
+                subjectId,
+                classKey: `${dateKey}:assumed`,
+                date: new Date(cursor),
+                dateKey,
+                dayName: DAY_NAMES[dayOfWeek],
+                units: 1,
+                assumed: true,
+            });
+        }
+
+        cursor.setDate(cursor.getDate() + 1);
+        safeGuard++;
+    }
+
+    return classes;
+}

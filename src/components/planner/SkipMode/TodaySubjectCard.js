@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
+import usePressScale from '../../../hooks/usePressScale';
 import PercentageBadge from '../shared/PercentageBadge';
 import PlannerProgressBar from '../shared/PlannerProgressBar';
 import { calculateSkipImpact, determineStatus } from '../../../utils/planner/attendanceCalculations';
@@ -12,6 +13,7 @@ import { getNextClass, formatRelativeDate } from '../../../utils/planner/schedul
  */
 export default function TodaySubjectCard({ subjectData, onPress }) {
     const styles = getStyles();
+    const { scale, onPressIn, onPressOut } = usePressScale(0.97);
     const { name, color, attended, total, percentage, target } = subjectData;
 
     const skipImpact = calculateSkipImpact(attended, total);
@@ -30,10 +32,12 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
 
     return (
         <TouchableOpacity
-            style={styles.card}
             onPress={onPress}
-            activeOpacity={0.7}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            activeOpacity={0.95}
         >
+        <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <View style={[styles.colorDot, { backgroundColor: color || borderColor }]} />
@@ -66,6 +70,7 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
                     <Text style={styles.warningText}>Attend this class. Attendance is below target.</Text>
                 </View>
             )}
+        </Animated.View>
         </TouchableOpacity>
     );
 }

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TodayScreen from '../screens/main/TodayScreen';
 import SubjectsScreen from '../screens/main/SubjectsScreen';
 import SubjectDetailScreen from '../screens/main/SubjectDetailScreen';
+import SubjectPlannerScreen from '../screens/main/SubjectPlannerScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
@@ -202,6 +203,7 @@ export default function WebTabNavigator() {
             case 'WeeklySummary': screen = <WeeklySummaryScreen {...props} />; break;
             case 'SubjectsList': screen = <SubjectsScreen {...props} />; break;
             case 'SubjectDetail': screen = <SubjectDetailScreen {...props} />; break;
+            case 'SubjectPlanner': screen = <SubjectPlannerScreen {...props} />; break;
             case 'Settings': screen = <SettingsScreen {...props} />; break;
             case 'EditTimetable': screen = <EditTimetableScreen {...props} />; break;
             case 'EditSubjects': screen = <EditSubjectsScreen {...props} />; break;

@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import ProgressRing from '../common/ProgressRing';
 import SkipGauge from '../common/SkipGauge';
+import usePressScale from '../../hooks/usePressScale';
 
 const SubjectRow = ({ subject, status, threshold, onPress }) => {
     const styles = getStyles();
+    const { scale, onPressIn, onPressOut } = usePressScale(0.97);
     const { name, color, percentage, attendedUnits, totalUnits, skipInfo, source } = subject;
     const getStatusColor = () => {
         switch (status) {
@@ -28,7 +30,8 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
     const gaugeStatus = status === 'danger' ? 'danger' : status === 'edge' ? 'warning' : 'safe';
 
     return (
-        <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+        <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={0.95}>
+        <Animated.View style={[styles.container, { transform: [{ scale }] }]}>
             <ProgressRing percentage={percentage} size={44} strokeWidth={4} color={statusColor}>
                 <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor }}>{Math.round(percentage)}%</Text>
             </ProgressRing>
@@ -54,6 +57,7 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
                     <Text style={styles.sourceText}>{isErpSynced ? 'Portal' : 'Manual'}</Text>
                 )}
             </View>
+        </Animated.View>
         </TouchableOpacity>
     );
 };

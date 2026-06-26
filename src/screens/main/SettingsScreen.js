@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS, PALETTES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { clearAppState, saveAppState, deleteUserAccount } from '../../storage/storage';
+import { clearErpToken } from '../../storage/erpTokenStorage';
 import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
 const SettingsScreen = ({ navigation }) => {
@@ -195,6 +196,35 @@ const SettingsScreen = ({ navigation }) => {
                                     disabled={isErpSyncing}
                                 >
                                     <Text style={[styles.linkText, { color: COLORS.primary }]}>Refresh calendar</Text>
+                                    <Text style={styles.chevron}>›</Text>
+                                </TouchableOpacity>
+                                <View style={styles.divider} />
+                                <TouchableOpacity
+                                    style={styles.groupItem}
+                                    onPress={() => {
+                                        showAlert(
+                                            'Disconnect Portal',
+                                            'Are you sure you want to disconnect your college portal? Your current attendance data will remain, but automatic syncs will stop.',
+                                            [
+                                                { text: 'Cancel', style: 'cancel' },
+                                                {
+                                                    text: 'Disconnect',
+                                                    style: 'destructive',
+                                                    onPress: async () => {
+                                                        await clearErpToken();
+                                                        dispatch({
+                                                            type: 'UPDATE_SETTINGS',
+                                                            payload: { erpConnected: false }
+                                                        });
+                                                        showAlert('Disconnected', 'College portal disconnected successfully.');
+                                                    }
+                                                }
+                                            ]
+                                        );
+                                    }}
+                                    disabled={isErpSyncing}
+                                >
+                                    <Text style={[styles.linkText, { color: COLORS.danger }]}>Disconnect portal</Text>
                                     <Text style={styles.chevron}>›</Text>
                                 </TouchableOpacity>
                             </>

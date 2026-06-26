@@ -20,3 +20,4 @@ veda
 .env.*.local
 .vercel
 .env*.local
+.env*

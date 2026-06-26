@@ -166,6 +166,23 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
     }
 
+    if (session.isMock) {
+        if (keepAlive) {
+            return res.status(200).json({ success: true, alive: true });
+        }
+        return res.status(200).json({
+            success: true,
+            subjects: [
+                { name: 'Database Management Systems', code: 'CS201', teacher: 'Dr. John Doe', delivered: 30, attended: 24, absent: 6, percentage: 80 },
+                { name: 'Data Structures & Algorithms', code: 'CS202', teacher: 'Prof. Jane Smith', delivered: 32, attended: 22, absent: 10, percentage: 68.8 },
+                { name: 'Discrete Mathematics', code: 'MA201', teacher: 'Dr. Alan Turing', delivered: 28, attended: 21, absent: 7, percentage: 75 },
+                { name: 'Computer Networks', code: 'CS203', teacher: 'Prof. Grace Hopper', delivered: 35, attended: 31, absent: 4, percentage: 88.6 },
+                { name: 'Web Development', code: 'CS204', teacher: 'Dr. Tim Berners-Lee', delivered: 24, attended: 22, absent: 2, percentage: 91.7 }
+            ],
+            fetchedAt: new Date().toISOString()
+        });
+    }
+
     // ── Attempt ERP fetch ─────────────────────────────────────────
     async function fetchAttendanceV2(sess) {
         return fetch(`${ERP_BASE}/mobilev2/commonPage`, {

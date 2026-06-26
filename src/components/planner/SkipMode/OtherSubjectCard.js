@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
+import usePressScale from '../../../hooks/usePressScale';
 import { determineStatus } from '../../../utils/planner/attendanceCalculations';
 import { getNextClass, formatRelativeDate } from '../../../utils/planner/scheduleProcessor';
 
@@ -10,6 +11,7 @@ import { getNextClass, formatRelativeDate } from '../../../utils/planner/schedul
  */
 export default function OtherSubjectCard({ subjectData, onPress }) {
     const styles = getStyles();
+    const { scale, onPressIn, onPressOut } = usePressScale(0.97);
     const { name, color, percentage, target } = subjectData;
     const status = determineStatus(percentage, target);
     const nextClass = getNextClass(subjectData);
@@ -24,10 +26,12 @@ export default function OtherSubjectCard({ subjectData, onPress }) {
 
     return (
         <TouchableOpacity
-            style={styles.card}
             onPress={onPress}
-            activeOpacity={0.7}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            activeOpacity={0.95}
         >
+        <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
             <View style={styles.row}>
                 <View style={[styles.colorDot, { backgroundColor: color || borderColor }]} />
                 <Text style={styles.name} numberOfLines={1}>{name}</Text>
@@ -44,6 +48,7 @@ export default function OtherSubjectCard({ subjectData, onPress }) {
                     )}
                 </View>
             </View>
+        </Animated.View>
         </TouchableOpacity>
     );
 }

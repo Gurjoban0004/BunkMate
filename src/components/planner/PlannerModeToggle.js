@@ -1,27 +1,31 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme/theme';
 
-/**
- * Skip? / Fix mode toggle with animated sliding indicator.
- * Props: activeMode ('skip'|'fix'), onModeChange (fn)
- */
 export default function PlannerModeToggle({ activeMode, onModeChange }) {
     const styles = getStyles();
     const slideAnim = useRef(new Animated.Value(activeMode === 'skip' ? 0 : 1)).current;
 
     useEffect(() => {
-        Animated.spring(slideAnim, {
+        Animated.timing(slideAnim, {
             toValue: activeMode === 'skip' ? 0 : 1,
+            duration: 200,
+            easing: Easing.out(Easing.cubic),
             useNativeDriver: false,
-            tension: 120,
-            friction: 14,
         }).start();
     }, [activeMode]);
 
+    const skipColor = slideAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [COLORS.textPrimary, COLORS.textSecondary],
+    });
+    const fixColor = slideAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [COLORS.textSecondary, COLORS.textPrimary],
+    });
+
     return (
         <View style={styles.container}>
-            {/* Animated sliding background */}
             <Animated.View
                 style={[
                     styles.slider,
@@ -36,21 +40,29 @@ export default function PlannerModeToggle({ activeMode, onModeChange }) {
             <TouchableOpacity
                 style={styles.tab}
                 onPress={() => onModeChange('skip')}
-                activeOpacity={0.7}
+                activeOpacity={0.9}
             >
-                <Text style={[styles.tabText, activeMode === 'skip' && styles.activeTabText]}>
+                <Animated.Text style={[
+                    styles.tabText,
+                    { color: skipColor },
+                    activeMode === 'skip' && styles.activeTabWeight,
+                ]}>
                     Can I miss?
-                </Text>
+                </Animated.Text>
             </TouchableOpacity>
 
             <TouchableOpacity
                 style={styles.tab}
                 onPress={() => onModeChange('fix')}
-                activeOpacity={0.7}
+                activeOpacity={0.9}
             >
-                <Text style={[styles.tabText, activeMode === 'fix' && styles.activeTabText]}>
+                <Animated.Text style={[
+                    styles.tabText,
+                    { color: fixColor },
+                    activeMode === 'fix' && styles.activeTabWeight,
+                ]}>
                     Recover
-                </Text>
+                </Animated.Text>
             </TouchableOpacity>
         </View>
     );
@@ -88,10 +100,8 @@ const getStyles = () => StyleSheet.create({
     tabText: {
         fontSize: FONT_SIZES.sm,
         fontWeight: '600',
-        color: COLORS.textSecondary,
     },
-    activeTabText: {
-        color: COLORS.textPrimary,
+    activeTabWeight: {
         fontWeight: '800',
     },
 });
