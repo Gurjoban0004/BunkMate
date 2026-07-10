@@ -253,6 +253,19 @@ module.exports = async function handler(req, res) {
         const subjects = parseAttendanceHTML(htmlContent);
 
         if (subjects.length === 0) {
+            // Distinguish "not uploaded yet" (a valid empty state) from a real parse failure.
+            // Only warn when the HTML actually carries data-bearing structure we failed to read.
+            const isEmptyState = /not uploaded|no records?\s*found|no data|attendance not/i.test(htmlContent);
+            const hasDataStructure = /tt-box-new|id=['"]subject_\d+['"]|delivered\s*:/i.test(htmlContent);
+
+            if (isEmptyState && !hasDataStructure) {
+                return res.status(200).json({
+                    success: true, subjects: [], empty: true,
+                    message: 'Attendance has not been uploaded yet for this session.',
+                    fetchedAt: new Date().toISOString(),
+                });
+            }
+
             return res.status(200).json({
                 success: true, subjects: [],
                 warning: 'Could not parse attendance data. The portal layout may have changed.',

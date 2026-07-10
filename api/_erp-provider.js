@@ -58,11 +58,18 @@ function parseLegacySession(payload) {
         sessionId: String(firstUser.sessionId || payload?.sessionId || ''),
         roleId: String(firstUser.roleId || payload?.roleId || ''),
         apiKey: String(firstUser.apiKey || firstUser.appKey || payload?.apiKey || ''),
+        // securityToken is server-issued at login (top-level `token`); required by /mobilev2/*.
+        securityToken: String(payload?.token || firstUser.token || ''),
         studentId: String(firstUser.studentId || firstUser.id || payload?.studentId || ''),
         studentName: String(firstUser.name || firstUser.profileName || payload?.name || ''),
         studentPhoto: String(firstUser.photo || payload?.photo || ''),
         otpHint: String(payload?.mobileString || ''),
     };
+
+    // roleId==2 (parent) acts on the child's userId (APK-FINDINGS.md §2b).
+    if (session.roleId === '2' && firstUser.fatherUserId) {
+        session.userId = String(firstUser.fatherUserId);
+    }
 
     if (!session.userId) return null;
     return session;
@@ -87,7 +94,7 @@ async function postLegacy(path, body) {
     return { response, payload };
 }
 
-async function loginLegacy(username, password) {
+async function loginLegacy(username, password, deviceIdUUID = '') {
     if ((username && username.toLowerCase().startsWith('mock')) || password === 'presence-mock-bypass') {
         return {
             authUserId: 'mock-auth-user-id',
@@ -97,6 +104,8 @@ async function loginLegacy(username, password) {
                 sessionId: 'mock-session-id',
                 roleId: 'mock-role-id',
                 apiKey: 'mock-api-key',
+                securityToken: 'mock-security-token',
+                deviceIdUUID,
                 studentId: 'mock-student-id',
                 studentName: 'Mock Student',
                 studentPhoto: '',
@@ -105,14 +114,19 @@ async function loginLegacy(username, password) {
         };
     }
 
-    const { response, payload } = await postLegacy('/mobile/appLoginAuthV2', {
+    // Mobile login (APK-FINDINGS.md §2b): a device that has completed MFA once is trusted and
+    // returns status==1 (session + token) with NO OTP. deviceIdUUID identifies that device.
+    const { response, payload } = await postLegacy('/mobilev2/appLoginAuthV2', {
         txtUsername: username,
         txtPassword: password,
+        deviceIdUUID,
+        device: 'android',
     });
     if (!response.ok) throw new Error('ERP login request failed');
     assertNotLoginFailure(payload);
 
     const session = parseLegacySession(payload);
+    if (session) session.deviceIdUUID = deviceIdUUID;
     const authUserId = payload.authUserId || session?.userId || payload.userId;
     if (!authUserId) throw new Error('No authUserId in ERP login response');
 
@@ -123,13 +137,15 @@ async function loginLegacy(username, password) {
     };
 }
 
-async function verifyOtpLegacy(authUserId, otp) {
+async function verifyOtpLegacy(authUserId, otp, deviceIdUUID = '') {
     if (authUserId === 'mock-auth-user-id' || (authUserId && authUserId.startsWith('mock'))) {
         return {
             userId: 'mock-user-id',
             sessionId: 'mock-session-id',
             roleId: 'mock-role-id',
             apiKey: 'mock-api-key',
+            securityToken: 'mock-security-token',
+            deviceIdUUID,
             studentId: 'mock-student-id',
             studentName: 'Mock Student',
             studentPhoto: '',
@@ -137,14 +153,20 @@ async function verifyOtpLegacy(authUserId, otp) {
         };
     }
 
+    // NOTE (APK-FINDINGS.md §2c, §8): the exact fresh-device OTP-verify endpoint on /mobilev2
+    // is rendered server-side inside the multiFactorAuth form and needs one live capture to
+    // confirm. We forward deviceIdUUID so the device becomes trusted (→ future logins skip OTP)
+    // and capture the server-issued token. Endpoint stays on the legacy verifyOtp until captured.
     const { response, payload } = await postLegacy('/mobile/verifyOtp', {
         authUserId,
         OTPText: otp,
+        deviceIdUUID,
     });
     if (!response.ok) throw new Error('OTP verification request failed');
     assertNotLoginFailure(payload);
 
     const session = parseLegacySession(payload);
+    if (session) session.deviceIdUUID = deviceIdUUID;
     if (!session?.userId || !session.sessionId) {
         const err = new Error('Unexpected ERP OTP response');
         err.code = 'INVALID_OTP';
@@ -206,12 +228,16 @@ async function fetchRegisterLegacy(session) {
         userId: session.userId,
         apiKey: session.apiKey,
         roleId: session.roleId,
+        securityToken: session.securityToken || '',
+        deviceIdUUID: session.deviceIdUUID || '',
     };
 
-    // Step 1: Warmup — establishes server session needed for chalkpadpro
+    // Step 1: Warmup — establishes server session needed for chalkpadpro.
+    // Must hit /mobilev2/showAttendance WITH securityToken + deviceIdUUID (matches the official
+    // app and Attendly's capture); the old /mobile/showAttendance warmup no longer binds a session.
     let allCookies = '';
     try {
-        const warmupResp = await fetch(`${ERP_BASE}/mobile/showAttendance`, {
+        const warmupResp = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
             method: 'POST',
             headers: LEGACY_HEADERS,
             redirect: 'manual',
@@ -221,6 +247,8 @@ async function fetchRegisterLegacy(session) {
                 sessionId: session.sessionId,
                 apiKey: session.apiKey,
                 roleId: session.roleId,
+                securityToken: session.securityToken || '',
+                deviceIdUUID: session.deviceIdUUID || '',
                 month: '',
             }),
         });
@@ -342,14 +370,16 @@ async function fetchTimetableLegacy(session) {
         userId: session.userId,
         apiKey: session.apiKey,
         roleId: session.roleId,
+        securityToken: session.securityToken || '',
+        deviceIdUUID: session.deviceIdUUID || '',
     };
 
     const _diag = { triedEndpoints: [], source: null };
 
-    // Step 1: Warmup — establish server session cookies
+    // Step 1: Warmup — establish server session cookies via /mobilev2/showAttendance + tokens.
     let allCookies = '';
     try {
-        const warmupResp = await fetch(`${ERP_BASE}/mobile/showAttendance`, {
+        const warmupResp = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
             method: 'POST',
             headers: LEGACY_HEADERS,
             redirect: 'manual',
@@ -359,6 +389,8 @@ async function fetchTimetableLegacy(session) {
                 sessionId: session.sessionId,
                 apiKey: session.apiKey,
                 roleId: session.roleId,
+                securityToken: session.securityToken || '',
+                deviceIdUUID: session.deviceIdUUID || '',
                 month: '',
             }),
         });

@@ -11,6 +11,7 @@ describe('ERP provider parsing', () => {
         const { parseLegacySession } = require('../_erp-provider');
         const raw = {
             status: '1',
+            token: 'e'.repeat(128),
             data: {
                 userId: '24635',
                 name: 'GURJOBAN SINGH',
@@ -28,6 +29,7 @@ describe('ERP provider parsing', () => {
             roleId: '4',
             sessionId: '19',
             apiKey: 'RFeRrG20260502052713',
+            securityToken: 'e'.repeat(128),
             studentName: 'GURJOBAN SINGH',
             studentPhoto: 'https://example.test/photo.jpg',
         }));

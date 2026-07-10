@@ -54,16 +54,19 @@ module.exports = async function handler(req, res) {
             return res.status(502).json({ error: 'Could not retrieve session details' });
         }
 
-        // Session token — includes deviceIdUUID so data endpoints can pass it to ERP
+        // Session token — persists securityToken + deviceIdUUID so /mobilev2/* data calls
+        // are authenticated and the device stays bound (audit Bug 1 & 2).
         const token = encryptSession({
-            userId:       session.userId,
-            sessionId:    session.sessionId,
-            roleId:       session.roleId,
-            apiKey:       session.apiKey,
-            studentId:    session.studentId,
-            studentName:  session.studentName,
-            studentPhoto: session.studentPhoto,
-            isMock:       session.isMock || false,
+            userId:        session.userId,
+            sessionId:     session.sessionId,
+            roleId:        session.roleId,
+            apiKey:        session.apiKey,
+            securityToken: session.securityToken || '',
+            deviceIdUUID:  session.deviceIdUUID || deviceIdUUID,
+            studentId:     session.studentId,
+            studentName:   session.studentName,
+            studentPhoto:  session.studentPhoto,
+            isMock:        session.isMock || false,
         });
 
         // Persistent token — stores credentials for auto re-login, no expiry

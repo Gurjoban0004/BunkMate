@@ -90,14 +90,16 @@ module.exports = async function handler(req, res) {
             const studentName = creds.studentName || session.studentName || '';
 
             const newToken = encryptSession({
-                userId:       session.userId,
-                sessionId:    session.sessionId,
-                roleId:       session.roleId,
-                apiKey:       session.apiKey,
-                studentId:    session.studentId,
+                userId:        session.userId,
+                sessionId:     session.sessionId,
+                roleId:        session.roleId,
+                apiKey:        session.apiKey,
+                securityToken: session.securityToken || '',
+                deviceIdUUID:  session.deviceIdUUID || deviceIdUUID,
+                studentId:     session.studentId,
                 studentName,
-                studentPhoto: session.studentPhoto,
-                isMock:       creds.isMock || session.isMock || false,
+                studentPhoto:  session.studentPhoto,
+                isMock:        creds.isMock || session.isMock || false,
             });
 
             // Re-encrypt persistent token to update studentName if it changed

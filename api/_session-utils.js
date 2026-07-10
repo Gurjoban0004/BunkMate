@@ -105,22 +105,28 @@ function decryptPersistent(token) {
  * @throws on network failure or invalid OTP
  */
 async function verifyOtpWithERP(authUserId, otp, deviceIdUUID = '') {
-    return verifyOtpLegacy(authUserId, otp);
+    // Forward deviceIdUUID so the ERP binds this device (trusted → future logins skip OTP)
+    // and so the returned session carries it for /mobilev2/* auth.
+    return verifyOtpLegacy(authUserId, otp, deviceIdUUID);
 }
 
 /**
  * Re-login to ERP using stored credentials.
  * Without OTP: initiates login, returns { needsOtp: true, authUserId }.
  * With OTP: completes full flow, returns session object.
+ *
+ * deviceIdUUID is derived deterministically from the username so the same "device" is
+ * presented every time (the basis of the ERP's trusted-device / OTP-exemption behavior).
  */
 async function reloginERP(username, password, otp = null) {
-    const login = await loginLegacy(username, password);
+    const deviceIdUUID = generateDeviceUUID(username);
+    const login = await loginLegacy(username, password, deviceIdUUID);
 
     if (!otp) {
         return { needsOtp: true, authUserId: login.authUserId };
     }
 
-    return verifyOtpWithERP(String(login.authUserId), otp);
+    return verifyOtpWithERP(String(login.authUserId), otp, deviceIdUUID);
 }
 
 /**
