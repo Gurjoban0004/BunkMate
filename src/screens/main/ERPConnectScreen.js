@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TextInput,
     TouchableOpacity, Platform, KeyboardAvoidingView,
@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { showAlert } from '../../utils/alert';
 import { erpLogin, erpVerifyOtp, erpFetchAttendance, erpFetchCalendar } from '../../services/erpService';
 import { saveErpToken, clearErpToken } from '../../storage/erpTokenStorage';
@@ -42,6 +42,7 @@ export default function ERPConnectScreen({ navigation }) {
     // OTP state
     const [authUserId, setAuthUserId] = useState('');
     const [otp, setOtp] = useState('');
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     // Preview state
     const [token, setToken] = useState('');
@@ -73,6 +74,25 @@ export default function ERPConnectScreen({ navigation }) {
             setLoading(false);
         }
     }, [username, password]);
+
+    // Resend-OTP cooldown countdown
+    useEffect(() => {
+        if (resendCooldown <= 0) return undefined;
+        const t = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+        return () => clearTimeout(t);
+    }, [resendCooldown]);
+
+    const handleResendOtp = useCallback(async () => {
+        if (resendCooldown > 0 || loading) return;
+        setError('');
+        try {
+            const result = await erpLogin(username.trim(), password);
+            setAuthUserId(result.authUserId);
+            setResendCooldown(30);
+        } catch (err) {
+            setError(err.message || 'Could not resend OTP. Please try again.');
+        }
+    }, [username, password, resendCooldown, loading]);
 
     // ─── STEP 2: OTP ───────────────────────────────────────────────
     const handleVerifyOtp = useCallback(async () => {
@@ -230,7 +250,7 @@ export default function ERPConnectScreen({ navigation }) {
     const renderLoginStep = () => (
         <View style={styles.stepContainer}>
             <View style={styles.header}>
-                <Text style={styles.headerEmoji}>🔗</Text>
+                <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
                 <Text style={styles.headerTitle}>Connect Portal</Text>
                 <Text style={styles.headerSub}>
                     Enter your college portal credentials to automatically fetch your attendance data.
@@ -270,14 +290,14 @@ export default function ERPConnectScreen({ navigation }) {
                             style={styles.eyeButton}
                             onPress={() => setShowPassword(!showPassword)}
                         >
-                            <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+                            <Text style={styles.eyeIcon}>{showPassword ? 'Hide' : 'Show'}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </View>
 
             <View style={styles.securityNote}>
-                <Text style={styles.securityIcon}>🔒</Text>
+                <View style={styles.securityDot} />
                 <Text style={styles.securityText}>
                     Your credentials are sent directly to the college portal. We never store your password.
                 </Text>
@@ -289,7 +309,7 @@ export default function ERPConnectScreen({ navigation }) {
     const renderOtpStep = () => (
         <View style={styles.stepContainer}>
             <View style={styles.header}>
-                <Text style={styles.headerEmoji}>📱</Text>
+                <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
                 <Text style={styles.headerTitle}>Enter OTP</Text>
                 <Text style={styles.headerSub}>
                     We've sent an OTP to your registered mobile number. Enter it below.
@@ -313,9 +333,17 @@ export default function ERPConnectScreen({ navigation }) {
                 </View>
             </View>
 
-            <TouchableOpacity onPress={() => { setStep(STEP_LOGIN); setOtp(''); setError(''); }}>
-                <Text style={styles.linkText}>← Back to login</Text>
-            </TouchableOpacity>
+            <View style={styles.otpActionsRow}>
+                <TouchableOpacity onPress={() => { setStep(STEP_LOGIN); setOtp(''); setError(''); }}>
+                    <Text style={styles.linkText}>← Back to login</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleResendOtp} disabled={resendCooldown > 0 || loading}>
+                    <Text style={[styles.linkText, (resendCooldown > 0 || loading) && styles.linkTextDisabled]}>
+                        {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+            <Text style={styles.otpHelp}>Didn't get it? Wait a moment, check your SMS, then resend.</Text>
         </View>
     );
 
@@ -328,7 +356,7 @@ export default function ERPConnectScreen({ navigation }) {
         return (
             <View style={styles.stepContainer}>
                 <View style={styles.header}>
-                    <Text style={styles.headerEmoji}>📊</Text>
+                    <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
                     <Text style={styles.headerTitle}>Attendance Preview</Text>
                     <Text style={styles.headerSub}>
                         Found {erpSubjects.length} subjects from the portal. Review before importing.
@@ -339,7 +367,7 @@ export default function ERPConnectScreen({ navigation }) {
                 {matchedUpdates.length > 0 && (
                     <View style={styles.sectionBlock}>
                         <Text style={styles.sectionLabel}>
-                            ✅ MATCHED ({matchedUpdates.length})
+                            MATCHED ({matchedUpdates.length})
                         </Text>
                         {matchedUpdates.map((u, i) => (
                             <View key={i} style={styles.previewCard}>
@@ -370,7 +398,7 @@ export default function ERPConnectScreen({ navigation }) {
                 {newSubjects.length > 0 && (
                     <View style={styles.sectionBlock}>
                         <Text style={styles.sectionLabel}>
-                            ➕ NEW SUBJECTS ({newSubjects.length})
+                            NEW SUBJECTS ({newSubjects.length})
                         </Text>
                         {newSubjects.map((sub, i) => (
                             <View key={i} style={styles.previewCard}>
@@ -396,8 +424,8 @@ export default function ERPConnectScreen({ navigation }) {
     const renderSuccessStep = () => (
         <View style={styles.stepContainer}>
             <View style={[styles.header, { marginTop: SPACING.xxl }]}>
-                <Text style={[styles.headerEmoji, { fontSize: 56 }]}>🎉</Text>
-                <Text style={styles.headerTitle}>All Synced!</Text>
+                <View style={[styles.headerMark, { width: 56, height: 56, borderRadius: 28 }]}><View style={styles.headerMarkDot} /></View>
+                <Text style={styles.headerTitle}>All Synced</Text>
                 <Text style={styles.headerSub}>
                     Your attendance has been imported from the portal.
                     {studentName ? `\n\nWelcome, ${studentName}!` : ''}
@@ -432,7 +460,7 @@ export default function ERPConnectScreen({ navigation }) {
                 {calendarResult && (
                     <View style={styles.statRow}>
                         <Text style={styles.statLabel}>Calendar days imported</Text>
-                        <Text style={styles.statValue}>{calendarResult.totalDays} 📅</Text>
+                        <Text style={styles.statValue}>{calendarResult.totalDays}</Text>
                     </View>
                 )}
             </View>
@@ -478,7 +506,7 @@ export default function ERPConnectScreen({ navigation }) {
     // ─── MAIN RENDER ────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <FloatingBackButton />
+            <ScreenHeader title="Connect Portal" />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -538,7 +566,7 @@ export default function ERPConnectScreen({ navigation }) {
                     {/* Error message */}
                     {error ? (
                         <View style={styles.errorContainer}>
-                            <Text style={styles.errorText}>⚠️ {error}</Text>
+                            <Text style={styles.errorText}>{error}</Text>
                         </View>
                     ) : null}
 
@@ -658,9 +686,21 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         marginBottom: SPACING.xl,
     },
-    headerEmoji: {
-        fontSize: 40,
+    headerMark: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        borderWidth: 2,
+        borderColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: SPACING.sm,
+    },
+    headerMarkDot: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: COLORS.primary,
     },
     headerTitle: {
         fontSize: FONT_SIZES.xl,
@@ -720,7 +760,9 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.sm,
     },
     eyeIcon: {
-        fontSize: 20,
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.primary,
     },
 
     // Security note
@@ -731,9 +773,12 @@ const getStyles = () => StyleSheet.create({
         paddingHorizontal: SPACING.sm,
         gap: SPACING.sm,
     },
-    securityIcon: {
-        fontSize: 14,
-        marginTop: 1,
+    securityDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: COLORS.success,
+        marginTop: 5,
     },
     securityText: {
         fontSize: FONT_SIZES.xs,
@@ -749,6 +794,22 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
         marginTop: SPACING.md,
+    },
+    linkTextDisabled: {
+        color: COLORS.textMuted,
+    },
+    otpActionsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: SPACING.xs,
+    },
+    otpHelp: {
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        marginTop: SPACING.sm,
+        lineHeight: 18,
     },
 
     // Preview

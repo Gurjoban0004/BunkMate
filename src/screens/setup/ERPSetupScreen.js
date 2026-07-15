@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TextInput, TouchableOpacity,
     Platform, KeyboardAvoidingView, ScrollView, ActivityIndicator,
@@ -6,9 +6,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import { erpLogin, erpVerifyOtp, erpFetchAttendance, erpFetchCalendar } from '../../services/erpService';
+import { erpLogin, erpVerifyOtp, erpFetchAttendance, erpFetchCalendar, erpFetchTimetable } from '../../services/erpService';
 import { saveErpToken } from '../../storage/erpTokenStorage';
-import { mapErpToAppState, mapCalendarToRecords, buildErpNameMap } from '../../utils/erpAttendanceMapper';
+import { mapErpToAppState, mapCalendarToRecords, buildErpNameMap, mapTimetableToState } from '../../utils/erpAttendanceMapper';
 import { getUserId } from '../../utils/firebaseHelpers';
 import { getTodayKey } from '../../utils/dateHelpers';
 import { logger } from '../../utils/logger';
@@ -20,11 +20,13 @@ const STEP_IMPORTING = 'importing';
 
 export default function ERPSetupScreen({ navigation }) {
     const { state, dispatch } = useApp();
+    const styles = getStyles();
 
     // Flow state
     const [step, setStep] = useState(STEP_LOGIN);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     // Login
     const [username, setUsername] = useState('');
@@ -60,6 +62,26 @@ export default function ERPSetupScreen({ navigation }) {
             setLoading(false);
         }
     }, [username, password]);
+
+    // Resend-OTP cooldown countdown
+    useEffect(() => {
+        if (resendCooldown <= 0) return undefined;
+        const t = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+        return () => clearTimeout(t);
+    }, [resendCooldown]);
+
+    // Re-request an OTP by re-running the login call (throttled to every 30s)
+    const handleResendOtp = useCallback(async () => {
+        if (resendCooldown > 0 || loading) return;
+        setError('');
+        try {
+            const result = await erpLogin(username.trim(), password);
+            setAuthUserId(result.authUserId);
+            setResendCooldown(30);
+        } catch (err) {
+            setError(err.message || 'Could not resend OTP. Please try again.');
+        }
+    }, [username, password, resendCooldown, loading]);
 
     // ─── STEP 2: OTP ───────────────────────────────────────────────
     const handleVerifyOtp = useCallback(async () => {
@@ -178,8 +200,36 @@ export default function ERPSetupScreen({ navigation }) {
             } catch (calErr) {
                 logger.warn('Calendar sync failed (non-critical):', calErr.message);
             }
+
+            // Fetch the real timetable from the portal so Today shows actual classes
+            // and times from day one — no reliance on the history-derived guess.
+            try {
+                const currentToken = tokenRef.current;
+                if (currentToken) {
+                    const ttData = await erpFetchTimetable(currentToken);
+                    if (ttData?.success && ttData.source !== 'empty') {
+                        const mapped = mapTimetableToState(ttData.timetable, ttData.timeSlots, allSubjects);
+                        if (mapped.newSubjects.length > 0) {
+                            dispatch({ type: 'SET_SUBJECTS', payload: [...allSubjects, ...mapped.newSubjects] });
+                        }
+                        dispatch({
+                            type: 'ERP_SET_TIMETABLE',
+                            payload: {
+                                timetable: mapped.timetable,
+                                timeSlots: mapped.timeSlots,
+                                source: ttData.source,
+                                fetchedAt: ttData.fetchedAt,
+                                timesAreInferred: ttData.timesAreInferred || false,
+                                periodDefinitions: ttData.timeSlots,
+                            },
+                        });
+                    }
+                }
+            } catch (ttErr) {
+                logger.warn('Timetable fetch failed (non-critical):', ttErr.message);
+            }
+
             // Complete setup — go straight to the main app.
-            // Timetable can be configured later from Settings.
             dispatch({ type: 'COMPLETE_SETUP' });
         } catch (err) {
             logger.error('Setup import failed:', err);
@@ -231,7 +281,7 @@ export default function ERPSetupScreen({ navigation }) {
     const renderLogin = () => (
         <View style={styles.formSection}>
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionEmoji}>🔐</Text>
+                <View style={styles.sectionMark}><View style={styles.sectionMarkDot} /></View>
                 <Text style={styles.sectionTitle}>College ERP Login</Text>
                 <Text style={styles.sectionSub}>
                     Enter your ERP credentials to import your attendance automatically.
@@ -282,7 +332,7 @@ export default function ERPSetupScreen({ navigation }) {
             <View style={styles.securityBadge}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.success, marginRight: SPACING.xs }} />
                 <Text style={styles.securityText}>
-                    Your credentials are encrypted and stored securely. You won't need to login again.
+                    Your login goes straight to your college portal. We store a secure token — never your raw password.
                 </Text>
             </View>
         </View>
@@ -292,10 +342,10 @@ export default function ERPSetupScreen({ navigation }) {
     const renderOtp = () => (
         <View style={styles.formSection}>
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionEmoji}>📱</Text>
+                <View style={styles.sectionMark}><View style={styles.sectionMarkDot} /></View>
                 <Text style={styles.sectionTitle}>Enter OTP</Text>
                 <Text style={styles.sectionSub}>
-                    We've sent an OTP to your registered mobile number.
+                    We've sent an OTP to the mobile number registered on your ERP.
                 </Text>
             </View>
 
@@ -316,12 +366,25 @@ export default function ERPSetupScreen({ navigation }) {
                 </View>
             </View>
 
-            <TouchableOpacity
-                style={styles.backLink}
-                onPress={() => { setStep(STEP_LOGIN); setOtp(''); setError(''); }}
-            >
-                <Text style={styles.backLinkText}>← Back to login</Text>
-            </TouchableOpacity>
+            <View style={styles.otpActionsRow}>
+                <TouchableOpacity
+                    onPress={() => { setStep(STEP_LOGIN); setOtp(''); setError(''); }}
+                >
+                    <Text style={styles.backLinkText}>← Back to login</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={handleResendOtp}
+                    disabled={resendCooldown > 0 || loading}
+                >
+                    <Text style={[styles.resendText, (resendCooldown > 0 || loading) && styles.resendTextDisabled]}>
+                        {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            <Text style={styles.otpHelp}>
+                Didn't get it? Wait a moment, check your SMS, then resend.
+            </Text>
         </View>
     );
 
@@ -483,7 +546,7 @@ export default function ERPSetupScreen({ navigation }) {
 }
 
 // ─── STYLES ─────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
@@ -591,9 +654,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: SPACING.lg,
     },
-    sectionEmoji: {
-        fontSize: 36,
-        marginBottom: SPACING.xs,
+    sectionMark: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        borderWidth: 2,
+        borderColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: SPACING.sm,
+    },
+    sectionMarkDot: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: COLORS.primary,
     },
     sectionTitle: {
         fontSize: FONT_SIZES.xl,
@@ -675,15 +750,33 @@ const styles = StyleSheet.create({
         lineHeight: 18,
     },
 
-    // Back link
-    backLink: {
-        marginTop: SPACING.md,
+    // Back link + resend
+    otpActionsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
+        marginTop: SPACING.md,
+        paddingHorizontal: SPACING.xs,
     },
     backLinkText: {
         fontSize: FONT_SIZES.sm,
         color: COLORS.primary,
         fontWeight: '600',
+    },
+    resendText: {
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.primary,
+        fontWeight: '600',
+    },
+    resendTextDisabled: {
+        color: COLORS.textMuted,
+    },
+    otpHelp: {
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        marginTop: SPACING.md,
+        lineHeight: 18,
     },
 
     // Preview

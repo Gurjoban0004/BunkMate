@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 
 export default function WelcomeScreen({ navigation }) {
+    const styles = getStyles();
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
@@ -18,6 +19,9 @@ export default function WelcomeScreen({ navigation }) {
                     </View>
                     <Text style={styles.appName}>Presence</Text>
                     <Text style={styles.tagline}>Attendance, solved.</Text>
+                    <Text style={styles.valueProp}>
+                        Import your ERP attendance and know when you can skip.
+                    </Text>
                 </View>
 
                 {/* Spacer */}
@@ -33,6 +37,7 @@ export default function WelcomeScreen({ navigation }) {
                     >
                         <Text style={styles.primaryButtonText}>Login</Text>
                     </TouchableOpacity>
+                    <Text style={styles.timeEstimate}>Takes about a minute</Text>
 
                     {/* Tertiary — Already have a code */}
                     <TouchableOpacity
@@ -50,7 +55,7 @@ export default function WelcomeScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
@@ -113,10 +118,24 @@ const styles = StyleSheet.create({
         color: COLORS.textSecondary,
         marginTop: 6,
     },
+    valueProp: {
+        ...TYPOGRAPHY.bodySmall,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        marginTop: SPACING.md,
+        paddingHorizontal: SPACING.lg,
+        lineHeight: 20,
+    },
 
     // Actions
     actions: {
         gap: SPACING.sm,
+    },
+    timeEstimate: {
+        ...TYPOGRAPHY.captionMedium,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        marginTop: SPACING.sm,
     },
     primaryButton: {
         backgroundColor: COLORS.primary,

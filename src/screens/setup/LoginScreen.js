@@ -29,6 +29,7 @@ async function isOnline() {
 }
 
 export default function LoginScreen({ navigation }) {
+  const styles = getStyles();
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState(null);
@@ -36,14 +37,13 @@ export default function LoginScreen({ navigation }) {
 
   const handleCodeChange = (text) => {
     setError(null);
-    
-    // Auto-capitalize and filter to only allow valid characters
-    let formatted = text.toUpperCase().replace(/[^A-Z0-9-]/g, '');
-    
-    // Limit to 12 characters
-    if (formatted.length <= 12) {
-      setCode(formatted);
-    }
+
+    // Prefix-tolerant: accept a pasted code with or without the "PRES-" prefix,
+    // normalize to the 7-char core, and always render as PRES-XXXXXXX.
+    let core = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (core.startsWith('PRES')) core = core.slice(4);
+    core = core.slice(0, 7);
+    setCode(core ? `PRES-${core}` : '');
   };
 
   const handleLogin = async () => {
@@ -126,7 +126,6 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.headerEmoji}>🔑</Text>
             <Text style={styles.title}>Welcome Back</Text>
             <Text style={styles.subtitle}>
               Enter your login code to sync your attendance data.
@@ -172,7 +171,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = () => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
