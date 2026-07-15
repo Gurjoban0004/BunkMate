@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance } from '../../utils/attendance';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { showAlert } from '../../utils/alert';
 
 const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
@@ -112,7 +112,7 @@ export default function SyncFromPortalScreen({ navigation }) {
         });
 
         showAlert(
-            'Synced! ✅',
+            'Synced',
             `Updated ${updates.length} subject${updates.length > 1 ? 's' : ''}. Tracking continues from today.`
         );
 
@@ -123,7 +123,7 @@ export default function SyncFromPortalScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <FloatingBackButton />
+            <ScreenHeader title="Sync from Portal" />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -134,8 +134,6 @@ export default function SyncFromPortalScreen({ navigation }) {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View style={styles.header}>
-                        <Text style={styles.headerEmoji}>🔄</Text>
-                        <Text style={styles.headerTitle}>Sync from Portal</Text>
                         <Text style={styles.headerSub}>
                             Enter your current totals from the college portal below.
                             This will update your attendance and start fresh tracking from today.
@@ -159,7 +157,7 @@ export default function SyncFromPortalScreen({ navigation }) {
                     {erpCalendarSyncStatus === 'failed' && (
                         <View style={styles.calendarWarnBanner}>
                             <Text style={styles.calendarWarnText}>
-                                📅 Calendar sync failed — day-by-day data may be incomplete.
+                                Calendar sync failed — day-by-day data may be incomplete.
                             </Text>
                         </View>
                     )}
@@ -171,7 +169,7 @@ export default function SyncFromPortalScreen({ navigation }) {
                         activeOpacity={0.8}
                     >
                         <View style={styles.erpCardContent}>
-                            <Text style={styles.erpCardEmoji}>⚡</Text>
+                            <View style={styles.erpCardMark}><View style={styles.erpCardMarkDot} /></View>
                             <View style={styles.erpCardText}>
                                 <Text style={styles.erpCardTitle}>Connect Portal</Text>
                                 <Text style={styles.erpCardSub}>
@@ -184,7 +182,7 @@ export default function SyncFromPortalScreen({ navigation }) {
 
                     <View style={styles.orDivider}>
                         <View style={styles.orLine} />
-                        <Text style={styles.orText}>OR MARK BY YOURSELF</Text>
+                        <Text style={styles.orText}>OR ENTER IT YOURSELF</Text>
                         <View style={styles.orLine} />
                     </View>
 
@@ -411,9 +409,21 @@ const getStyles = () => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
     },
-    erpCardEmoji: {
-        fontSize: 28,
+    erpCardMark: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
         marginRight: SPACING.md,
+    },
+    erpCardMarkDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: COLORS.primary,
     },
     erpCardText: {
         flex: 1,

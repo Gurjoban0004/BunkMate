@@ -19,6 +19,9 @@ import { clearAppState, saveAppState, deleteUserAccount } from '../../storage/st
 import { clearErpToken } from '../../storage/erpTokenStorage';
 import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
+import ScreenHeader from '../../components/common/ScreenHeader';
+import { enableWebPush, disableWebPush, isWebPushSupported } from '../../utils/webPush';
+import { formatRelativeTime } from '../../utils/dateHelpers';
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
@@ -83,7 +86,7 @@ const SettingsScreen = ({ navigation }) => {
     const handleDeleteAccount = () => {
         showAlert(
             'Delete Account',
-            '⚠️ THIS CANNOT BE UNDONE\n\nThis will permanently delete:\n• All your cloud data\n• All local data\n\nAre you absolutely sure?',
+            'THIS CANNOT BE UNDONE\n\nThis will permanently delete:\n• All your cloud data\n• All local data\n\nAre you absolutely sure?',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -103,6 +106,25 @@ const SettingsScreen = ({ navigation }) => {
     };
 
 
+
+    // Web/PWA daily reminder — subscribes this browser to server-sent push.
+    const handleWebReminderToggle = async (value) => {
+        if (value) {
+            const result = await enableWebPush(state.userId, state.settings?.notificationTime || '18:00');
+            if (!result.ok) {
+                showAlert(
+                    "Couldn't enable reminders",
+                    result.reason === 'denied'
+                        ? 'Notifications are blocked. Turn them on for Presence in your browser settings, then try again.'
+                        : 'Reminders need Presence installed to your home screen. Add it, then try again.'
+                );
+                return;
+            }
+        } else {
+            await disableWebPush(state.userId);
+        }
+        updateSetting('notificationEnabled', value);
+    };
 
     const handleOpenThresholdEditor = (subject = null) => {
         setEditingSubject(subject);
@@ -141,11 +163,8 @@ const SettingsScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <ScreenHeader title="Settings" />
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Settings</Text>
-                </View>
 
                 {/* Portal Section */}
                 <View style={styles.section}>
@@ -158,6 +177,9 @@ const SettingsScreen = ({ navigation }) => {
                                 </Text>
                                 <Text style={styles.cardDescription}>
                                     Portal updated till {portalLabel}
+                                    {state.erpSync?.lastGlobalSyncAt
+                                        ? `  ·  Synced ${formatRelativeTime(state.erpSync.lastGlobalSyncAt)}`
+                                        : ''}
                                 </Text>
                             </View>
                             <TouchableOpacity
@@ -388,6 +410,24 @@ const SettingsScreen = ({ navigation }) => {
                                 </View>
                             </>
                         )}
+
+                        {Platform.OS === 'web' && isWebPushSupported() && (
+                            <>
+                                <View style={styles.divider} />
+                                <View style={[styles.settingRow, styles.groupItem]}>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.cardTitle}>Daily reminder</Text>
+                                        <Text style={styles.cardDescription}>A nudge to mark your attendance.</Text>
+                                    </View>
+                                    <Switch
+                                        value={notificationEnabled}
+                                        onValueChange={handleWebReminderToggle}
+                                        trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+                                        thumbColor={notificationEnabled ? COLORS.primary : COLORS.textMuted}
+                                    />
+                                </View>
+                            </>
+                        )}
                     </View>
                 </View>
 
@@ -414,7 +454,7 @@ const SettingsScreen = ({ navigation }) => {
                             ) : (
                                 <TouchableOpacity style={styles.nameDisplay} onPress={() => { setTempName(state.userName || ''); setEditingName(true); }}>
                                     <Text style={styles.nameText}>{state.userName || 'Not set'}</Text>
-                                    <Text style={styles.editIcon}>✏️</Text>
+                                    <Text style={styles.editIcon}>Edit</Text>
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -589,7 +629,7 @@ const getStyles = () => StyleSheet.create({
     saveButton: { color: COLORS.primary, fontWeight: '600', fontSize: FONT_SIZES.sm },
     nameDisplay: { flexDirection: 'row', alignItems: 'center' },
     nameText: { fontSize: FONT_SIZES.md, color: COLORS.textSecondary, marginRight: SPACING.sm },
-    editIcon: { fontSize: 14 },
+    editIcon: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
     optionsRow: { flexDirection: 'row', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: 4 },
     optionButton: { flex: 1, paddingVertical: SPACING.sm, alignItems: 'center', borderRadius: BORDER_RADIUS.sm },
     optionButtonActive: { backgroundColor: COLORS.primary },

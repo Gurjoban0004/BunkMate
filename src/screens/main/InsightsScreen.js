@@ -14,8 +14,10 @@ import { getEndGameStats, findLongWeekends } from '../../utils/planner.js';
 import { DisplayMedium, BodySmall } from '../../components/common/Typography';
 
 import { getRiskLevel, getRiskColor, getRiskLabel, getSkipStrategy, OVERALL_MESSAGES, getWeeklyBurnPlan } from '../../utils/endgame';
+import { estimateWeeksRemaining } from '../../utils/planner/semesterWindow';
 
-const WEEK_OPTIONS = [4, 6, 8, 10];
+// Semester-scale horizons (a term runs months, not a couple of weeks).
+const WEEK_OPTIONS = [8, 12, 16, 20];
 
 // ─── Component ───────────────────────────────────────────────────────
 
@@ -23,7 +25,8 @@ export default function InsightsScreen() {
     const styles = getStyles();
     const { state } = useApp();
     const [activeTab, setActiveTab] = useState('insights');
-    const [weeksLeft, setWeeksLeft] = useState(6);
+    // Default to a realistic estimate of the weeks left in the term, not a fixed guess.
+    const [weeksLeft, setWeeksLeft] = useState(() => estimateWeeksRemaining(state));
     const [expandedSubject, setExpandedSubject] = useState(null);
 
     const threshold = state.settings?.dangerThreshold || 75;
@@ -224,7 +227,7 @@ export default function InsightsScreen() {
                         {/* 5. Weeks selector (Estimate) */}
                         {!hasEndDate && (
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Weeks remaining (estimate)</Text>
+                                <Text style={styles.sectionTitle}>Weeks left this term (estimate)</Text>
                                 <View style={styles.weeksRow}>
                                     {WEEK_OPTIONS.map(w => (
                                         <TouchableOpacity key={w} style={[styles.weekButton, weeksLeft === w && styles.weekButtonActive]} onPress={() => setWeeksLeft(w)}>
@@ -232,7 +235,7 @@ export default function InsightsScreen() {
                                         </TouchableOpacity>
                                     ))}
                                 </View>
-                                <Text style={styles.endDateHint}>Set semester end date in Settings for exact numbers</Text>
+                                <Text style={styles.endDateHint}>Estimated for a typical semester. Set your end date in Settings for exact numbers.</Text>
                             </View>
                         )}
 
@@ -293,7 +296,7 @@ export default function InsightsScreen() {
  
                                             {risk !== 'impossible' && (
                                                 <View style={styles.consequenceSection}>
-                                                    <Text style={styles.consequenceTitle}>Bunk Impact Simulator</Text>
+                                                    <Text style={styles.consequenceTitle}>Skip Impact Simulator</Text>
                                                     <View style={styles.consequenceRow}>
                                                         {[1, 2, 3, 5].filter(n => n <= subject.remainingUnits).map(n => {
                                                             const attendIfSkipN = subject.remainingUnits - n;

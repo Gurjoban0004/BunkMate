@@ -57,11 +57,11 @@ export default function SkipModeView({ subjects, onSubjectPress, activeDate = ne
         if (dangerCount > 0) {
             message = `${dangerCount} subject${dangerCount > 1 ? 's' : ''} need${dangerCount === 1 ? 's' : ''} attention`;
         } else if (totalSkippable > 5) {
-            message = 'You\'re in great shape!';
+            message = 'You\'re comfortably above target';
         } else if (totalSkippable > 0) {
-            message = 'Manage your skips wisely';
+            message = 'A little room to spare — use it carefully';
         } else {
-            message = 'Better attend everything for now';
+            message = 'Best to attend everything for now';
         }
 
         return { totalSkippable, safeCount, warningCount, dangerCount, message };

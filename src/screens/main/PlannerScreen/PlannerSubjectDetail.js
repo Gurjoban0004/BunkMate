@@ -5,7 +5,7 @@ import { COLORS, SPACING } from '../../../theme/theme';
 import { useApp } from '../../../context/AppContext';
 import { getSubjectPlannerData } from '../../../utils/planner/dataAdapter';
 import { simulateAttendance } from '../../../utils/planner/attendanceCalculations';
-import FloatingBackButton from '../../../components/common/FloatingBackButton';
+import ScreenHeader from '../../../components/common/ScreenHeader';
 
 import StatusHeader from '../../../components/planner/SubjectDetail/StatusHeader';
 import NextClassDecision from '../../../components/planner/SubjectDetail/NextClassDecision';
@@ -47,7 +47,7 @@ export default function PlannerSubjectDetail({ route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <FloatingBackButton />
+            <ScreenHeader title={subjectData?.name || 'Subject'} />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}

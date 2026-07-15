@@ -280,6 +280,11 @@ const TodayScreen = ({ navigation }) => {
                                 Syncing from portal...
                             </BodySmall>
                         )}
+                        {!isErpSyncing && state.isOnline === false && (
+                            <BodySmall color="textMuted" style={{ marginTop: 4 }}>
+                                Offline — showing your saved data
+                            </BodySmall>
+                        )}
                     </View>
                 </View>
 
@@ -334,10 +339,10 @@ const TodayScreen = ({ navigation }) => {
                 ) : isSetupDay ? (
                     <>
                         <View style={styles.setupDayCard}>
-                            <Text style={styles.setupDayTitle}>Setup Complete!</Text>
+                            <Text style={styles.setupDayTitle}>Setup complete</Text>
                             <Text style={styles.setupDayText}>
-                                Today's attendance was included in your initial numbers.{'\n'}
-                                Daily tracking starts tomorrow!
+                                Today's classes are already counted in your starting numbers.{'\n'}
+                                Daily tracking begins tomorrow.
                             </Text>
                         </View>
 

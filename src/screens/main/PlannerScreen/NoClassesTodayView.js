@@ -56,8 +56,7 @@ export default function NoClassesTodayView({ subjects, onSubjectPress }) {
         <View style={styles.container}>
             {/* Hero */}
             <View style={styles.hero}>
-                <Text style={styles.heroEmoji}>😎</Text>
-                <Text style={styles.heroText}>No classes today!</Text>
+                <Text style={styles.heroText}>No classes today</Text>
                 <Text style={styles.heroSub}>Your quick check is below</Text>
             </View>
 

@@ -10,7 +10,7 @@ import {
     TextInput,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { useApp } from '../../context/AppContext';
 import Button from '../../components/common/Button';
 import { formatTimeRange } from '../../utils/dateHelpers';
@@ -132,10 +132,9 @@ const EditTimetableScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <FloatingBackButton />
+        <SafeAreaView style={styles.container} edges={['bottom']}>
+            <ScreenHeader title="Edit Timetable" />
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Edit Timetable</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.daysScroll}>
                     {DAYS.map(day => (
                         <TouchableOpacity
@@ -209,13 +208,13 @@ const EditTimetableScreen = ({ navigation }) => {
                                                 style={styles.iconButton}
                                                 onPress={() => openSlotModal(slot, classData)}
                                             >
-                                                <Text>✏️</Text>
+                                                <Text style={styles.iconButtonText}>Edit</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity
                                                 style={styles.iconButton}
                                                 onPress={() => handleDeleteClass(slot.id)}
                                             >
-                                                <Text>🗑️</Text>
+                                                <Text style={[styles.iconButtonText, { color: COLORS.danger }]}>Delete</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -390,7 +389,7 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         borderBottomWidth: 1,
         borderBottomColor: COLORS.border,
-        paddingTop: 56,
+        paddingTop: SPACING.sm,
         paddingBottom: SPACING.sm,
     },
     headerTitle: {
@@ -468,10 +467,16 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     iconButton: {
-        padding: SPACING.sm,
+        paddingVertical: SPACING.xs,
+        paddingHorizontal: SPACING.sm,
         marginLeft: SPACING.xs,
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.sm,
+    },
+    iconButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: COLORS.primary,
     },
     freePeriodCard: {
         backgroundColor: COLORS.inputBackground,

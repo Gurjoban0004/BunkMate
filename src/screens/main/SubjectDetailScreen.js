@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
+import { getSubjectAttendance, calculateSkips, getErpCoverageDateForSubject, shouldCountLocalRecord } from '../../utils/attendance';
 import { calculateSubjectStreak, getStreakMessage } from '../../utils/streak';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -38,6 +38,21 @@ export default function SubjectDetailScreen({ route }) {
     // Streak
     const streak = useMemo(() => calculateSubjectStreak(subjectId, state), [subjectId, state]);
     const streakMsg = getStreakMessage(streak);
+
+    // Portal sync note: coverage date + how many of the user's own marks are
+    // still bridging the gap until the portal catches up.
+    const syncInfo = useMemo(() => {
+        const coverageDate = getErpCoverageDateForSubject(subjectId, state);
+        let pendingMarks = 0;
+        Object.entries(state.attendanceRecords || {}).forEach(([dateKey, dayRecord]) => {
+            if (dayRecord._holiday || (state.holidays || []).includes(dateKey)) return;
+            const rec = dayRecord[subjectId];
+            if (rec && rec.status !== 'cancelled' && shouldCountLocalRecord(dateKey, subjectId, rec, state)) {
+                pendingMarks++;
+            }
+        });
+        return { coverageDate, pendingMarks };
+    }, [subjectId, state]);
 
     if (!subject || !stats) {
         return (
@@ -139,6 +154,16 @@ export default function SubjectDetailScreen({ route }) {
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>
                     <Text style={styles.sectionTitle}>Calendar</Text>
+                    {(syncInfo.coverageDate || syncInfo.pendingMarks > 0) && (
+                        <Text style={styles.syncNote}>
+                            {syncInfo.coverageDate
+                                ? `Portal data through ${formatRecordDate(syncInfo.coverageDate)}`
+                                : 'Waiting for portal data'}
+                            {syncInfo.pendingMarks > 0
+                                ? ` · ${syncInfo.pendingMarks} mark${syncInfo.pendingMarks === 1 ? '' : 's'} by you`
+                                : ''}
+                        </Text>
+                    )}
                     <CalendarView subjectId={subjectId} state={state} flat={true} />
                 </Card>
 
@@ -168,6 +193,7 @@ export default function SubjectDetailScreen({ route }) {
                                             <Text style={styles.historyUnits}>
                                                 {rec.units} {rec.units === 1 ? 'hr' : 'hrs'}
                                                 {rec.isExtra ? ' · Extra' : ''}
+                                                {rec.source !== 'erp' ? ' · by you' : ''}
                                             </Text>
                                         </View>
                                         <View style={styles.historyRight}>
@@ -307,6 +333,12 @@ const getStyles = () => StyleSheet.create({
     },
     calendarCard: {
         marginBottom: SPACING.md,
+    },
+    syncNote: {
+        ...TYPOGRAPHY.captionMedium,
+        color: COLORS.textMuted,
+        marginTop: -SPACING.sm,
+        marginBottom: SPACING.sm,
     },
     historySection: {
         marginTop: SPACING.sm,

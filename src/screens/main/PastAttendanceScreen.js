@@ -14,7 +14,7 @@ import { getUnmarkedByDate } from '../../utils/backlog';
 import { getSubjectAttendance } from '../../utils/attendance';
 import Button from '../../components/common/Button';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
+import ScreenHeader from '../../components/common/ScreenHeader';
 
 export default function PastAttendanceScreen({ navigation }) {
     const styles = getStyles();
@@ -121,10 +121,9 @@ export default function PastAttendanceScreen({ navigation }) {
     if (unmarkedByDate.length === 0 && totalAutoCount === 0) {
         return (
             <SafeAreaView style={styles.container} edges={['bottom']}>
-                <FloatingBackButton />
+                <ScreenHeader title="Mark Attendance" />
                 <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyEmoji}>✅</Text>
-                    <Text style={styles.emptyText}>All caught up!</Text>
+                    <Text style={styles.emptyText}>All caught up</Text>
                     <Text style={styles.emptySubtext}>No unmarked classes</Text>
                     <Button
                         title="Back to Today"
@@ -139,10 +138,9 @@ export default function PastAttendanceScreen({ navigation }) {
     if (totalAutoCount > 0 && unmarkedByDate.length === 0) { // All auto-marked are now confirmed and no regular unmarked left
         return (
             <SafeAreaView style={styles.container} edges={['bottom']}>
-                <FloatingBackButton />
+                <ScreenHeader title="Mark Attendance" />
                 <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyEmoji}>🎉</Text>
-                    <Text style={styles.emptyText}>All Reviewed!</Text>
+                    <Text style={styles.emptyText}>All reviewed</Text>
                     <Text style={styles.emptySubtext}>Your schedule is up to date.</Text>
                     <Button
                         title="Done — Return to Today"
@@ -172,7 +170,7 @@ export default function PastAttendanceScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <FloatingBackButton />
+            <ScreenHeader title="Mark Attendance" />
             <SectionList
                 sections={sections}
                 keyExtractor={(item, idx) => `${item.date}-${item.subjectId}-${idx}`}
@@ -187,7 +185,7 @@ export default function PastAttendanceScreen({ navigation }) {
                                 activeOpacity={0.7}
                             >
                                 <Text style={styles.holidayBtnText}>
-                                    {isHoliday ? '🏖️ Holiday' : '🏖️'}
+                                    {isHoliday ? 'Holiday' : 'Mark holiday'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -197,7 +195,7 @@ export default function PastAttendanceScreen({ navigation }) {
                     totalAutoCount > 0 ? (
                         <View style={styles.reviewHero}>
                             <View style={styles.heroRow}>
-                                <Text style={styles.heroTitle}>🤖 Autopilot Review</Text>
+                                <Text style={styles.heroTitle}>Autopilot Review</Text>
                                 <TouchableOpacity onPress={handleApproveAll} style={styles.heroActionBtn}>
                                     <Text style={styles.heroActionText}>Confirm All</Text>
                                 </TouchableOpacity>
@@ -221,7 +219,7 @@ export default function PastAttendanceScreen({ navigation }) {
                                         <Text style={styles.className}>{item.subjectName}</Text>
                                     </View>
                                     <View style={styles.autoMarkedBadge}>
-                                        <Text style={styles.autoMarkedText}>🤖 Autopilot</Text>
+                                        <Text style={styles.autoMarkedText}>Autopilot</Text>
                                     </View>
                                 </View>
                                 <Text style={styles.classTime}>
@@ -289,8 +287,8 @@ export default function PastAttendanceScreen({ navigation }) {
                             {isMarked ? (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, paddingLeft: SPACING.sm }}>
                                     <View style={styles.markedContainer}>
-                                        <Text style={styles.markedLabel}>
-                                            {record.status === 'present' ? '✅' : '❌'} {record.status}
+                                        <Text style={[styles.markedLabel, { color: record.status === 'present' ? COLORS.successDark : COLORS.danger }]}>
+                                            {record.status === 'present' ? 'Present' : 'Absent'}
                                         </Text>
                                     </View>
                                 </View>
@@ -300,13 +298,13 @@ export default function PastAttendanceScreen({ navigation }) {
                                         style={[styles.smallBtn, styles.presentSmallBtn]}
                                         onPress={() => markClass(item.date, item.subjectId, 'present', item.units)}
                                     >
-                                        <Text style={styles.presentSmallText}>✅</Text>
+                                        <Text style={styles.presentSmallText}>Present</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={[styles.smallBtn, styles.absentSmallBtn]}
                                         onPress={() => markClass(item.date, item.subjectId, 'absent', item.units)}
                                     >
-                                        <Text style={styles.absentSmallText}>❌</Text>
+                                        <Text style={styles.absentSmallText}>Absent</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -350,9 +348,9 @@ const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
-        padding: SPACING.screenPadding,
     },
     listContent: {
+        paddingHorizontal: SPACING.screenPadding,
         paddingBottom: SPACING.xxl,
     },
     emptyContainer: {
@@ -447,12 +445,11 @@ const getStyles = () => StyleSheet.create({
         gap: SPACING.xs,
     },
     smallBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        height: 34,
+        paddingHorizontal: SPACING.md,
+        borderRadius: BORDER_RADIUS.full,
         alignItems: 'center',
         justifyContent: 'center',
-
     },
     presentSmallBtn: {
         backgroundColor: COLORS.successLight,
@@ -461,10 +458,14 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.dangerLight,
     },
     presentSmallText: {
-        fontSize: 14,
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.successDark,
     },
     absentSmallText: {
-        fontSize: 14,
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.danger,
     },
     footer: {
         marginTop: SPACING.lg,

@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     RefreshControl,
     Platform,
+    LayoutAnimation,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
@@ -25,6 +26,10 @@ const SubjectsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, triggerErpSync } = useApp();
     const [viewMode, setViewMode] = useState('list');
+    const switchView = useCallback((mode) => {
+        LayoutAnimation.configureNext(LayoutAnimation.create(180, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
+        setViewMode(mode);
+    }, []);
     const [refreshing, setRefreshing] = useState(false);
     const [transparencyVisible, setTransparencyVisible] = useState(false);
 
@@ -154,7 +159,7 @@ const SubjectsScreen = ({ navigation }) => {
                                 styles.toggleTab,
                                 viewMode === 'list' && styles.toggleTabActive
                             ]}
-                            onPress={() => setViewMode('list')}
+                            onPress={() => switchView('list')}
                             activeOpacity={0.8}
                         >
                             <Text style={[
@@ -169,7 +174,7 @@ const SubjectsScreen = ({ navigation }) => {
                                 styles.toggleTab,
                                 viewMode === 'calendar' && styles.toggleTabActive
                             ]}
-                            onPress={() => setViewMode('calendar')}
+                            onPress={() => switchView('calendar')}
                             activeOpacity={0.8}
                         >
                             <Text style={[
@@ -225,7 +230,7 @@ const SubjectsScreen = ({ navigation }) => {
                                 <View style={styles.sectionHeader}>
                                     <View style={[styles.sectionRule, styles.sectionRuleEdge]} />
                                     <Text style={styles.sectionTitle}>
-                                        Almost Low
+                                        Borderline
                                     </Text>
                                     <View style={[styles.sectionBadge, styles.sectionBadgeEdge]}>
                                         <Text style={styles.sectionBadgeText}>

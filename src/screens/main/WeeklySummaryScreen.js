@@ -9,13 +9,13 @@ import Card from '../../components/common/Card';
 import ProgressBar from '../../components/common/ProgressBar';
 import Button from '../../components/common/Button';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
-import FloatingBackButton from '../../components/common/FloatingBackButton';
+import ScreenHeader from '../../components/common/ScreenHeader';
 
-const DAY_STATUS_EMOJI = {
-    perfect: '🟢',
-    partial: '🟡',
-    poor: '🔴',
-    no_class: '⚪',
+const DAY_STATUS_COLOR = {
+    perfect: COLORS.success,
+    partial: COLORS.warning,
+    poor: COLORS.danger,
+    no_class: COLORS.border,
 };
 
 export default function WeeklySummaryScreen({ navigation }) {
@@ -30,12 +30,8 @@ export default function WeeklySummaryScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <FloatingBackButton />
+            <ScreenHeader title="Week in Review" />
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Add top padding to account for floating button */}
-                <View style={styles.topSpacer} />
-                {/* Header */}
-                <Text style={styles.header}>Week in Review</Text>
                 <Text style={styles.weekRange}>{summary.weekRange}</Text>
 
                 {/* Overall */}
@@ -95,9 +91,7 @@ export default function WeeklySummaryScreen({ navigation }) {
                     <View style={styles.dayRow}>
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
                             <View key={day} style={styles.dayItem}>
-                                <Text style={styles.dayEmoji}>
-                                    {DAY_STATUS_EMOJI[summary.dailyStatus[day]] || '⚪'}
-                                </Text>
+                                <View style={[styles.dayDot, { backgroundColor: DAY_STATUS_COLOR[summary.dailyStatus[day]] || COLORS.border }]} />
                                 <Text style={styles.dayLabel}>{day[0]}</Text>
                             </View>
                         ))}
@@ -127,12 +121,9 @@ const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: COLORS.background,
-        padding: SPACING.screenPadding,
-    },
-    topSpacer: {
-        height: 60, // Space for the floating back button
     },
     scrollContent: {
+        paddingHorizontal: SPACING.screenPadding,
         paddingTop: SPACING.md,
         paddingBottom: SPACING.xxl,
     },
@@ -256,8 +247,10 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
         gap: SPACING.xs,
     },
-    dayEmoji: {
-        fontSize: 20,
+    dayDot: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
     },
     dayLabel: {
         ...TYPOGRAPHY.captionMedium,
