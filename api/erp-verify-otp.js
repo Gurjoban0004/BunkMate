@@ -57,6 +57,9 @@ module.exports = async function handler(req, res) {
         // Session token — persists securityToken + deviceIdUUID so /mobilev2/* data calls
         // are authenticated and the device stays bound (audit Bug 1 & 2).
         const token = encryptSession({
+            // Roll number is the ERP login username. Sealed inside the token so the
+            // server can authorize admin actions without trusting client-sent values.
+            rollNumber:    username ? String(username).trim() : '',
             userId:        session.userId,
             sessionId:     session.sessionId,
             roleId:        session.roleId,

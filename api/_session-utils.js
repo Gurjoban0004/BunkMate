@@ -87,6 +87,23 @@ function decryptSession(token) {
     return _decrypt(token, SESSION_KEY);
 }
 
+/**
+ * Extract the roll number embedded in a session token, or null if the token is
+ * missing/forged/tampered. This is the trust anchor for admin authorization:
+ * the token is AES-256-GCM sealed with a server-only secret, so a client cannot
+ * forge one without completing a real ERP login. Never trust a roll number sent
+ * in plaintext by the client — decode it from here instead.
+ */
+function decodeSessionRollNumber(token) {
+    if (!token || typeof token !== 'string') return null;
+    try {
+        const roll = decryptSession(token).rollNumber;
+        return roll ? String(roll).trim() : null;
+    } catch {
+        return null;
+    }
+}
+
 /** Encrypt persistent credentials (username/password) — no expiry */
 function encryptPersistent(creds) {
     return _encrypt(creds, PERSISTENT_KEY);
@@ -178,6 +195,7 @@ function setCorsHeaders(res) {
 module.exports = {
     encryptSession,
     decryptSession,
+    decodeSessionRollNumber,
     encryptPersistent,
     decryptPersistent,
     reloginERP,

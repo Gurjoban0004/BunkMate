@@ -94,8 +94,13 @@ async function postLegacy(path, body) {
     return { response, payload };
 }
 
+// Dev-only mock login. MUST stay off in production: otherwise anyone can mint a
+// session for ANY roll number (including the admin) with the bypass password,
+// with no real ERP authentication. Enable only by setting ALLOW_MOCK_LOGIN=1.
+const MOCK_LOGIN_ENABLED = process.env.ALLOW_MOCK_LOGIN === '1';
+
 async function loginLegacy(username, password, deviceIdUUID = '') {
-    if ((username && username.toLowerCase().startsWith('mock')) || password === 'presence-mock-bypass') {
+    if (MOCK_LOGIN_ENABLED && ((username && username.toLowerCase().startsWith('mock')) || password === 'presence-mock-bypass')) {
         return {
             authUserId: 'mock-auth-user-id',
             otpHint: 'Sent to Mock Phone (XXXXXX1234)',
@@ -138,7 +143,7 @@ async function loginLegacy(username, password, deviceIdUUID = '') {
 }
 
 async function verifyOtpLegacy(authUserId, otp, deviceIdUUID = '') {
-    if (authUserId === 'mock-auth-user-id' || (authUserId && authUserId.startsWith('mock'))) {
+    if (MOCK_LOGIN_ENABLED && (authUserId === 'mock-auth-user-id' || (authUserId && authUserId.startsWith('mock')))) {
         return {
             userId: 'mock-user-id',
             sessionId: 'mock-session-id',

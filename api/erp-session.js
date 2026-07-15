@@ -90,6 +90,7 @@ module.exports = async function handler(req, res) {
             const studentName = creds.studentName || session.studentName || '';
 
             const newToken = encryptSession({
+                rollNumber:    creds.username ? String(creds.username).trim() : '',
                 userId:        session.userId,
                 sessionId:     session.sessionId,
                 roleId:        session.roleId,
