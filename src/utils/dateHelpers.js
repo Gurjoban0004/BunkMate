@@ -127,3 +127,25 @@ export function isPastTime(date, time, devDate = null) {
 
     return now >= targetDate;
 }
+
+/**
+ * Compact relative time for sync indicators: "just now", "3m ago", "2h ago", "yesterday".
+ * @param {string|number|Date} when - ISO string, epoch ms, or Date
+ * @returns {string}
+ */
+export function formatRelativeTime(when) {
+    if (!when) return '';
+    const then = new Date(when).getTime();
+    if (Number.isNaN(then)) return '';
+    const diffMs = Date.now() - then;
+    if (diffMs < 0) return 'just now';
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    const days = Math.floor(hr / 24);
+    if (days === 1) return 'yesterday';
+    if (days < 7) return `${days}d ago`;
+    return new Date(when).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}

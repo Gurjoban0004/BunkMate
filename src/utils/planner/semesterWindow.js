@@ -28,6 +28,21 @@ export function getPlannerEndDate(stateOrSubject) {
     return parseLocalDate(endDate, true);
 }
 
+// A typical undergrad semester runs ~17 teaching weeks. Colleges rarely publish the
+// exact end date until the term is half over, so when the student hasn't set one we
+// estimate the weeks left from when tracking started — a realistic full-semester
+// horizon instead of an arbitrary short window. The student can override with an
+// exact (or rumored) date in Settings, which takes precedence everywhere.
+const TYPICAL_SEMESTER_WEEKS = 17;
+
+export function estimateWeeksRemaining(state) {
+    const start = state?.trackingStartDate || state?.settings?.setupDate;
+    const startDate = parseLocalDate(start);
+    if (!startDate) return 14;
+    const weeksElapsed = Math.floor((Date.now() - startDate.getTime()) / (7 * 24 * 3600 * 1000));
+    return Math.max(2, TYPICAL_SEMESTER_WEEKS - weeksElapsed);
+}
+
 export function isWithinPlannerWindow(dateInput, stateOrSubject) {
     const endDate = getPlannerEndDate(stateOrSubject);
     if (!endDate) return true;
