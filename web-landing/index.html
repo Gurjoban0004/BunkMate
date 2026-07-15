@@ -3,251 +3,254 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Presence — Smart Attendance Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Presence · Attendance, solved.</title>
 
-  <!-- SEO -->
   <meta name="description"
-    content="A seamless attendance tracker for students. Syncs directly with your university portal to track classes, plan skips, and own your data.">
-  <meta name="theme-color" content="#5B9BF2">
+    content="Presence syncs with your college portal so you always know exactly when you can skip a class. Calm, precise attendance tracking for students.">
+  <meta name="theme-color" content="#FDFDFD" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0C0A09" media="(prefers-color-scheme: dark)">
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="Presence — Smart Attendance Tracker">
-  <meta property="og:description" content="Track your attendance. Plan your skips. Own your data.">
+  <meta property="og:title" content="Presence · Attendance, solved.">
+  <meta property="og:description" content="Sync your college portal. Know exactly when you can skip.">
   <meta property="og:type" content="website">
 
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="/icon192.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap"
+    rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-  <div class="container">
+  <main class="container">
 
     <!-- ====== Hero ====== -->
-    <header class="hero">
-      <div class="logo-wrapper">
-        <img src="/icon512.png" alt="Presence Logo" class="logo">
+    <header class="hero fade-up">
+      <div class="brand-mark" aria-hidden="true">
+        <div class="ring-outer">
+          <div class="ring-inner">
+            <div class="core-dot"></div>
+          </div>
+        </div>
       </div>
-      <div class="hero-text">
-        <h1 class="app-name">Presence</h1>
-        <p class="tagline">Track your attendance. Plan your skips.</p>
-      </div>
+      <h1 class="app-name">Presence</h1>
+      <p class="tagline">Attendance, solved.</p>
+      <p class="value-prop">Sync your college portal and know exactly when you can skip, before you decide.</p>
     </header>
 
-    <!-- ====== About ====== -->
-    <section class="about">
-      <p>
-        Track attendance. Plan your skips. Sync seamlessly with your university ERP portal.
-      </p>
-    </section>
+    <!-- ====== Install ====== -->
+    <section class="install fade-up" id="install">
+      <h2 class="section-title">Get Presence</h2>
 
-    <!-- ====== Features ====== -->
-    <section class="features">
-      <div class="feature-card">
-        <span class="feature-icon">🔄</span>
-        <div>
-          <span class="feature-title">Portal Sync</span>
-          <span class="feature-desc">Pulls data straight from Chalkpad</span>
-        </div>
-      </div>
-      <div class="feature-card">
-        <span class="feature-icon">🛡️</span>
-        <div>
-          <span class="feature-title">Secure & Local</span>
-          <span class="feature-desc">Credentials stay on your device</span>
-        </div>
-      </div>
-      <div class="feature-card">
-        <span class="feature-icon">🧮</span>
-        <div>
-          <span class="feature-title">Fix & Skip Planner</span>
-          <span class="feature-desc">Simulate exactly what you can skip</span>
-        </div>
-      </div>
-      <div class="feature-card">
-        <span class="feature-icon">📊</span>
-        <div>
-          <span class="feature-title">Deep Insights</span>
-          <span class="feature-desc">Weekday patterns & subject analytics</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====== Get the App ====== -->
-    <section class="download-section">
-      <h2 class="section-title">Get the App</h2>
-
-      <div class="download-buttons">
-        <button class="btn btn-compact btn-ios" id="btn-ios">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+      <div class="segmented" role="tablist" aria-label="Choose your device">
+        <button class="seg-btn" id="seg-ios" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
           </svg>
           iPhone
         </button>
-
-        <button class="btn btn-compact btn-android" id="btn-android">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M17.523 15.341a.996.996 0 0 0-.997.997v3.156a.996.996 0 1 0 1.994 0v-3.156a.996.996 0 0 0-.997-.997zm-11.046 0a.996.996 0 0 0-.997.997v3.156a.996.996 0 1 0 1.994 0v-3.156a.996.996 0 0 0-.997-.997zm11.521-6.266-.935-1.676a.251.251 0 0 0-.337-.093.246.246 0 0 0-.093.336l.948 1.701a6.348 6.348 0 0 0-2.581.971 6.348 6.348 0 0 0-2.581-.971l.948-1.701a.246.246 0 0 0-.093-.336.251.251 0 0 0-.337.093l-.935 1.676A5.533 5.533 0 0 0 6.5 13.5h11a5.533 5.533 0 0 0-4.502-4.425zM9.5 12a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm5 0a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zM5.503 15.341a.996.996 0 0 0-.997.997v3.156a.996.996 0 1 0 1.994 0v-3.156a.996.996 0 0 0-.997-.997zM17.5 14H6.5c-.55 0-1 .45-1 1v5c0 1.1.9 2 2 2h9c1.1 0 2-.9 2-2v-5c0-.55-.45-1-1-1z" />
+        <button class="seg-btn" id="seg-android" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17.6 9.48l1.84-3.18a.4.4 0 0 0-.15-.55.4.4 0 0 0-.55.15l-1.87 3.23a11.4 11.4 0 0 0-8.55 0L6.45 5.9a.4.4 0 0 0-.55-.15.4.4 0 0 0-.15.55L7.6 9.48A10.8 10.8 0 0 0 2 18.5h20a10.8 10.8 0 0 0-4.4-9.02M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5" />
           </svg>
           Android
         </button>
       </div>
-    </section>
 
-    <!-- ====== iOS Setup Guide (Always Visible) ====== -->
-    <section class="setup-guide" id="ios-guide">
-      <h2 class="section-title">
-        <svg class="section-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path
-            d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-        </svg>
-        iPhone Setup
-      </h2>
-      <p class="setup-subtitle">Follow these steps to install Presence on your iPhone</p>
-
-      <div class="steps">
-        <div class="step">
-          <div class="step-number">1</div>
-          <div class="step-content">
-            <strong>Tap "Install on iPhone"</strong>
-            <span>The button above will open the app in Safari. <em>Wait for the page to load.</em></span>
-          </div>
-        </div>
-
-        <div class="step">
-          <div class="step-number">2</div>
-          <div class="step-content">
-            <strong>Tap Share Button</strong>
-            <span>Look for <span class="share-icon-inline">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round">
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                  <polyline points="16 6 12 2 8 6" />
-                  <line x1="12" y1="2" x2="12" y2="15" />
-                </svg>
-              </span> at the bottom of Safari.</span>
-          </div>
-        </div>
-
-        <div class="step">
-          <div class="step-number">3</div>
-          <div class="step-content">
-            <strong>Scroll & Select</strong>
-            <span>Scroll down in the menu and tap <em>"Add to Home Screen"</em>.</span>
-          </div>
-        </div>
-
-        <div class="step">
-          <div class="step-number">4</div>
-          <div class="step-content">
-            <strong>Confirm</strong>
-            <span>Tap <em>"Add"</em> in the top right. Done! Find Presence on your home screen.</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="setup-note">
-        <span class="note-icon">💡</span>
-        <span><strong>Important:</strong> You must use Safari. Other browsers don't support "Add to Home Screen" on iOS.</span>
-      </div>
-    </section>
-
-    <!-- ====== Android Setup (Collapsible) ====== -->
-    <section class="setup-guide setup-android">
-      <button class="collapsible-header" id="android-toggle">
-        <h2 class="section-title">
-          <svg class="section-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M17.523 15.341a.996.996 0 0 0-.997.997v3.156a.996.996 0 1 0 1.994 0v-3.156a.996.996 0 0 0-.997-.997zm-11.046 0a.996.996 0 0 0-.997.997v3.156a.996.996 0 1 0 1.994 0v-3.156a.996.996 0 0 0-.997-.997zm11.521-6.266-.935-1.676a.251.251 0 0 0-.337-.093.246.246 0 0 0-.093.336l.948 1.701a6.348 6.348 0 0 0-2.581.971 6.348 6.348 0 0 0-2.581-.971l.948-1.701a.246.246 0 0 0-.093-.336.251.251 0 0 0-.337.093l-.935 1.676A5.533 5.533 0 0 0 6.5 13.5h11a5.533 5.533 0 0 0-4.502-4.425z" />
-          </svg>
-          Android Setup
-        </h2>
-        <svg class="chevron" id="android-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-
-      <div class="collapsible-body" id="android-body">
-        <div class="steps">
-          <div class="step">
-            <div class="step-number">1</div>
-            <div class="step-content">
-              <strong>Download the APK</strong>
-              <span>Tap the <em>"Download for Android"</em> button above.</span>
+      <!-- iPhone panel -->
+      <div class="install-panel" id="panel-ios">
+        <button class="btn btn-primary" id="btn-ios">Open in Safari to install</button>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Open in Safari</strong>
+              <span>Tap the button above. Presence must be added from Safari; other browsers can't install it.</span>
             </div>
-          </div>
-          <div class="step">
-            <div class="step-number">2</div>
-            <div class="step-content">
+          </li>
+          <li class="step">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <strong>Tap the Share icon</strong>
+              <span>It's the square with an upward arrow, at the bottom of Safari.</span>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <strong>Add to Home Screen</strong>
+              <span>Scroll down the menu and choose <em>Add to Home Screen</em>.</span>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <strong>Confirm</strong>
+              <span>Tap <em>Add</em>. Presence appears on your home screen like any app.</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Android panel -->
+      <div class="install-panel" id="panel-android" hidden>
+        <button class="btn btn-primary" id="btn-android">Download for Android</button>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <strong>Download the app</strong>
+              <span>Tap the button above to get the latest Android build.</span>
+            </div>
+          </li>
+          <li class="step">
+            <span class="step-num">2</span>
+            <div class="step-body">
               <strong>Open the file</strong>
-              <span>Tap the downloaded APK. If prompted, allow installation from unknown sources.</span>
+              <span>Tap the download. If asked, allow installs from this source. It's a one-time setting.</span>
             </div>
-          </div>
-          <div class="step">
-            <div class="step-number">3</div>
-            <div class="step-content">
+          </li>
+          <li class="step">
+            <span class="step-num">3</span>
+            <div class="step-body">
               <strong>Install &amp; open</strong>
-              <span>Tap <em>"Install"</em> and you're good to go!</span>
+              <span>Tap <em>Install</em>, then open Presence and sign in with your portal.</span>
             </div>
+          </li>
+        </ol>
+      </div>
+
+      <p class="install-note" id="install-note"></p>
+    </section>
+
+    <!-- ====== Preview ====== -->
+    <section class="preview fade-up">
+      <h2 class="section-title">A look inside</h2>
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="p-greeting">Good afternoon, Gurjoban</div>
+          <div class="p-date">Thursday, July 16</div>
+
+          <div class="p-answer">
+            <span class="p-answer-label">Can I skip today?</span>
+            <span class="p-answer-value">Yes — 3 to spare</span>
           </div>
-        </div>
-        <div class="setup-note">
-          <span class="note-icon">🔒</span>
-          <span>The APK is safe — the source code is available on GitHub.</span>
+
+          <div class="p-row">
+            <div class="p-ring p-ring-safe"><span>82%</span></div>
+            <div class="p-row-main">
+              <span class="p-subject">Mathematics</span>
+              <span class="p-meta">41 / 50 classes</span>
+            </div>
+            <span class="p-tag p-tag-safe">Skip 3</span>
+          </div>
+          <div class="p-row">
+            <div class="p-ring p-ring-warn"><span>76%</span></div>
+            <div class="p-row-main">
+              <span class="p-subject">Data Structures</span>
+              <span class="p-meta">38 / 50 classes</span>
+            </div>
+            <span class="p-tag p-tag-warn">Skip 1</span>
+          </div>
+          <div class="p-row">
+            <div class="p-ring p-ring-danger"><span>68%</span></div>
+            <div class="p-row-main">
+              <span class="p-subject">Physics</span>
+              <span class="p-meta">34 / 50 classes</span>
+            </div>
+            <span class="p-tag p-tag-danger">Attend 4</span>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ====== Screenshots Placeholder ====== -->
-    <section class="screenshots-section" id="screenshots">
-      <h2 class="section-title">See It in Action</h2>
-      <div class="screenshots-placeholder">
-        <div class="placeholder-card">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-            stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
+    <!-- ====== Features ====== -->
+    <section class="features fade-up">
+      <div class="feature">
+        <span class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+            <polyline points="21 3 21 8 16 8" /><polyline points="3 21 3 16 8 16" />
           </svg>
-          <span>Screenshots coming soon</span>
+        </span>
+        <div class="feature-text">
+          <strong>Portal sync</strong>
+          <span>Pulls your timetable and attendance straight from the college portal.</span>
+        </div>
+      </div>
+      <div class="feature">
+        <span class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" /><path d="M9.5 12l1.8 1.8 3.5-3.6" />
+          </svg>
+        </span>
+        <div class="feature-text">
+          <strong>Yours, and private</strong>
+          <span>Your login talks to your portal directly. We store a token, never your password.</span>
+        </div>
+      </div>
+      <div class="feature">
+        <span class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="3" width="14" height="18" rx="2" /><line x1="9" y1="7" x2="15" y2="7" />
+            <line x1="9" y1="11" x2="9.01" y2="11" /><line x1="12" y1="11" x2="12.01" y2="11" /><line x1="15" y1="11" x2="15.01" y2="11" />
+            <line x1="9" y1="15" x2="9.01" y2="15" /><line x1="12" y1="15" x2="12.01" y2="15" />
+          </svg>
+        </span>
+        <div class="feature-text">
+          <strong>Skip &amp; recovery planner</strong>
+          <span>Simulate exactly how many classes you can skip, or how many you must attend to recover.</span>
+        </div>
+      </div>
+      <div class="feature">
+        <span class="feature-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="20" x2="4" y2="12" /><line x1="10" y1="20" x2="10" y2="4" />
+            <line x1="16" y1="20" x2="16" y2="9" /><line x1="20" y1="20" x2="4" y2="20" />
+          </svg>
+        </span>
+        <div class="feature-text">
+          <strong>Honest insights</strong>
+          <span>Weekday patterns, subject trends, and a clear Week in Review.</span>
         </div>
       </div>
     </section>
 
     <!-- ====== What's New ====== -->
-    <section class="whats-new">
-      <h2 class="section-title">What's New</h2>
-      <div class="changelog-card">
-        <div class="changelog-version">
-          <span class="version-badge">v2.0.0</span>
-          <span class="version-date">May 2026</span>
+    <section class="whats-new fade-up">
+      <h2 class="section-title">What's new</h2>
+      <div class="changelog">
+        <div class="changelog-head">
+          <span class="version-badge">v2.0</span>
+          <span class="version-date">2026</span>
         </div>
         <ul class="changelog-list">
-          <li>🔄 <strong>Portal Sync:</strong> Automatically imports your timetable and attendance.</li>
-          <li>🧮 <strong>Fix & Skip Simulator:</strong> See exactly how many classes you can skip.</li>
-          <li>📊 <strong>Rich Insights:</strong> Detailed Week in Review and smart analytics.</li>
-          <li>🎨 <strong>New Design:</strong> A beautiful, breathable interface for all your data.</li>
+          <li><strong>Portal sync:</strong> timetable and attendance import automatically.</li>
+          <li><strong>Skip &amp; recovery planner:</strong> see precisely what you can skip.</li>
+          <li><strong>Week in Review:</strong> richer, calmer insights.</li>
+          <li><strong>Redesigned interface:</strong> a quiet, precise look built around the number that matters.</li>
         </ul>
       </div>
     </section>
 
     <!-- ====== Footer ====== -->
     <footer class="footer">
-      <p class="footer-version">v1.2.0</p>
+      <div class="brand-mark brand-mark-sm" aria-hidden="true">
+        <div class="ring-outer">
+          <div class="ring-inner"><div class="core-dot"></div></div>
+        </div>
+      </div>
+      <p class="footer-tagline">Presence · attendance, solved.</p>
+      <p class="footer-version">Version 2.0</p>
     </footer>
 
-  </div>
+  </main>
 
   <script src="script.js"></script>
 </body>
