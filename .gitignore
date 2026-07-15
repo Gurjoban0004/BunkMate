@@ -21,3 +21,12 @@ veda
 .vercel
 .env*.local
 .env*
+
+# AI agent config
+.agents/
+.claude/
+.impeccable/
+skills-lock.json
+
+# Editor workspace files
+*.code-workspace
