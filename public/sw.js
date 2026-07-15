@@ -28,6 +28,39 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
+// Push: show the notification delivered by the server (daily reminder / smart alert).
+self.addEventListener('push', (event) => {
+    let data = {};
+    try {
+        data = event.data ? event.data.json() : {};
+    } catch (e) {
+        data = { title: 'Presence', body: event.data ? event.data.text() : '' };
+    }
+    const title = data.title || 'Presence';
+    const options = {
+        body: data.body || '',
+        icon: '/icon192.png',
+        badge: '/icon192.png',
+        tag: data.tag || 'presence-reminder',
+        data: { url: data.url || '/app' },
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Notification click: focus an existing app window or open a new one.
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const target = (event.notification.data && event.notification.data.url) || '/app';
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+            for (const client of clients) {
+                if (client.url.includes(target) && 'focus' in client) return client.focus();
+            }
+            if (self.clients.openWindow) return self.clients.openWindow(target);
+        })
+    );
+});
+
 // Fetch: network-first for everything — ensures users always get fresh code.
 // Falls back to cache only when offline.
 self.addEventListener('fetch', (event) => {

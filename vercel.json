@@ -8,6 +8,9 @@
             "maxDuration": 15
         }
     },
+    "crons": [
+        { "path": "/api/push-send", "schedule": "0 * * * *" }
+    ],
     "rewrites": [
         {
             "source": "/app",
