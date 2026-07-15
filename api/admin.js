@@ -16,7 +16,7 @@
  *   resolveDowntime    — mark a downtime event resolved
  */
 
-const { setCorsHeaders } = require('./_session-utils');
+const { setCorsHeaders, decodeSessionRollNumber } = require('./_session-utils');
 const { adminDb, isAdminRoll } = require('./_firebase-admin');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 
@@ -25,8 +25,11 @@ module.exports = async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { rollNumber, action, payload } = req.body || {};
+    const { token, action, payload } = req.body || {};
 
+    // Authorize on the roll number sealed inside the ERP session token, never on a
+    // plaintext value from the client — a client-sent roll number is trivially spoofed.
+    const rollNumber = decodeSessionRollNumber(token);
     if (!rollNumber || !isAdminRoll(rollNumber)) {
         return res.status(403).json({ error: 'Unauthorized' });
     }

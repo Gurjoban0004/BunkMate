@@ -5,19 +5,28 @@ import {
 } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { buildApiUrl } from './apiConfig';
+import { getErpToken } from '../storage/erpTokenStorage';
 
 const ADMIN_ROLL = '2410990296';
 
+// Client-side gate for UI rendering only. Real authorization is enforced
+// server-side: every admin API call carries the encrypted ERP session token,
+// and the server checks the roll number sealed inside it. Spoofing erpRollNumber
+// in local state can reveal the Admin tab but grants no privileged action.
 export const isAdminRollNumber = (rollNumber) => rollNumber === ADMIN_ROLL;
 
 // ─── API HELPERS ────────────────────────────────────────────────
 
+// All admin calls authenticate with the encrypted session token (proof of a real
+// ERP login), never a plaintext roll number. Legacy callers may still pass a roll
+// number as the first argument; it is ignored in favor of the token.
 async function adminApiCall(endpoint, body) {
+    const token = await getErpToken();
     const url = buildApiUrl(endpoint, Platform.OS);
     const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, token }),
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
@@ -118,30 +127,10 @@ export const isUserRevoked = async (rollNumber) => {
 
 // ─── ANALYTICS (single-query functions stay client-side) ────────
 
-export const fetchActiveUserMetrics = async () => {
-    const usersSnap = await getDocs(collection(db, 'users'));
-    const now = Date.now();
-    const DAY = 86400000;
-
-    let dau = 0, wau = 0, mau = 0;
-    const dailyCounts = new Array(7).fill(0);
-
-    usersSnap.forEach(docSnap => {
-        const data = docSnap.data();
-        if (!data.lastActive) return;
-        const lastActive = data.lastActive.toMillis ? data.lastActive.toMillis() : new Date(data.lastActive).getTime();
-        const diff = now - lastActive;
-
-        if (diff <= DAY) dau++;
-        if (diff <= 7 * DAY) wau++;
-        if (diff <= 30 * DAY) mau++;
-
-        const daysAgo = Math.floor(diff / DAY);
-        if (daysAgo < 7) dailyCounts[6 - daysAgo]++;
-    });
-
-    return { dau, wau, mau, sparkline: dailyCounts };
-};
+// Computed server-side so the client never needs to read the whole users
+// collection (which would require world-readable Firestore rules).
+export const fetchActiveUserMetrics = (forceRefresh) =>
+    fetchAnalyticsMetric(null, 'activeUsers', forceRefresh);
 
 // ─── SERVER-SIDE ANALYTICS (formerly N+1 queries) ───────────────
 
@@ -171,26 +160,9 @@ export const fetchRateLimitData = (rollNumber, forceRefresh) =>
 
 // ─── BATCH DETECTION (single query, stays client-side) ──────────
 
-export const fetchBatchDistribution = async () => {
-    const usersSnap = await getDocs(collection(db, 'users'));
-    const batches = {};
-
-    usersSnap.forEach(docSnap => {
-        const data = docSnap.data();
-        const rn = data.erpRollNumber;
-        if (!rn || rn.length < 4) return;
-        const yearPrefix = rn.substring(0, 2);
-        const fullYear = parseInt(yearPrefix, 10) >= 50 ? `19${yearPrefix}` : `20${yearPrefix}`;
-        const batchLabel = `Batch ${fullYear}`;
-        if (!batches[batchLabel]) batches[batchLabel] = 0;
-        batches[batchLabel]++;
-    });
-
-    const total = Object.values(batches).reduce((a, b) => a + b, 0);
-    return Object.entries(batches)
-        .map(([batch, count]) => ({ batch, count, percentage: total > 0 ? (count / total) * 100 : 0 }))
-        .sort((a, b) => b.count - a.count);
-};
+// Computed server-side (see fetchActiveUserMetrics) to avoid a full users read.
+export const fetchBatchDistribution = (forceRefresh) =>
+    fetchAnalyticsMetric(null, 'batchDistribution', forceRefresh);
 
 // ─── DOWNTIME (reads stay client-side, writes go through API) ───
 

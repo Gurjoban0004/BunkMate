@@ -4,6 +4,7 @@ import {
     TextInput, Switch, ActivityIndicator, Platform, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Polyline } from 'react-native-svg';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import {
@@ -53,9 +54,9 @@ function Sparkline({ data, color, width = 200, height = 40 }) {
     const step = width / (data.length - 1);
     const points = data.map((v, i) => `${i * step},${height - (v / max) * height}`).join(' ');
     return (
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-            <polyline fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" points={points} />
-        </svg>
+        <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+            <Polyline fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" points={points} />
+        </Svg>
     );
 }
 

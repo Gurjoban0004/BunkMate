@@ -16,7 +16,7 @@
  *   rateLimit         — per-user sync frequency from telemetry
  */
 
-const { setCorsHeaders } = require('./_session-utils');
+const { setCorsHeaders, decodeSessionRollNumber } = require('./_session-utils');
 const { adminDb, isAdminRoll } = require('./_firebase-admin');
 const { FieldValue } = require('firebase-admin/firestore');
 
@@ -194,6 +194,47 @@ async function computeRateLimit() {
         .sort((a, b) => b.hourly - a.hourly);
 }
 
+async function computeActiveUsers() {
+    const usersSnap = await adminDb.collection('users').get();
+    const now = Date.now();
+    const DAY = 86400000;
+    let dau = 0, wau = 0, mau = 0;
+    const dailyCounts = new Array(7).fill(0);
+
+    usersSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.lastActive) return;
+        const lastActive = data.lastActive.toMillis ? data.lastActive.toMillis() : new Date(data.lastActive).getTime();
+        const diff = now - lastActive;
+        if (diff <= DAY) dau++;
+        if (diff <= 7 * DAY) wau++;
+        if (diff <= 30 * DAY) mau++;
+        const daysAgo = Math.floor(diff / DAY);
+        if (daysAgo < 7) dailyCounts[6 - daysAgo]++;
+    });
+
+    return { dau, wau, mau, sparkline: dailyCounts };
+}
+
+async function computeBatchDistribution() {
+    const usersSnap = await adminDb.collection('users').get();
+    const batches = {};
+
+    usersSnap.forEach(docSnap => {
+        const rn = docSnap.data().erpRollNumber;
+        if (!rn || rn.length < 4) return;
+        const yearPrefix = rn.substring(0, 2);
+        const fullYear = parseInt(yearPrefix, 10) >= 50 ? `19${yearPrefix}` : `20${yearPrefix}`;
+        const batchLabel = `Batch ${fullYear}`;
+        batches[batchLabel] = (batches[batchLabel] || 0) + 1;
+    });
+
+    const total = Object.values(batches).reduce((a, b) => a + b, 0);
+    return Object.entries(batches)
+        .map(([batch, count]) => ({ batch, count, percentage: total > 0 ? (count / total) * 100 : 0 }))
+        .sort((a, b) => b.count - a.count);
+}
+
 // ── Handler ─────────────────────────────────────────────────────────
 
 const METRIC_HANDLERS = {
@@ -202,6 +243,8 @@ const METRIC_HANDLERS = {
     endpointHealth: computeEndpointHealth,
     parserFailures: computeParserFailures,
     rateLimit: computeRateLimit,
+    activeUsers: computeActiveUsers,
+    batchDistribution: computeBatchDistribution,
 };
 
 module.exports = async function handler(req, res) {
@@ -209,8 +252,9 @@ module.exports = async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { rollNumber, metric, forceRefresh } = req.body || {};
+    const { token, metric, forceRefresh } = req.body || {};
 
+    const rollNumber = decodeSessionRollNumber(token);
     if (!rollNumber || !isAdminRoll(rollNumber)) {
         return res.status(403).json({ error: 'Unauthorized' });
     }
