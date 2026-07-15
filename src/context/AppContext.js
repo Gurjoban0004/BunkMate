@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { getTodayKey } from '../utils/dateHelpers';
+import { shouldCountLocalRecord } from '../utils/attendance';
 import { getUnmarkedClasses } from '../utils/backlog';
 import { initNetworkListener, onNetworkStatusChange } from '../utils/firebaseHelpers';
 import { loadAppState, saveAppState, migrateToFirestore } from '../storage/storage';
@@ -76,6 +77,8 @@ const initialState = {
     erpSessionExpired: null,      // { authUserId, studentName, persistentToken } | null
 
     // ERP sync metadata — drives UI freshness indicators
+    isOnline: true,  // network reachability, updated by the network listener
+
     erpSync: {
         status:             'idle',  // 'idle' | 'syncing' | 'error'
         lastGlobalSyncAt:   null,    // ISO string — last successful full sync
@@ -100,7 +103,7 @@ const initialState = {
     },
 };
 
-function appReducer(state, action) {
+export function appReducer(state, action) {
     switch (action.type) {
         case 'SET_TIME_SLOTS':
             return { ...state, timeSlots: action.payload };
@@ -347,7 +350,9 @@ function appReducer(state, action) {
                     ...state.attendanceRecords,
                     [date]: {
                         ...state.attendanceRecords[date],
-                        [subjectId]: { ...existing, status: newStatus },
+                        // Editing makes it the user's mark — the portal no longer vouches
+                        // for it, and the next ERP sync overwrites it anyway.
+                        [subjectId]: { ...existing, status: newStatus, source: 'manual' },
                     },
                 },
             };
@@ -418,14 +423,47 @@ function appReducer(state, action) {
 
         case 'ERP_OVERWRITE_ATTENDANCE': {
             // ERP is source of truth — updates subject summary data (initialAttended/initialTotal).
-            // Does NOT touch attendanceRecords — ERP_OVERWRITE_CALENDAR handles that separately.
             // Only subjects present in the updates array are modified; others are untouched.
             // Also persists erpSubjectId (subject code) for stable identity on future syncs.
             const { updates } = action.payload;
             const now = new Date().toISOString();
 
+            // Delta GC: when the portal's delivered total grows by N units, those N
+            // classes are now inside initialTotal — so the N oldest local bridge marks
+            // for that subject must stop counting or they double-count. The calendar
+            // sync GCs exactly by date; this covers portals with no day-wise register.
+            const nextRecords = { ...state.attendanceRecords };
+            const holidays = state.holidays || [];
+            updates.forEach(u => {
+                const sub = state.subjects.find(s => s.id === u.subjectId);
+                if (!sub) return;
+                let delta = u.newTotal - (sub.initialTotal || 0);
+                if (delta <= 0) return;
+
+                const bridgeDates = Object.keys(nextRecords)
+                    .filter(dateKey => {
+                        if (nextRecords[dateKey]._holiday || holidays.includes(dateKey)) return false;
+                        const rec = nextRecords[dateKey][u.subjectId];
+                        return rec && rec.status !== 'cancelled'
+                            && shouldCountLocalRecord(dateKey, u.subjectId, rec, state);
+                    })
+                    .sort();
+
+                for (const dateKey of bridgeDates) {
+                    if (delta <= 0) break;
+                    const rec = nextRecords[dateKey][u.subjectId];
+                    // ponytail: a 2-unit mark is absorbed even when delta is 1 — a brief
+                    // undercount beats a double count; the register sync corrects exactly.
+                    delta -= rec.units || 1;
+                    const dayData = { ...nextRecords[dateKey] };
+                    delete dayData[u.subjectId];
+                    nextRecords[dateKey] = dayData;
+                }
+            });
+
             return {
                 ...state,
+                attendanceRecords: nextRecords,
                 subjects: state.subjects.map(sub => {
                     const update = updates.find(u => u.subjectId === sub.id);
                     if (!update) return sub;
@@ -653,6 +691,9 @@ function appReducer(state, action) {
         case 'SET_ERP_ROLL_NUMBER':
             return { ...state, erpRollNumber: action.payload };
 
+        case 'SET_ONLINE':
+            return { ...state, isOnline: action.payload };
+
         case 'SET_DEV_DATE':
             return {
                 ...state,
@@ -772,6 +813,7 @@ export function AppProvider({ children }) {
 
         // Handle network status changes for real-time sync
         const unsubscribe = onNetworkStatusChange((isOnline) => {
+            safeDispatch({ type: 'SET_ONLINE', payload: isOnline });
             if (isOnline && stateRef.current.isAuthenticated) {
                 logger.info('🔄', 'Back online, syncing state...');
                 // Sync cloud state first to avoid "last write wins" overwriting fresh cloud data

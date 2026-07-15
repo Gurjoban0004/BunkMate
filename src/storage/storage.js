@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { getCurrentSemesterId, checkOnlineStatus } from '../utils/firebaseHelpers';
+import { getCurrentSemesterId, checkOnlineStatus, ensureAuthenticated } from '../utils/firebaseHelpers';
 import { logger } from '../utils/logger';
 
 const STORAGE_KEY = '@bunkmate_state';
@@ -49,8 +49,9 @@ export async function saveAppState(state) {
         await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
         logger.info('✅', 'State saved to local storage');
 
-        // 2. If online, save to Firestore for current semester
-        if (checkOnlineStatus() && state.userId) {
+        // 2. If online AND signed in, save to Firestore for current semester.
+        // ensureAuthenticated fails-open: no session → cloud write is skipped, local is kept.
+        if (checkOnlineStatus() && state.userId && await ensureAuthenticated(state.userId)) {
             const semesterId = getCurrentSemesterId();
             const semesterRef = doc(db, 'users', state.userId, 'semesters', semesterId);
 
@@ -104,8 +105,8 @@ export async function loadAppState() {
             localState = null;
         }
 
-        // 2. If online, try to load from Firestore and compare
-        if (checkOnlineStatus() && currentUserId) {
+        // 2. If online AND signed in, try to load from Firestore and compare
+        if (checkOnlineStatus() && currentUserId && await ensureAuthenticated(currentUserId)) {
             try {
                 const semesterId = getCurrentSemesterId();
                 const semesterRef = doc(db, 'users', currentUserId, 'semesters', semesterId);
@@ -151,6 +152,7 @@ export async function migrateToFirestore(state) {
     try {
         const userId = await AsyncStorage.getItem('userId');
         if (!userId || !checkOnlineStatus()) return;
+        if (!(await ensureAuthenticated(userId))) return; // no session → retry next launch
 
         const semesterId = getCurrentSemesterId();
         const semesterRef = doc(db, 'users', userId, 'semesters', semesterId);
@@ -200,10 +202,10 @@ export async function deleteUserAccount() {
     try {
         const userId = await AsyncStorage.getItem('userId');
         
-        if (userId && checkOnlineStatus()) {
+        if (userId && checkOnlineStatus() && await ensureAuthenticated(userId)) {
             const semesterId = getCurrentSemesterId();
             const semesterRef = doc(db, 'users', userId, 'semesters', semesterId);
-            
+
             // Mark as deleted in cloud instead of hard delete
             // Cloud functions will handle actual cleanup if needed
             await setDoc(semesterRef, {

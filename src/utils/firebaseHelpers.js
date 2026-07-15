@@ -1,8 +1,64 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { signInWithCustomToken } from 'firebase/auth';
 import { Platform } from 'react-native';
-import { db } from '../config/firebase';
+import { db, auth } from '../config/firebase';
+import { buildApiUrl } from '../services/apiConfig';
 import { logger } from './logger';
+
+/**
+ * Exchange a login code for a Firebase auth session.
+ * Calls the server, which validates the code and mints a custom token (uid === code),
+ * then signs in. Firestore rules require this session for any read/write of user data.
+ *
+ * @param {string} code
+ * @param {{ create?: boolean }} [opts] - create the user doc server-side if missing (new users)
+ * @throws {Error} 'Invalid login code' (404), a throttling message (429), or a generic failure
+ */
+export const authenticateWithCode = async (code, { create = false } = {}) => {
+  const res = await fetch(buildApiUrl('/api/auth-token', Platform.OS), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, create }),
+  });
+
+  if (res.status === 404) throw new Error('Invalid login code');
+  if (res.status === 429) throw new Error('Too many attempts. Please try again in a few minutes.');
+  if (!res.ok) throw new Error('Could not sign in. Please check your connection and try again.');
+
+  const { token } = await res.json();
+  await signInWithCustomToken(auth, token);
+  return true;
+};
+
+// Dedupe concurrent auth attempts (boot + first save can race).
+let authInFlight = null;
+
+/**
+ * Ensure there is a Firebase session for the stored (or given) code, minting one if
+ * needed. Fail-OPEN: returns false instead of throwing so offline / server-down never
+ * blocks the app — cloud writes simply no-op under the rules until a session exists,
+ * while local AsyncStorage keeps working.
+ *
+ * @param {string} [explicitCode] - defaults to the userId in AsyncStorage
+ * @returns {Promise<boolean>} whether a valid session exists
+ */
+export const ensureAuthenticated = async (explicitCode) => {
+  try {
+    const code = explicitCode || (await AsyncStorage.getItem('userId'));
+    if (!code) return false;
+    if (auth?.currentUser?.uid === code) return true;
+
+    if (!authInFlight) {
+      authInFlight = authenticateWithCode(code).finally(() => { authInFlight = null; });
+    }
+    await authInFlight;
+    return auth?.currentUser?.uid === code;
+  } catch (e) {
+    logger.warn('⚠️ Firebase auth unavailable — running local-only:', e.message);
+    return false;
+  }
+};
 
 // Character set for login code generation (excludes confusing characters: 0, O, 1, I, L)
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -38,37 +94,39 @@ export const getUserId = async () => {
     const existingUserId = await AsyncStorage.getItem('userId');
     
     if (existingUserId) {
-      // Update lastActive in background — do NOT await, so startup is never blocked
-      const userRef = doc(db, 'users', existingUserId);
-      setDoc(userRef, {
-        lastActive: serverTimestamp(),
-        version: '1.0.0'
-      }, { merge: true }).catch(error => {
-        logger.warn('⚠️ Failed to update lastActive:', error);
+      // Sign in (needed for any cloud write), then update lastActive in the background
+      // so startup is never blocked. All of this fails-open when offline.
+      ensureAuthenticated(existingUserId).then((ok) => {
+        if (!ok) return;
+        const userRef = doc(db, 'users', existingUserId);
+        setDoc(userRef, {
+          lastActive: serverTimestamp(),
+          version: '2.0.0'
+        }, { merge: true }).catch(error => {
+          logger.warn('⚠️ Failed to update lastActive:', error);
+        });
       });
-      
+
       logger.info('✅', 'Logged in as:', existingUserId);
       return existingUserId;
     }
     
     // Generate new login code
     const newUserId = generateLoginCode();
-    
+
     // Save to AsyncStorage
     await AsyncStorage.setItem('userId', newUserId);
-    
-    // Create Firestore user document in background — do NOT await
-    const userRef = doc(db, 'users', newUserId);
-    setDoc(userRef, {
-      createdAt: serverTimestamp(),
-      lastActive: serverTimestamp(),
-      version: '1.0.0'
-    }).then(() => {
+
+    // Create the user doc server-side and sign in (uid === code). The server owns
+    // doc creation now — clients can't write arbitrary user docs under the rules.
+    try {
+      await authenticateWithCode(newUserId, { create: true });
       logger.info('✅', 'New user created:', newUserId);
-    }).catch(error => {
-      logger.warn('⚠️ Failed to create Firestore user document:', error);
-    });
-    
+    } catch (error) {
+      // Offline / server down: keep the local code; cloud sync starts once auth succeeds.
+      logger.warn('⚠️ Deferred cloud registration for new user:', error.message);
+    }
+
     return newUserId;
     
   } catch (error) {
@@ -97,32 +155,29 @@ export const getUserId = async () => {
  */
 export const loginWithCode = async (code) => {
   try {
-    // Validate code format before hitting Firestore
+    // Validate code format before hitting the network
     // Only accept characters from CODE_CHARS (excludes 0, O, 1, I, L)
     const CODE_REGEX = /^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/;
     if (!code || !CODE_REGEX.test(code)) {
       throw new Error('Invalid login code');
     }
 
-    // Validate code exists in Firestore
-    const userRef = doc(db, 'users', code);
-    const userDoc = await getDoc(userRef);
-    
-    if (!userDoc.exists()) {
-      throw new Error('Invalid login code');
-    }
-    
+    // Authenticate — the server validates the code exists, throttles brute force,
+    // and mints a session. A wrong code throws 'Invalid login code' here.
+    await authenticateWithCode(code);
+
     // Save code to AsyncStorage
     await AsyncStorage.setItem('userId', code);
-    
-    // Update lastActive timestamp
+
+    // Update lastActive (now permitted — we're signed in as this uid)
+    const userRef = doc(db, 'users', code);
     await setDoc(userRef, {
       lastActive: serverTimestamp(),
-      version: '1.0.0'
+      version: '2.0.0'
     }, { merge: true });
-    
+
     logger.info('✅', 'Logged in as:', code);
-    
+
     return code;
     
   } catch (error) {

@@ -2,18 +2,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can read/write their own data
+    // ── DEPLOY ORDER ──────────────────────────────────────────────────────
+    // These rules require the app's custom-token auth (api/auth-token.js +
+    // ensureAuthenticated) to be LIVE and verified first. Deploying them before
+    // the auth endpoint works will break cloud sync for every user (writes/reads
+    // will be denied). Ship the app build → confirm sign-in works → then deploy.
+    // Prereqs: Firebase Authentication enabled; the service account has the
+    // "Service Account Token Creator" role.
+    // ──────────────────────────────────────────────────────────────────────
+
+    // User data — a client may only touch its own document tree. The uid is the
+    // login code, minted into a custom token server-side after code validation.
     match /users/{userId} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
 
       match /semesters/{semId} {
-        allow read, write: if true;
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // Telemetry — any authenticated write, admin reads via server
+    // Rate-limit counters — written only by the server (Admin SDK bypasses rules).
+    // No client may read or write them.
+    match /rateLimits/{ipHash} {
+      allow read, write: if false;
+    }
+
+    // Telemetry — clients write only; reads happen server-side via the Admin SDK.
     match /telemetry/{userId}/{document=**} {
-      allow read, write: if true;
+      allow read: if false;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Admin config — anyone can read (gates need this), only server can write

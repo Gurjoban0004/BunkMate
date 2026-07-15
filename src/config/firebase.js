@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { Platform } from 'react-native';
 import { logger } from '../utils/logger';
 
@@ -44,5 +45,10 @@ if (Platform.OS === 'web') {
   });
 }
 
-export { db, app };
+// Firebase Auth — the app signs in with a server-minted custom token (uid === login
+// code) so Firestore rules can enforce per-user ownership. The session lives in
+// memory and is re-minted from the stored code on each launch (see ensureAuthenticated).
+const auth = getAuth(app);
+
+export { db, app, auth };
 export default app;
