@@ -7,7 +7,7 @@ const HolidayCard = ({ onUndo }) => {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Holiday</Text>
-            <Text style={styles.subtitle}>No classes today - Enjoy!</Text>
+            <Text style={styles.subtitle}>No classes are counted today.</Text>
 
             <TouchableOpacity style={styles.undoButton} onPress={onUndo}>
                 <Text style={styles.undoText}>Undo Holiday</Text>

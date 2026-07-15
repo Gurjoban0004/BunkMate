@@ -49,7 +49,7 @@ export default function DeletionWarningBanner() {
     >
       <View style={styles.content}>
         <Typography variant="h3" style={styles.title}>
-          ⚠️ Data Deletion Warning
+          Data Deletion Warning
         </Typography>
         <Typography variant="body2" style={styles.message}>
           This semester's data will be deleted in {warningData.daysRemaining} days ({warningData.deletionDate}).

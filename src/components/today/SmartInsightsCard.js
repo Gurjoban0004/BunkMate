@@ -21,15 +21,6 @@ export default function SmartInsightsCard({ insights, onViewAll }) {
     });
     const topInsights = sorted.slice(0, 2);
 
-    const severityIcon = (severity) => {
-        switch (severity) {
-            case 'danger':  return '⚠️';
-            case 'warning': return '📉';
-            case 'success': return '✅';
-            default:        return '💡';
-        }
-    };
-
     return (
         <View style={styles.card}>
             <View style={styles.headerRow}>
@@ -49,14 +40,13 @@ export default function SmartInsightsCard({ insights, onViewAll }) {
                 const isWarning = insight.severity === 'warning';
                 const bg = isDanger ? COLORS.dangerLight : isWarning ? COLORS.warningLight : COLORS.successLight;
                 const textC = isDanger ? COLORS.dangerDark : isWarning ? COLORS.warningDark : COLORS.successDark;
-                const icon = severityIcon(insight.severity);
 
                 return (
                     <View
                         key={i}
                         style={[styles.insightRowNew, { backgroundColor: bg }]}
                     >
-                        <Text style={styles.insightIcon}>{icon}</Text>
+                        <View style={[styles.insightDot, { backgroundColor: textC }]} />
                         <View style={styles.insightContent}>
                             <Text style={[styles.insightTextNew, { color: textC }]}>{insight.text}</Text>
                         </View>
@@ -106,8 +96,11 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
         gap: SPACING.sm,
     },
-    insightIcon: {
-        fontSize: 18,
+    insightDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        marginTop: 6,
     },
     insightContent: {
         flex: 1,

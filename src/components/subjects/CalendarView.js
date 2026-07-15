@@ -54,6 +54,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
             let status = 'none';
             let units = 1;
             let subjectDetails = [];
+            let pending = false; // marked by the user, not yet confirmed by the portal
 
             if (isHoliday) {
                 status = 'holiday';
@@ -61,6 +62,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                 const record = dayRecord[subjectId];
                 status = record.status === 'cancelled' ? 'cancelled' : record.status;
                 units = record.units || 1;
+                pending = record.source !== 'erp';
             } else if (!subjectId && dayRecord) {
                 // Global heatmap: collect all subject records for the day
                 const entries = Object.entries(dayRecord)
@@ -75,6 +77,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                 else if (cancelledCount > 0) status = 'cancelled';
 
                 units = entries.reduce((sum, [, r]) => sum + (r.units || 1), 0);
+                pending = entries.some(([, r]) => r.source !== 'erp');
 
                 // Build subject details for tap overlay
                 subjectDetails = entries.map(([sid, r]) => {
@@ -83,7 +86,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                 });
             }
 
-            data.push({ day: d, dateKey, status, units, subjectDetails });
+            data.push({ day: d, dateKey, status, units, subjectDetails, pending });
         }
 
         return {
@@ -177,10 +180,15 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                                 ]}>
                                     {cell.day}
                                 </Text>
-                                {/* Dot indicator for status */}
+                                {/* Dot indicator: solid = portal-confirmed, hollow = marked by you */}
                                 {cell.status !== 'none' && cell.status !== 'holiday' && (
                                     <View style={styles.dotsRow}>
-                                        <View style={[styles.dot, { backgroundColor: cs.text }]} />
+                                        <View style={[
+                                            styles.dot,
+                                            cell.pending
+                                                ? { borderWidth: 1, borderColor: cs.text, backgroundColor: 'transparent' }
+                                                : { backgroundColor: cs.text },
+                                        ]} />
                                     </View>
                                 )}
                                 {cell.status === 'holiday' && (
@@ -198,9 +206,15 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                     { label: 'Present', color: COLORS.success },
                     { label: 'Absent',  color: COLORS.danger },
                     { label: 'Holiday', color: COLORS.primary },
-                ].map(({ label, color }) => (
+                    { label: 'By you', hollow: true },
+                ].map(({ label, color, hollow }) => (
                     <View key={label} style={styles.legendItem}>
-                        <View style={[styles.legendDot, { backgroundColor: color }]} />
+                        <View style={[
+                            styles.legendDot,
+                            hollow
+                                ? { borderWidth: 1.5, borderColor: COLORS.textMuted, backgroundColor: 'transparent' }
+                                : { backgroundColor: color },
+                        ]} />
                         <Text style={styles.legendText}>{label}</Text>
                     </View>
                 ))}

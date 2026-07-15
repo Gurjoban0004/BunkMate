@@ -6,9 +6,9 @@ const EmptyDay = () => {
     const styles = getStyles();
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>No Classes Today!</Text>
+            <Text style={styles.title}>No classes today</Text>
             <Text style={styles.subtitle}>
-                Enjoy your day off. You've earned it!
+                Nothing scheduled. Your attendance is unchanged.
             </Text>
         </View>
     );

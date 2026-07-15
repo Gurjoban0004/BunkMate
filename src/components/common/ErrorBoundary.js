@@ -42,11 +42,13 @@ export default class ErrorBoundary extends React.Component {
 
         return (
             <View style={styles.container}>
-                <Text style={styles.icon}>⚠️</Text>
+                <View style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 3, borderColor: COLORS.danger, alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.md }}>
+                    <Text style={{ fontSize: 30, fontWeight: '800', color: COLORS.danger }}>!</Text>
+                </View>
                 <Text style={styles.title}>
                     {screen
                         ? `${screenName || 'This screen'} ran into a problem`
-                        : 'Oops! Something went wrong.'}
+                        : 'Something went wrong'}
                 </Text>
                 <Text style={styles.subtitle}>
                     {this.state.error?.message || 'An unexpected error occurred.'}
