@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Platform, Animated } from 'react-native';
+import useRouteTransition from '../hooks/useRouteTransition';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screens
@@ -17,50 +18,11 @@ import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import InsightsScreen from '../screens/main/InsightsScreen';
 import AdminScreen from '../screens/main/AdminScreen';
+import TabIcon from './TabIcon';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { isAdminRollNumber } from '../services/adminService';
-
-function TabIcon({ label, focused }) {
-    const color = focused ? COLORS.primary : COLORS.textSecondary;
-    const strokeWidth = focused ? 2 : 1.5;
-
-    const icons = {
-        Today: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-        ),
-        Subjects: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-            </svg>
-        ),
-        Insights: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
-        ),
-        Admin: (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-        ),
-    };
-
-    return (
-        <View style={{ width: 24, height: 24, opacity: focused ? 1 : 0.7 }}>
-            {icons[label]}
-        </View>
-    );
-}
 
 export default function WebTabNavigator() {
     const styles = getStyles();
@@ -77,6 +39,7 @@ export default function WebTabNavigator() {
 
     const activeStack = stacks[currentTab];
     const currentRoute = activeStack[activeStack.length - 1];
+    const transitionStyle = useRouteTransition(`${currentTab}:${currentRoute.name}`);
 
     // Refs so navigation callbacks always see current values without stale closures
     const stacksRef = React.useRef(stacks);
@@ -122,6 +85,18 @@ export default function WebTabNavigator() {
     const mockNavigation = useMemo(() => ({
         navigate: (screenOrTabName, params = {}) => {
             if (['Today', 'Subjects', 'Insights', 'Admin'].includes(screenOrTabName)) {
+                // Tapping the already-active tab pops its stack to root (native tab behavior)
+                if (currentTabRef.current === screenOrTabName) {
+                    setStacks(prev => {
+                        if (prev[screenOrTabName].length <= 1) return prev;
+                        const root = [prev[screenOrTabName][0]];
+                        if (Platform.OS === 'web') {
+                            window.history.pushState({ tab: screenOrTabName, index: 0 }, '', `?tab=${screenOrTabName}`);
+                        }
+                        return { ...prev, [screenOrTabName]: root };
+                    });
+                    return;
+                }
                 setCurrentTab(screenOrTabName);
                 if (Platform.OS === 'web') {
                     window.history.pushState({ tab: screenOrTabName, index: stacksRef.current[screenOrTabName].length - 1 }, '', `?tab=${screenOrTabName}`);
@@ -226,9 +201,9 @@ export default function WebTabNavigator() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.content}>
+            <Animated.View style={[styles.content, transitionStyle]}>
                 {renderScreen()}
-            </View>
+            </Animated.View>
 
             <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'web' && typeof window !== 'undefined' && window.navigator?.standalone ? 20 : 4) }]}>
                 {['Today', 'Subjects', 'Insights', ...(isAdmin ? ['Admin'] : [])].map((tabName) => {

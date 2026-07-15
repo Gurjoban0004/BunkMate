@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Animated } from 'react-native';
+import useRouteTransition from '../hooks/useRouteTransition';
 
 import LoginScreen from '../screens/setup/LoginScreen';
 import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
@@ -20,6 +21,7 @@ export default function WebNavigator() {
     ]);
 
     const currentRoute = history[history.length - 1];
+    const transitionStyle = useRouteTransition(currentRoute.name);
     // Ref so navigation callbacks always see current history without stale closure
     const historyRef = React.useRef(history);
     historyRef.current = history; // Update synchronously so canGoBack is accurate during child render
@@ -121,9 +123,9 @@ export default function WebNavigator() {
     };
 
     return (
-        <View style={styles.container}>
+        <Animated.View style={[styles.container, transitionStyle]}>
             {renderScreen()}
-        </View>
+        </Animated.View>
     );
 }
 
