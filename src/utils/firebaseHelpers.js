@@ -60,7 +60,7 @@ export const ensureAuthenticated = async (explicitCode) => {
   }
 };
 
-// Character set for login code generation (excludes confusing characters: 0, O, 1, I, L)
+// Character set for login code generation (excludes confusing characters: 0, O, 1, I)
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /**
@@ -156,7 +156,7 @@ export const getUserId = async () => {
 export const loginWithCode = async (code) => {
   try {
     // Validate code format before hitting the network
-    // Only accept characters from CODE_CHARS (excludes 0, O, 1, I, L)
+    // Only accept characters from CODE_CHARS (excludes 0, O, 1, I)
     const CODE_REGEX = /^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/;
     if (!code || !CODE_REGEX.test(code)) {
       throw new Error('Invalid login code');

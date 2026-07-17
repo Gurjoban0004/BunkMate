@@ -13,6 +13,7 @@
 
 import { Platform } from 'react-native';
 import { buildApiUrl, getApiBaseUrl } from './apiConfig';
+import { updateErpToken } from '../storage/erpTokenStorage';
 
 const API_TIMEOUT = 20000; // 20 seconds
 
@@ -104,12 +105,25 @@ export async function erpRefreshSession(persistentToken, authUserId, otp) {
 // ─── DATA FETCHING ────────────────────────────────────────────────────
 
 /**
+ * Data call wrapper: if the server silently refreshed the session (trusted
+ * device, no OTP), the response carries a new `token` — persist it so
+ * subsequent calls don't repeat the re-login.
+ */
+async function dataCall(endpoint, body) {
+    const result = await apiCall(endpoint, body);
+    if (result?.token) {
+        await updateErpToken(result.token); // never throws
+    }
+    return result;
+}
+
+/**
  * Fetch attendance summary.
  * Always pass persistentToken so server can auto-initiate re-login on session failure.
  * If response has { sessionExpired: true, needsOtp: true } → caller handles OTP flow.
  */
 export async function erpFetchAttendance(token, persistentToken = null) {
-    return apiCall('/api/erp-attendance', { token, persistentToken });
+    return dataCall('/api/erp-attendance', { token, persistentToken });
 }
 
 /**
@@ -117,7 +131,7 @@ export async function erpFetchAttendance(token, persistentToken = null) {
  * Same session-refresh behaviour as erpFetchAttendance.
  */
 export async function erpFetchCalendar(token, persistentToken = null) {
-    return apiCall('/api/erp-calendar', { token, persistentToken });
+    return dataCall('/api/erp-calendar', { token, persistentToken });
 }
 
 /**
@@ -125,7 +139,7 @@ export async function erpFetchCalendar(token, persistentToken = null) {
  * Same session-refresh behaviour as erpFetchAttendance.
  */
 export async function erpFetchTimetable(token, persistentToken = null) {
-    return apiCall('/api/erp-timetable', { token, persistentToken });
+    return dataCall('/api/erp-timetable', { token, persistentToken });
 }
 
 /**
@@ -135,7 +149,7 @@ export async function erpFetchTimetable(token, persistentToken = null) {
  */
 export async function erpKeepAlive(token, persistentToken = null) {
     try {
-        return await apiCall('/api/erp-attendance', { token, persistentToken, keepAlive: true });
+        return await dataCall('/api/erp-attendance', { token, persistentToken, keepAlive: true });
     } catch {
         // Silently swallow — keep-alive is non-critical
         return null;

@@ -88,7 +88,7 @@ export function useErpAutoSync(state, dispatch) {
         }
 
         // Fetch tokens before acquiring lock — early exits don't consume cooldown
-        const token = await getErpToken();
+        let token = await getErpToken();
         if (!token) {
             if (currentState.settings?.erpConnected) {
                 dispatch({ type: 'UPDATE_SETTINGS', payload: { erpConnected: false } });
@@ -118,6 +118,10 @@ export function useErpAutoSync(state, dispatch) {
 
             // ── Step 1: Attendance summary ────────────────────────
             const attendanceResult = await erpFetchAttendance(token, persistentToken);
+
+            // Server may have silently refreshed the session (trusted device, no OTP);
+            // use the new token for the remaining steps to avoid repeat re-logins.
+            if (attendanceResult.token) token = attendanceResult.token;
 
             // Auth failure — trigger OTP immediately, do not wait for keep-alive
             if (attendanceResult.sessionExpired) {
@@ -217,6 +221,7 @@ export function useErpAutoSync(state, dispatch) {
             let registerUnavailable = false;
             try {
                 const calData = await erpFetchCalendar(token, persistentToken);
+                if (calData.token) token = calData.token;
 
                 if (calData.sessionExpired) {
                     logger.warn('⚠️ Calendar sync skipped — session expired');
