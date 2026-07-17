@@ -15,6 +15,7 @@ const {
     decryptSession,
     decryptPersistent,
     reloginERP,
+    mintSessionToken,
     isSessionDead,
     setCorsHeaders,
     encodeForm,
@@ -365,9 +366,10 @@ module.exports = async function handler(req, res) {
         };
         console.log('[CAL-SERVER] Session fields:', JSON.stringify(sessionDiag));
 
-        const erpResult = await fetchCalendar(session);
-        const diag = erpResult._diag || {};
-        
+        let erpResult = await fetchCalendar(session);
+        let refreshedToken = null;
+        let diag = erpResult._diag || {};
+
         if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
             if (!persistentToken) {
                 return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: diag });
@@ -378,14 +380,25 @@ module.exports = async function handler(req, res) {
                 return res.status(401).json({ error: 'Invalid persistent token', sessionExpired: true });
             }
 
-            // Initiate re-login
             const reloginResult = await reloginERP(creds.username, creds.password);
-            return res.status(200).json({
-                sessionExpired: true,
-                needsOtp:       true,
-                authUserId:     reloginResult.authUserId,
-                studentName:    creds.studentName || '',
-            });
+
+            // Silent refresh: trusted device got a full session with no OTP — retry once.
+            if (reloginResult.session) {
+                session = reloginResult.session;
+                refreshedToken = mintSessionToken(session, creds);
+                erpResult = await fetchCalendar(session);
+                diag = erpResult._diag || {};
+            }
+
+            if (reloginResult.needsOtp
+                || !erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
+                return res.status(200).json({
+                    sessionExpired: true,
+                    needsOtp:       true,
+                    authUserId:     reloginResult.authUserId,
+                    studentName:    creds.studentName || '',
+                });
+            }
         }
 
         const htmlContent = erpResult.htmlBody;
@@ -454,13 +467,14 @@ module.exports = async function handler(req, res) {
             }
         }
 
-        return res.status(200).json({ 
-            success: true, 
-            calendar, 
+        return res.status(200).json({
+            success: true,
+            calendar,
             subjects,
             latestDate,
             fetchedAt: new Date().toISOString(),
             _diag: htmlDiag,
+            ...(refreshedToken && { token: refreshedToken }),
         });
 
     } catch (err) {

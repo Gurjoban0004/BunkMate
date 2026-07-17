@@ -129,8 +129,11 @@ async function verifyOtpWithERP(authUserId, otp, deviceIdUUID = '') {
 
 /**
  * Re-login to ERP using stored credentials.
- * Without OTP: initiates login, returns { needsOtp: true, authUserId }.
- * With OTP: completes full flow, returns session object.
+ * Without OTP:
+ *   - Trusted device (ERP status 1): returns { session, authUserId } — a full session,
+ *     no OTP round-trip needed (the "silent refresh" path).
+ *   - OTP demanded (status 4): returns { needsOtp: true, authUserId }.
+ * With OTP: completes full flow, returns the session object directly.
  *
  * deviceIdUUID is derived deterministically from the username so the same "device" is
  * presented every time (the basis of the ERP's trusted-device / OTP-exemption behavior).
@@ -139,11 +142,37 @@ async function reloginERP(username, password, otp = null) {
     const deviceIdUUID = generateDeviceUUID(username);
     const login = await loginLegacy(username, password, deviceIdUUID);
 
-    if (!otp) {
-        return { needsOtp: true, authUserId: login.authUserId };
+    if (otp) {
+        return verifyOtpWithERP(String(login.authUserId), otp, deviceIdUUID);
     }
 
-    return verifyOtpWithERP(String(login.authUserId), otp, deviceIdUUID);
+    // sessionId + apiKey only exist on a status-1 (trusted device) response;
+    // an MFA challenge (status 4) parses without them.
+    const s = login.session;
+    if (s && s.sessionId && s.apiKey) {
+        return { session: s, authUserId: login.authUserId };
+    }
+    return { needsOtp: true, authUserId: login.authUserId };
+}
+
+/**
+ * Seal a full ERP session into a client token — the one shape used everywhere
+ * (erp-verify-otp, erp-session refresh, and silent refresh in the data handlers).
+ */
+function mintSessionToken(session, { username = '', studentName = '', isMock = false } = {}) {
+    return encryptSession({
+        rollNumber:    username ? String(username).trim() : '',
+        userId:        session.userId,
+        sessionId:     session.sessionId,
+        roleId:        session.roleId,
+        apiKey:        session.apiKey,
+        securityToken: session.securityToken || '',
+        deviceIdUUID:  session.deviceIdUUID || '',
+        studentId:     session.studentId,
+        studentName:   session.studentName || studentName || '',
+        studentPhoto:  session.studentPhoto || '',
+        isMock:        session.isMock || isMock || false,
+    });
 }
 
 /**
@@ -199,6 +228,7 @@ module.exports = {
     encryptPersistent,
     decryptPersistent,
     reloginERP,
+    mintSessionToken,
     verifyOtpWithERP,
     isSessionDead,
     setCorsHeaders,

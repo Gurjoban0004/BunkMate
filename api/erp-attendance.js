@@ -22,6 +22,7 @@ const {
     decryptSession,
     decryptPersistent,
     reloginERP,
+    mintSessionToken,
     isSessionDead,
     setCorsHeaders,
     encodeForm,
@@ -216,7 +217,8 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        const erpResult = await fetchAttendance(session);
+        let erpResult = await fetchAttendance(session);
+        let refreshedToken = null;
 
         // ── Session dead? ─────────────────────────────────────────
         if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
@@ -229,19 +231,30 @@ module.exports = async function handler(req, res) {
                 return res.status(401).json({ error: 'Invalid persistent token', sessionExpired: true });
             }
 
-            // Initiate re-login — ERP will send OTP to student
             const reloginResult = await reloginERP(creds.username, creds.password);
-            return res.status(200).json({
-                sessionExpired: true,
-                needsOtp:       true,
-                authUserId:     reloginResult.authUserId,
-                studentName:    creds.studentName || '',
-            });
+
+            // Silent refresh: trusted device got a full session with no OTP — retry once.
+            if (reloginResult.session) {
+                session = reloginResult.session;
+                refreshedToken = mintSessionToken(session, creds);
+                erpResult = await fetchAttendance(session);
+            }
+
+            if (reloginResult.needsOtp
+                || !erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
+                // ERP demands OTP (or even a fresh session failed) — hand off to OTP flow
+                return res.status(200).json({
+                    sessionExpired: true,
+                    needsOtp:       true,
+                    authUserId:     reloginResult.authUserId,
+                    studentName:    creds.studentName || '',
+                });
+            }
         }
 
         // ── keepAlive short-circuit — session is valid, skip parsing ──
         if (keepAlive) {
-            return res.status(200).json({ success: true, alive: true });
+            return res.status(200).json({ success: true, alive: true, ...(refreshedToken && { token: refreshedToken }) });
         }
 
         const htmlContent = erpResult.htmlBody;
@@ -263,16 +276,21 @@ module.exports = async function handler(req, res) {
                     success: true, subjects: [], empty: true,
                     message: 'Attendance has not been uploaded yet for this session.',
                     fetchedAt: new Date().toISOString(),
+                    ...(refreshedToken && { token: refreshedToken }),
                 });
             }
 
             return res.status(200).json({
                 success: true, subjects: [],
                 warning: 'Could not parse attendance data. The portal layout may have changed.',
+                ...(refreshedToken && { token: refreshedToken }),
             });
         }
 
-        return res.status(200).json({ success: true, subjects, fetchedAt: new Date().toISOString() });
+        return res.status(200).json({
+            success: true, subjects, fetchedAt: new Date().toISOString(),
+            ...(refreshedToken && { token: refreshedToken }),
+        });
 
     } catch (err) {
         console.error('ERP attendance fetch error:', err.message);

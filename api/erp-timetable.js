@@ -15,6 +15,7 @@ const {
     decryptSession,
     decryptPersistent,
     reloginERP,
+    mintSessionToken,
     isSessionDead,
     setCorsHeaders,
     ERP_BASE,
@@ -369,8 +370,9 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        const erpResult = await fetchTimetableLegacy(session);
-        const diag = erpResult._diag || {};
+        let erpResult = await fetchTimetableLegacy(session);
+        let refreshedToken = null;
+        let diag = erpResult._diag || {};
 
         // Session dead check
         if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
@@ -384,12 +386,24 @@ module.exports = async function handler(req, res) {
             }
 
             const reloginResult = await reloginERP(creds.username, creds.password);
-            return res.status(200).json({
-                sessionExpired: true,
-                needsOtp:       true,
-                authUserId:     reloginResult.authUserId,
-                studentName:    creds.studentName || '',
-            });
+
+            // Silent refresh: trusted device got a full session with no OTP — retry once.
+            if (reloginResult.session) {
+                session = reloginResult.session;
+                refreshedToken = mintSessionToken(session, creds);
+                erpResult = await fetchTimetableLegacy(session);
+                diag = erpResult._diag || {};
+            }
+
+            if (reloginResult.needsOtp
+                || !erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
+                return res.status(200).json({
+                    sessionExpired: true,
+                    needsOtp:       true,
+                    authUserId:     reloginResult.authUserId,
+                    studentName:    creds.studentName || '',
+                });
+            }
         }
 
         const htmlContent = erpResult.payload?.content || '';
@@ -415,6 +429,7 @@ module.exports = async function handler(req, res) {
                 timesAreInferred: true,
                 fetchedAt: new Date().toISOString(),
                 _diag: htmlDiag,
+                ...(refreshedToken && { token: refreshedToken }),
             });
         }
 
@@ -429,6 +444,7 @@ module.exports = async function handler(req, res) {
                 timesAreInferred: true,
                 fetchedAt: new Date().toISOString(),
                 _diag: { ...htmlDiag, parserResult: 'no_timetable_found' },
+                ...(refreshedToken && { token: refreshedToken }),
             });
         }
 
@@ -447,6 +463,7 @@ module.exports = async function handler(req, res) {
             timesAreInferred: parsed.timesAreInferred,
             fetchedAt: new Date().toISOString(),
             _diag: htmlDiag,
+            ...(refreshedToken && { token: refreshedToken }),
         });
 
     } catch (err) {
