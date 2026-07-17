@@ -13,7 +13,16 @@ import { loginWithCode, getUserId, checkOnlineStatus, getCurrentSemesterId } fro
 jest.mock('@react-native-async-storage/async-storage');
 jest.mock('firebase/firestore');
 jest.mock('../config/firebase', () => ({
-    db: {}
+    db: {},
+    auth: { currentUser: null }
+}));
+// firebase/auth ships untransformed ESM; mock with a factory. signInWithCustomToken
+// sets currentUser to the token — the fetch mock below issues token === code, so
+// ensureAuthenticated's uid check passes.
+jest.mock('firebase/auth', () => ({
+    signInWithCustomToken: jest.fn(async (authObj, token) => {
+        authObj.currentUser = { uid: token };
+    }),
 }));
 jest.mock('../utils/firebaseHelpers', () => {
     const original = jest.requireActual('../utils/firebaseHelpers');
@@ -24,13 +33,24 @@ jest.mock('../utils/firebaseHelpers', () => {
     };
 });
 
+const { auth } = require('../config/firebase');
+
 describe('Firebase Integration Flow', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         console.log = jest.fn();
         console.warn = jest.fn();
         console.error = jest.fn();
-        
+
+        auth.currentUser = null;
+        // Mock the auth-token API: returns token === requested code
+        global.fetch = jest.fn(async (url, opts) => ({
+            ok: true,
+            status: 200,
+            json: async () => ({ token: JSON.parse(opts.body).code }),
+        }));
+        doc.mockReturnValue({ id: 'mock-ref' });
+
         checkOnlineStatus.mockReturnValue(true);
         getCurrentSemesterId.mockReturnValue('fall-2024');
     });
@@ -45,10 +65,14 @@ describe('Firebase Integration Flow', () => {
         const userId = await getUserId();
         expect(userId).toMatch(/^PRES-/);
         expect(AsyncStorage.setItem).toHaveBeenCalledWith('userId', userId);
-        expect(setDoc).toHaveBeenCalled(); // Creates user document
+        // User doc is created server-side via /api/auth-token with create:true
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining('/api/auth-token'),
+            expect.objectContaining({ body: JSON.stringify({ code: userId, create: true }) })
+        );
 
         // 2. User saves state
-        const state = { setupComplete: true, subjects: [] };
+        const state = { setupComplete: true, subjects: [], userId };
         AsyncStorage.getItem.mockResolvedValue(userId);
         
         await saveAppState(state);
@@ -65,19 +89,14 @@ describe('Firebase Integration Flow', () => {
     });
 
     test('cross-device login flow: login with code, load cloud state', async () => {
-        const existingCode = 'PRES-ABC1234';
+        const existingCode = 'PRES-ABC2345';
         const cloudState = { 
             _lastModified: '2024-01-02T00:00:00.000Z', 
             setupComplete: true, 
             subjects: [{ id: '1', name: 'Math' }] 
         };
 
-        // 1. Login with code
-        getDoc.mockResolvedValueOnce({
-            exists: () => true,
-            data: () => ({ createdAt: new Date() })
-        });
-        
+        // 1. Login with code (validated server-side via /api/auth-token, not getDoc)
         const userId = await loginWithCode(existingCode);
         expect(userId).toBe(existingCode);
         expect(AsyncStorage.setItem).toHaveBeenCalledWith('userId', existingCode);
@@ -100,8 +119,8 @@ describe('Firebase Integration Flow', () => {
     });
 
     test('offline-to-online sync: save offline, sync when online', async () => {
-        const state = { subjects: [] };
-        const userId = 'PRES-OFFLINE';
+        const userId = 'PRES-QRS7892';
+        const state = { subjects: [], userId };
         
         // 1. Save while offline
         checkOnlineStatus.mockReturnValue(false);

@@ -8,7 +8,7 @@ import {
     migrateToFirestore,
     deleteUserAccount
 } from '../storage';
-import { checkOnlineStatus, getCurrentSemesterId } from '../../utils/firebaseHelpers';
+import { checkOnlineStatus, getCurrentSemesterId, ensureAuthenticated } from '../../utils/firebaseHelpers';
 
 // Mock dependencies
 jest.mock('@react-native-async-storage/async-storage');
@@ -28,6 +28,10 @@ describe('storage hybrid layer', () => {
         // Default mocks
         getCurrentSemesterId.mockReturnValue('fall-2024');
         checkOnlineStatus.mockReturnValue(true);
+        // Cloud writes are gated on an authenticated session; default to signed-in
+        ensureAuthenticated.mockResolvedValue(true);
+        // doc() must return something truthy for expect.anything() to match
+        doc.mockReturnValue({ id: 'mock-ref' });
     });
 
     describe('shouldUseCloudData', () => {
@@ -64,7 +68,8 @@ describe('storage hybrid layer', () => {
 
     describe('saveAppState', () => {
         test('saves to AsyncStorage first, then Firestore if online', async () => {
-            const state = { subjects: [] };
+            // Cloud save requires state.userId
+            const state = { subjects: [], userId: 'PRES-123' };
             AsyncStorage.getItem.mockResolvedValue('PRES-123');
             setDoc.mockResolvedValue();
 
@@ -101,8 +106,10 @@ describe('storage hybrid layer', () => {
         test('handles cloud save failure gracefully', async () => {
             AsyncStorage.getItem.mockResolvedValue('PRES-123');
             setDoc.mockRejectedValue(new Error('Firestore failure'));
-            
-            await saveAppState({ subjects: [] });
+
+            await saveAppState({ subjects: [], userId: 'PRES-123' });
+            // Cloud save is fire-and-forget; flush the rejection handler
+            await new Promise((resolve) => setTimeout(resolve, 0));
 
             // Should still have saved to local
             expect(AsyncStorage.setItem).toHaveBeenCalled();
@@ -132,7 +139,8 @@ describe('storage hybrid layer', () => {
 
             const result = await loadAppState();
 
-            expect(result).toEqual(localState);
+            // Loader stamps the current schema version during migration
+            expect(result).toEqual({ ...localState, _version: 1 });
             expect(AsyncStorage.setItem).not.toHaveBeenCalledWith('@bunkmate_state', expect.any(String));
         });
 
@@ -171,8 +179,8 @@ describe('storage hybrid layer', () => {
             // Since we use Promise.race with a timeout
             
             const result = await loadAppState();
-            expect(result).toEqual(localState);
-        });
+            expect(result).toEqual({ ...localState, _version: 1 });
+        }, 10000); // cloud timeout is 5s of real time; give the test headroom
     });
 
     describe('migrateToFirestore', () => {

@@ -74,9 +74,14 @@ describe('ERP provider parsing', () => {
 });
 
 describe('attendance register parser', () => {
-    test('extracts all subjects, portal IDs, totals, absences, and units from captured register', () => {
+    // Found.txt is a real captured register page (not committed — contains student data).
+    // Skip when absent; re-capture from the live portal to run this test.
+    const FOUND_PATH = path.join(__dirname, '../../../Found.txt');
+    const testIfCapture = fs.existsSync(FOUND_PATH) ? test : test.skip;
+
+    testIfCapture('extracts all subjects, portal IDs, totals, absences, and units from captured register', () => {
         const { parseRegisterHTML } = require('../erp-calendar');
-        const found = fs.readFileSync(path.join(__dirname, '../../../Found.txt'), 'utf8');
+        const found = fs.readFileSync(FOUND_PATH, 'utf8');
         const tableStart = found.indexOf("<table border='1'");
         const html = found.slice(tableStart);
 
