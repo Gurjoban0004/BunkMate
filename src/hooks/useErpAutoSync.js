@@ -305,16 +305,22 @@ export function useErpAutoSync(state, dispatch) {
 
             // ── Step 3: Timetable (once per 24h, non-blocking) ────
             const TIMETABLE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+            // Real timetable sources are cached for 24h; 'manual' is never auto-overwritten; any
+            // other/empty source is retried each cycle until we get a real one.
+            const REAL_TT_SOURCES = ['erp', 'register-derived'];
             const lastTtFetch = currentState.timetableMeta?.fetchedAt;
             const ttSource = currentState.timetableMeta?.source;
             const shouldFetchTimetable = (
-                !lastTtFetch ||
-                (ttSource !== 'erp' && ttSource !== 'manual') ||
-                (Date.now() - new Date(lastTtFetch).getTime()) > TIMETABLE_INTERVAL_MS
+                ttSource !== 'manual' && (
+                    !lastTtFetch ||
+                    !REAL_TT_SOURCES.includes(ttSource) ||
+                    (Date.now() - new Date(lastTtFetch).getTime()) > TIMETABLE_INTERVAL_MS
+                )
             );
 
             if (shouldFetchTimetable) {
                 try {
+                    // Timetable is derived from the attendance register (live, weekly-auto-updating).
                     const ttData = await erpFetchTimetable(token, persistentToken);
 
                     if (ttData.sessionExpired) {

@@ -21,7 +21,7 @@ if (!SECRET || SECRET.length < 32) {
     throw new Error('ENCRYPTION_SECRET must be set and at least 32 characters long');
 }
 
-// Two separate salts so the two token types are cryptographically independent
+// Separate salts so the token types are cryptographically independent
 const SESSION_SALT    = 'presence-erp-salt';
 const PERSISTENT_SALT = 'presence-persistent-salt';
 

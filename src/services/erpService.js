@@ -137,6 +137,7 @@ export async function erpFetchCalendar(token, persistentToken = null) {
 /**
  * Fetch the weekly timetable from the ERP.
  * Same session-refresh behaviour as erpFetchAttendance.
+ * Derived from the attendance register (live, weekly-auto-updating).
  */
 export async function erpFetchTimetable(token, persistentToken = null) {
     return dataCall('/api/erp-timetable', { token, persistentToken });

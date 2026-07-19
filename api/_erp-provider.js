@@ -158,14 +158,14 @@ async function verifyOtpLegacy(authUserId, otp, deviceIdUUID = '') {
         };
     }
 
-    // NOTE (APK-FINDINGS.md §2c, §8): the exact fresh-device OTP-verify endpoint on /mobilev2
-    // is rendered server-side inside the multiFactorAuth form and needs one live capture to
-    // confirm. We forward deviceIdUUID so the device becomes trusted (→ future logins skip OTP)
-    // and capture the server-issued token. Endpoint stays on the legacy verifyOtp until captured.
-    const { response, payload } = await postLegacy('/mobile/verifyOtp', {
-        authUserId,
-        OTPText: otp,
+    // Verified live 2026-07-17 (HANDOFF-erp-mobile.md): the real fresh-device OTP-verify
+    // endpoint is /mobilev2/verifyOtp (NOT /mobile/verifyOtp — that was the bug that blocked
+    // the whole mobile flow). It returns status:1 with res.data.token = the securityToken,
+    // which parseLegacySession reads. deviceIdUUID is forwarded to bind/trust the device.
+    const { response, payload } = await postLegacy('/mobilev2/verifyOtp', {
         deviceIdUUID,
+        OTPText: otp,
+        authUserId,
     });
     if (!response.ok) throw new Error('OTP verification request failed');
     assertNotLoginFailure(payload);
@@ -403,8 +403,13 @@ async function fetchTimetableLegacy(session) {
         await warmupResp.text();
     } catch (err) { /* warmup failure non-fatal */ }
 
-    // Candidate endpoints to try
+    // Candidate endpoints to try. The web My-Info page (GET /display, cookie-authed, no body)
+    // is the real timetable source — verified live 2026-07-18 via HTTP Toolkit capture: the
+    // PHPSESSID set by the mobilev2/showAttendance warmup authorizes it, and its HTML embeds the
+    // weekly grid (rowheading / Days-Periods / dataFont) the parser below already reads. The old
+    // POST-with-mobile-body candidates never returned a grid; keep them only as fallbacks.
     const candidates = [
+        { path: '/chalkpadpro/studentDetails/display', method: 'GET' },
         { path: '/chalkpadpro/studentDetails/studentTimeTable', method: 'POST' },
         { path: '/chalkpadpro/studentDetails/getTimeTable', method: 'POST' },
         { path: '/chalkpadpro/studentDetails/getStudentTimeTable', method: 'POST' },
@@ -418,7 +423,7 @@ async function fetchTimetableLegacy(session) {
             const resp = await fetch(`${ERP_BASE}${candidate.path}`, {
                 method: candidate.method,
                 headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
-                body: encodeForm(baseBody),
+                ...(candidate.method === 'GET' ? {} : { body: encodeForm(baseBody) }),
             });
             const text = await resp.text();
             if (resp.ok && isTimetableContent(text)) {

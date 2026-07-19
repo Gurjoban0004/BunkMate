@@ -22,24 +22,30 @@ const {
 } = require('./_session-utils');
 const {
     fetchTimetableLegacy,
+    fetchRegisterLegacy,
     readErpPayload,
 } = require('./_erp-provider');
+const { parseRegisterHTML } = require('./erp-calendar');
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_ABBREVS = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday' };
 
-// Standard period times for CU (used when no explicit times found in HTML)
+// CU CSE bell schedule: 1-hour periods on the hour from 9am. A 2-hour class occupies two
+// consecutive periods (two register cells, same subject) → renders as two back-to-back hours.
+// ponytail: period-number → clock-time is a fixed semester map; calibrate against real register
+// data if an afternoon slot shows the wrong hour (the ERP's period numbering across the daily
+// break is the only unknown — adjust the after-break entries here, one place).
 const DEFAULT_PERIODS = [
-    { number: 1, start: '09:00', end: '09:50' },
-    { number: 2, start: '10:00', end: '10:50' },
-    { number: 3, start: '11:00', end: '11:50' },
-    { number: 4, start: '12:00', end: '12:50' },
-    { number: 5, start: '13:40', end: '14:30' },
-    { number: 6, start: '14:30', end: '15:20' },
-    { number: 7, start: '15:20', end: '16:10' },
-    { number: 8, start: '16:10', end: '17:00' },
+    { number: 1, start: '09:00', end: '10:00' },
+    { number: 2, start: '10:00', end: '11:00' },
+    { number: 3, start: '11:00', end: '12:00' },
+    { number: 4, start: '12:00', end: '13:00' },
+    { number: 5, start: '13:00', end: '14:00' },
+    { number: 6, start: '14:00', end: '15:00' },
+    { number: 7, start: '15:00', end: '16:00' },
+    { number: 8, start: '16:00', end: '17:00' },
 ];
 
 function stripTags(html) {
@@ -118,7 +124,10 @@ function extractSubjectsFromCellHtml(rawHtml) {
     for (const frag of parts) {
         const text = stripTags(frag);
         if (!text) continue;
-        const info = extractSubjectInfo(text);
+        // The full subject name lives in the cell's title attr ("Algorithm Design & Implementation
+        // (24CSE0317)"); the visible text is just the code. Prefer the title when present.
+        const titleMatch = frag.match(/title=["']([^"']+)["']/i);
+        const info = extractSubjectInfo(titleMatch ? titleMatch[1].trim() : text) || extractSubjectInfo(text);
         if (!info) continue;
         if (info.subjectCode && seenCodes.has(info.subjectCode)) continue;
         if (info.subjectCode) seenCodes.add(info.subjectCode);
@@ -135,6 +144,39 @@ function extractSubjectsFromCellHtml(rawHtml) {
  *   - Days as columns with period rows
  *   - Embedded in a larger page (searches for timetable section)
  */
+// Isolate the innermost <table> enclosing the "Days/Periods" grid header, with balanced
+// <table>/</table> matching (the page nests tables). Returns null if the anchor isn't present.
+function isolateGridByAnchor(html) {
+    const anchor = html.search(/Days\s*\/\s*Periods/i);
+    if (anchor < 0) return null;
+    const start = html.lastIndexOf('<table', anchor);
+    if (start < 0) return null;
+    const tagRe = /<\/?table\b/gi;
+    tagRe.lastIndex = start;
+    let depth = 0, m;
+    while ((m = tagRe.exec(html)) !== null) {
+        depth += m[0][1] === '/' ? -1 : 1;
+        if (depth === 0) {
+            const end = html.indexOf('>', m.index);
+            return html.slice(start, end < 0 ? m.index : end + 1);
+        }
+    }
+    return null;
+}
+
+// Parse "1 09:00 AM 10:00 AM" style period headers (two clock times, no dash separator) → 24h range.
+function extractAmPmRange(text) {
+    const times = text.match(/\d{1,2}:\d{2}\s*[AP]M/gi);
+    if (!times || times.length < 2) return null;
+    const to24 = (t) => {
+        const [, h, mm, ap] = t.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
+        let hr = parseInt(h, 10) % 12;
+        if (/PM/i.test(ap)) hr += 12;
+        return `${String(hr).padStart(2, '0')}:${mm}`;
+    };
+    return { start: to24(times[0]), end: to24(times[times.length - 1]) };
+}
+
 function parseTimetableHTML(htmlContent) {
     const timetable = {};
     DAY_NAMES.forEach(d => { timetable[d] = []; });
@@ -145,9 +187,13 @@ function parseTimetableHTML(htmlContent) {
         return { timetable, periods, timesAreInferred: true, found: false };
     }
 
-    // Try to isolate the timetable section if embedded in a larger page
-    let timetableHtml = htmlContent;
-    const sectionMarkers = [
+    // Try to isolate the timetable section if embedded in a larger page.
+    // Preferred: anchor on the grid's own header cell ("Days/Periods") and extract the
+    // innermost enclosing <table> with balanced tag matching (the page nests tables, so a
+    // non-greedy /<table>...<\/table>/ would close on the wrong tag). Verified against the
+    // live My-Info page (chalkpadpro/studentDetails/display) captured 2026-07-18.
+    let timetableHtml = isolateGridByAnchor(htmlContent) || htmlContent;
+    const sectionMarkers = timetableHtml !== htmlContent ? [] : [
         /time\s*table/i, /timetable/i, /class\s*schedule/i, /weekly\s*schedule/i,
     ];
     for (const marker of sectionMarkers) {
@@ -219,12 +265,13 @@ function parseTimetableHTML(htmlContent) {
         // Header row has period/time info, subsequent rows have day + subjects
         // Extract period times from header
         const periodHeaders = headerRow.slice(1); // skip first cell (usually "Day" label)
+        const rangeOf = (hdr) => extractTimeRange(hdr) || extractAmPmRange(hdr);
         periods = periodHeaders.map((hdr, idx) => {
-            const timeRange = extractTimeRange(hdr);
+            const timeRange = rangeOf(hdr);
             if (timeRange) return { number: idx + 1, ...timeRange };
             return DEFAULT_PERIODS[idx] || { number: idx + 1, start: `${9 + idx}:00`, end: `${9 + idx}:50` };
         });
-        timesAreInferred = !periodHeaders.some(h => extractTimeRange(h) !== null);
+        timesAreInferred = !periodHeaders.some(h => rangeOf(h) !== null);
 
         for (let r = 1; r < rows.length; r++) {
             const row = rows[r];
@@ -302,6 +349,72 @@ function parseTimetableHTML(htmlContent) {
     return { timetable, periods, timesAreInferred, found: true };
 }
 
+/**
+ * Derive the recurring weekly timetable from the attendance register.
+ *
+ * The register (getAttendanceRegister) reliably returns every class instance as a cell
+ * id `subject_{erpSubjectId}_{YYYY}_{MM}_{DD}_{period}`. The dedicated timetable endpoints
+ * all return empty for this ERP (HANDOFF-erp-mobile.md OPEN #1), so instead we map each
+ * instance's date → weekday and tally which subject occupies each (weekday, period) slot.
+ * The most-frequent subject per slot wins, which is robust to one-off substitutions and
+ * mid-semester changes. Times are always inferred (the register carries no clock times).
+ */
+function deriveTimetableFromRegister(htmlContent) {
+    const { subjects } = parseRegisterHTML(htmlContent);
+    const byId = {};
+    for (const s of subjects) byId[s.erpSubjectId] = s;
+
+    // getDay(): 0=Sun … 6=Sat. Sunday has no classes → dropped.
+    const dayIndexToName = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+
+    // slots[dayName][period] = Map(subjectKey → { count, name, code })
+    const slots = {};
+    const cellRegex = /id=['"]subject_(\d+)_(\d{4})_(\d{2})_(\d{2})_(\d+)['"]/gi;
+    let m;
+    while ((m = cellRegex.exec(htmlContent)) !== null) {
+        const [, id, y, mo, d, p] = m;
+        const subj = byId[id];
+        if (!subj) continue;
+        const dayName = dayIndexToName[new Date(Number(y), Number(mo) - 1, Number(d)).getDay()];
+        if (!dayName) continue;
+        const period = parseInt(p, 10);
+        slots[dayName] = slots[dayName] || {};
+        slots[dayName][period] = slots[dayName][period] || new Map();
+        const key = subj.code || subj.name;
+        const cur = slots[dayName][period].get(key) || { count: 0, name: subj.name, code: subj.code };
+        cur.count += 1;
+        slots[dayName][period].set(key, cur);
+    }
+
+    const timetable = {};
+    DAY_NAMES.forEach(d => { timetable[d] = []; });
+    let maxPeriod = 0;
+    for (const dayName of Object.keys(slots)) {
+        for (const period of Object.keys(slots[dayName]).map(Number)) {
+            const winner = [...slots[dayName][period].values()].sort((a, b) => b.count - a.count)[0];
+            if (!winner) continue;
+            const times = DEFAULT_PERIODS[period - 1] || { start: `${8 + period}:00`, end: `${8 + period}:50` };
+            timetable[dayName].push({
+                subjectName: winner.name,
+                subjectCode: winner.code,
+                period,
+                startTime: times.start,
+                endTime: times.end,
+            });
+            if (period > maxPeriod) maxPeriod = period;
+        }
+    }
+    DAY_NAMES.forEach(d => timetable[d].sort((a, b) => a.period - b.period));
+
+    const totalEntries = Object.values(timetable).reduce((sum, day) => sum + day.length, 0);
+    return {
+        timetable,
+        periods: DEFAULT_PERIODS.slice(0, maxPeriod),
+        timesAreInferred: true,
+        found: totalEntries > 0,
+    };
+}
+
 // ─── HANDLER ─────────────────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
@@ -369,13 +482,43 @@ module.exports = async function handler(req, res) {
         });
     }
 
+    // Timetable source: derive the recurring weekly grid from the attendance register (live,
+    // weekly-auto-updating). The mobile API has no timetable endpoint and the web /display page is
+    // Turnstile-gated, so the register is the reliable cross-platform source (see PRODUCT.md).
+    async function fetchTimetableData(sess) {
+        const reg = await fetchRegisterLegacy(sess);
+        const html = reg.payload?.content || reg.payload?.data?.content || '';
+        if (html) {
+            const derived = deriveTimetableFromRegister(html);
+            if (derived.found) {
+                return { response: reg.response, payload: reg.payload, parsed: derived, source: 'register-derived' };
+            }
+        }
+        // Fallback: dedicated timetable endpoints (usually empty for CUIET, kept for other colleges).
+        const tt = await fetchTimetableLegacy(sess);
+        const ttHtml = tt.payload?.content || '';
+        return {
+            response: tt.response,
+            payload: tt.payload,
+            parsed: parseTimetableHTML(ttHtml),
+            source: tt._diag?.source || 'chalkpadpro',
+            _diag: tt._diag,
+        };
+    }
+
     try {
-        let erpResult = await fetchTimetableLegacy(session);
+        // Derive the timetable from the attendance register.
+        let erpResult = await fetchTimetableData(session);
         let refreshedToken = null;
         let diag = erpResult._diag || {};
 
-        // Session dead check
-        if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
+        // Session dead check.
+        // NOTE: a missing/empty timetable is NOT a dead session. The mobile API never serves the
+        // real timetable (see memory erp-web-login-turnstile), so fetchTimetableLegacy returns
+        // response.ok=false as its normal "not found" outcome. Re-logging in on that fired an OTP
+        // email on every app open. Only re-auth on a genuine session-death signal — never on
+        // absent data (attendance/calendar on the same open detect a real dead session).
+        if (isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
             if (!persistentToken) {
                 return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: diag });
             }
@@ -391,12 +534,12 @@ module.exports = async function handler(req, res) {
             if (reloginResult.session) {
                 session = reloginResult.session;
                 refreshedToken = mintSessionToken(session, creds);
-                erpResult = await fetchTimetableLegacy(session);
+                erpResult = await fetchTimetableData(session);
                 diag = erpResult._diag || {};
             }
 
             if (reloginResult.needsOtp
-                || !erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
+                || isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
                 return res.status(200).json({
                     sessionExpired: true,
                     needsOtp:       true,
@@ -433,7 +576,10 @@ module.exports = async function handler(req, res) {
             });
         }
 
-        const parsed = parseTimetableHTML(htmlContent);
+        // fetchTimetableData already derives from the register as the primary source
+        // (source 'register-derived'); the real full grid arrives via the WebView /display path.
+        const parsed = erpResult.parsed || parseTimetableHTML(htmlContent);
+        const source = erpResult.source || diag.source || 'chalkpadpro';
 
         if (!parsed.found) {
             return res.status(200).json({
@@ -459,7 +605,7 @@ module.exports = async function handler(req, res) {
             success: true,
             timetable: parsed.timetable,
             timeSlots,
-            source: diag.source || 'chalkpadpro',
+            source,
             timesAreInferred: parsed.timesAreInferred,
             fetchedAt: new Date().toISOString(),
             _diag: htmlDiag,
@@ -473,3 +619,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.parseTimetableHTML = parseTimetableHTML;
+module.exports.deriveTimetableFromRegister = deriveTimetableFromRegister;

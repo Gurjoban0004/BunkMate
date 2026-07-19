@@ -43,7 +43,7 @@ export default function StatusHeader({ subjectData }) {
                         <Text style={styles.statValue}>{total}</Text>
                     </View>
                     <View style={styles.statLine}>
-                        <Text style={styles.statLabel}>Goal Goal</Text>
+                        <Text style={styles.statLabel}>Goal</Text>
                         <Text style={[styles.statValue, { color: COLORS.textMuted }]}>{target}%</Text>
                     </View>
                 </View>

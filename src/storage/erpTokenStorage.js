@@ -14,6 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ERP_TOKEN_KEY        = '@presence_erp_token';
 const ERP_STUDENT_NAME_KEY = '@presence_erp_student_name';
 const ERP_PERSISTENT_KEY   = '@presence_erp_persistent_token';
+// Opaque web-portal session token (sealed PHPSESSID) from a WebView login — unlocks the real
+// /display timetable. Optional; the app works without it (falls back to the derived timetable).
 
 /**
  * Save session token and optionally the persistent credential token.
