@@ -9,7 +9,7 @@
         }
     },
     "crons": [
-        { "path": "/api/push-send", "schedule": "0 * * * *" }
+        { "path": "/api/push-send", "schedule": "30 12 * * *" }
     ],
     "rewrites": [
         {
