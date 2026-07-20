@@ -190,6 +190,51 @@ async function fetchSummaryLegacy(session) {
     });
 }
 
+// Extract Set-Cookie names=values from a response (handles the several ways runtimes expose them).
+function extractCookies(resp) {
+    const cookies = [];
+    const add = (c) => { const name = c.split(';')[0]; if (name && !cookies.includes(name)) cookies.push(name); };
+    try { if (typeof resp.headers.getSetCookie === 'function') resp.headers.getSetCookie().forEach(add); } catch { /* ignore */ }
+    try { if (typeof resp.headers.raw === 'function') (resp.headers.raw()['set-cookie'] || []).forEach(add); } catch { /* ignore */ }
+    try { const single = resp.headers.get('set-cookie'); if (single) single.split(/,(?=[^;]*=)/).forEach(add); } catch { /* ignore */ }
+    return cookies.join('; ');
+}
+
+// Attendance summary via mobilev2 WITH the showAttendance warmup + cookies. The ERP binds the
+// server session on the warmup and sets PHPSESSID/ci_session; commonPage/28 then reads as a live
+// session. Without the warmup (the old fetchSummaryLegacy path) the ERP treats the session as dead
+// → "Session expired". This mirrors fetchRegisterLegacy and the official app / Attendly capture.
+async function fetchSummaryV2(session) {
+    const sessionForm = {
+        userId: session.userId,
+        sessionId: session.sessionId,
+        roleId: session.roleId,
+        apiKey: session.apiKey,
+        securityToken: session.securityToken || '',
+        deviceIdUUID: session.deviceIdUUID || '',
+    };
+
+    let cookies = '';
+    try {
+        const warmup = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
+            method: 'POST',
+            headers: LEGACY_HEADERS,
+            redirect: 'manual',
+            body: encodeForm({ prevNext: '0', month: '', ...sessionForm }),
+        });
+        cookies = extractCookies(warmup);
+        await warmup.text(); // drain
+    } catch { /* warmup failure is non-fatal — try the data call anyway */ }
+
+    const response = await fetch(`${ERP_BASE}/mobilev2/commonPage`, {
+        method: 'POST',
+        headers: { ...LEGACY_HEADERS, ...(cookies ? { Cookie: cookies } : {}) },
+        body: encodeForm({ commonPageId: '28', device: 'android', ...sessionForm }),
+    });
+    const payload = await readErpPayload(response);
+    return { response, payload };
+}
+
 async function fetchRegisterLegacy(session) {
     // Helper: check if HTML contains the register table structure
     function isRegisterTable(html) {
@@ -479,6 +524,7 @@ module.exports = {
     loginLegacy,
     verifyOtpLegacy,
     fetchSummaryLegacy,
+    fetchSummaryV2,
     fetchRegisterLegacy,
     fetchTimetableLegacy,
 };

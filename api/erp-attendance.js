@@ -31,8 +31,11 @@ const {
 } = require('./_session-utils');
 const {
     fetchSummaryLegacy,
+    fetchSummaryV2,
+    fetchRegisterLegacy,
     readErpPayload,
 } = require('./_erp-provider');
+const { parseRegisterHTML } = require('./erp-calendar');
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
 
@@ -201,18 +204,55 @@ module.exports = async function handler(req, res) {
     }
 
     async function fetchAttendance(sess) {
+        // PRIMARY: the attendance register (chalkpadpro) via the showAttendance warmup + cookies.
+        // This is the source proven to work for this college — the SAME path the calendar and
+        // timetable already use. The mobile commonPage/28 summary (below) is a dead end for CUIET
+        // (it reads as a dead session → "Session expired"); it's kept only as a fallback for
+        // colleges where the mobile summary works.
+        const register = await fetchRegisterLegacy(sess);
+        const registerHtml = register.payload?.content || register.payload?.data?.content || '';
+        const isRegister = /id=['"]subject_\d+/.test(registerHtml);
+        if (register.response.ok && registerHtml && isRegister) {
+            return { response: register.response, payload: register.payload, htmlBody: registerHtml, source: 'register' };
+        }
+
+        // FALLBACK 1: mobilev2 commonPage/28 summary WITH the warmup + cookies.
+        const v2 = await fetchSummaryV2(sess);
+        const v2Content = v2.payload?.content || v2.payload?.data?.content || '';
+        if (v2.response.ok && v2Content) {
+            return { response: v2.response, payload: v2.payload, htmlBody: v2Content, source: 'summary' };
+        }
+
+        // FALLBACK 2: legacy /mobile/commonPage (older colleges).
         const legacy = await fetchSummaryLegacy(sess);
         const legacyContent = legacy.payload?.content || legacy.payload?.data?.content || '';
         if (legacy.response.ok && legacyContent) {
-            return { response: legacy.response, payload: legacy.payload, htmlBody: legacyContent };
+            return { response: legacy.response, payload: legacy.payload, htmlBody: legacyContent, source: 'summary' };
         }
 
+        // FALLBACK 3: cookie-less mobilev2 (prior behavior). If everything is empty, attach _diag
+        // so a still-failing real login reveals exactly what each ERP endpoint returned.
         const fallbackResponse = await fetchAttendanceV2(sess);
         const fallbackPayload = await readErpPayload(fallbackResponse);
+        const fallbackContent = fallbackPayload.content || fallbackPayload.data?.content || '';
+        if (fallbackResponse.ok && fallbackContent) {
+            return { response: fallbackResponse, payload: fallbackPayload, htmlBody: fallbackContent, source: 'summary' };
+        }
         return {
-            response: fallbackResponse,
-            payload: fallbackPayload,
-            htmlBody: fallbackPayload.content || fallbackPayload.data?.content || '',
+            response: register.response.ok ? register.response : v2.response,
+            payload: register.response.ok ? register.payload : v2.payload,
+            htmlBody: registerHtml || v2Content,
+            source: isRegister ? 'register' : 'summary',
+            _diag: {
+                registerStatus: register.response.status, registerLen: registerHtml.length, registerHasTable: isRegister,
+                v2Status: v2.response.status, v2Body: JSON.stringify(v2.payload).slice(0, 200),
+                legacyStatus: legacy.response.status,
+                fallbackStatus: fallbackResponse.status, fallbackBody: JSON.stringify(fallbackPayload).slice(0, 200),
+                sessionFields: {
+                    userId: !!sess.userId, sessionId: !!sess.sessionId, roleId: !!sess.roleId, apiKey: !!sess.apiKey,
+                    securityToken: !!sess.securityToken, deviceIdUUID: !!sess.deviceIdUUID, studentId: !!sess.studentId,
+                },
+            },
         };
     }
 
@@ -223,7 +263,8 @@ module.exports = async function handler(req, res) {
         // ── Session dead? ─────────────────────────────────────────
         if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
             if (!persistentToken) {
-                return res.status(401).json({ error: 'Session expired', sessionExpired: true });
+                // _diag is temporary — remove once the real OTP path is confirmed working.
+                return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: erpResult._diag });
             }
 
             let creds;
@@ -263,7 +304,19 @@ module.exports = async function handler(req, res) {
             return res.status(502).json({ error: 'Empty response', message: 'The portal returned no attendance data.' });
         }
 
-        const subjects = parseAttendanceHTML(htmlContent);
+        // Register HTML → per-subject totals from the register table (proven source, no teacher
+        // field). Summary HTML → the commonPage/28 tt-box-new cards (has teacher). Same output shape.
+        const subjects = erpResult.source === 'register'
+            ? (parseRegisterHTML(htmlContent).subjects || []).map(s => ({
+                name: s.name,
+                code: s.code,
+                teacher: s.teacher || '',
+                delivered: s.total,
+                attended: s.attended,
+                absent: Math.max(0, (s.total || 0) - (s.attended || 0)),
+                percentage: s.percentage,
+            }))
+            : parseAttendanceHTML(htmlContent);
 
         if (subjects.length === 0) {
             // Distinguish "not uploaded yet" (a valid empty state) from a real parse failure.
