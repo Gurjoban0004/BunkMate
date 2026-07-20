@@ -21,6 +21,7 @@ const {
     ERP_BASE,
 } = require('./_session-utils');
 const {
+    fetchTimetableV2,
     fetchTimetableLegacy,
     fetchRegisterLegacy,
     readErpPayload,
@@ -48,8 +49,14 @@ const DEFAULT_PERIODS = [
     { number: 8, start: '16:00', end: '17:00' },
 ];
 
+function decodeEntities(s) {
+    return s
+        .replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"').replace(/&#0?39;|&apos;/gi, "'").replace(/&nbsp;?/gi, ' ');
+}
+
 function stripTags(html) {
-    return html.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/&nbsp;?/gi, ' ').replace(/\s+/g, ' ').trim();
+    return decodeEntities(html.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeDayName(text) {
@@ -127,7 +134,7 @@ function extractSubjectsFromCellHtml(rawHtml) {
         // The full subject name lives in the cell's title attr ("Algorithm Design & Implementation
         // (24CSE0317)"); the visible text is just the code. Prefer the title when present.
         const titleMatch = frag.match(/title=["']([^"']+)["']/i);
-        const info = extractSubjectInfo(titleMatch ? titleMatch[1].trim() : text) || extractSubjectInfo(text);
+        const info = extractSubjectInfo(titleMatch ? decodeEntities(titleMatch[1]).trim() : text) || extractSubjectInfo(text);
         if (!info) continue;
         if (info.subjectCode && seenCodes.has(info.subjectCode)) continue;
         if (info.subjectCode) seenCodes.add(info.subjectCode);
@@ -482,10 +489,24 @@ module.exports = async function handler(req, res) {
         });
     }
 
-    // Timetable source: derive the recurring weekly grid from the attendance register (live,
-    // weekly-auto-updating). The mobile API has no timetable endpoint and the web /display page is
-    // Turnstile-gated, so the register is the reliable cross-platform source (see PRODUCT.md).
+    // Primary timetable source: mobilev2 commonPage id 99 — the full published weekly grid (all
+    // subjects, real times), served over the plain mobile session. This is the SAME grid the web
+    // /display page shows, but with no Turnstile / web login / capture (verified live via the
+    // official app's own traffic, 2026-07-20). Falls back to register-derived if it's ever empty.
     async function fetchTimetableData(sess) {
+        try {
+            const v2 = await fetchTimetableV2(sess);
+            const v2Html = v2.payload?.content || v2.payload?.data?.content || '';
+            if (v2Html) {
+                const parsed = parseTimetableHTML(v2Html);
+                if (parsed.found) {
+                    return { response: v2.response, payload: v2.payload, parsed, source: 'portal-web' };
+                }
+            }
+        } catch (e) { /* fall through to register-derived */ }
+
+        // Fallback: derive the recurring grid from the attendance register (live but sparse early
+        // in the semester). Used if commonPage/99 is empty (timetable not yet published to mobile).
         const reg = await fetchRegisterLegacy(sess);
         const html = reg.payload?.content || reg.payload?.data?.content || '';
         if (html) {
@@ -494,7 +515,7 @@ module.exports = async function handler(req, res) {
                 return { response: reg.response, payload: reg.payload, parsed: derived, source: 'register-derived' };
             }
         }
-        // Fallback: dedicated timetable endpoints (usually empty for CUIET, kept for other colleges).
+        // Last resort: legacy dedicated timetable endpoints (kept for other colleges).
         const tt = await fetchTimetableLegacy(sess);
         const ttHtml = tt.payload?.content || '';
         return {

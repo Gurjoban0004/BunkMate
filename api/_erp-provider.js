@@ -235,6 +235,41 @@ async function fetchSummaryV2(session) {
     return { response, payload };
 }
 
+// Real weekly timetable via mobilev2 commonPage id 99 — the full published grid (all subjects,
+// real times), the SAME table the web /display page shows, but served over the plain mobile
+// session (verified live via the official app's own traffic, 2026-07-20). No Turnstile / web
+// session / capture needed. Mirrors fetchSummaryV2's warmup+cookie pattern.
+async function fetchTimetableV2(session) {
+    const sessionForm = {
+        userId: session.userId,
+        sessionId: session.sessionId,
+        roleId: session.roleId,
+        apiKey: session.apiKey,
+        securityToken: session.securityToken || '',
+        deviceIdUUID: session.deviceIdUUID || '',
+    };
+
+    let cookies = '';
+    try {
+        const warmup = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
+            method: 'POST',
+            headers: LEGACY_HEADERS,
+            redirect: 'manual',
+            body: encodeForm({ prevNext: '0', month: '', ...sessionForm }),
+        });
+        cookies = extractCookies(warmup);
+        await warmup.text();
+    } catch { /* warmup non-fatal */ }
+
+    const response = await fetch(`${ERP_BASE}/mobilev2/commonPage`, {
+        method: 'POST',
+        headers: { ...LEGACY_HEADERS, ...(cookies ? { Cookie: cookies } : {}) },
+        body: encodeForm({ commonObj: '', commonPageId: '99', device: '', ...sessionForm }),
+    });
+    const payload = await readErpPayload(response);
+    return { response, payload };
+}
+
 async function fetchRegisterLegacy(session) {
     // Helper: check if HTML contains the register table structure
     function isRegisterTable(html) {
@@ -525,6 +560,7 @@ module.exports = {
     verifyOtpLegacy,
     fetchSummaryLegacy,
     fetchSummaryV2,
+    fetchTimetableV2,
     fetchRegisterLegacy,
     fetchTimetableLegacy,
 };

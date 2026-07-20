@@ -366,16 +366,16 @@ export const PALETTES = {
 };
 
 // Backwards-compatible exports for existing code
-export const LIGHT_COLORS = PALETTES.nordic.light;
-export const DARK_COLORS = PALETTES.nordic.dark;
+export const LIGHT_COLORS = PALETTES.chalkpad.light;
+export const DARK_COLORS = PALETTES.chalkpad.dark;
 
 // COLORS is the live token map. Always read from this — never from
 // palette definitions directly in components.
 // Call applyTheme() once on app boot (and on theme toggle) to populate it.
-export const COLORS = { ...PALETTES.nordic.light };
+export const COLORS = { ...PALETTES.chalkpad.light };
 
 export const applyTheme = (themeStr, paletteId) => {
-    const palette = PALETTES[paletteId] || PALETTES.nordic;
+    const palette = PALETTES[paletteId] || PALETTES.chalkpad;
     const mode = palette.oledOnly ? 'dark' : themeStr;
     const source = mode === 'dark' ? palette.dark : palette.light;
     Object.assign(COLORS, source);

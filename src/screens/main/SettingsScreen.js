@@ -43,7 +43,7 @@ const SettingsScreen = ({ navigation }) => {
         smartAlertsEnabled = true,
         weeklySummaryEnabled = true,
         theme = 'light',
-        uiPalette = 'nordic',
+        uiPalette = 'chalkpad',
         semesterEndDate = null,
     } = state.settings || {};
 

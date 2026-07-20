@@ -307,7 +307,7 @@ export function useErpAutoSync(state, dispatch) {
             const TIMETABLE_INTERVAL_MS = 24 * 60 * 60 * 1000;
             // Real timetable sources are cached for 24h; 'manual' is never auto-overwritten; any
             // other/empty source is retried each cycle until we get a real one.
-            const REAL_TT_SOURCES = ['erp', 'register-derived'];
+            const REAL_TT_SOURCES = ['erp', 'portal-web', 'register-derived'];
             const lastTtFetch = currentState.timetableMeta?.fetchedAt;
             const ttSource = currentState.timetableMeta?.source;
             const shouldFetchTimetable = (

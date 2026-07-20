@@ -1,10 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY, PALETTES } from '../../theme/theme';
+import { useApp } from '../../context/AppContext';
+
+// Curated onboarding palettes — shown as a 2×2 bento so users can pick a
+// vibe upfront without leaving the welcome screen.
+const ONBOARDING_PALETTES = ['chalkpad', 'catppuccin', 'forest', 'nordic'];
 
 export default function WelcomeScreen({ navigation }) {
     const styles = getStyles();
+    const { state, dispatch } = useApp();
+    const activePalette = state?.settings?.uiPalette || 'chalkpad';
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
@@ -22,6 +30,40 @@ export default function WelcomeScreen({ navigation }) {
                     <Text style={styles.valueProp}>
                         Import your ERP attendance and know when you can skip.
                     </Text>
+                </View>
+
+                {/* Theme bento — pick a vibe upfront */}
+                <View style={styles.themeSection}>
+                    <Text style={styles.themeLabel}>Pick your theme</Text>
+                    <View style={styles.themeGrid}>
+                        {ONBOARDING_PALETTES.map((id) => {
+                            const palette = PALETTES[id];
+                            if (!palette) return null;
+                            const isActive = activePalette === id;
+                            return (
+                                <TouchableOpacity
+                                    key={id}
+                                    style={[styles.themeCard, isActive && styles.themeCardActive]}
+                                    onPress={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { uiPalette: id } })}
+                                    activeOpacity={0.85}
+                                >
+                                    <View style={styles.themeSwatches}>
+                                        {palette.swatches.map((color, i) => (
+                                            <View key={i} style={[styles.themeSwatch, { backgroundColor: color }]} />
+                                        ))}
+                                    </View>
+                                    <Text style={[styles.themeName, isActive && styles.themeNameActive]} numberOfLines={1}>
+                                        {palette.name}
+                                    </Text>
+                                    {isActive && (
+                                        <View style={styles.themeCheck}>
+                                            <Text style={styles.themeCheckText}>&#10003;</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
                 </View>
 
                 {/* Spacer */}
@@ -63,7 +105,7 @@ const getStyles = () => StyleSheet.create({
     content: {
         flex: 1,
         paddingHorizontal: SPACING.xl,
-        paddingTop: SPACING.xxl * 2,
+        paddingTop: SPACING.xxl,
         paddingBottom: SPACING.xl,
     },
 
@@ -125,6 +167,71 @@ const getStyles = () => StyleSheet.create({
         marginTop: SPACING.md,
         paddingHorizontal: SPACING.lg,
         lineHeight: 20,
+    },
+
+    // Theme bento
+    themeSection: {
+        marginTop: SPACING.xl,
+    },
+    themeLabel: {
+        ...TYPOGRAPHY.labelSmall,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
+        marginBottom: SPACING.md,
+    },
+    themeGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        rowGap: SPACING.sm,
+    },
+    themeCard: {
+        width: '48.5%',
+        backgroundColor: COLORS.cardBackground,
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.sm + 2,
+        ...SHADOWS.small,
+    },
+    themeCardActive: {
+        borderColor: COLORS.primary,
+        backgroundColor: COLORS.primaryLight,
+    },
+    themeSwatches: {
+        flexDirection: 'row',
+        height: 32,
+        borderRadius: BORDER_RADIUS.sm,
+        overflow: 'hidden',
+        marginBottom: SPACING.sm,
+    },
+    themeSwatch: {
+        flex: 1,
+    },
+    themeName: {
+        ...TYPOGRAPHY.labelSmall,
+        color: COLORS.textSecondary,
+    },
+    themeNameActive: {
+        color: COLORS.primaryDark,
+    },
+    themeCheck: {
+        position: 'absolute',
+        top: SPACING.sm,
+        right: SPACING.sm,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    themeCheckText: {
+        color: COLORS.textOnPrimary,
+        fontSize: 11,
+        fontWeight: '800',
     },
 
     // Actions

@@ -66,4 +66,37 @@ describe('erp-timetable handler — no OTP on missing timetable', () => {
         const total = Object.values(res.body.timetable).reduce((n, d) => n + d.length, 0);
         expect(total).toBeGreaterThan(0);             // Tuesday recurs (20th + 27th) → a slot
     });
+
+    test('prefers the real grid from mobilev2 commonPage/99 (source portal-web)', async () => {
+        const fs = require('fs');
+        const path = require('path');
+        const grid = fs.readFileSync(path.join(__dirname, 'fixtures/tt-display-real.html'), 'utf8');
+
+        const { encryptSession } = require('../_session-utils');
+        const token = encryptSession({
+            rollNumber: '2410990001', userId: '24635', sessionId: '20', roleId: '4',
+            apiKey: 'LIVEKEY', securityToken: 'sec', deviceIdUUID: 'uuid', studentId: '9508',
+        });
+
+        global.fetch = jest.fn(async (url, opts) => {
+            const u = String(url);
+            const body = (opts && opts.body) ? String(opts.body) : '';
+            // commonPage id 99 = the real timetable grid; /28 and others → empty.
+            if (u.includes('mobilev2/commonPage') && /commonPageId=99/.test(body)) {
+                return resp(JSON.stringify({ content: grid }));
+            }
+            return resp('', true);
+        });
+
+        const handler = require('../erp-timetable');
+        const res = makeRes();
+        await handler(makeReq({ token }), res);
+
+        expect(res.body.success).toBe(true);
+        expect(res.body.source).toBe('portal-web');
+        expect(res.body.timesAreInferred).toBe(false);          // real AM/PM times from the grid
+        expect(res.body.timetable.Monday.length).toBeGreaterThan(0);
+        const codes = new Set(Object.values(res.body.timetable).flat().map(e => e.subjectCode));
+        expect(codes.has('24CSE0317')).toBe(true);              // Algorithm Design
+    });
 });
