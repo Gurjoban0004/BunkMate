@@ -4,7 +4,7 @@ import {
     TextInput, Switch, ActivityIndicator, Platform, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Polyline } from 'react-native-svg';
+import Svg, { Polyline, Path, Circle, Line, Rect } from 'react-native-svg';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import {
@@ -25,6 +25,26 @@ const CATEGORIES = [
     { key: 'controls', label: 'Controls' },
 ];
 
+// ─── PANEL ICONS (SVG, stroke — render identically on web PWA and native Android) ──
+function PanelIcon({ name, color, size = 16 }) {
+    const p = { stroke: color, strokeWidth: 2, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' };
+    const glyphs = {
+        difficulty: <><Circle cx="12" cy="12" r="8.5" {...p} /><Circle cx="12" cy="12" r="3.5" {...p} /></>,
+        'trending-down': <><Polyline points="3 7 10 14 14 10 21 17" {...p} /><Polyline points="21 12 21 17 16 17" {...p} /></>,
+        users: <><Path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1" {...p} /><Circle cx="9" cy="7" r="3.2" {...p} /><Path d="M16.5 6.3a3.2 3.2 0 0 1 0 5.4" {...p} /><Path d="M22 19v-1a4 4 0 0 0-3-3.8" {...p} /></>,
+        activity: <Polyline points="3 12 7 12 10 4 14 20 17 12 21 12" {...p} />,
+        alert: <><Path d="M12 3.5 21 19H3z" {...p} /><Line x1="12" y1="10" x2="12" y2="14" {...p} /><Line x1="12" y1="16.6" x2="12" y2="16.6" {...p} /></>,
+        zap: <Path d="M13 2 4 14h7l-1 8 9-12h-7z" {...p} />,
+        gauge: <><Path d="M4 18a8 8 0 1 1 16 0" {...p} /><Line x1="12" y1="18" x2="16" y2="11" {...p} /></>,
+        megaphone: <><Path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z" {...p} /><Path d="M14 8a4 4 0 0 1 0 8" {...p} /></>,
+        sliders: <><Line x1="4" y1="8" x2="20" y2="8" {...p} /><Line x1="4" y1="16" x2="20" y2="16" {...p} /><Circle cx="9" cy="8" r="2.6" {...p} fill={color} /><Circle cx="15" cy="16" r="2.6" {...p} fill={color} /></>,
+        shield: <Path d="M12 3l7 3v5c0 4-3 7.4-7 8-4-.6-7-4-7-8V6z" {...p} />,
+        wrench: <Path d="M14.6 6.4a3.6 3.6 0 0 0-4.9 4.2l-5.4 5.4a1.5 1.5 0 0 0 2.1 2.1l5.4-5.4a3.6 3.6 0 0 0 4.2-4.9l-2.1 2.1-1.4-1.4z" {...p} />,
+        lock: <><Rect x="5" y="11" width="14" height="9" rx="2" {...p} /><Path d="M8 11V8a4 4 0 0 1 8 0v3" {...p} /></>,
+    };
+    return <Svg width={size} height={size} viewBox="0 0 24 24">{glyphs[name] || null}</Svg>;
+}
+
 // ─── SECTION PANEL ──────────────────────────────────────────────
 // Always-open card (replaces the old stacked accordions). Children mount when the
 // panel renders, so LazyLoad fetches fire the moment its category is selected.
@@ -35,7 +55,7 @@ function Panel({ icon, title, accent, statusText, children }) {
         <View style={styles.panel}>
             <View style={styles.panelHeader}>
                 <View style={[styles.panelIcon, { backgroundColor: a + '1F' }]}>
-                    <Text style={styles.panelIconText}>{icon}</Text>
+                    <PanelIcon name={icon} color={a} size={16} />
                 </View>
                 <Text style={styles.panelTitle} numberOfLines={1}>{title}</Text>
                 {!!statusText && (
@@ -367,7 +387,7 @@ export default function AdminScreen() {
                 {/* ══ ANALYTICS ════════════════════════════════════ */}
                 {category === 'analytics' && (
                     <>
-                        <Panel icon="🎯" title="Subject Difficulty" accent={COLORS.warning} statusText="Heatmap">
+                        <Panel icon="difficulty" title="Subject Difficulty" accent={COLORS.warning} statusText="Heatmap">
                             <LazyLoad onVisible={loadSubjects} loading={subjectsLoading}>
                                 {subjects && subjects.map((s, i) => (
                                     <View key={i} style={styles.difficultyRow}>
@@ -385,7 +405,7 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="📉" title="Bunk Culture Index" accent={COLORS.danger} statusText="Weekly">
+                        <Panel icon="trending-down" title="Bunk Culture Index" accent={COLORS.danger} statusText="Weekly">
                             <LazyLoad onVisible={loadBunk} loading={bunkLoading}>
                                 {bunkIndex && bunkIndex.map((d, i) => (
                                     <BarProgress key={i} label={d.day} value={d.bunkRate} maxVal={100} color={d.bunkRate >= 30 ? COLORS.danger : d.bunkRate >= 15 ? COLORS.warning : COLORS.success} />
@@ -394,7 +414,7 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="👥" title="Batch Distribution" accent={COLORS.success} statusText="Cohorts">
+                        <Panel icon="users" title="Batch Distribution" accent={COLORS.success} statusText="Cohorts">
                             <LazyLoad onVisible={loadBatches} loading={batchLoading}>
                                 {batches && batches.map((b, i) => (
                                     <View key={i} style={styles.batchRow}>
@@ -414,7 +434,7 @@ export default function AdminScreen() {
                 {/* ══ OPERATIONS ═══════════════════════════════════ */}
                 {category === 'operations' && (
                     <>
-                        <Panel icon="🩺" title="Endpoint Health" accent={COLORS.success} statusText="24h">
+                        <Panel icon="activity" title="Endpoint Health" accent={COLORS.success} statusText="24h">
                             <LazyLoad onVisible={loadEndpoints} loading={endpointsLoading}>
                                 {endpoints && endpoints.map((ep, i) => (
                                     <View key={i} style={styles.endpointRow}>
@@ -430,7 +450,7 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="🐛" title="Parser Failures" accent={COLORS.danger} statusText="Recent">
+                        <Panel icon="alert" title="Parser Failures" accent={COLORS.danger} statusText="Recent">
                             <LazyLoad onVisible={loadFailures} loading={failuresLoading}>
                                 {failures && failures.map((f, i) => (
                                     <FailureCard key={i} failure={f} />
@@ -439,7 +459,7 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="⚡" title="ERP Downtime" accent={COLORS.success} statusText="Operational">
+                        <Panel icon="zap" title="ERP Downtime" accent={COLORS.success} statusText="Operational">
                             <LazyLoad onVisible={loadDowntime} loading={downtimeLoading}>
                                 {downtimeEvents && downtimeEvents.map((ev, i) => (
                                     <View key={i} style={styles.downtimeRow}>
@@ -462,7 +482,7 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="🚦" title="Rate Limiting" accent={COLORS.warning} statusText="Monitor">
+                        <Panel icon="gauge" title="Rate Limiting" accent={COLORS.warning} statusText="Monitor">
                             <LazyLoad onVisible={loadRate} loading={rateLoading}>
                                 {rateData && rateData.length > 0 && (
                                     <View style={styles.tableHeader}>
@@ -493,7 +513,7 @@ export default function AdminScreen() {
                 {/* ══ CONTROLS ═════════════════════════════════════ */}
                 {category === 'controls' && (
                     <>
-                        <Panel icon="📢" title="Announcements" accent={COLORS.primary} statusText="Broadcast">
+                        <Panel icon="megaphone" title="Announcements" accent={COLORS.primary} statusText="Broadcast">
                             <LazyLoad onVisible={loadAnnouncements} loading={announcementsLoading}>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>TITLE</Text>
@@ -533,7 +553,7 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="🎚️" title="Feature Flags" accent={COLORS.success} statusText="Config">
+                        <Panel icon="sliders" title="Feature Flags" accent={COLORS.success} statusText="Config">
                             {Object.keys(flags).length === 0
                                 ? <Text style={styles.emptyText}>No feature flags configured</Text>
                                 : Object.entries(flags).map(([key, val]) => (
@@ -549,7 +569,7 @@ export default function AdminScreen() {
                                 ))}
                         </Panel>
 
-                        <Panel icon="🛡️" title="Version Gate" accent={COLORS.warning} statusText={`v${minVersion}`}>
+                        <Panel icon="shield" title="Version Gate" accent={COLORS.warning} statusText={`v${minVersion}`}>
                             <View style={styles.inputGroup}>
                                 <Text style={styles.inputLabel}>MINIMUM VERSION</Text>
                                 <TextInput style={styles.input} value={minVersion} onChangeText={setMinVersion} placeholder="e.g. 2.1.0" placeholderTextColor={COLORS.textMuted} />
@@ -559,7 +579,7 @@ export default function AdminScreen() {
                             </TouchableOpacity>
                         </Panel>
 
-                        <Panel icon="🚧" title="Maintenance Mode" accent={maintMode ? COLORS.danger : COLORS.success} statusText={maintMode ? 'Active' : 'Off'}>
+                        <Panel icon="wrench" title="Maintenance Mode" accent={maintMode ? COLORS.danger : COLORS.success} statusText={maintMode ? 'Active' : 'Off'}>
                             <View style={styles.flagRow}>
                                 <Text style={styles.flagLabel}>Enable Maintenance</Text>
                                 <Switch
@@ -578,7 +598,7 @@ export default function AdminScreen() {
                             </TouchableOpacity>
                         </Panel>
 
-                        <Panel icon="🔒" title="User Revocation" accent={COLORS.danger} statusText="Access">
+                        <Panel icon="lock" title="User Revocation" accent={COLORS.danger} statusText="Access">
                             <LazyLoad onVisible={loadRevoked} loading={revokedLoading}>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>ROLL NUMBER</Text>
@@ -747,7 +767,6 @@ const getStyles = () => StyleSheet.create({
         borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle,
     },
     panelIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-    panelIconText: { fontSize: 15 },
     panelTitle: { ...TYPOGRAPHY.labelLarge, color: COLORS.textPrimary, flex: 1 },
     panelPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: BORDER_RADIUS.full, borderWidth: 1 },
     panelPillText: { ...TYPOGRAPHY.micro, fontWeight: '700' },

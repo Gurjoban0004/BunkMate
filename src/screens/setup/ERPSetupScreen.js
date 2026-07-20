@@ -4,7 +4,7 @@ import {
     Platform, KeyboardAvoidingView, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY, PALETTES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { erpLogin, erpVerifyOtp, erpFetchAttendance, erpFetchCalendar, erpFetchTimetable } from '../../services/erpService';
 import { saveErpToken } from '../../storage/erpTokenStorage';
@@ -15,8 +15,12 @@ import { logger } from '../../utils/logger';
 
 const STEP_LOGIN = 'login';
 const STEP_OTP = 'otp';
-const STEP_PREVIEW = 'preview';
+const STEP_THEME = 'theme';
 const STEP_IMPORTING = 'importing';
+
+// Curated onboarding palettes — the final "pick a vibe" step before entering the app.
+// The full picker (all palettes + light/dark) lives in Settings; this is intentionally short.
+const ONBOARDING_PALETTES = ['chalkpad', 'catppuccin', 'forest', 'nordic'];
 
 export default function ERPSetupScreen({ navigation }) {
     const { state, dispatch } = useApp();
@@ -110,7 +114,7 @@ export default function ERPSetupScreen({ navigation }) {
             setErpSubjects(attendanceResult.subjects);
             const mapping = mapErpToAppState(attendanceResult.subjects, []);
             setMappingResult(mapping);
-            setStep(STEP_PREVIEW);
+            setStep(STEP_THEME);
         } catch (err) {
             setError(err.message || 'OTP verification failed.');
         } finally {
@@ -234,13 +238,13 @@ export default function ERPSetupScreen({ navigation }) {
         } catch (err) {
             logger.error('Setup import failed:', err);
             setError('Something went wrong during setup. Please try again.');
-            setStep(STEP_PREVIEW);
+            setStep(STEP_THEME);
         }
     }, [mappingResult, studentName, state.userId, state.devDate, dispatch]); // CR-05 fix: removed `token` — tokenRef.current is used inside instead
 
     // ─── STEP INDICATOR ─────────────────────────────────────────────
-    const stepIndex = [STEP_LOGIN, STEP_OTP, STEP_PREVIEW].indexOf(step);
-    const steps = ['Login', 'Verify', 'Review'];
+    const stepIndex = [STEP_LOGIN, STEP_OTP, STEP_THEME].indexOf(step);
+    const steps = ['Login', 'Verify', 'Theme'];
 
     const renderStepIndicator = () => (
         <View style={styles.stepIndicator}>
@@ -388,49 +392,51 @@ export default function ERPSetupScreen({ navigation }) {
         </View>
     );
 
-    // ─── RENDER: PREVIEW ────────────────────────────────────────────
-    const renderPreview = () => {
-        if (!mappingResult) return null;
-        const { newSubjects } = mappingResult;
-
+    // ─── RENDER: THEME (final onboarding step, before entering the app) ──
+    const renderTheme = () => {
+        const activePalette = state?.settings?.uiPalette || 'chalkpad';
         return (
             <View style={styles.formSection}>
                 <View style={styles.sectionHeader}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary, marginRight: SPACING.xs }} />
-                    <Text style={styles.sectionTitle}>Your Attendance</Text>
+                    <View style={styles.sectionMark}><View style={styles.sectionMarkDot} /></View>
+                    <Text style={styles.sectionTitle}>Make it yours</Text>
                     <Text style={styles.sectionSub}>
-                        Found {erpSubjects.length} subjects from ERP.
-                        {studentName ? ` Welcome, ${studentName}!` : ''}
+                        {studentName ? `You're all set, ${studentName.split(' ')[0]}. ` : "You're all set. "}
+                        Pick a theme to finish.
                     </Text>
                 </View>
 
-                {newSubjects.map((sub, i) => {
-                    const pct = sub.initialTotal > 0
-                        ? ((sub.initialAttended / sub.initialTotal) * 100).toFixed(1)
-                        : '—';
-                    const isLow = sub.initialTotal > 0 && (sub.initialAttended / sub.initialTotal) < 0.75;
+                <View style={styles.themeGrid}>
+                    {ONBOARDING_PALETTES.map((id) => {
+                        const palette = PALETTES[id];
+                        if (!palette) return null;
+                        const isActive = activePalette === id;
+                        return (
+                            <TouchableOpacity
+                                key={id}
+                                style={[styles.themeCard, isActive && styles.themeCardActive]}
+                                onPress={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { uiPalette: id } })}
+                                activeOpacity={0.85}
+                            >
+                                <View style={styles.themeSwatches}>
+                                    {palette.swatches.map((color, i) => (
+                                        <View key={i} style={[styles.themeSwatch, { backgroundColor: color }]} />
+                                    ))}
+                                </View>
+                                <Text style={[styles.themeName, isActive && styles.themeNameActive]} numberOfLines={1}>
+                                    {palette.name}
+                                </Text>
+                                {isActive && (
+                                    <View style={styles.themeCheck}>
+                                        <Text style={styles.themeCheckText}>&#10003;</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
 
-                    return (
-                        <View key={sub.id} style={styles.previewCard}>
-                            <View style={styles.previewRow}>
-                                <View style={[styles.colorDot, { backgroundColor: sub.color }]} />
-                                <Text style={styles.previewName} numberOfLines={1}>
-                                    {sub.name}
-                                </Text>
-                                <Text style={[
-                                    styles.previewPct,
-                                    isLow ? { color: COLORS.danger } : { color: COLORS.success },
-                                ]}>
-                                    {pct}%
-                                </Text>
-                            </View>
-                            <Text style={styles.previewDetail}>
-                                {sub.initialAttended}/{sub.initialTotal} lectures
-                                {sub.teacher ? ` · ${sub.teacher}` : ''}
-                            </Text>
-                        </View>
-                    );
-                })}
+                <Text style={styles.themeHint}>You can change this anytime in Settings.</Text>
             </View>
         );
     };
@@ -461,9 +467,9 @@ export default function ERPSetupScreen({ navigation }) {
                     onPress: handleVerifyOtp,
                     disabled: loading || otp.trim().length < 4,
                 };
-            case STEP_PREVIEW:
+            case STEP_THEME:
                 return {
-                    text: `Import & Get Started`,
+                    text: `Enter Presence`,
                     onPress: handleImport,
                     disabled: false,
                 };
@@ -501,7 +507,7 @@ export default function ERPSetupScreen({ navigation }) {
 
                     {step === STEP_LOGIN && renderLogin()}
                     {step === STEP_OTP && renderOtp()}
-                    {step === STEP_PREVIEW && renderPreview()}
+                    {step === STEP_THEME && renderTheme()}
                     {step === STEP_IMPORTING && renderImporting()}
 
                     {/* Error */}
@@ -779,40 +785,64 @@ const getStyles = () => StyleSheet.create({
         lineHeight: 18,
     },
 
-    // Preview
-    previewCard: {
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.sm,
-        padding: SPACING.md,
-        marginBottom: SPACING.xs,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    previewRow: {
+    // Theme grid (final onboarding step)
+    themeGrid: {
         flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        rowGap: SPACING.md,
     },
-    colorDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        marginRight: SPACING.sm,
+    themeCard: {
+        width: '48.5%',
+        backgroundColor: COLORS.cardBackground,
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.sm + 2,
+        ...SHADOWS.small,
     },
-    previewName: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
+    themeCardActive: {
+        borderColor: COLORS.primary,
+        backgroundColor: COLORS.primaryLight,
+    },
+    themeSwatches: {
+        flexDirection: 'row',
+        height: 40,
+        borderRadius: BORDER_RADIUS.sm,
+        overflow: 'hidden',
+        marginBottom: SPACING.sm,
+    },
+    themeSwatch: {
         flex: 1,
     },
-    previewPct: {
-        fontSize: FONT_SIZES.md,
-        fontWeight: '700',
-    },
-    previewDetail: {
-        fontSize: FONT_SIZES.xs,
+    themeName: {
+        ...TYPOGRAPHY.labelSmall,
         color: COLORS.textSecondary,
-        marginLeft: 18,
+    },
+    themeNameActive: {
+        color: COLORS.primaryDark,
+    },
+    themeCheck: {
+        position: 'absolute',
+        top: SPACING.sm,
+        right: SPACING.sm,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: COLORS.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    themeCheckText: {
+        color: COLORS.textOnPrimary || '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '800',
+    },
+    themeHint: {
+        ...TYPOGRAPHY.captionSmall,
+        color: COLORS.textMuted,
+        marginTop: SPACING.lg,
+        textAlign: 'center',
     },
 
     // Importing

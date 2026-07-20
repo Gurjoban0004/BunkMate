@@ -19,7 +19,6 @@ import { calculateGlobalStaleness } from '../../utils/erpFreshness';
 import OverallStatsCard from '../../components/subjects/OverallStatsCard';
 import SubjectRow from '../../components/subjects/SubjectRow';
 import CalendarView from '../../components/subjects/CalendarView';
-import WeeklyTimetable from '../../components/subjects/WeeklyTimetable';
 import ProjectionTransparencyModal from '../../components/insights/ProjectionTransparencyModal';
 import { calculateProjectionBreakdown } from '../../utils/transparency';
 
@@ -156,9 +155,8 @@ const SubjectsScreen = ({ navigation }) => {
                     {/* View Mode Segmented Control */}
                     <View style={styles.toggleContainer}>
                         {[
-                            { key: 'list', label: 'List' },
-                            { key: 'timetable', label: 'Timetable' },
-                            { key: 'calendar', label: 'Heatmap' },
+                            { key: 'list', label: 'Subjects List' },
+                            { key: 'calendar', label: 'Attendance Heatmap' },
                         ].map(tab => (
                             <TouchableOpacity
                                 key={tab.key}
@@ -174,21 +172,15 @@ const SubjectsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* Overall Stats Card — not relevant on the timetable view */}
-                {viewMode !== 'timetable' && (
-                    <OverallStatsCard
-                        stats={overallStats}
-                        threshold={dangerThreshold}
-                        staleness={staleness}
-                        onBannerPress={() => setTransparencyVisible(true)}
-                    />
-                )}
+                {/* Overall Stats Card */}
+                <OverallStatsCard
+                    stats={overallStats}
+                    threshold={dangerThreshold}
+                    staleness={staleness}
+                    onBannerPress={() => setTransparencyVisible(true)}
+                />
 
-                {viewMode === 'timetable' ? (
-                    <View style={styles.section}>
-                        <WeeklyTimetable state={state} />
-                    </View>
-                ) : viewMode === 'list' ? (
+                {viewMode === 'list' ? (
                     <>
                         {/* Danger Section */}
                         {categorizedSubjects.danger.length > 0 && (
