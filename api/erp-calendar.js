@@ -17,6 +17,7 @@ const {
     reloginERP,
     mintSessionToken,
     isSessionDead,
+    checkSessionAlive,
     setCorsHeaders,
     encodeForm,
     MOBILE_HEADERS,
@@ -371,6 +372,13 @@ module.exports = async function handler(req, res) {
         let diag = erpResult._diag || {};
 
         if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
+            // Confirm with the ERP's own liveness probe before re-login (→ OTP email). See
+            // checkSessionAlive: only re-auth on a genuine death, never on a transient false-positive.
+            const liveness = await checkSessionAlive(session);
+            if (liveness !== false) {
+                return res.status(200).json({ success: true, calendar: {}, transient: true });
+            }
+
             if (!persistentToken) {
                 return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: diag });
             }

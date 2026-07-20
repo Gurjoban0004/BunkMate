@@ -19,30 +19,32 @@ import {
 } from '../../services/adminService';
 import { showAlert } from '../../utils/alert';
 
-// ─── ACCORDION SECTION ──────────────────────────────────────────
-function AccordionSection({ title, statusColor, statusText, children, defaultOpen }) {
-    const [open, setOpen] = useState(defaultOpen || false);
-    const [loaded, setLoaded] = useState(defaultOpen || false);
+const CATEGORIES = [
+    { key: 'analytics', label: 'Analytics' },
+    { key: 'operations', label: 'Operations' },
+    { key: 'controls', label: 'Controls' },
+];
+
+// ─── SECTION PANEL ──────────────────────────────────────────────
+// Always-open card (replaces the old stacked accordions). Children mount when the
+// panel renders, so LazyLoad fetches fire the moment its category is selected.
+function Panel({ icon, title, accent, statusText, children }) {
     const styles = getStyles();
-
-    const toggle = () => {
-        if (!open) setLoaded(true);
-        setOpen(!open);
-    };
-
+    const a = accent || COLORS.primary;
     return (
-        <View style={styles.accordionCard}>
-            <TouchableOpacity style={styles.accordionHeader} onPress={toggle} activeOpacity={0.7}>
-                <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                <Text style={styles.accordionTitle} numberOfLines={1}>{title}</Text>
-                <Text style={styles.accordionStatus}>{statusText}</Text>
-                <Text style={styles.chevron}>{open ? '▲' : '▼'}</Text>
-            </TouchableOpacity>
-            {open && loaded && (
-                <View style={styles.accordionBody}>
-                    {children}
+        <View style={styles.panel}>
+            <View style={styles.panelHeader}>
+                <View style={[styles.panelIcon, { backgroundColor: a + '1F' }]}>
+                    <Text style={styles.panelIconText}>{icon}</Text>
                 </View>
-            )}
+                <Text style={styles.panelTitle} numberOfLines={1}>{title}</Text>
+                {!!statusText && (
+                    <View style={[styles.panelPill, { borderColor: a + '55' }]}>
+                        <Text style={[styles.panelPillText, { color: a }]}>{statusText}</Text>
+                    </View>
+                )}
+            </View>
+            <View style={styles.panelBody}>{children}</View>
         </View>
     );
 }
@@ -80,6 +82,7 @@ export default function AdminScreen() {
     const styles = getStyles();
     const { state } = useApp();
     const [refreshing, setRefreshing] = useState(false);
+    const [category, setCategory] = useState('analytics');
 
     // Config state
     const [config, setConfig] = useState(null);
@@ -140,9 +143,10 @@ export default function AdminScreen() {
     const [maintMode, setMaintMode] = useState(false);
     const [maintMsg, setMaintMsg] = useState('');
 
-    // ─── LOAD CONFIG ON MOUNT ───────────────────────────────────
+    // ─── LOAD CONFIG + HERO METRICS ON MOUNT ────────────────────
     useEffect(() => {
         loadConfig();
+        loadMetrics();
     }, []);
 
     const loadConfig = async () => {
@@ -310,6 +314,8 @@ export default function AdminScreen() {
         );
     }
 
+    const adminName = (state.userName || 'Admin').split(' ')[0];
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <ScrollView
@@ -317,280 +323,295 @@ export default function AdminScreen() {
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.textMuted} />}
             >
-                {/* HEADER */}
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Command Center</Text>
-                    <Text style={styles.headerSub}>Welcome, Gurjoban</Text>
+                {/* ── HERO ─────────────────────────────────────────── */}
+                <View style={styles.hero}>
+                    <View style={styles.heroTopRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.heroEyebrow}>COMMAND CENTER</Text>
+                            <Text style={styles.heroTitle}>Welcome back, {adminName}</Text>
+                        </View>
+                        <View style={styles.livePill}>
+                            <View style={styles.liveDot} />
+                            <Text style={styles.livePillText}>LIVE</Text>
+                        </View>
+                    </View>
+
+                    {/* KPI strip — always visible */}
+                    <View style={styles.kpiRow}>
+                        <KpiCell label="DAU" value={metrics?.dau} loading={metricsLoading} />
+                        <KpiCell label="WAU" value={metrics?.wau} loading={metricsLoading} />
+                        <KpiCell label="MAU" value={metrics?.mau} loading={metricsLoading} />
+                    </View>
+                    {metrics?.sparkline?.length > 1 && (
+                        <View style={styles.heroSpark}>
+                            <Text style={styles.heroSparkLabel}>7-DAY ACTIVE TREND</Text>
+                            <Sparkline data={metrics.sparkline} color={COLORS.primary} width={300} height={44} />
+                        </View>
+                    )}
                 </View>
 
-                {/* ── 1. ACTIVE USER ANALYTICS ────────────────────── */}
-                <AccordionSection
-                    title="Active Users"
-                    statusColor={COLORS.success}
-                    statusText="Live"
-                    defaultOpen
-                >
-                    <LazyLoad onVisible={loadMetrics} loading={metricsLoading}>
-                        {metrics && (
-                            <>
-                                <View style={styles.bentoGrid}>
-                                    <BentoCell label="DAU" value={metrics.dau} />
-                                    <BentoCell label="WAU" value={metrics.wau} />
-                                    <BentoCell label="MAU" value={metrics.mau} />
-                                </View>
-                                <View style={styles.sparklineCard}>
-                                    <Text style={styles.sparklineLabel}>7-DAY TREND</Text>
-                                    <Sparkline data={metrics.sparkline} color={COLORS.success} width={280} height={50} />
-                                </View>
-                            </>
-                        )}
-                    </LazyLoad>
-                </AccordionSection>
-
-                {/* ── 2. SUBJECT DIFFICULTY ───────────────────────── */}
-                <AccordionSection title="Subject Difficulty" statusColor={COLORS.warning} statusText="Heatmap">
-                    <LazyLoad onVisible={loadSubjects} loading={subjectsLoading}>
-                        {subjects && subjects.map((s, i) => (
-                            <View key={i} style={styles.difficultyRow}>
-                                <View style={styles.difficultyInfo}>
-                                    <Text style={styles.difficultyName} numberOfLines={1}>{s.name}</Text>
-                                    <Text style={styles.difficultyMeta}>{s.students} students</Text>
-                                </View>
-                                <View style={styles.barTrack}>
-                                    <View style={[styles.barFill, { width: `${Math.min(s.bunkRate, 100)}%`, backgroundColor: difficultyColor(s.bunkRate) }]} />
-                                </View>
-                                <Text style={[styles.difficultyPct, { color: difficultyColor(s.bunkRate) }]}>{s.bunkRate.toFixed(0)}%</Text>
-                            </View>
-                        ))}
-                        {subjects && subjects.length === 0 && <Text style={styles.emptyText}>Not enough data yet</Text>}
-                    </LazyLoad>
-                </AccordionSection>
-
-                {/* ── 3. BUNK CULTURE INDEX ───────────────────────── */}
-                <AccordionSection title="Bunk Culture Index" statusColor={COLORS.danger} statusText="Weekly">
-                    <LazyLoad onVisible={loadBunk} loading={bunkLoading}>
-                        {bunkIndex && bunkIndex.map((d, i) => (
-                            <BarProgress key={i} label={d.day} value={d.bunkRate} maxVal={100} color={d.bunkRate >= 30 ? COLORS.danger : d.bunkRate >= 15 ? COLORS.warning : COLORS.success} />
-                        ))}
-                    </LazyLoad>
-                </AccordionSection>
-
-                {/* ── 4. BATCH DETECTION ──────────────────────────── */}
-                <AccordionSection title="Batch Distribution" statusColor={COLORS.success} statusText="Cohorts">
-                    <LazyLoad onVisible={loadBatches} loading={batchLoading}>
-                        {batches && batches.map((b, i) => (
-                            <View key={i} style={styles.batchRow}>
-                                <Text style={styles.batchLabel}>{b.batch}</Text>
-                                <View style={styles.barTrack}>
-                                    <View style={[styles.barFill, { width: `${b.percentage}%`, backgroundColor: COLORS.primary }]} />
-                                </View>
-                                <Text style={styles.batchCount}>{b.count}</Text>
-                            </View>
-                        ))}
-                        {batches && batches.length === 0 && <Text style={styles.emptyText}>No batch data available</Text>}
-                    </LazyLoad>
-                </AccordionSection>
-
-                {/* ── 5. ENDPOINT HEALTH ──────────────────────────── */}
-                <AccordionSection title="Endpoint Health" statusColor={COLORS.success} statusText="24h">
-                    <LazyLoad onVisible={loadEndpoints} loading={endpointsLoading}>
-                        {endpoints && endpoints.map((ep, i) => (
-                            <View key={i} style={styles.endpointRow}>
-                                <View style={[styles.statusDot, { backgroundColor: endpointColor(ep.successRate) }]} />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.endpointName}>{ep.name}</Text>
-                                    <Text style={styles.endpointMeta}>{ep.avgDuration}ms avg</Text>
-                                </View>
-                                <Text style={[styles.endpointRate, { color: endpointColor(ep.successRate) }]}>{ep.successRate.toFixed(1)}%</Text>
-                            </View>
-                        ))}
-                        {endpoints && endpoints.length === 0 && <Text style={styles.emptyText}>No telemetry data yet</Text>}
-                    </LazyLoad>
-                </AccordionSection>
-
-                {/* ── 6. PARSER FAILURES ──────────────────────────── */}
-                <AccordionSection title="Parser Failures" statusColor={COLORS.danger} statusText="Recent">
-                    <LazyLoad onVisible={loadFailures} loading={failuresLoading}>
-                        {failures && failures.map((f, i) => (
-                            <FailureCard key={i} failure={f} />
-                        ))}
-                        {failures && failures.length === 0 && <Text style={styles.emptyText}>No parser failures</Text>}
-                    </LazyLoad>
-                </AccordionSection>
-
-                {/* ── 7. ERP DOWNTIME ─────────────────────────────── */}
-                <AccordionSection title="ERP Downtime" statusColor={COLORS.success} statusText="Operational">
-                    <LazyLoad onVisible={loadDowntime} loading={downtimeLoading}>
-                        {downtimeEvents && downtimeEvents.map((ev, i) => (
-                            <View key={i} style={styles.downtimeRow}>
-                                <View style={[styles.statusDot, { backgroundColor: ev.resolvedAt ? COLORS.success : COLORS.danger }]} />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.downtimeType}>{ev.type || 'Unknown'}</Text>
-                                    <Text style={styles.downtimeMeta}>
-                                        {ev.reportsCount || 0} reports
-                                        {ev.resolvedAt ? ' • Resolved' : ' • Active'}
-                                    </Text>
-                                </View>
-                                {!ev.resolvedAt && (
-                                    <TouchableOpacity onPress={() => handleResolveDowntime(ev.id)} style={styles.resolveBtn}>
-                                        <Text style={styles.resolveBtnText}>Resolve</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        ))}
-                        {downtimeEvents && downtimeEvents.length === 0 && <Text style={styles.emptyText}>No downtime events</Text>}
-                    </LazyLoad>
-                </AccordionSection>
-
-                {/* ── 8. RATE LIMITING ────────────────────────────── */}
-                <AccordionSection title="Rate Limiting" statusColor={COLORS.warning} statusText="Monitor">
-                    <LazyLoad onVisible={loadRate} loading={rateLoading}>
-                        {rateData && rateData.length > 0 && (
-                            <View style={styles.tableHeader}>
-                                <Text style={[styles.tableCell, { flex: 2 }]}>Roll Number</Text>
-                                <Text style={styles.tableCell}>Hourly</Text>
-                                <Text style={styles.tableCell}>Daily</Text>
-                                <Text style={styles.tableCell}>Status</Text>
-                            </View>
-                        )}
-                        {rateData && rateData.map((r, i) => (
-                            <View key={i} style={styles.tableRow}>
-                                <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>{r.rollNumber}</Text>
-                                <Text style={styles.tableCell}>{r.hourly}</Text>
-                                <Text style={styles.tableCell}>{r.daily}</Text>
-                                <View style={[styles.statusBadge, { backgroundColor: rateStatusColor(r.status) + '22' }]}>
-                                    <Text style={[styles.statusBadgeText, { color: rateStatusColor(r.status) }]}>
-                                        {r.status}
-                                    </Text>
-                                </View>
-                            </View>
-                        ))}
-                        {rateData && rateData.length === 0 && <Text style={styles.emptyText}>No sync activity</Text>}
-                    </LazyLoad>
-                </AccordionSection>
-
-                {/* ── 9. ANNOUNCEMENTS ────────────────────────────── */}
-                <AccordionSection title="Announcements" statusColor={COLORS.primary} statusText="Broadcast">
-                    <LazyLoad onVisible={loadAnnouncements} loading={announcementsLoading}>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>TITLE</Text>
-                            <TextInput style={styles.input} value={annTitle} onChangeText={setAnnTitle} placeholder="Announcement title" placeholderTextColor={COLORS.textMuted} />
-                        </View>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>MESSAGE</Text>
-                            <TextInput style={[styles.input, { minHeight: 60 }]} value={annBody} onChangeText={setAnnBody} placeholder="Announcement body" placeholderTextColor={COLORS.textMuted} multiline />
-                        </View>
-                        <View style={styles.typeRow}>
-                            {['info', 'warning', 'danger'].map(t => (
-                                <TouchableOpacity key={t} style={[styles.typePill, annType === t && styles.typePillActive]} onPress={() => setAnnType(t)}>
-                                    <Text style={[styles.typePillText, annType === t && styles.typePillTextActive]}>{t}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                        <TouchableOpacity style={styles.actionBtn} onPress={handlePublishAnnouncement} activeOpacity={0.8}>
-                            <Text style={styles.actionBtnText}>Publish Announcement</Text>
+                {/* ── CATEGORY SWITCHER ────────────────────────────── */}
+                <View style={styles.catRow}>
+                    {CATEGORIES.map(c => (
+                        <TouchableOpacity
+                            key={c.key}
+                            style={[styles.catTab, category === c.key && styles.catTabActive]}
+                            onPress={() => setCategory(c.key)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={[styles.catTabText, category === c.key && styles.catTabTextActive]}>{c.label}</Text>
                         </TouchableOpacity>
+                    ))}
+                </View>
 
-                        {announcements && announcements.length > 0 && (
-                            <View style={{ marginTop: SPACING.md }}>
-                                <Text style={styles.subSectionLabel}>ACTIVE</Text>
-                                {announcements.map((a, i) => (
-                                    <View key={i} style={styles.announcementCard}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.announcementTitle}>{a.title}</Text>
-                                            <Text style={styles.announcementBody} numberOfLines={2}>{a.message}</Text>
+                {/* ══ ANALYTICS ════════════════════════════════════ */}
+                {category === 'analytics' && (
+                    <>
+                        <Panel icon="🎯" title="Subject Difficulty" accent={COLORS.warning} statusText="Heatmap">
+                            <LazyLoad onVisible={loadSubjects} loading={subjectsLoading}>
+                                {subjects && subjects.map((s, i) => (
+                                    <View key={i} style={styles.difficultyRow}>
+                                        <View style={styles.difficultyInfo}>
+                                            <Text style={styles.difficultyName} numberOfLines={1}>{s.name}</Text>
+                                            <Text style={styles.difficultyMeta}>{s.students} students</Text>
                                         </View>
-                                        <TouchableOpacity onPress={() => handleDeleteAnnouncement(a.id)}>
-                                            <Text style={{ color: COLORS.danger, fontWeight: '700', fontSize: 16 }}>x</Text>
-                                        </TouchableOpacity>
+                                        <View style={styles.barTrack}>
+                                            <View style={[styles.barFill, { width: `${Math.min(s.bunkRate, 100)}%`, backgroundColor: difficultyColor(s.bunkRate) }]} />
+                                        </View>
+                                        <Text style={[styles.difficultyPct, { color: difficultyColor(s.bunkRate) }]}>{s.bunkRate.toFixed(0)}%</Text>
                                     </View>
                                 ))}
-                            </View>
-                        )}
-                    </LazyLoad>
-                </AccordionSection>
+                                {subjects && subjects.length === 0 && <Text style={styles.emptyText}>Not enough data yet</Text>}
+                            </LazyLoad>
+                        </Panel>
 
-                {/* ── 10. FEATURE FLAGS ───────────────────────────── */}
-                <AccordionSection title="Feature Flags" statusColor={COLORS.success} statusText="Config">
-                    <View>
-                        {Object.entries(flags).map(([key, val]) => (
-                            <View key={key} style={styles.flagRow}>
-                                <Text style={styles.flagLabel}>{key}</Text>
+                        <Panel icon="📉" title="Bunk Culture Index" accent={COLORS.danger} statusText="Weekly">
+                            <LazyLoad onVisible={loadBunk} loading={bunkLoading}>
+                                {bunkIndex && bunkIndex.map((d, i) => (
+                                    <BarProgress key={i} label={d.day} value={d.bunkRate} maxVal={100} color={d.bunkRate >= 30 ? COLORS.danger : d.bunkRate >= 15 ? COLORS.warning : COLORS.success} />
+                                ))}
+                                {bunkIndex && bunkIndex.length === 0 && <Text style={styles.emptyText}>No data yet</Text>}
+                            </LazyLoad>
+                        </Panel>
+
+                        <Panel icon="👥" title="Batch Distribution" accent={COLORS.success} statusText="Cohorts">
+                            <LazyLoad onVisible={loadBatches} loading={batchLoading}>
+                                {batches && batches.map((b, i) => (
+                                    <View key={i} style={styles.batchRow}>
+                                        <Text style={styles.batchLabel}>{b.batch}</Text>
+                                        <View style={styles.barTrack}>
+                                            <View style={[styles.barFill, { width: `${b.percentage}%`, backgroundColor: COLORS.primary }]} />
+                                        </View>
+                                        <Text style={styles.batchCount}>{b.count}</Text>
+                                    </View>
+                                ))}
+                                {batches && batches.length === 0 && <Text style={styles.emptyText}>No batch data available</Text>}
+                            </LazyLoad>
+                        </Panel>
+                    </>
+                )}
+
+                {/* ══ OPERATIONS ═══════════════════════════════════ */}
+                {category === 'operations' && (
+                    <>
+                        <Panel icon="🩺" title="Endpoint Health" accent={COLORS.success} statusText="24h">
+                            <LazyLoad onVisible={loadEndpoints} loading={endpointsLoading}>
+                                {endpoints && endpoints.map((ep, i) => (
+                                    <View key={i} style={styles.endpointRow}>
+                                        <View style={[styles.statusDot, { backgroundColor: endpointColor(ep.successRate) }]} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.endpointName}>{ep.name}</Text>
+                                            <Text style={styles.endpointMeta}>{ep.avgDuration}ms avg</Text>
+                                        </View>
+                                        <Text style={[styles.endpointRate, { color: endpointColor(ep.successRate) }]}>{ep.successRate.toFixed(1)}%</Text>
+                                    </View>
+                                ))}
+                                {endpoints && endpoints.length === 0 && <Text style={styles.emptyText}>No telemetry data yet</Text>}
+                            </LazyLoad>
+                        </Panel>
+
+                        <Panel icon="🐛" title="Parser Failures" accent={COLORS.danger} statusText="Recent">
+                            <LazyLoad onVisible={loadFailures} loading={failuresLoading}>
+                                {failures && failures.map((f, i) => (
+                                    <FailureCard key={i} failure={f} />
+                                ))}
+                                {failures && failures.length === 0 && <Text style={styles.emptyText}>No parser failures</Text>}
+                            </LazyLoad>
+                        </Panel>
+
+                        <Panel icon="⚡" title="ERP Downtime" accent={COLORS.success} statusText="Operational">
+                            <LazyLoad onVisible={loadDowntime} loading={downtimeLoading}>
+                                {downtimeEvents && downtimeEvents.map((ev, i) => (
+                                    <View key={i} style={styles.downtimeRow}>
+                                        <View style={[styles.statusDot, { backgroundColor: ev.resolvedAt ? COLORS.success : COLORS.danger }]} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.downtimeType}>{ev.type || 'Unknown'}</Text>
+                                            <Text style={styles.downtimeMeta}>
+                                                {ev.reportsCount || 0} reports
+                                                {ev.resolvedAt ? ' • Resolved' : ' • Active'}
+                                            </Text>
+                                        </View>
+                                        {!ev.resolvedAt && (
+                                            <TouchableOpacity onPress={() => handleResolveDowntime(ev.id)} style={styles.resolveBtn}>
+                                                <Text style={styles.resolveBtnText}>Resolve</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                ))}
+                                {downtimeEvents && downtimeEvents.length === 0 && <Text style={styles.emptyText}>No downtime events</Text>}
+                            </LazyLoad>
+                        </Panel>
+
+                        <Panel icon="🚦" title="Rate Limiting" accent={COLORS.warning} statusText="Monitor">
+                            <LazyLoad onVisible={loadRate} loading={rateLoading}>
+                                {rateData && rateData.length > 0 && (
+                                    <View style={styles.tableHeader}>
+                                        <Text style={[styles.tableCell, { flex: 2 }]}>Roll Number</Text>
+                                        <Text style={styles.tableCell}>Hourly</Text>
+                                        <Text style={styles.tableCell}>Daily</Text>
+                                        <Text style={styles.tableCell}>Status</Text>
+                                    </View>
+                                )}
+                                {rateData && rateData.map((r, i) => (
+                                    <View key={i} style={styles.tableRow}>
+                                        <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>{r.rollNumber}</Text>
+                                        <Text style={styles.tableCell}>{r.hourly}</Text>
+                                        <Text style={styles.tableCell}>{r.daily}</Text>
+                                        <View style={[styles.statusBadge, { backgroundColor: rateStatusColor(r.status) + '22' }]}>
+                                            <Text style={[styles.statusBadgeText, { color: rateStatusColor(r.status) }]}>
+                                                {r.status}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                ))}
+                                {rateData && rateData.length === 0 && <Text style={styles.emptyText}>No sync activity</Text>}
+                            </LazyLoad>
+                        </Panel>
+                    </>
+                )}
+
+                {/* ══ CONTROLS ═════════════════════════════════════ */}
+                {category === 'controls' && (
+                    <>
+                        <Panel icon="📢" title="Announcements" accent={COLORS.primary} statusText="Broadcast">
+                            <LazyLoad onVisible={loadAnnouncements} loading={announcementsLoading}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>TITLE</Text>
+                                    <TextInput style={styles.input} value={annTitle} onChangeText={setAnnTitle} placeholder="Announcement title" placeholderTextColor={COLORS.textMuted} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>MESSAGE</Text>
+                                    <TextInput style={[styles.input, { minHeight: 60 }]} value={annBody} onChangeText={setAnnBody} placeholder="Announcement body" placeholderTextColor={COLORS.textMuted} multiline />
+                                </View>
+                                <View style={styles.typeRow}>
+                                    {['info', 'warning', 'danger'].map(t => (
+                                        <TouchableOpacity key={t} style={[styles.typePill, annType === t && styles.typePillActive]} onPress={() => setAnnType(t)}>
+                                            <Text style={[styles.typePillText, annType === t && styles.typePillTextActive]}>{t}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                                <TouchableOpacity style={styles.actionBtn} onPress={handlePublishAnnouncement} activeOpacity={0.8}>
+                                    <Text style={styles.actionBtnText}>Publish Announcement</Text>
+                                </TouchableOpacity>
+
+                                {announcements && announcements.length > 0 && (
+                                    <View style={{ marginTop: SPACING.md }}>
+                                        <Text style={styles.subSectionLabel}>ACTIVE</Text>
+                                        {announcements.map((a, i) => (
+                                            <View key={i} style={styles.announcementCard}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.announcementTitle}>{a.title}</Text>
+                                                    <Text style={styles.announcementBody} numberOfLines={2}>{a.message}</Text>
+                                                </View>
+                                                <TouchableOpacity onPress={() => handleDeleteAnnouncement(a.id)}>
+                                                    <Text style={{ color: COLORS.danger, fontWeight: '700', fontSize: 16 }}>x</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </LazyLoad>
+                        </Panel>
+
+                        <Panel icon="🎚️" title="Feature Flags" accent={COLORS.success} statusText="Config">
+                            {Object.keys(flags).length === 0
+                                ? <Text style={styles.emptyText}>No feature flags configured</Text>
+                                : Object.entries(flags).map(([key, val]) => (
+                                    <View key={key} style={styles.flagRow}>
+                                        <Text style={styles.flagLabel}>{key}</Text>
+                                        <Switch
+                                            value={val}
+                                            onValueChange={(v) => handleToggleFlag(key, v)}
+                                            trackColor={{ false: COLORS.inputBackground, true: COLORS.success + '66' }}
+                                            thumbColor={val ? COLORS.success : COLORS.textMuted}
+                                        />
+                                    </View>
+                                ))}
+                        </Panel>
+
+                        <Panel icon="🛡️" title="Version Gate" accent={COLORS.warning} statusText={`v${minVersion}`}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>MINIMUM VERSION</Text>
+                                <TextInput style={styles.input} value={minVersion} onChangeText={setMinVersion} placeholder="e.g. 2.1.0" placeholderTextColor={COLORS.textMuted} />
+                            </View>
+                            <TouchableOpacity style={styles.actionBtn} onPress={handlePublishVersion} activeOpacity={0.8}>
+                                <Text style={styles.actionBtnText}>Publish Version Gate</Text>
+                            </TouchableOpacity>
+                        </Panel>
+
+                        <Panel icon="🚧" title="Maintenance Mode" accent={maintMode ? COLORS.danger : COLORS.success} statusText={maintMode ? 'Active' : 'Off'}>
+                            <View style={styles.flagRow}>
+                                <Text style={styles.flagLabel}>Enable Maintenance</Text>
                                 <Switch
-                                    value={val}
-                                    onValueChange={(v) => handleToggleFlag(key, v)}
-                                    trackColor={{ false: COLORS.inputBackground, true: COLORS.success + '66' }}
-                                    thumbColor={val ? COLORS.success : COLORS.textMuted}
+                                    value={maintMode}
+                                    onValueChange={handleToggleMaintenance}
+                                    trackColor={{ false: COLORS.inputBackground, true: COLORS.danger + '66' }}
+                                    thumbColor={maintMode ? COLORS.danger : COLORS.textMuted}
                                 />
                             </View>
-                        ))}
-                    </View>
-                </AccordionSection>
-
-                {/* ── 11. FORCED UPDATE ───────────────────────────── */}
-                <AccordionSection title="Version Gate" statusColor={COLORS.warning} statusText={`v${minVersion}`}>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>MINIMUM VERSION</Text>
-                        <TextInput style={styles.input} value={minVersion} onChangeText={setMinVersion} placeholder="e.g. 2.1.0" placeholderTextColor={COLORS.textMuted} />
-                    </View>
-                    <TouchableOpacity style={styles.actionBtn} onPress={handlePublishVersion} activeOpacity={0.8}>
-                        <Text style={styles.actionBtnText}>Publish Version Gate</Text>
-                    </TouchableOpacity>
-                </AccordionSection>
-
-                {/* ── 12. MAINTENANCE MODE ────────────────────────── */}
-                <AccordionSection title="Maintenance Mode" statusColor={maintMode ? COLORS.danger : COLORS.success} statusText={maintMode ? 'Active' : 'Off'}>
-                    <View style={styles.flagRow}>
-                        <Text style={styles.flagLabel}>Enable Maintenance</Text>
-                        <Switch
-                            value={maintMode}
-                            onValueChange={handleToggleMaintenance}
-                            trackColor={{ false: COLORS.inputBackground, true: COLORS.danger + '66' }}
-                            thumbColor={maintMode ? COLORS.danger : COLORS.textMuted}
-                        />
-                    </View>
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>PUBLIC MESSAGE</Text>
-                        <TextInput style={[styles.input, { minHeight: 60 }]} value={maintMsg} onChangeText={setMaintMsg} placeholder="Maintenance message..." placeholderTextColor={COLORS.textMuted} multiline />
-                    </View>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.inputBackground }]} onPress={handleSaveMaintMsg} activeOpacity={0.8}>
-                        <Text style={[styles.actionBtnText, { color: COLORS.textPrimary }]}>Save Message</Text>
-                    </TouchableOpacity>
-                </AccordionSection>
-
-                {/* ── 13. USER REVOCATION ─────────────────────────── */}
-                <AccordionSection title="User Revocation" statusColor={COLORS.danger} statusText="Access">
-                    <LazyLoad onVisible={loadRevoked} loading={revokedLoading}>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>ROLL NUMBER</Text>
-                            <TextInput style={styles.input} value={revokeRoll} onChangeText={setRevokeRoll} placeholder="e.g. 2410990123" placeholderTextColor={COLORS.textMuted} />
-                        </View>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>REASON</Text>
-                            <TextInput style={styles.input} value={revokeReason} onChangeText={setRevokeReason} placeholder="Reason for revocation" placeholderTextColor={COLORS.textMuted} />
-                        </View>
-                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.danger }]} onPress={handleRevokeUser} activeOpacity={0.8}>
-                            <Text style={styles.actionBtnText}>Revoke Access</Text>
-                        </TouchableOpacity>
-
-                        {revoked && revoked.length > 0 && (
-                            <View style={{ marginTop: SPACING.md }}>
-                                <Text style={styles.subSectionLabel}>REVOKED LIST</Text>
-                                {revoked.map((r, i) => (
-                                    <View key={i} style={styles.revokedRow}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={styles.revokedRoll}>{r.rollNumber}</Text>
-                                            <Text style={styles.revokedReason}>{r.reason}</Text>
-                                        </View>
-                                        <TouchableOpacity onPress={() => handleUnrevokeUser(r.rollNumber)} style={styles.resolveBtn}>
-                                            <Text style={styles.resolveBtnText}>Reinstate</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                ))}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>PUBLIC MESSAGE</Text>
+                                <TextInput style={[styles.input, { minHeight: 60 }]} value={maintMsg} onChangeText={setMaintMsg} placeholder="Maintenance message..." placeholderTextColor={COLORS.textMuted} multiline />
                             </View>
-                        )}
-                    </LazyLoad>
-                </AccordionSection>
+                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.inputBackground }]} onPress={handleSaveMaintMsg} activeOpacity={0.8}>
+                                <Text style={[styles.actionBtnText, { color: COLORS.textPrimary }]}>Save Message</Text>
+                            </TouchableOpacity>
+                        </Panel>
+
+                        <Panel icon="🔒" title="User Revocation" accent={COLORS.danger} statusText="Access">
+                            <LazyLoad onVisible={loadRevoked} loading={revokedLoading}>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>ROLL NUMBER</Text>
+                                    <TextInput style={styles.input} value={revokeRoll} onChangeText={setRevokeRoll} placeholder="e.g. 2410990123" placeholderTextColor={COLORS.textMuted} />
+                                </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>REASON</Text>
+                                    <TextInput style={styles.input} value={revokeReason} onChangeText={setRevokeReason} placeholder="Reason for revocation" placeholderTextColor={COLORS.textMuted} />
+                                </View>
+                                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.danger }]} onPress={handleRevokeUser} activeOpacity={0.8}>
+                                    <Text style={styles.actionBtnText}>Revoke Access</Text>
+                                </TouchableOpacity>
+
+                                {revoked && revoked.length > 0 && (
+                                    <View style={{ marginTop: SPACING.md }}>
+                                        <Text style={styles.subSectionLabel}>REVOKED LIST</Text>
+                                        {revoked.map((r, i) => (
+                                            <View key={i} style={styles.revokedRow}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.revokedRoll}>{r.rollNumber}</Text>
+                                                    <Text style={styles.revokedReason}>{r.reason}</Text>
+                                                </View>
+                                                <TouchableOpacity onPress={() => handleUnrevokeUser(r.rollNumber)} style={styles.resolveBtn}>
+                                                    <Text style={styles.resolveBtnText}>Reinstate</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </LazyLoad>
+                        </Panel>
+                    </>
+                )}
 
                 <View style={{ height: 100 }} />
             </ScrollView>
@@ -600,19 +621,20 @@ export default function AdminScreen() {
 
 // ─── LAZY LOAD WRAPPER ──────────────────────────────────────────
 function LazyLoad({ onVisible, loading, children }) {
-    const styles = getStyles();
     useEffect(() => { onVisible(); }, []);
     if (loading) return <ActivityIndicator style={{ padding: SPACING.md }} size="small" color={COLORS.primary} />;
     return <>{children}</>;
 }
 
-// ─── BENTO CELL ─────────────────────────────────────────────────
-function BentoCell({ label, value }) {
+// ─── KPI CELL ───────────────────────────────────────────────────
+function KpiCell({ label, value, loading }) {
     const styles = getStyles();
     return (
-        <View style={styles.bentoCell}>
-            <Text style={styles.bentoValue}>{value}</Text>
-            <Text style={styles.bentoLabel}>{label}</Text>
+        <View style={styles.kpiCell}>
+            {loading && value == null
+                ? <ActivityIndicator size="small" color={COLORS.primary} style={{ height: 30 }} />
+                : <Text style={styles.kpiValue}>{value != null ? value : '—'}</Text>}
+            <Text style={styles.kpiLabel}>{label}</Text>
         </View>
     );
 }
@@ -654,32 +676,84 @@ function FailureCard({ failure }) {
 // ─── STYLES ─────────────────────────────────────────────────────
 const getStyles = () => StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    scrollContent: { paddingHorizontal: SPACING.screenPadding, paddingTop: SPACING.md },
+    scrollContent: { paddingHorizontal: SPACING.screenPadding, paddingTop: SPACING.sm },
     loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    // Header
-    header: { marginBottom: SPACING.lg },
-    headerTitle: { ...TYPOGRAPHY.headingLarge, color: COLORS.textPrimary, fontSize: 24 },
-    headerSub: { ...TYPOGRAPHY.captionMedium, color: COLORS.textMuted, marginTop: 2 },
+    // Hero
+    hero: {
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.xl,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        padding: SPACING.lg,
+        marginBottom: SPACING.md,
+        ...SHADOWS.medium,
+    },
+    heroTopRow: { flexDirection: 'row', alignItems: 'flex-start' },
+    heroEyebrow: { ...TYPOGRAPHY.micro, color: COLORS.primary, letterSpacing: 1.2, fontWeight: '800' },
+    heroTitle: { ...TYPOGRAPHY.headingLarge, color: COLORS.textPrimary, fontSize: 22, marginTop: 4 },
+    livePill: {
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        backgroundColor: COLORS.successLight,
+        paddingHorizontal: 8, paddingVertical: 4, borderRadius: BORDER_RADIUS.full,
+    },
+    liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.success },
+    livePillText: { ...TYPOGRAPHY.micro, color: COLORS.successDark, fontWeight: '800', letterSpacing: 0.5 },
 
-    // Accordion
-    accordionCard: { backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.sm, overflow: 'hidden' },
-    accordionHeader: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, gap: SPACING.sm },
-    accordionTitle: { ...TYPOGRAPHY.labelLarge, color: COLORS.textPrimary, flex: 1 },
-    accordionStatus: { ...TYPOGRAPHY.captionMedium, color: COLORS.textMuted },
-    accordionBody: { padding: SPACING.md, paddingTop: 0 },
-    chevron: { fontSize: 10, color: COLORS.textMuted },
+    // KPI strip
+    kpiRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.lg },
+    kpiCell: {
+        flex: 1, alignItems: 'center',
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        paddingVertical: SPACING.md,
+    },
+    kpiValue: { ...TYPOGRAPHY.displayLarge, color: COLORS.textPrimary, fontSize: 26 },
+    kpiLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 4, letterSpacing: 0.8, fontWeight: '700' },
+    heroSpark: {
+        marginTop: SPACING.md, alignItems: 'center',
+        borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, paddingTop: SPACING.md,
+    },
+    heroSparkLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginBottom: SPACING.sm, letterSpacing: 0.8 },
+
+    // Category tabs
+    catRow: {
+        flexDirection: 'row',
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        padding: 4,
+        marginBottom: SPACING.md,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    catTab: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: BORDER_RADIUS.sm },
+    catTabActive: { backgroundColor: COLORS.cardBackground, ...SHADOWS.small },
+    catTabText: { ...TYPOGRAPHY.labelSmall, color: COLORS.textMuted, fontWeight: '600' },
+    catTabTextActive: { color: COLORS.textPrimary, fontWeight: '700' },
+
+    // Panel
+    panel: {
+        backgroundColor: COLORS.cardBackground,
+        borderRadius: BORDER_RADIUS.lg,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        marginBottom: SPACING.md,
+        overflow: 'hidden',
+        ...SHADOWS.small,
+    },
+    panelHeader: {
+        flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
+        paddingHorizontal: SPACING.md, paddingVertical: SPACING.md,
+        borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle,
+    },
+    panelIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+    panelIconText: { fontSize: 15 },
+    panelTitle: { ...TYPOGRAPHY.labelLarge, color: COLORS.textPrimary, flex: 1 },
+    panelPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: BORDER_RADIUS.full, borderWidth: 1 },
+    panelPillText: { ...TYPOGRAPHY.micro, fontWeight: '700' },
+    panelBody: { padding: SPACING.md },
+
     statusDot: { width: 8, height: 8, borderRadius: 4 },
-
-    // Bento grid
-    bentoGrid: { flexDirection: 'row', gap: 1, backgroundColor: COLORS.border, borderRadius: BORDER_RADIUS.sm, overflow: 'hidden', marginBottom: SPACING.sm },
-    bentoCell: { flex: 1, backgroundColor: COLORS.cardBackground, padding: SPACING.md, alignItems: 'center' },
-    bentoValue: { ...TYPOGRAPHY.displayLarge, color: COLORS.textPrimary, fontSize: 28 },
-    bentoLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 4 },
-
-    // Sparkline
-    sparklineCard: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.sm, padding: SPACING.md, alignItems: 'center' },
-    sparklineLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginBottom: SPACING.sm },
 
     // Bar progress
     barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm, gap: SPACING.sm },

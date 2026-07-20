@@ -210,6 +210,41 @@ function isSessionDead(responseData, htmlBody = '') {
 }
 
 /**
+ * Authoritative session-liveness probe — the exact call the official mobile app uses.
+ * POSTs /mobilev2/checkUserStatusMobileApp; the ERP replies with the literal "1" while the
+ * session is alive, or a JSON { message: "...session..." } once it is genuinely dead.
+ * (Verified against real app traffic 2026-07-20: the app never re-logs-in in the background —
+ * it just runs this probe and reuses one securityToken for the whole session.)
+ *
+ * Returns: true (alive) | false (confirmed dead) | null (ambiguous / network error).
+ *
+ * Callers MUST NOT trigger reloginERP (which emails an OTP) unless this returns exactly false.
+ * Our HTML heuristics (isSessionDead) false-positive on transient/partial responses, and a full
+ * re-login on this ERP ALWAYS demands a fresh OTP (there is no silent trusted-device refresh).
+ */
+async function checkSessionAlive(session) {
+    if (!ERP_BASE || !session?.userId) return null;
+    try {
+        const res = await fetch(`${ERP_BASE}/mobilev2/checkUserStatusMobileApp`, {
+            method: 'POST',
+            headers: MOBILE_HEADERS,
+            body: encodeForm({
+                userId:        session.userId,
+                roleId:        session.roleId,
+                securityToken: session.securityToken || '',
+                deviceIdUUID:  session.deviceIdUUID || '',
+            }),
+        });
+        const body = (await res.text()).replace(/\s/g, '');
+        if (body === '1') return true;                                  // definitively alive
+        if (/session|login|expired|logout|unauthor/i.test(body)) return false; // definitively dead
+        return null;                                                    // ambiguous — don't act
+    } catch {
+        return null;                                                    // network error — don't force re-login
+    }
+}
+
+/**
  * Set CORS headers on a response.
  * Uses ALLOWED_ORIGIN env var if set, otherwise defaults to '*'.
  * Never throws — a missing env var should not crash the API.
@@ -231,6 +266,7 @@ module.exports = {
     mintSessionToken,
     verifyOtpWithERP,
     isSessionDead,
+    checkSessionAlive,
     setCorsHeaders,
     encodeForm,
     generateDeviceUUID,

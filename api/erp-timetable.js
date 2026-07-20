@@ -17,6 +17,7 @@ const {
     reloginERP,
     mintSessionToken,
     isSessionDead,
+    checkSessionAlive,
     setCorsHeaders,
     ERP_BASE,
 } = require('./_session-utils');
@@ -540,6 +541,14 @@ module.exports = async function handler(req, res) {
         // email on every app open. Only re-auth on a genuine session-death signal — never on
         // absent data (attendance/calendar on the same open detect a real dead session).
         if (isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
+            // Confirm genuine death via the ERP's own liveness probe before re-login (→ OTP email).
+            const liveness = await checkSessionAlive(session);
+            if (liveness !== false) {
+                // No `success`/`source` → client leaves the existing timetable untouched (a transient
+                // blip must not be mistaken for an empty/vacation timetable).
+                return res.status(200).json({ transient: true });
+            }
+
             if (!persistentToken) {
                 return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: diag });
             }

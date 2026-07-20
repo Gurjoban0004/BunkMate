@@ -68,6 +68,20 @@ export function useErpAutoSync(state, dispatch) {
 
         // Pre-flight
         if (!currentState.isAuthenticated || !currentState.settings?.erpConnected) return;
+
+        // Re-auth already pending (OTP prompt is showing) — bail. Every server hit on a
+        // dead session runs reloginERP, which sends a fresh OTP email; without this gate the
+        // 3-min periodic + foreground syncs spam the user with OTPs while the modal is open.
+        if (currentState.erpSessionExpired) {
+            logger.info('⏸️', 'ERP sync paused — re-auth pending (OTP prompt open)');
+            return;
+        }
+        // User skipped the prompt — respect the snooze window unless this is a manual refresh.
+        if (!force && currentState.erpReauthSnoozeUntil && Date.now() < currentState.erpReauthSnoozeUntil) {
+            logger.info('⏸️', 'ERP sync paused — re-auth snoozed after skip');
+            return;
+        }
+
         if (isSyncingRef.current) {
             logger.info('⏭️', 'ERP sync skipped — already in progress');
             return;
@@ -388,6 +402,9 @@ export function useErpAutoSync(state, dispatch) {
         const currentState = stateRef.current;
         if (!currentState.isAuthenticated || !currentState.settings?.erpConnected) return;
         if (isSyncingRef.current) return; // full sync already running
+        // Don't warm a dead session while re-auth is pending/snoozed — it would send another OTP.
+        if (currentState.erpSessionExpired) return;
+        if (currentState.erpReauthSnoozeUntil && Date.now() < currentState.erpReauthSnoozeUntil) return;
 
         const token = await getErpToken();
         const persistentToken = await getErpPersistentToken();

@@ -41,9 +41,9 @@ export default function ErpReauthModal() {
     const isVisible = !!expired;
 
     const handleDismiss = useCallback(() => {
-        // User chose to skip — clear the pending state so the modal goes away.
-        // The next sync attempt will re-trigger it if the session is still dead.
-        dispatch({ type: 'ERP_SESSION_RESTORED' });
+        // User chose to skip — close the modal AND snooze auto-sync for 30 min so we don't
+        // immediately re-trigger a reloginERP (which would send another OTP email).
+        dispatch({ type: 'ERP_SESSION_RESTORED', payload: { snooze: true } });
         setOtp('');
         setError('');
     }, [dispatch]);

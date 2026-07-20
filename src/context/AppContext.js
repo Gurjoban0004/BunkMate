@@ -75,6 +75,7 @@ const initialState = {
 
     // ERP session expiry — set when ERP rejects session and OTP is needed
     erpSessionExpired: null,      // { authUserId, studentName, persistentToken } | null
+    erpReauthSnoozeUntil: null,   // epoch ms — while in the future, auto-sync won't re-trigger OTP (set when user skips)
 
     // ERP sync metadata — drives UI freshness indicators
     isOnline: true,  // network reachability, updated by the network listener
@@ -724,9 +725,12 @@ export function appReducer(state, action) {
             };
 
         case 'ERP_SESSION_RESTORED':
+            // snooze: user skipped the OTP prompt — back off auto-sync for 30 min so we
+            // don't immediately re-trigger a fresh reloginERP (→ another OTP email).
             return {
                 ...state,
                 erpSessionExpired: null,
+                erpReauthSnoozeUntil: action.payload?.snooze ? Date.now() + 30 * 60 * 1000 : null,
             };
 
         case 'ERP_SYNC_STATE': {
