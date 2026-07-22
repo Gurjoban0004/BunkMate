@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet, Easing, Platform } from 'react-native';
-import { COLORS, SHADOWS } from '../../theme/theme';
+import { SHADOWS } from '../../theme/theme';
+import BrandMark, { BRAND_PAPER } from './BrandMark';
 
 /**
- * First-paint brand mark — the concentric-ring identity from the Welcome
- * screen, breathing gently. Replaces the old tint-filled app icon, which
- * rendered as a solid colored square.
+ * First-paint brand mark — the Presence "P" logo, breathing gently.
+ * Matches the launcher icon exactly so the splash and the app icon are one mark.
  */
 export default function BrandLoader() {
     const breathe = useRef(new Animated.Value(0)).current;
@@ -39,16 +39,12 @@ export default function BrandLoader() {
     }, [breathe]);
 
     const scale = breathe.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1.03] });
-    const ringOpacity = breathe.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
+    const markOpacity = breathe.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] });
 
     return (
         <View style={styles.container}>
-            <Animated.View style={[styles.pill, { transform: [{ scale }] }]}>
-                <Animated.View style={[styles.outerRing, { opacity: ringOpacity }]}>
-                    <View style={styles.innerRing}>
-                        <View style={styles.coreDot} />
-                    </View>
-                </Animated.View>
+            <Animated.View style={[styles.pill, { transform: [{ scale }], opacity: markOpacity }]}>
+                <BrandMark size={80} />
             </Animated.View>
         </View>
     );
@@ -59,40 +55,12 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: COLORS.background,
+        // Match the native splash background so the handoff is seamless (no colour jump).
+        backgroundColor: BRAND_PAPER,
     },
     pill: {
-        width: 80,
-        height: 80,
         borderRadius: 24,
-        backgroundColor: COLORS.cardBackground,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        alignItems: 'center',
-        justifyContent: 'center',
+        overflow: 'hidden',
         ...SHADOWS.medium,
-    },
-    outerRing: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        borderWidth: 2,
-        borderColor: COLORS.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    innerRing: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: COLORS.primaryLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    coreDot: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: COLORS.primary,
     },
 });

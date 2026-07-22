@@ -30,6 +30,7 @@ const {
     MOBILE_HEADERS,
     ERP_BASE,
 } = require('./_session-utils');
+const { blockIfRevoked } = require('./_revocation');
 const {
     fetchSummaryLegacy,
     fetchSummaryV2,
@@ -170,6 +171,9 @@ module.exports = async function handler(req, res) {
     } catch {
         return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
     }
+
+    // Revoked users are cut off here, not in the UI — this is the gate that actually works.
+    if (await blockIfRevoked(res, session.rollNumber)) return;
 
     if (session.isMock) {
         if (keepAlive) {

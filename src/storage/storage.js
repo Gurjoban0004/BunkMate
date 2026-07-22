@@ -34,8 +34,10 @@ export async function saveAppState(state) {
     const timestamp = new Date().toISOString();
 
     // Strip transient fields that should never be persisted
+    // accessRevoked is a live server verdict, never a cached one — persisting it would
+    // keep a reinstated user gated until the next successful sync.
     // eslint-disable-next-line no-unused-vars
-    const { erpSync, ...persistableState } = state;
+    const { erpSync, accessRevoked, ...persistableState } = state;
 
     const stateWithTimestamp = {
         ...persistableState,

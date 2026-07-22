@@ -255,67 +255,92 @@ export default function AdminScreen() {
     // ─── HANDLERS ───────────────────────────────────────────────
     const roll = state.erpRollNumber;
 
+    /**
+     * Every admin mutation goes through here. Without it a 403, a network drop or a
+     * server error would reject silently while the UI still reported success and kept
+     * its optimistic change — the panel looked like it worked when nothing had happened.
+     *
+     * Returns the API result on success, undefined on failure. Callers apply their
+     * local state change only when a result comes back.
+     */
+    const run = async (mutate, successMessage) => {
+        try {
+            const result = await mutate();
+            if (successMessage) showAlert(successMessage, 'success');
+            return result ?? true;
+        } catch (e) {
+            showAlert(e?.message || 'Action failed', 'error');
+            return undefined;
+        }
+    };
+
     const handleToggleFlag = async (key, val) => {
+        const previous = flags;
         const newFlags = { ...flags, [key]: val };
         setFlags(newFlags);
-        await updateAdminConfig(roll, { featureFlags: newFlags });
+        const ok = await run(() => updateAdminConfig(roll, { featureFlags: newFlags }));
+        if (!ok) setFlags(previous);   // the switch must reflect the server, not the tap
     };
 
     const handlePublishVersion = async () => {
         if (!minVersion.trim()) return;
-        await updateAdminConfig(roll, { minVersion: minVersion.trim() });
-        showAlert('Version gate updated', 'success');
+        await run(() => updateAdminConfig(roll, { minVersion: minVersion.trim() }), 'Version gate updated');
     };
 
     const handleToggleMaintenance = async (val) => {
+        const previous = maintMode;
         setMaintMode(val);
-        await updateAdminConfig(roll, { maintenanceMode: val, maintenanceMessage: maintMsg });
-        showAlert(val ? 'Maintenance mode ON' : 'Maintenance mode OFF', 'success');
+        const ok = await run(
+            () => updateAdminConfig(roll, { maintenanceMode: val, maintenanceMessage: maintMsg }),
+            val ? 'Maintenance mode ON' : 'Maintenance mode OFF',
+        );
+        if (!ok) setMaintMode(previous);
     };
 
     const handleSaveMaintMsg = async () => {
-        await updateAdminConfig(roll, { maintenanceMessage: maintMsg });
-        showAlert('Message updated', 'success');
+        await run(() => updateAdminConfig(roll, { maintenanceMessage: maintMsg }), 'Message updated');
     };
 
     const handlePublishAnnouncement = async () => {
         if (!annTitle.trim() || !annBody.trim()) return;
-        try {
-            const ann = await publishAnnouncement(roll, { title: annTitle, message: annBody, type: annType, expiryHours: 72 });
-            setAnnouncements(prev => [ann, ...(prev || [])]);
-            setAnnTitle('');
-            setAnnBody('');
-            showAlert('Announcement published', 'success');
-        } catch (e) { showAlert('Failed to publish', 'error'); }
+        const ann = await run(
+            () => publishAnnouncement(roll, { title: annTitle, message: annBody, type: annType, expiryHours: 72 }),
+            'Announcement published',
+        );
+        if (!ann) return;
+        setAnnouncements(prev => [ann, ...(prev || [])]);
+        setAnnTitle('');
+        setAnnBody('');
     };
 
     const handleDeleteAnnouncement = async (id) => {
-        await deleteAnnouncement(roll, id);
+        if (!await run(() => deleteAnnouncement(roll, id), 'Announcement removed')) return;
         setAnnouncements(prev => (prev || []).filter(a => a.id !== id));
-        showAlert('Announcement removed', 'success');
     };
 
     const handleRevokeUser = async () => {
-        if (!revokeRoll.trim()) return;
-        try {
-            await revokeUser(roll, revokeRoll.trim(), revokeReason.trim());
-            setRevoked(prev => [...(prev || []), { rollNumber: revokeRoll.trim(), reason: revokeReason.trim() }]);
-            setRevokeRoll('');
-            setRevokeReason('');
-            showAlert('User revoked', 'success');
-        } catch (e) { showAlert(e.message, 'error'); }
+        const target = revokeRoll.trim();
+        const reason = revokeReason.trim();
+        if (!target) return;
+        if (target === roll) return showAlert('You cannot revoke your own access', 'error');
+
+        if (!await run(() => revokeUser(roll, target, reason), 'User revoked')) return;
+        setRevoked(prev => [
+            ...(prev || []).filter(r => r.rollNumber !== target),   // no duplicate rows on re-revoke
+            { rollNumber: target, reason: reason || 'No reason provided' },
+        ]);
+        setRevokeRoll('');
+        setRevokeReason('');
     };
 
     const handleUnrevokeUser = async (targetRollNumber) => {
-        await unrevokeUser(roll, targetRollNumber);
+        if (!await run(() => unrevokeUser(roll, targetRollNumber), 'User reinstated')) return;
         setRevoked(prev => (prev || []).filter(r => r.rollNumber !== targetRollNumber));
-        showAlert('User reinstated', 'success');
     };
 
     const handleResolveDowntime = async (eventId) => {
-        await resolveDowntime(roll, eventId);
+        if (!await run(() => resolveDowntime(roll, eventId), 'Downtime resolved')) return;
         setDowntimeEvents(prev => (prev || []).map(e => e.id === eventId ? { ...e, resolvedAt: new Date() } : e));
-        showAlert('Downtime resolved', 'success');
     };
 
     // ─── COLOR HELPERS ──────────────────────────────────────────

@@ -21,6 +21,7 @@ const {
     setCorsHeaders,
     ERP_BASE,
 } = require('./_session-utils');
+const { blockIfRevoked } = require('./_revocation');
 const {
     fetchTimetableV2,
     fetchTimetableLegacy,
@@ -445,6 +446,8 @@ module.exports = async function handler(req, res) {
     } catch {
         return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
     }
+
+    if (await blockIfRevoked(res, session.rollNumber)) return;
 
     if (session.isMock) {
         const timetable = {

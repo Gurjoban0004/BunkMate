@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { Platform } from 'react-native';
 import { logger } from '../utils/logger';
@@ -25,30 +25,23 @@ if (missingKeys.length > 0) {
   );
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app = null;
+let db = null;
+let auth = null;
 
-// Initialize Firestore with platform-specific configuration
-let db;
-
-if (Platform.OS === 'web') {
-  // Web platform: Use IndexedDB persistence
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
-  });
-} else {
-  // React Native platform: Use unlimited cache size
-  db = initializeFirestore(app, {
-    cacheSizeBytes: CACHE_SIZE_UNLIMITED
-  });
+if (missingKeys.length === 0) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = Platform.OS === 'web'
+      ? initializeFirestore(app, {
+          localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        })
+      : initializeFirestore(app);
+    auth = getAuth(app);
+  } catch (error) {
+    logger.warn('Firebase unavailable — running local-only:', error.message);
+  }
 }
-
-// Firebase Auth — the app signs in with a server-minted custom token (uid === login
-// code) so Firestore rules can enforce per-user ownership. The session lives in
-// memory and is re-minted from the stored code on each launch (see ensureAuthenticated).
-const auth = getAuth(app);
 
 export { db, app, auth };
 export default app;

@@ -20,7 +20,7 @@ const STEP_IMPORTING = 'importing';
 
 // Curated onboarding palettes — the final "pick a vibe" step before entering the app.
 // The full picker (all palettes + light/dark) lives in Settings; this is intentionally short.
-const ONBOARDING_PALETTES = ['chalkpad', 'catppuccin', 'forest', 'nordic'];
+const ONBOARDING_PALETTES = ['nordic', 'chalkpad', 'forest', 'catppuccin'];
 
 export default function ERPSetupScreen({ navigation }) {
     const { state, dispatch } = useApp();
@@ -394,7 +394,7 @@ export default function ERPSetupScreen({ navigation }) {
 
     // ─── RENDER: THEME (final onboarding step, before entering the app) ──
     const renderTheme = () => {
-        const activePalette = state?.settings?.uiPalette || 'chalkpad';
+        const activePalette = state?.settings?.uiPalette || 'nordic';
         return (
             <View style={styles.formSection}>
                 <View style={styles.sectionHeader}>

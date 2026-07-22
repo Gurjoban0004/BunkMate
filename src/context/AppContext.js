@@ -56,7 +56,7 @@ const initialState = {
         smartAlertsEnabled: true,
         erpConnected: false,
         lastErpSync: null,
-        uiPalette: 'chalkpad',
+        uiPalette: 'nordic',
     },
 
     // Track which warning notifications have been sent (avoid spam)
@@ -76,6 +76,10 @@ const initialState = {
     // ERP session expiry — set when ERP rejects session and OTP is needed
     erpSessionExpired: null,      // { authUserId, studentName, persistentToken } | null
     erpReauthSnoozeUntil: null,   // epoch ms — while in the future, auto-sync won't re-trigger OTP (set when user skips)
+
+    // Set when the server answers a sync with 403 { revoked: true }. Gates the app
+    // on the spot instead of waiting for the next launch-time revocation check.
+    accessRevoked: null,          // { reason } | null
 
     // ERP sync metadata — drives UI freshness indicators
     isOnline: true,  // network reachability, updated by the network listener
@@ -713,6 +717,9 @@ export function appReducer(state, action) {
                 isAuthenticated: action.payload,
             };
 
+        case 'ACCESS_REVOKED':
+            return { ...state, accessRevoked: { reason: action.payload?.reason || null } };
+
         case 'ERP_SESSION_EXPIRED':
             // Store the pending re-auth info so the UI can show an OTP prompt
             return {
@@ -769,6 +776,15 @@ export function AppProvider({ children }) {
     // ─── INITIALIZATION ──────────────────────────────────────────
 
     useEffect(() => {
+        // Safety net: startup must NEVER hang on a stalled network call. If init hasn't
+        // finished in 12s, paint the UI anyway — local state is already usable and cloud
+        // sync catches up in the background. Without this, one unbounded await leaves the
+        // app stuck on BrandLoader forever (reads as "app isn't responding" on Android).
+        const bailoutTimer = setTimeout(() => {
+            logger.warn('⚠️ Init exceeded 12s — painting UI anyway');
+            setIsLoading(false);
+        }, 12000);
+
         const initialize = async () => {
             try {
                 logger.info('🚀', 'Initializing app context...');
@@ -810,6 +826,7 @@ export function AppProvider({ children }) {
             } catch (e) {
                 logger.error('❌ Failed to initialize app:', e);
             } finally {
+                clearTimeout(bailoutTimer);
                 setIsLoading(false);
             }
         };
@@ -828,7 +845,10 @@ export function AppProvider({ children }) {
             }
         });
 
-        return () => unsubscribe();
+        return () => {
+            clearTimeout(bailoutTimer);
+            unsubscribe();
+        };
     }, []);
 
     // Auto-save state on every change (skip initial load)

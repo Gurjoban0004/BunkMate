@@ -87,6 +87,10 @@ export default function AppNavigator() {
         );
     }
 
+    // Live server verdict wins over the launch-time check — a user revoked while the
+    // app is open is gated on their next sync, not on their next relaunch.
+    if (state.accessRevoked) return <RevokedGate reason={state.accessRevoked.reason} />;
+
     if (gate) return gate;
 
     if (Platform.OS === 'web') {

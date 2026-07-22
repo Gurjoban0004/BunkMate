@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
+import BrandMark from '../../components/common/BrandMark';
 
 export default function WelcomeScreen({ navigation }) {
     const styles = getStyles();
@@ -12,11 +13,7 @@ export default function WelcomeScreen({ navigation }) {
                 {/* Hero Section */}
                 <View style={styles.hero}>
                     <View style={styles.logoPill}>
-                        <View style={styles.logoOuterRing}>
-                            <View style={styles.logoInnerRing}>
-                                <View style={styles.logoCoreDot} />
-                            </View>
-                        </View>
+                        <BrandMark size={80} />
                     </View>
                     <Text style={styles.appName}>Presence</Text>
                     <Text style={styles.tagline}>Attendance, solved.</Text>
@@ -73,39 +70,10 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     logoPill: {
-        width: 80,
-        height: 80,
         borderRadius: 24,
-        backgroundColor: COLORS.cardBackground,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        alignItems: 'center',
-        justifyContent: 'center',
+        overflow: 'hidden',
         marginBottom: SPACING.lg,
         ...SHADOWS.medium,
-    },
-    logoOuterRing: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        borderWidth: 2,
-        borderColor: COLORS.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    logoInnerRing: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: COLORS.primaryLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    logoCoreDot: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: COLORS.primary,
     },
     appName: {
         ...TYPOGRAPHY.displayLarge,

@@ -109,7 +109,7 @@ function AppContent() {
 
     // Process theme dynamically on every render
     const currentTheme = state?.settings?.theme || 'light';
-    const currentPalette = state?.settings?.uiPalette || 'chalkpad';
+    const currentPalette = state?.settings?.uiPalette || 'nordic';
     applyTheme(currentTheme, currentPalette);
 
     useEffect(() => {

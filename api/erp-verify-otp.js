@@ -23,6 +23,7 @@ const {
     setCorsHeaders,
     ERP_BASE,
 } = require('./_session-utils');
+const { blockIfRevoked } = require('./_revocation');
 
 module.exports = async function handler(req, res) {
     try {
@@ -43,6 +44,9 @@ module.exports = async function handler(req, res) {
     if (!ERP_BASE || !process.env.ENCRYPTION_SECRET) {
         return res.status(500).json({ error: 'Server configuration error' });
     }
+
+    // Block before burning an OTP — a revoked user gets the reason, not a dead session.
+    if (await blockIfRevoked(res, username)) return;
 
     try {
         // Generate deterministic device UUID from username (if provided)

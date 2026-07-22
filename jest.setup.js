@@ -13,6 +13,8 @@ jest.mock('firebase/firestore', () => ({
   doc: jest.fn(),
   getDoc: jest.fn(),
   setDoc: jest.fn(),
+  addDoc: jest.fn(),
+  collection: jest.fn(),
   serverTimestamp: jest.fn(() => ({ _type: 'serverTimestamp' })),
 }));
 

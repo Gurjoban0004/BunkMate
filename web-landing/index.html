@@ -8,8 +8,7 @@
 
   <meta name="description"
     content="Presence syncs with your college portal so you always know exactly when you can skip a class. Calm, precise attendance tracking for students.">
-  <meta name="theme-color" content="#F0F7FF" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0B1120" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#FDFDFD">
 
   <meta property="og:title" content="Presence · Attendance, solved.">
   <meta property="og:description" content="Sync your college portal. Know exactly when you can skip.">
@@ -18,12 +17,8 @@
   <link rel="icon" type="image/png" href="/icon192.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap"
-    rel="stylesheet">
-
+  <!-- No webfont: the app renders in a system serif (SERIF_FONT in src/theme/theme.js),
+       so the site matches it exactly and loads with zero font requests. -->
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -32,13 +27,7 @@
 
     <!-- ====== Hero ====== -->
     <header class="hero fade-up">
-      <div class="brand-mark" aria-hidden="true">
-        <div class="ring-outer">
-          <div class="ring-inner">
-            <div class="core-dot"></div>
-          </div>
-        </div>
-      </div>
+      <div class="brand-mark" aria-hidden="true">P</div>
       <h1 class="app-name">Presence</h1>
       <p class="tagline">Attendance, solved.</p>
       <p class="value-prop">Sync your college portal and know exactly when you can skip, before you decide.</p>
@@ -241,11 +230,7 @@
 
     <!-- ====== Footer ====== -->
     <footer class="footer">
-      <div class="brand-mark brand-mark-sm" aria-hidden="true">
-        <div class="ring-outer">
-          <div class="ring-inner"><div class="core-dot"></div></div>
-        </div>
-      </div>
+      <div class="brand-mark brand-mark-sm" aria-hidden="true">P</div>
       <p class="footer-tagline">Presence · attendance, solved.</p>
       <p class="footer-version">Version 2.0</p>
     </footer>

@@ -15,19 +15,52 @@ import { logger } from './logger';
  * @param {{ create?: boolean }} [opts] - create the user doc server-side if missing (new users)
  * @throws {Error} 'Invalid login code' (404), a throttling message (429), or a generic failure
  */
-export const authenticateWithCode = async (code, { create = false } = {}) => {
-  const res = await fetch(buildApiUrl('/api/auth-token', Platform.OS), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, create }),
+// React Native's fetch has NO default timeout. An unbounded stall here hangs app
+// STARTUP: loadAppState() awaits ensureAuthenticated(), and AppProvider's
+// `finally { setIsLoading(false) }` only runs once that resolves — so a stalled
+// request leaves the app on the splash forever (an Android ANR). Always bound it.
+const AUTH_TIMEOUT_MS = 15000;
+
+function withTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
   });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+export const authenticateWithCode = async (code, { create = false } = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch(buildApiUrl('/api/auth-token', Platform.OS), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, create }),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw new Error('Could not reach the server. Please check your connection and try again.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (res.status === 404) throw new Error('Invalid login code');
   if (res.status === 429) throw new Error('Too many attempts. Please try again in a few minutes.');
   if (!res.ok) throw new Error('Could not sign in. Please check your connection and try again.');
 
   const { token } = await res.json();
-  await signInWithCustomToken(auth, token);
+  // Firebase's own sign-in call is likewise unbounded — race it.
+  await withTimeout(
+    signInWithCustomToken(auth, token),
+    AUTH_TIMEOUT_MS,
+    'Sign-in timed out. Please try again.',
+  );
   return true;
 };
 

@@ -36,8 +36,9 @@ import { getErpToken, getErpPersistentToken } from '../storage/erpTokenStorage';
 import { erpFetchAttendance, erpFetchCalendar, erpFetchTimetable, erpKeepAlive } from '../services/erpService';
 import { mapErpToAppState, buildResyncPayload, mapCalendarToRecords, mapTimetableToState, validateErpSubject, buildErpNameMap } from '../utils/erpAttendanceMapper';
 import { logger } from '../utils/logger';
+import { logSync, trackEndpoint } from '../services/telemetry';
 
-const MIN_SYNC_INTERVAL_MS       = 60 * 1000;   // 60s debounce (successful syncs)
+const MIN_SYNC_INTERVAL_MS     = 60 * 1000;   // 60s debounce (successful syncs)
 const FOREGROUND_THROTTLE_MS     = 10 * 1000;   // 10s min gap between foreground syncs
 const PERIODIC_INTERVAL_MS       = 3  * 60 * 1000;  // 3 min periodic
 const KEEPALIVE_INTERVAL_MS      = 12 * 60 * 1000;  // 12 min keep-alive
@@ -120,6 +121,10 @@ export function useErpAutoSync(state, dispatch) {
         const syncStartMs = Date.now();
         const attemptAt   = new Date().toISOString();
 
+        // Telemetry for the Admin panel (Endpoint Health / Parser Failures / Rate Limit).
+        const endpoints    = [];
+        const parserErrors = [];
+
         // Clear changedSubjectIds at the start of every sync cycle
         setSyncStatus({
             status:            'syncing',
@@ -131,7 +136,8 @@ export function useErpAutoSync(state, dispatch) {
             logger.info('🔄', 'ERP auto-sync starting...');
 
             // ── Step 1: Attendance summary ────────────────────────
-            const attendanceResult = await erpFetchAttendance(token, persistentToken);
+            const attendanceResult = await trackEndpoint(endpoints, 'attendance',
+                () => erpFetchAttendance(token, persistentToken));
 
             // Server may have silently refreshed the session (trusted device, no OTP);
             // use the new token for the remaining steps to avoid repeat re-logins.
@@ -234,7 +240,8 @@ export function useErpAutoSync(state, dispatch) {
             setSyncStatus({ calendarSyncStatus: 'loading' });
             let registerUnavailable = false;
             try {
-                const calData = await erpFetchCalendar(token, persistentToken);
+                const calData = await trackEndpoint(endpoints, 'calendar',
+                    () => erpFetchCalendar(token, persistentToken));
                 if (calData.token) token = calData.token;
 
                 if (calData.sessionExpired) {
@@ -312,6 +319,7 @@ export function useErpAutoSync(state, dispatch) {
                 }
             } catch (calErr) {
                 logger.warn('⚠️ Calendar sync failed (non-critical):', calErr.message);
+                parserErrors.push({ endpoint: 'calendar', message: String(calErr?.message || calErr).slice(0, 200) });
                 registerUnavailable = true;
                 setSyncError('Totals synced, attendance register unavailable.');
                 setSyncStatus({ calendarSyncStatus: 'failed' });
@@ -335,7 +343,8 @@ export function useErpAutoSync(state, dispatch) {
             if (shouldFetchTimetable) {
                 try {
                     // Timetable is derived from the attendance register (live, weekly-auto-updating).
-                    const ttData = await erpFetchTimetable(token, persistentToken);
+                    const ttData = await trackEndpoint(endpoints, 'timetable',
+                        () => erpFetchTimetable(token, persistentToken));
 
                     if (ttData.sessionExpired) {
                         logger.warn('⏭️ Timetable fetch: session expired, will retry next cycle');
@@ -366,6 +375,7 @@ export function useErpAutoSync(state, dispatch) {
                     }
                 } catch (ttErr) {
                     logger.warn('⚠️ Timetable fetch failed (non-critical):', ttErr.message);
+                    parserErrors.push({ endpoint: 'timetable', message: String(ttErr?.message || ttErr).slice(0, 200) });
                 }
             }
 
@@ -388,11 +398,24 @@ export function useErpAutoSync(state, dispatch) {
         } catch (err) {
             // Network error / timeout — keep existing data, allow immediate retry
             logger.error('❌ ERP auto-sync failed:', err.message);
+            parserErrors.push({ endpoint: 'sync', message: String(err?.message || err).slice(0, 200) });
+
+            // Server revoked this user mid-session — gate immediately, don't wait for a relaunch.
+            if (err?.status === 403 && err?.data?.revoked) {
+                dispatch({ type: 'ACCESS_REVOKED', payload: { reason: err.data.error } });
+            }
+
             setSyncError(err.message);
             setSyncStatus({ status: 'error' });
         } finally {
             isSyncingRef.current = false;
             setIsSyncing(false);
+            // Fire-and-forget — never awaited, never throws.
+            logSync(currentState.userId, {
+                endpoints,
+                parserErrors,
+                rollNumber: currentState.erpRollNumber,
+            });
         }
     }, [dispatch, setSyncStatus]);
 

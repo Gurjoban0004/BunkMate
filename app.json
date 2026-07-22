@@ -4,14 +4,14 @@
     "slug": "presence",
     "version": "2.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "jsEngine": "hermes",
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1A1A2E"
+      "backgroundColor": "#F9F8F4"
     },
     "ios": {
       "supportsTablet": false,
@@ -24,10 +24,10 @@
     },
     "android": {
       "package": "com.presence.app",
-      "versionCode": 4,
+      "versionCode": 6,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
-        "backgroundColor": "#1A1A2E"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F9F8F4"
       },
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
@@ -40,32 +40,33 @@
       ]
     },
     "web": {
-      "favicon": "./assets/logo.png",
+      "favicon": "./assets/favicon.png",
       "name": "Presence",
       "shortName": "Presence",
-      "themeColor": "#6C63FF",
-      "backgroundColor": "#1A1A2E",
+      "themeColor": "#F9F8F4",
+      "backgroundColor": "#F9F8F4",
       "description": "Smart Attendance Tracker",
       "display": "standalone",
       "startUrl": "/app",
       "bundler": "metro",
       "splash": {
-        "image": "./assets/logo.png",
+        "image": "./assets/splash-icon.png",
         "resizeMode": "contain",
-        "backgroundColor": "#1A1A2E"
+        "backgroundColor": "#F9F8F4"
       }
     },
     "plugins": [
       [
         "expo-notifications",
         {
-          "icon": "./assets/logo.png",
-          "color": "#6C63FF"
+          "icon": "./assets/notification-icon.png",
+          "color": "#688E7F"
         }
       ],
       "expo-background-fetch",
       "expo-task-manager",
-      "@react-native-community/datetimepicker"
+      "expo-font",
+      "expo-asset"
     ],
     "extra": {
       "eas": {

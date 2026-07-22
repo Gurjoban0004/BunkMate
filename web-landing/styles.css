@@ -1,75 +1,50 @@
 /* =========================================================
    Presence — landing / install page
-   Palette + type mirror the app's default "Chalkpad Classic" theme.
+   Palette + type mirror the app's default "Nordic Slate" theme and its serif face.
    ========================================================= */
 
 :root {
-  /* Chalkpad Classic — light */
-  --bg: #F0F7FF;
+  /* Brand — fixed in both light and dark themes, matches the app icon artwork */
+  --brand-paper: #F9F8F4;
+  --brand-sage: #688E7F;
+
+  /* Nordic Slate — light (mirrors PALETTES.nordic.light in src/theme/theme.js) */
+  --bg: #FDFDFD;
   --surface: #FFFFFF;
-  --sidebar: #E8F1FF;
-  --input: #F1F5F9;
-  --border: #E2E8F0;
-  --border-subtle: #EAF1FB;
-  --ink: #0F172A;
-  --ink-2: #64748B;
-  --muted: #94A3B8;
-  --primary: #5B9BF2;
+  --sidebar: #F4F3EF;
+  --input: #F4F3EF;
+  --border: #E6E4E0;
+  --border-subtle: #F5F4F0;
+  --ink: #1C1917;
+  --ink-2: #57534E;
+  --muted: #736E67;
+  --primary: #1C1917;
   --primary-ink: #FFFFFF;
-  --primary-light: #E8F1FF;
-  --success: #34D399;
-  --success-ink: #059669;
-  --success-bg: #ECFDF5;
-  --warning: #FBBF24;
-  --warning-ink: #D97706;
-  --warning-bg: #FFFBEB;
-  --danger: #F87171;
-  --danger-ink: #DC2626;
-  --danger-bg: #FEF2F2;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.12);
+  --primary-light: #F4F3EF;
+  --success: #609384;
+  --success-ink: #3D6B5E;
+  --success-bg: #E2ECE9;
+  --warning: #B89647;
+  --warning-ink: #8F7436;
+  --warning-bg: #FAF4E5;
+  --danger: #C85B49;
+  --danger-ink: #A0483A;
+  --danger-bg: #F7EBE8;
+  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
+  --shadow-md: 0 4px 16px rgba(28, 25, 23, 0.08);
+  --shadow-lg: 0 12px 40px rgba(28, 25, 23, 0.12);
   --r-sm: 10px;
   --r-md: 16px;
   --r-lg: 22px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Chalkpad Classic — dark */
-    --bg: #0B1120;
-    --surface: #141D2E;
-    --sidebar: #0E1524;
-    --input: #1E293B;
-    --border: #2D3A4F;
-    --border-subtle: #1E293B;
-    --ink: #E2E8F0;
-    --ink-2: #94A3B8;
-    --muted: #64748B;
-    --primary: #5B9BF2;
-    --primary-ink: #FFFFFF;
-    --primary-light: #1E3A5F;
-    --success: #6EE7B7;
-    --success-ink: #A7F3D0;
-    --success-bg: #14332A;
-    --warning: #FCD34D;
-    --warning-ink: #FDE68A;
-    --warning-bg: #2D2814;
-    --danger: #FCA5A5;
-    --danger-ink: #FECACA;
-    --danger-bg: #2D1F1F;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
-  }
-}
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+/* Landing page is light-only — no dark variant. */
+html { font-size: 16px; -webkit-tap-highlight-color: transparent; color-scheme: light; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Times New Roman', Times, serif;
   background: var(--bg);
   color: var(--ink);
   min-height: 100dvh;
@@ -89,7 +64,7 @@ body {
 
 /* ---------- Section titles ---------- */
 .section-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Times New Roman', Times, serif;
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -97,32 +72,28 @@ body {
   margin-bottom: 18px;
 }
 
-/* ---------- Brand mark (the app's ring logo) ---------- */
+/* ---------- Brand mark (the Presence "P" — matches the app icon exactly) ----------
+   Brand colours are fixed, not theme variables: the logo must read identically in
+   light mode, dark mode, the app, and the launcher icon. */
 .brand-mark {
   width: 80px; height: 80px;
   border-radius: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--brand-paper);
   box-shadow: var(--shadow-md);
   display: flex; align-items: center; justify-content: center;
+  font-family: 'Times New Roman', Times, serif;
+  font-weight: 400;
+  font-size: 50px;
+  line-height: 1;
+  color: var(--brand-sage);
+  user-select: none;
 }
-.ring-outer {
-  width: 52px; height: 52px; border-radius: 50%;
-  border: 2px solid var(--primary);
-  display: flex; align-items: center; justify-content: center;
-}
-.ring-inner {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: var(--primary-light);
-  display: flex; align-items: center; justify-content: center;
-}
-.core-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--primary); }
 
 /* ---------- Hero ---------- */
 .hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
 .hero .brand-mark { margin-bottom: 20px; }
 .app-name {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Times New Roman', Times, serif;
   font-size: 2.6rem;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -149,7 +120,7 @@ body {
   border: none;
   background: transparent;
   border-radius: 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Times New Roman', Times, serif;
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--ink-2);
@@ -171,7 +142,7 @@ body {
   padding: 15px 18px;
   border: none;
   border-radius: var(--r-md);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Times New Roman', Times, serif;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
@@ -219,7 +190,7 @@ body {
   flex-direction: column;
   gap: 10px;
 }
-.p-greeting { font-family: 'Outfit', sans-serif; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--ink); }
+.p-greeting { font-family: 'Times New Roman', Times, serif; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--ink); }
 .p-date { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
 .p-answer {
   display: flex; flex-direction: column; gap: 3px;
@@ -230,7 +201,7 @@ body {
   margin-bottom: 6px;
 }
 .p-answer-label { font-size: 0.8rem; color: var(--ink-2); font-weight: 500; }
-.p-answer-value { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; color: var(--success-ink); }
+.p-answer-value { font-family: 'Times New Roman', Times, serif; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; color: var(--success-ink); }
 
 .p-row {
   display: flex; align-items: center; gap: 12px;
@@ -301,7 +272,7 @@ body {
 }
 .changelog-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .version-badge {
-  font-family: 'Outfit', sans-serif;
+  font-family: 'Times New Roman', Times, serif;
   font-size: 0.8rem; font-weight: 700;
   color: var(--primary-ink);
   background: var(--primary);
@@ -318,10 +289,7 @@ body {
 
 /* ---------- Footer ---------- */
 .footer { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 8px; }
-.footer .brand-mark-sm { width: 44px; height: 44px; border-radius: 14px; box-shadow: var(--shadow-sm); }
-.footer .brand-mark-sm .ring-outer { width: 28px; height: 28px; border-width: 1.5px; }
-.footer .brand-mark-sm .ring-inner { width: 18px; height: 18px; }
-.footer .brand-mark-sm .core-dot { width: 8px; height: 8px; }
+.footer .brand-mark-sm { width: 44px; height: 44px; border-radius: 14px; font-size: 27px; box-shadow: var(--shadow-sm); }
 .footer-tagline { font-size: 0.85rem; color: var(--ink-2); font-weight: 500; }
 .footer-version { font-size: 0.78rem; color: var(--muted); }
 
