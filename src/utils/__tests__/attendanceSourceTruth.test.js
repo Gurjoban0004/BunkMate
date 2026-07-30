@@ -1,4 +1,5 @@
 import { getSubjectAttendance } from '../attendance';
+import { isNonRegressingErpUpdate } from '../erpAttendanceMapper';
 import { calculateProjectionBreakdown } from '../transparency';
 
 const baseState = {
@@ -82,5 +83,34 @@ describe('ERP source of truth for local bridge records', () => {
       percentage: 81.8,
       hasPredictions: true,
     });
+  });
+
+  test('normalizes legacy string counts instead of producing corrupted totals', () => {
+    const state = {
+      ...baseState,
+      subjects: [{ ...baseState.subjects[0], initialAttended: '8', initialTotal: '10' }],
+      settings: {},
+      attendanceRecords: {
+        '2026-05-08': { math: { status: 'present', units: '2', source: 'manual' } },
+      },
+    };
+
+    expect(getSubjectAttendance('math', state)).toEqual({
+      attendedUnits: 10,
+      totalUnits: 12,
+      percentage: 83.3,
+      hasPredictions: true,
+    });
+  });
+
+  test('rejects a partial portal response that would replace confirmed totals with 0%', () => {
+    expect(isNonRegressingErpUpdate(
+      { initialAttended: 42, initialTotal: 50 },
+      { newAttended: 0, newTotal: 0 },
+    )).toBe(false);
+    expect(isNonRegressingErpUpdate(
+      { initialAttended: 42, initialTotal: 50 },
+      { newAttended: 43, newTotal: 51 },
+    )).toBe(true);
   });
 });

@@ -22,6 +22,10 @@ function normalize(name) {
         .trim();
 }
 
+function normalizeCode(code) {
+    return String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
 /**
  * Calculate similarity between two normalized strings.
  * Uses word overlap (Jaccard) + longest-common-word-sequence boost.
@@ -76,10 +80,11 @@ function findBestMatch(erpSub, existingSubjects, matchedIds, threshold = 0.35) {
 
     // 2. Subject code match (e.g. "24CSE0212")
     if (erpSub.code) {
+        const erpCode = normalizeCode(erpSub.code);
         const byCode = existingSubjects.find(
             s => !matchedIds.has(s.id) && (
-                (s.code && String(s.code) === String(erpSub.code)) ||
-                (s.erpSubjectId && String(s.erpSubjectId) === String(erpSub.code))
+                (s.code && normalizeCode(s.code) === erpCode) ||
+                (s.erpSubjectId && normalizeCode(s.erpSubjectId) === erpCode)
             )
         );
         if (byCode) return { match: byCode, score: 1 };
@@ -124,7 +129,8 @@ export function mapErpToAppState(erpSubjects, existingSubjects) {
     const availableColors = (COLORS.subjectPalette || []).filter(c => !usedColors.has(c));
     let colorIndex = 0;
 
-    for (const erpSub of erpSubjects) {
+    for (const rawErpSub of erpSubjects) {
+        const erpSub = normalizeErpSubject(rawErpSub);
         const { match: bestMatch, score: bestScore } = findBestMatch(erpSub, existingSubjects, matchedExistingIds);
 
         if (bestMatch) {
@@ -199,10 +205,45 @@ export function buildResyncPayload(matchedUpdates) {
 export function validateErpSubject(sub) {
     if (!sub || typeof sub !== 'object') return false;
     if (!sub.name || typeof sub.name !== 'string' || !sub.name.trim()) return false;
-    if (typeof sub.delivered !== 'number' || sub.delivered < 0) return false;
-    if (typeof sub.attended  !== 'number' || sub.attended  < 0) return false;
+    if (!Number.isFinite(sub.delivered) || sub.delivered < 0) return false;
+    if (!Number.isFinite(sub.attended)  || sub.attended  < 0) return false;
     if (sub.attended > sub.delivered) return false; // attended can't exceed delivered
     return true;
+}
+
+/**
+ * The portal has historically returned numbers both as JSON numbers and as
+ * strings. Normalize once at the boundary so stale cached values cannot turn
+ * addition into string concatenation in attendance calculations.
+ */
+export function normalizeErpSubject(sub) {
+    const delivered = Number(sub?.delivered);
+    const attended = Number(sub?.attended);
+    const absent = Number(sub?.absent);
+    const percentage = Number(sub?.percentage);
+    return {
+        ...sub,
+        delivered,
+        attended,
+        absent: Number.isFinite(absent) ? absent : Math.max(0, delivered - attended),
+        percentage: Number.isFinite(percentage) ? percentage : (delivered ? (attended / delivered) * 100 : 0),
+    };
+}
+
+/**
+ * Attendance totals accumulate during a semester. A smaller portal value is
+ * therefore a partial/failed parse, not a new truth to display. Do not let it
+ * replace the last complete total and make a subject jump to 0%.
+ */
+export function isNonRegressingErpUpdate(existingSubject, update) {
+    if (!existingSubject) return update.newTotal > 0;
+    const previousTotal = Number(existingSubject.initialTotal) || 0;
+    const previousAttended = Number(existingSubject.initialAttended) || 0;
+    return update.newTotal > 0
+        && update.newAttended >= 0
+        && update.newAttended <= update.newTotal
+        && update.newTotal >= previousTotal
+        && update.newAttended >= previousAttended;
 }
 
 /**
@@ -238,20 +279,12 @@ export function mapTimetableToState(erpTimetable, erpTimeSlots, existingSubjects
     const timetable = { Monday: [], Tuesday: [], Wednesday: [], Thursday: [], Friday: [], Saturday: [] };
     const newSubjects = [];
 
-    const usedColors = new Set(existingSubjects.map(s => s.color));
-    const availableColors = (COLORS.subjectPalette || []).filter(c => !usedColors.has(c));
-    let colorIndex = 0;
-
-    const allSubjects = [...existingSubjects];
-    const createdCodes = new Set();
-
     for (const [dayName, entries] of Object.entries(erpTimetable)) {
         if (!timetable[dayName]) continue;
 
         for (const entry of entries) {
             const candidates = entry.classes || [{ subjectName: entry.subjectName, subjectCode: entry.subjectCode }];
 
-            let bestCandidate = null;
             let bestMatch = null;
             let bestScore = 0;
 
@@ -262,60 +295,18 @@ export function mapTimetableToState(erpTimetable, erpTimeSlots, existingSubjects
                     erpSubjectId: candidate.subjectCode || null,
                 };
                 // Empty matchedIds — same subject legitimately appears in multiple cells
-                const { match, score } = findBestMatch(erpSub, allSubjects, new Set());
+                const { match, score } = findBestMatch(erpSub, existingSubjects, new Set());
                 if (match && score > bestScore) {
-                    bestCandidate = candidate;
                     bestMatch = match;
                     bestScore = score;
                 }
             }
 
-            let subjectId;
-            if (bestMatch) {
-                subjectId = bestMatch.id;
-            } else if (candidates.length > 1) {
-                // Multi-class cell, none match enrolled subjects — skip
-                continue;
-            } else {
-                // Single-class cell, no match — create new subject
-                const candidate = candidates[0];
-                const codeKey = candidate.subjectCode || candidate.subjectName;
-
-                if (createdCodes.has(codeKey)) {
-                    const existing = allSubjects.find(s =>
-                        (s.code && s.code === candidate.subjectCode) ||
-                        (s.name === candidate.subjectName)
-                    );
-                    if (existing) {
-                        subjectId = existing.id;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    const color = availableColors[colorIndex % availableColors.length]
-                        || (COLORS.subjectPalette || ['#85C1E9'])[colorIndex % (COLORS.subjectPalette?.length || 1)];
-                    colorIndex++;
-
-                    const newSub = {
-                        id: generateId(),
-                        name: candidate.subjectName,
-                        code: candidate.subjectCode,
-                        teacher: '',
-                        color,
-                        initialAttended: 0,
-                        initialTotal: 0,
-                        target: 75,
-                        erpSubjectId: candidate.subjectCode || null,
-                        source: 'erp',
-                        lastUpdated: new Date().toISOString(),
-                    };
-
-                    newSubjects.push(newSub);
-                    allSubjects.push(newSub);
-                    createdCodes.add(codeKey);
-                    subjectId = newSub.id;
-                }
-            }
+            // Timetable data controls *when* a known subject occurs. It must
+            // never create a 0/0 attendance subject when a group/elective cell
+            // cannot be matched to the attendance summary.
+            if (!bestMatch) continue;
+            const subjectId = bestMatch.id;
 
             const slotId = erpTimeSlots[entry.period - 1]?.id || `erp-period-${entry.period}`;
             timetable[dayName].push({ slotId, subjectId });

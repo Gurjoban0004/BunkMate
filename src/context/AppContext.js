@@ -217,6 +217,32 @@ export function appReducer(state, action) {
             };
         }
 
+        case 'PRUNE_UNMATCHED_EMPTY_ERP_SUBJECTS': {
+            const subjectIds = new Set(action.payload || []);
+            if (!subjectIds.size) return state;
+
+            const attendanceRecords = Object.fromEntries(
+                Object.entries(state.attendanceRecords).map(([date, dayData]) => {
+                    const nextDay = { ...dayData };
+                    subjectIds.forEach(subjectId => delete nextDay[subjectId]);
+                    return [date, nextDay];
+                })
+            );
+            const timetable = Object.fromEntries(
+                Object.entries(state.timetable).map(([day, slots]) => [
+                    day,
+                    (slots || []).filter(slot => !subjectIds.has(slot.subjectId)),
+                ])
+            );
+
+            return {
+                ...state,
+                subjects: state.subjects.filter(subject => !subjectIds.has(subject.id)),
+                attendanceRecords,
+                timetable,
+            };
+        }
+
         case 'MARK_ATTENDANCE': {
             const { date, subjectId, status, units, isExtra, autoMarked } = action.payload;
             const existingRecord = state.attendanceRecords[date]?.[subjectId];
@@ -662,10 +688,18 @@ export function appReducer(state, action) {
             // Migrate old hardcoded colors to the new theme palette
             if (loaded.subjects && loaded.subjects.length > 0) {
                 loaded.subjects = loaded.subjects.map((sub, i) => {
+                    const initialTotal = Number(sub.initialTotal);
+                    const initialAttended = Number(sub.initialAttended);
+                    const normalizedAttendance = {
+                        initialTotal: Number.isFinite(initialTotal) && initialTotal >= 0 ? initialTotal : 0,
+                        initialAttended: Number.isFinite(initialAttended) && initialAttended >= 0
+                            ? Math.min(initialAttended, Number.isFinite(initialTotal) && initialTotal >= 0 ? initialTotal : 0)
+                            : 0,
+                    };
                     if (!THEME_COLORS.subjectPalette.includes(sub.color)) {
-                        return { ...sub, color: THEME_COLORS.subjectPalette[i % THEME_COLORS.subjectPalette.length] };
+                        return { ...sub, ...normalizedAttendance, color: THEME_COLORS.subjectPalette[i % THEME_COLORS.subjectPalette.length] };
                     }
-                    return sub;
+                    return { ...sub, ...normalizedAttendance };
                 });
             }
 

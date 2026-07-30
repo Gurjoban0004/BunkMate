@@ -158,3 +158,25 @@ describe('EDIT_ATTENDANCE source ownership', () => {
     expect(next.attendanceRecords['2026-07-06'].math.status).toBe('present');
   });
 });
+
+describe('empty timetable artifact cleanup', () => {
+  test('removes only the unmatched empty ERP subject and its timetable slots', () => {
+    const state = makeState({
+      subjects: [
+        { id: 'math', name: 'Mathematics', initialAttended: 8, initialTotal: 10 },
+        { id: 'group-cell', name: 'Group elective', code: 'GROUP', source: 'erp', initialAttended: 0, initialTotal: 0 },
+      ],
+      timetable: { Monday: [{ subjectId: 'math' }, { subjectId: 'group-cell' }] },
+      attendanceRecords: { '2026-07-09': { 'group-cell': { status: 'present', units: 1 } } },
+    });
+
+    const next = appReducer(state, {
+      type: 'PRUNE_UNMATCHED_EMPTY_ERP_SUBJECTS',
+      payload: ['group-cell'],
+    });
+
+    expect(next.subjects.map(subject => subject.id)).toEqual(['math']);
+    expect(next.timetable.Monday).toEqual([{ subjectId: 'math' }]);
+    expect(next.attendanceRecords['2026-07-09']['group-cell']).toBeUndefined();
+  });
+});

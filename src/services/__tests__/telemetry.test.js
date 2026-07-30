@@ -1,5 +1,5 @@
-import { addDoc } from 'firebase/firestore';
-import { logSync, trackEndpoint } from '../telemetry';
+import { addDoc, setDoc } from 'firebase/firestore';
+import { logAttendanceSnapshot, logSync, trackEndpoint } from '../telemetry';
 
 jest.mock('firebase/firestore');
 jest.mock('../../config/firebase', () => ({ db: {} }));
@@ -70,5 +70,22 @@ describe('logSync', () => {
         await expect(
             logSync('CODE123', { endpoints: [{ name: 'attendance', status: 'ok' }] })
         ).resolves.toBeUndefined();
+    });
+});
+
+describe('logAttendanceSnapshot', () => {
+    it('writes one aggregate-only snapshot per day', async () => {
+        await logAttendanceSnapshot('CODE123', '2410990296', [{
+            code: '24CSE0316', name: 'Artificial Intelligence and Machine Learning',
+            attended: 20, delivered: 24, absent: 4, percentage: 83.3,
+        }]);
+
+        expect(setDoc).toHaveBeenCalledTimes(1);
+        expect(setDoc.mock.calls[0][1]).toMatchObject({
+            schemaVersion: 1,
+            cohort: '24',
+            source: 'erp',
+            subjects: [expect.objectContaining({ courseCode: '24CSE0316', attended: 20, total: 24 })],
+        });
     });
 });

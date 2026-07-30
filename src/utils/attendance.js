@@ -5,8 +5,15 @@ import { getTodayDayName, parseTimeToMinutes } from './dateHelpers';
  * Returns 0 if total is 0 (avoids division by zero).
  */
 export function calculatePercentage(attended, total) {
-    if (total === 0) return 0;
-    return Math.round((attended / total) * 100 * 10) / 10;
+    const safeTotal = Number(total);
+    const safeAttended = Number(attended);
+    if (!Number.isFinite(safeTotal) || safeTotal <= 0 || !Number.isFinite(safeAttended)) return 0;
+    return Math.round((Math.min(Math.max(safeAttended, 0), safeTotal) / safeTotal) * 100 * 10) / 10;
+}
+
+function attendanceNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
 function maxDateKey(a, b) {
@@ -64,15 +71,18 @@ export function getSubjectAttendance(subjectId, state) {
             if (!shouldCountLocalRecord(dateKey, subjectId, record, state)) return;
 
             hasPredictions = true;
-            recordedTotal += record.units;
+            const units = attendanceNumber(record.units) || 1;
+            recordedTotal += units;
             if (record.status === 'present') {
-                recordedAttended += record.units;
+                recordedAttended += units;
             }
         }
     });
 
-    const totalUnits = (subject.initialTotal || 0) + recordedTotal;
-    const attendedUnits = (subject.initialAttended || 0) + recordedAttended;
+    const initialTotal = attendanceNumber(subject.initialTotal);
+    const initialAttended = Math.min(attendanceNumber(subject.initialAttended), initialTotal);
+    const totalUnits = initialTotal + recordedTotal;
+    const attendedUnits = initialAttended + recordedAttended;
     const percentage = calculatePercentage(attendedUnits, totalUnits);
 
     return {

@@ -34,9 +34,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { AppState } from 'react-native';
 import { getErpToken, getErpPersistentToken } from '../storage/erpTokenStorage';
 import { erpFetchAttendance, erpFetchCalendar, erpFetchTimetable, erpKeepAlive } from '../services/erpService';
-import { mapErpToAppState, buildResyncPayload, mapCalendarToRecords, mapTimetableToState, validateErpSubject, buildErpNameMap } from '../utils/erpAttendanceMapper';
+import { mapErpToAppState, buildResyncPayload, isNonRegressingErpUpdate, mapCalendarToRecords, mapTimetableToState, normalizeErpSubject, validateErpSubject, buildErpNameMap } from '../utils/erpAttendanceMapper';
 import { logger } from '../utils/logger';
-import { logSync, trackEndpoint } from '../services/telemetry';
+import { logAttendanceSnapshot, logSync, trackEndpoint } from '../services/telemetry';
 
 const MIN_SYNC_INTERVAL_MS     = 60 * 1000;   // 60s debounce (successful syncs)
 const FOREGROUND_THROTTLE_MS     = 10 * 1000;   // 10s min gap between foreground syncs
@@ -124,6 +124,7 @@ export function useErpAutoSync(state, dispatch) {
         // Telemetry for the Admin panel (Endpoint Health / Parser Failures / Rate Limit).
         const endpoints    = [];
         const parserErrors = [];
+        let attendanceSnapshot = null;
 
         // Clear changedSubjectIds at the start of every sync cycle
         setSyncStatus({
@@ -167,7 +168,7 @@ export function useErpAutoSync(state, dispatch) {
             }
 
             // Per-subject validation
-            const validErpSubjects = attendanceResult.subjects.filter(sub => {
+            const validErpSubjects = attendanceResult.subjects.map(normalizeErpSubject).filter(sub => {
                 if (!validateErpSubject(sub)) {
                     logger.warn(`⚠️ Skipping invalid ERP subject: ${sub?.name || 'unknown'}`);
                     return false;
@@ -179,6 +180,27 @@ export function useErpAutoSync(state, dispatch) {
                 logger.warn('⚠️ No valid ERP subjects after validation — keeping existing data');
                 setSyncStatus({ status: 'idle' });
                 return;
+            }
+
+            // Keep only the current ERP totals for the future teacher-facing
+            // aggregate. Never upload individual class dates or manual marks.
+            attendanceSnapshot = validErpSubjects;
+
+            // Older timetable imports could invent an ERP subject with 0/0 when
+            // a group cell did not match the attendance summary. Once we have a
+            // complete summary, remove only those empty, unmatched artifacts.
+            const summaryCodes = new Set(validErpSubjects
+                .map(subject => String(subject.code || '').toUpperCase().replace(/[^A-Z0-9]/g, ''))
+                .filter(Boolean));
+            const emptyTimetableArtifacts = currentState.subjects
+                .filter(subject => subject.source === 'erp'
+                    && Number(subject.initialTotal) === 0
+                    && Number(subject.initialAttended) === 0
+                    && !summaryCodes.has(String(subject.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '')))
+                .map(subject => subject.id);
+            if (emptyTimetableArtifacts.length) {
+                dispatch({ type: 'PRUNE_UNMATCHED_EMPTY_ERP_SUBJECTS', payload: emptyTimetableArtifacts });
+                logger.info('🧹', `Removed ${emptyTimetableArtifacts.length} empty timetable-only subject(s)`);
             }
 
             const mapping = mapErpToAppState(validErpSubjects, currentState.subjects);
@@ -211,6 +233,11 @@ export function useErpAutoSync(state, dispatch) {
                 const filteredUpdates = mapping.matchedUpdates.filter(update => {
                     const existing = currentState.subjects.find(s => s.id === update.subjectId);
                     if (!existing) return true;
+
+                    if (!isNonRegressingErpUpdate(existing, update)) {
+                        logger.warn(`⚠️ Ignoring incomplete portal total for ${existing.name}`);
+                        return false;
+                    }
 
                     // Skip if data is identical
                     if (
@@ -416,6 +443,7 @@ export function useErpAutoSync(state, dispatch) {
                 parserErrors,
                 rollNumber: currentState.erpRollNumber,
             });
+            logAttendanceSnapshot(currentState.userId, currentState.erpRollNumber, attendanceSnapshot);
         }
     }, [dispatch, setSyncStatus]);
 

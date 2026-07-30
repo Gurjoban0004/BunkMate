@@ -62,6 +62,14 @@ export function formatTimeRange(startStr, endStr) {
     }
 }
 
+/** Formats a 24-hour "HH:MM" value for display, e.g. "18:00" → "6:00 PM". */
+export function formatTime(timeStr) {
+    if (!/^\d{2}:\d{2}$/.test(timeStr || '')) return '';
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    if (hours > 23 || minutes > 59) return '';
+    return `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${hours >= 12 ? 'PM' : 'AM'}`;
+}
+
 /**
  * Converts integer minutes since midnight to "HH:MM" 24h string.
  * e.g., 545 -> "09:05"

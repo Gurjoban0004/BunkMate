@@ -8,7 +8,7 @@
  * Fire-and-forget: telemetry must never break or slow down a sync.
  */
 
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { ensureAuthenticated } from '../utils/firebaseHelpers';
 import { logger } from '../utils/logger';
@@ -34,6 +34,41 @@ export async function logSync(userId, { endpoints = [], parserErrors = [], rollN
         });
     } catch (err) {
         logger.warn('⚠️ Telemetry write failed (non-critical):', err.message);
+    }
+}
+
+/**
+ * Store one current, aggregate-only attendance snapshot per student per day.
+ * This deliberately excludes dates, class-level marks, names, and login codes
+ * from the document body. A trusted server can later aggregate these records by
+ * course code for the teacher-facing AIML work without reading a student's full
+ * attendance history.
+ */
+export async function logAttendanceSnapshot(userId, rollNumber, subjects) {
+    if (!userId || !Array.isArray(subjects) || subjects.length === 0) return;
+    try {
+        if (!(await ensureAuthenticated(userId))) return;
+        const dayKey = new Date().toISOString().slice(0, 10);
+        const cohort = /^\d{2}/.test(rollNumber || '') ? rollNumber.slice(0, 2) : null;
+        const safeSubjects = subjects.map(subject => ({
+            courseCode: String(subject.code || subject.erpSubjectId || '').trim(),
+            courseName: String(subject.name || '').trim().slice(0, 120),
+            attended: subject.attended,
+            total: subject.delivered,
+            absent: subject.absent,
+            percentage: subject.percentage,
+        })).filter(subject => subject.courseCode && Number.isFinite(subject.total) && subject.total >= 0);
+        if (!safeSubjects.length) return;
+
+        await setDoc(doc(db, 'telemetry', userId, 'attendanceSnapshots', dayKey), {
+            schemaVersion: 1,
+            cohort,
+            source: 'erp',
+            subjects: safeSubjects,
+            updatedAt: serverTimestamp(),
+        }, { merge: true });
+    } catch (err) {
+        logger.warn('⚠️ Attendance research snapshot failed (non-critical):', err.message);
     }
 }
 

@@ -40,7 +40,8 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
                 {todayClasses.map((c, idx) => {
                     const startMin = parseTimeToMinutes(c.startTime);
                     const endMin = parseTimeToMinutes(c.endTime);
-                    const widthPct = totalSpan > 0 ? ((endMin - startMin) / totalSpan) * 100 : (100 / todayClasses.length);
+                    const leftPct = totalSpan > 0 ? ((startMin - firstStart) / totalSpan) * 100 : (idx / todayClasses.length) * 100;
+                    const widthPct = totalSpan > 0 ? ((endMin - startMin) / totalSpan) * 100 : 100 / todayClasses.length;
 
                     const dayRecords = attendanceRecords?.[todayKey] || {};
                     const record = dayRecords[c.subjectId];
@@ -52,7 +53,10 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
                             ? COLORS.dangerLight
                             : COLORS.inputBackground;
 
-                    const shortName = c.subjectName.split(' ')[0];
+                    // Use the first meaningful two words where space allows. The track is
+                    // positioned by time, so gaps remain visible instead of crushing every
+                    // class against the left edge.
+                    const shortName = c.subjectName.split(' ').slice(0, 2).join(' ');
 
                     return (
                         <View
@@ -60,11 +64,11 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
                             style={[
                                 styles.classBlock,
                                 {
+                                    left: `${leftPct}%`,
                                     width: `${widthPct}%`,
                                     backgroundColor: blockBg,
                                     borderTopColor: c.color || COLORS.textMuted,
                                 },
-                                idx < todayClasses.length - 1 && styles.classBlockBorder,
                             ]}
                         >
                             <Text
@@ -120,24 +124,23 @@ const getStyles = () => StyleSheet.create({
         width: '100%',
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
-        flexDirection: 'row',
         overflow: 'hidden',
         position: 'relative',
     },
     classBlock: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
         height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
         borderTopWidth: 3,
     },
-    classBlockBorder: {
-        borderRightWidth: 1,
-        borderRightColor: COLORS.border,
-    },
     blockLabel: {
         ...TYPOGRAPHY.micro,
         color: COLORS.textSecondary,
         paddingHorizontal: 4,
+        textAlign: 'center',
     },
     timeMarker: {
         position: 'absolute',

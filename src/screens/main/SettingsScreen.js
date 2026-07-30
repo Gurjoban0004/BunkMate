@@ -21,7 +21,7 @@ import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { enableWebPush, disableWebPush, isWebPushSupported } from '../../utils/webPush';
-import { formatRelativeTime } from '../../utils/dateHelpers';
+import { formatRelativeTime, formatTime } from '../../utils/dateHelpers';
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
