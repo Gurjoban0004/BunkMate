@@ -631,12 +631,24 @@ export function appReducer(state, action) {
                 }
             }
 
-            // Garbage Collection: delete local bridge records once ERP has caught up.
+            // Garbage Collection: delete local bridge records ONLY when the ERP
+            // calendar actually delivered a replacement for that exact (date, subject).
+            // Previous logic used latestErpDate as a blanket cutoff, which deleted
+            // local records even when the portal had gaps for that date — leaving the
+            // subject with only stale initialTotal/initialAttended (often 0).
             const newLastSyncDates = {
                 ...(state.settings?.lastSubjectSyncDates || {}),
                 ...lastSubjectSyncDates
             };
             const nextLatestErpDate = maxDateKey(state.latestErpDate, latestErpDate);
+
+            // Build a set of (date, subjectId) pairs the ERP actually covers
+            const erpCoveredKeys = new Set();
+            for (const [dateKey, dayData] of Object.entries(erpRecords)) {
+                for (const subjectId of Object.keys(dayData)) {
+                    erpCoveredKeys.add(`${dateKey}::${subjectId}`);
+                }
+            }
 
             for (const [dateKey, dayData] of Object.entries(nextRecords)) {
                 let modified = false;
@@ -644,10 +656,9 @@ export function appReducer(state, action) {
                 
                 for (const [subjectId, record] of Object.entries(newDayData)) {
                     if (record.source === 'prediction' || record.source === 'manual') {
-                        const syncDateForSubject = maxDateKey(newLastSyncDates[subjectId], nextLatestErpDate);
-                        // If ERP now covers this date and did not overwrite the local record,
-                        // the local bridge is no longer authoritative.
-                        if (syncDateForSubject && dateKey <= syncDateForSubject) {
+                        // Only GC this record if the ERP provided a replacement
+                        // for this specific (date, subject) combination.
+                        if (erpCoveredKeys.has(`${dateKey}::${subjectId}`)) {
                             delete newDayData[subjectId];
                             modified = true;
                         }
@@ -866,16 +877,15 @@ export function AppProvider({ children }) {
         };
         initialize();
 
-        // Handle network status changes for real-time sync
+        // Handle network status changes — only update the online flag.
+        // DO NOT reload from cloud here: the ERP auto-sync hook already
+        // re-syncs on foreground via AppState listener. Loading stale
+        // cloud data mid-sync was overwriting freshly-fetched ERP results
+        // and causing subjects to flash correct data then reset to 0.
         const unsubscribe = onNetworkStatusChange((isOnline) => {
             safeDispatch({ type: 'SET_ONLINE', payload: isOnline });
             if (isOnline && stateRef.current.isAuthenticated) {
-                logger.info('🔄', 'Back online, syncing state...');
-                // Sync cloud state first to avoid "last write wins" overwriting fresh cloud data
-                loadAppState().then((saved) => {
-                    if (saved) safeDispatch({ type: 'LOAD_STATE', payload: saved });
-                    saveAppState(stateRef.current);
-                });
+                logger.info('📡', 'Back online — ERP auto-sync will handle data refresh');
             }
         });
 

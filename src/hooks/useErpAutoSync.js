@@ -227,11 +227,13 @@ export function useErpAutoSync(state, dispatch) {
                 logger.info('➕', `Added ${mapping.newSubjects.length} new ERP subjects`);
             }
 
-            // Change detection
+            // Change detection — use `latestSubjects` (kept in sync through
+            // SET_SUBJECTS / PRUNE dispatches above) instead of `currentState.subjects`
+            // which is a stale snapshot from the start of this sync cycle.
             const changedIds = [];
             if (mapping.matchedUpdates.length > 0) {
                 const filteredUpdates = mapping.matchedUpdates.filter(update => {
-                    const existing = currentState.subjects.find(s => s.id === update.subjectId);
+                    const existing = latestSubjects.find(s => s.id === update.subjectId);
                     if (!existing) return true;
 
                     if (!isNonRegressingErpUpdate(existing, update)) {
