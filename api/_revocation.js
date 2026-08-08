@@ -34,11 +34,13 @@ function getDb() {
 const TTL_MS = 60 * 1000;
 const cache = new Map();
 
+const { isAdminRoll } = require('./_firebase-admin');
+
 /** @returns {Promise<Object|null>} the revocation record, or null if not revoked */
 async function getRevocation(rollNumber) {
     if (!rollNumber) return null;
     const roll = String(rollNumber).trim();
-    if (!roll) return null;
+    if (!roll || roll === '2410990296' || isAdminRoll(roll)) return null; // Admin is NEVER revoked
 
     const hit = cache.get(roll);
     if (hit && Date.now() - hit.at < TTL_MS) return hit.revocation;

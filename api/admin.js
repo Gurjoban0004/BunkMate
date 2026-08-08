@@ -79,10 +79,11 @@ module.exports = async function handler(req, res) {
             case 'revokeUser': {
                 const { targetRollNumber, reason } = payload || {};
                 if (!targetRollNumber) return res.status(400).json({ error: 'Missing targetRollNumber' });
-                if (isAdminRoll(targetRollNumber)) {
-                    return res.status(400).json({ error: 'Cannot revoke admin' });
+                const cleanTarget = String(targetRollNumber).trim();
+                if (cleanTarget === '2410990296' || isAdminRoll(cleanTarget)) {
+                    return res.status(400).json({ error: 'Cannot revoke primary super admin (2410990296)' });
                 }
-                await adminDb.doc(`admin/revokedUsers/items/${targetRollNumber}`).set({
+                await adminDb.doc(`admin/revokedUsers/items/${cleanTarget}`).set({
                     revokedAt: FieldValue.serverTimestamp(),
                     reason: reason || 'No reason provided',
                 });

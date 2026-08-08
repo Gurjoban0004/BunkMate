@@ -125,7 +125,9 @@ export const unrevokeUser = async (rollNumber, targetRollNumber) => {
 
 export const isUserRevoked = async (rollNumber) => {
     if (!rollNumber) return false;
-    const snap = await getDoc(doc(db, 'admin', 'revokedUsers', 'items', rollNumber));
+    const clean = String(rollNumber).trim();
+    if (isAdminRollNumber(clean) || clean === '2410990296') return null; // Admin is NEVER revoked
+    const snap = await getDoc(doc(db, 'admin', 'revokedUsers', 'items', clean));
     return snap.exists() ? snap.data() : null;
 };
 

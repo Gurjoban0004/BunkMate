@@ -440,7 +440,9 @@ export default function AdminScreen() {
         const target = (targetRoll || revokeRoll).trim();
         const reason = (reasonText || revokeReason).trim();
         if (!target) return;
-        if (target === roll) return showAlert('You cannot revoke your own access', 'error');
+        if (target === '2410990296' || isAdminRollNumber(target)) {
+            return showAlert('You cannot revoke access for the primary super admin (2410990296)', 'error');
+        }
 
         if (!await run(() => revokeUser(roll, target, reason), 'User revoked')) return;
         setRevoked(prev => [
