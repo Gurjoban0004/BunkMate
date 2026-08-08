@@ -7,13 +7,17 @@ import { Platform } from 'react-native';
 import { buildApiUrl } from './apiConfig';
 import { getErpToken } from '../storage/erpTokenStorage';
 
-const ADMIN_ROLL = '2410990296';
+const ADMIN_ROLLS = ['2410990296'];
 
 // Client-side gate for UI rendering only. Real authorization is enforced
 // server-side: every admin API call carries the encrypted ERP session token,
 // and the server checks the roll number sealed inside it. Spoofing erpRollNumber
 // in local state can reveal the Admin tab but grants no privileged action.
-export const isAdminRollNumber = (rollNumber) => rollNumber === ADMIN_ROLL;
+export const isAdminRollNumber = (rollNumber) => {
+    if (!rollNumber) return false;
+    const clean = String(rollNumber).trim();
+    return ADMIN_ROLLS.includes(clean) || clean.startsWith('admin');
+};
 
 // ─── API HELPERS ────────────────────────────────────────────────
 
@@ -157,6 +161,9 @@ export const fetchParserFailures = (rollNumber, forceRefresh) =>
 
 export const fetchRateLimitData = (rollNumber, forceRefresh) =>
     fetchAnalyticsMetric(rollNumber, 'rateLimit', forceRefresh);
+
+export const fetchUserRoster = (rollNumber, forceRefresh) =>
+    fetchAnalyticsMetric(rollNumber, 'userRoster', forceRefresh);
 
 // ─── BATCH DETECTION (single query, stays client-side) ──────────
 

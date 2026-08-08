@@ -235,6 +235,67 @@ async function computeBatchDistribution() {
         .sort((a, b) => b.count - a.count);
 }
 
+async function computeUserRoster() {
+    const usersSnap = await adminDb.collection('users').get();
+    const roster = [];
+
+    for (const docSnap of usersSnap.docs) {
+        const data = docSnap.data();
+        const userId = docSnap.id;
+
+        const semsSnap = await docSnap.ref.collection('semesters').get();
+        let totalSubjects = 0;
+        let totalAttended = 0;
+        let totalClasses = 0;
+        const subjectsList = [];
+
+        semsSnap.forEach(semDoc => {
+            const semData = semDoc.data();
+            if (semData.subjects && Array.isArray(semData.subjects)) {
+                totalSubjects += semData.subjects.length;
+                semData.subjects.forEach(sub => {
+                    const att = sub.initialAttended || 0;
+                    const tot = sub.initialTotal || 0;
+                    totalAttended += att;
+                    totalClasses += tot;
+                    subjectsList.push({
+                        name: sub.name || sub.id,
+                        attended: att,
+                        total: tot,
+                        target: sub.target || 75,
+                        pct: tot > 0 ? (att / tot) * 100 : 0,
+                    });
+                });
+            }
+        });
+
+        const overallPct = totalClasses > 0 ? (totalAttended / totalClasses) * 100 : null;
+        let lastActiveTs = null;
+        if (data.lastActive) {
+            lastActiveTs = typeof data.lastActive.toMillis === 'function'
+                ? data.lastActive.toMillis()
+                : new Date(data.lastActive).getTime();
+        }
+
+        roster.push({
+            userId,
+            rollNumber: data.erpRollNumber || 'Unknown',
+            studentName: data.studentName || 'Student',
+            lastActive: lastActiveTs,
+            setupComplete: !!data.setupComplete,
+            version: data.version || '1.0.0',
+            semesterCount: semsSnap.size,
+            totalSubjects,
+            totalClasses,
+            totalAttended,
+            overallAttendancePct: overallPct != null ? Math.round(overallPct * 10) / 10 : null,
+            subjects: subjectsList,
+        });
+    }
+
+    return roster.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
+}
+
 // ── Handler ─────────────────────────────────────────────────────────
 
 const METRIC_HANDLERS = {
@@ -245,6 +306,7 @@ const METRIC_HANDLERS = {
     rateLimit: computeRateLimit,
     activeUsers: computeActiveUsers,
     batchDistribution: computeBatchDistribution,
+    userRoster: computeUserRoster,
 };
 
 module.exports = async function handler(req, res) {

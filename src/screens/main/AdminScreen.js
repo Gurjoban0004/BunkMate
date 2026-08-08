@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    TextInput, Switch, ActivityIndicator, Platform, RefreshControl,
+    TextInput, Switch, ActivityIndicator, Platform, RefreshControl, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline, Path, Circle, Line, Rect } from 'react-native-svg';
@@ -13,7 +13,7 @@ import {
     fetchBunkCultureIndex, fetchBatchDistribution,
     fetchEndpointHealth, fetchParserFailures,
     getDowntimeEvents, resolveDowntime,
-    fetchRateLimitData,
+    fetchRateLimitData, fetchUserRoster,
     getActiveAnnouncements, publishAnnouncement, deleteAnnouncement,
     getRevokedUsers, revokeUser, unrevokeUser,
 } from '../../services/adminService';
@@ -21,6 +21,7 @@ import { showAlert } from '../../utils/alert';
 
 const CATEGORIES = [
     { key: 'analytics', label: 'Analytics' },
+    { key: 'users', label: 'Users' },
     { key: 'operations', label: 'Operations' },
     { key: 'controls', label: 'Controls' },
 ];
@@ -41,13 +42,13 @@ function PanelIcon({ name, color, size = 16 }) {
         shield: <Path d="M12 3l7 3v5c0 4-3 7.4-7 8-4-.6-7-4-7-8V6z" {...p} />,
         wrench: <Path d="M14.6 6.4a3.6 3.6 0 0 0-4.9 4.2l-5.4 5.4a1.5 1.5 0 0 0 2.1 2.1l5.4-5.4a3.6 3.6 0 0 0 4.2-4.9l-2.1 2.1-1.4-1.4z" {...p} />,
         lock: <><Rect x="5" y="11" width="14" height="9" rx="2" {...p} /><Path d="M8 11V8a4 4 0 0 1 8 0v3" {...p} /></>,
+        search: <><Circle cx="11" cy="11" r="7" {...p} /><Line x1="16" y1="16" x2="21" y2="21" {...p} /></>,
+        refresh: <><Path d="M23 4v6h-6" {...p} /><Path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" {...p} /></>,
     };
     return <Svg width={size} height={size} viewBox="0 0 24 24">{glyphs[name] || null}</Svg>;
 }
 
 // ─── SECTION PANEL ──────────────────────────────────────────────
-// Always-open card (replaces the old stacked accordions). Children mount when the
-// panel renders, so LazyLoad fetches fire the moment its category is selected.
 function Panel({ icon, title, accent, statusText, children }) {
     const styles = getStyles();
     const a = accent || COLORS.primary;
@@ -70,7 +71,7 @@ function Panel({ icon, title, accent, statusText, children }) {
 }
 
 // ─── SPARKLINE (SVG) ────────────────────────────────────────────
-function Sparkline({ data, color, width = 200, height = 40 }) {
+function Sparkline({ data, color, width = 300, height = 40 }) {
     if (!data || data.length < 2) return null;
     const max = Math.max(...data, 1);
     const step = width / (data.length - 1);
@@ -102,47 +103,65 @@ export default function AdminScreen() {
     const styles = getStyles();
     const { state } = useApp();
     const [refreshing, setRefreshing] = useState(false);
+    const [forceRefreshing, setForceRefreshing] = useState(false);
     const [category, setCategory] = useState('analytics');
 
     // Config state
     const [config, setConfig] = useState(null);
     const [configLoading, setConfigLoading] = useState(true);
+    const [configError, setConfigError] = useState(null);
 
     // Analytics
     const [metrics, setMetrics] = useState(null);
     const [metricsLoading, setMetricsLoading] = useState(false);
+    const [metricsError, setMetricsError] = useState(null);
 
     // Subject difficulty
     const [subjects, setSubjects] = useState(null);
     const [subjectsLoading, setSubjectsLoading] = useState(false);
+    const [subjectsError, setSubjectsError] = useState(null);
 
     // Bunk culture
     const [bunkIndex, setBunkIndex] = useState(null);
     const [bunkLoading, setBunkLoading] = useState(false);
+    const [bunkError, setBunkError] = useState(null);
 
     // Batches
     const [batches, setBatches] = useState(null);
     const [batchLoading, setBatchLoading] = useState(false);
+    const [batchError, setBatchError] = useState(null);
+
+    // User Roster
+    const [roster, setRoster] = useState(null);
+    const [rosterLoading, setRosterLoading] = useState(false);
+    const [rosterError, setRosterError] = useState(null);
+    const [rosterQuery, setRosterQuery] = useState('');
+    const [selectedUser, setSelectedUser] = useState(null);
 
     // Endpoint health
     const [endpoints, setEndpoints] = useState(null);
     const [endpointsLoading, setEndpointsLoading] = useState(false);
+    const [endpointsError, setEndpointsError] = useState(null);
 
     // Parser failures
     const [failures, setFailures] = useState(null);
     const [failuresLoading, setFailuresLoading] = useState(false);
+    const [failuresError, setFailuresError] = useState(null);
 
     // Downtime
     const [downtimeEvents, setDowntimeEvents] = useState(null);
     const [downtimeLoading, setDowntimeLoading] = useState(false);
+    const [downtimeError, setDowntimeError] = useState(null);
 
     // Rate limiting
     const [rateData, setRateData] = useState(null);
     const [rateLoading, setRateLoading] = useState(false);
+    const [rateError, setRateError] = useState(null);
 
     // Announcements
     const [announcements, setAnnouncements] = useState(null);
     const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+    const [announcementsError, setAnnouncementsError] = useState(null);
     const [annTitle, setAnnTitle] = useState('');
     const [annBody, setAnnBody] = useState('');
     const [annType, setAnnType] = useState('info');
@@ -150,6 +169,7 @@ export default function AdminScreen() {
     // Revoked users
     const [revoked, setRevoked] = useState(null);
     const [revokedLoading, setRevokedLoading] = useState(false);
+    const [revokedError, setRevokedError] = useState(null);
     const [revokeRoll, setRevokeRoll] = useState('');
     const [revokeReason, setRevokeReason] = useState('');
 
@@ -166,11 +186,12 @@ export default function AdminScreen() {
     // ─── LOAD CONFIG + HERO METRICS ON MOUNT ────────────────────
     useEffect(() => {
         loadConfig();
-        loadMetrics();
+        loadMetrics(false);
     }, []);
 
     const loadConfig = async () => {
         setConfigLoading(true);
+        setConfigError(null);
         try {
             const c = await getAdminConfig();
             setConfig(c);
@@ -179,6 +200,7 @@ export default function AdminScreen() {
             setMaintMode(c.maintenanceMode || false);
             setMaintMsg(c.maintenanceMessage || '');
         } catch (e) {
+            setConfigError(e?.message || 'Failed to load admin config');
             showAlert('Failed to load admin config', 'error');
         } finally {
             setConfigLoading(false);
@@ -191,78 +213,174 @@ export default function AdminScreen() {
         setRefreshing(false);
     };
 
+    const handleForceRefreshAll = async () => {
+        setForceRefreshing(true);
+        try {
+            await Promise.all([
+                loadMetrics(true),
+                loadSubjects(true),
+                loadBunk(true),
+                loadBatches(true),
+                loadRoster(true),
+                loadEndpoints(true),
+                loadFailures(true),
+                loadRate(true),
+            ]);
+            showAlert('Analytics cache refreshed from server', 'success');
+        } catch {
+            showAlert('Refresh completed with some errors', 'warning');
+        } finally {
+            setForceRefreshing(false);
+        }
+    };
+
     // ─── LAZY LOADERS ───────────────────────────────────────────
-    const loadMetrics = useCallback(async () => {
-        if (metrics || metricsLoading) return;
+    const roll = state.erpRollNumber;
+
+    const loadMetrics = useCallback(async (force = false) => {
+        if ((metrics && !force) || metricsLoading) return;
         setMetricsLoading(true);
-        try { setMetrics(await fetchActiveUserMetrics()); } catch (e) { /* ignore */ } finally { setMetricsLoading(false); }
+        setMetricsError(null);
+        try {
+            setMetrics(await fetchActiveUserMetrics(force));
+        } catch (e) {
+            setMetricsError(e?.message || 'Failed to fetch metrics');
+        } finally {
+            setMetricsLoading(false);
+        }
     }, [metrics, metricsLoading]);
 
-    const loadSubjects = useCallback(async () => {
-        if (subjects || subjectsLoading) return;
+    const loadSubjects = useCallback(async (force = false) => {
+        if ((subjects && !force) || subjectsLoading) return;
         setSubjectsLoading(true);
-        try { setSubjects(await fetchSubjectDifficulty(state.erpRollNumber)); } catch (e) { /* ignore */ } finally { setSubjectsLoading(false); }
-    }, [subjects, subjectsLoading]);
+        setSubjectsError(null);
+        try {
+            setSubjects(await fetchSubjectDifficulty(roll, force));
+        } catch (e) {
+            setSubjectsError(e?.message || 'Failed to fetch subject difficulty');
+        } finally {
+            setSubjectsLoading(false);
+        }
+    }, [subjects, subjectsLoading, roll]);
 
-    const loadBunk = useCallback(async () => {
-        if (bunkIndex || bunkLoading) return;
+    const loadBunk = useCallback(async (force = false) => {
+        if ((bunkIndex && !force) || bunkLoading) return;
         setBunkLoading(true);
-        try { setBunkIndex(await fetchBunkCultureIndex(state.erpRollNumber)); } catch (e) { /* ignore */ } finally { setBunkLoading(false); }
-    }, [bunkIndex, bunkLoading]);
+        setBunkError(null);
+        try {
+            setBunkIndex(await fetchBunkCultureIndex(roll, force));
+        } catch (e) {
+            setBunkError(e?.message || 'Failed to fetch bunk index');
+        } finally {
+            setBunkLoading(false);
+        }
+    }, [bunkIndex, bunkLoading, roll]);
 
-    const loadBatches = useCallback(async () => {
-        if (batches || batchLoading) return;
+    const loadBatches = useCallback(async (force = false) => {
+        if ((batches && !force) || batchLoading) return;
         setBatchLoading(true);
-        try { setBatches(await fetchBatchDistribution()); } catch (e) { /* ignore */ } finally { setBatchLoading(false); }
+        setBatchError(null);
+        try {
+            setBatches(await fetchBatchDistribution(force));
+        } catch (e) {
+            setBatchError(e?.message || 'Failed to fetch batch distribution');
+        } finally {
+            setBatchLoading(false);
+        }
     }, [batches, batchLoading]);
 
-    const loadEndpoints = useCallback(async () => {
-        if (endpoints || endpointsLoading) return;
-        setEndpointsLoading(true);
-        try { setEndpoints(await fetchEndpointHealth(state.erpRollNumber)); } catch (e) { /* ignore */ } finally { setEndpointsLoading(false); }
-    }, [endpoints, endpointsLoading]);
+    const loadRoster = useCallback(async (force = false) => {
+        if ((roster && !force) || rosterLoading) return;
+        setRosterLoading(true);
+        setRosterError(null);
+        try {
+            setRoster(await fetchUserRoster(roll, force));
+        } catch (e) {
+            setRosterError(e?.message || 'Failed to fetch user roster');
+        } finally {
+            setRosterLoading(false);
+        }
+    }, [roster, rosterLoading, roll]);
 
-    const loadFailures = useCallback(async () => {
-        if (failures || failuresLoading) return;
+    const loadEndpoints = useCallback(async (force = false) => {
+        if ((endpoints && !force) || endpointsLoading) return;
+        setEndpointsLoading(true);
+        setEndpointsError(null);
+        try {
+            setEndpoints(await fetchEndpointHealth(roll, force));
+        } catch (e) {
+            setEndpointsError(e?.message || 'Failed to fetch endpoint health');
+        } finally {
+            setEndpointsLoading(false);
+        }
+    }, [endpoints, endpointsLoading, roll]);
+
+    const loadFailures = useCallback(async (force = false) => {
+        if ((failures && !force) || failuresLoading) return;
         setFailuresLoading(true);
-        try { setFailures(await fetchParserFailures(state.erpRollNumber)); } catch (e) { /* ignore */ } finally { setFailuresLoading(false); }
-    }, [failures, failuresLoading]);
+        setFailuresError(null);
+        try {
+            setFailures(await fetchParserFailures(roll, force));
+        } catch (e) {
+            setFailuresError(e?.message || 'Failed to fetch parser failures');
+        } finally {
+            setFailuresLoading(false);
+        }
+    }, [failures, failuresLoading, roll]);
 
     const loadDowntime = useCallback(async () => {
         if (downtimeEvents || downtimeLoading) return;
         setDowntimeLoading(true);
-        try { setDowntimeEvents(await getDowntimeEvents()); } catch (e) { /* ignore */ } finally { setDowntimeLoading(false); }
+        setDowntimeError(null);
+        try {
+            setDowntimeEvents(await getDowntimeEvents());
+        } catch (e) {
+            setDowntimeError(e?.message || 'Failed to fetch downtime events');
+        } finally {
+            setDowntimeLoading(false);
+        }
     }, [downtimeEvents, downtimeLoading]);
 
-    const loadRate = useCallback(async () => {
-        if (rateData || rateLoading) return;
+    const loadRate = useCallback(async (force = false) => {
+        if ((rateData && !force) || rateLoading) return;
         setRateLoading(true);
-        try { setRateData(await fetchRateLimitData(state.erpRollNumber)); } catch (e) { /* ignore */ } finally { setRateLoading(false); }
-    }, [rateData, rateLoading]);
+        setRateError(null);
+        try {
+            setRateData(await fetchRateLimitData(roll, force));
+        } catch (e) {
+            setRateError(e?.message || 'Failed to fetch rate limit data');
+        } finally {
+            setRateLoading(false);
+        }
+    }, [rateData, rateLoading, roll]);
 
     const loadAnnouncements = useCallback(async () => {
         if (announcements || announcementsLoading) return;
         setAnnouncementsLoading(true);
-        try { setAnnouncements(await getActiveAnnouncements()); } catch (e) { /* ignore */ } finally { setAnnouncementsLoading(false); }
+        setAnnouncementsError(null);
+        try {
+            setAnnouncements(await getActiveAnnouncements());
+        } catch (e) {
+            setAnnouncementsError(e?.message || 'Failed to fetch announcements');
+        } finally {
+            setAnnouncementsLoading(false);
+        }
     }, [announcements, announcementsLoading]);
 
     const loadRevoked = useCallback(async () => {
         if (revoked || revokedLoading) return;
         setRevokedLoading(true);
-        try { setRevoked(await getRevokedUsers()); } catch (e) { /* ignore */ } finally { setRevokedLoading(false); }
+        setRevokedError(null);
+        try {
+            setRevoked(await getRevokedUsers());
+        } catch (e) {
+            setRevokedError(e?.message || 'Failed to fetch revoked users');
+        } finally {
+            setRevokedLoading(false);
+        }
     }, [revoked, revokedLoading]);
 
     // ─── HANDLERS ───────────────────────────────────────────────
-    const roll = state.erpRollNumber;
-
-    /**
-     * Every admin mutation goes through here. Without it a 403, a network drop or a
-     * server error would reject silently while the UI still reported success and kept
-     * its optimistic change — the panel looked like it worked when nothing had happened.
-     *
-     * Returns the API result on success, undefined on failure. Callers apply their
-     * local state change only when a result comes back.
-     */
     const run = async (mutate, successMessage) => {
         try {
             const result = await mutate();
@@ -279,7 +397,7 @@ export default function AdminScreen() {
         const newFlags = { ...flags, [key]: val };
         setFlags(newFlags);
         const ok = await run(() => updateAdminConfig(roll, { featureFlags: newFlags }));
-        if (!ok) setFlags(previous);   // the switch must reflect the server, not the tap
+        if (!ok) setFlags(previous);
     };
 
     const handlePublishVersion = async () => {
@@ -318,19 +436,21 @@ export default function AdminScreen() {
         setAnnouncements(prev => (prev || []).filter(a => a.id !== id));
     };
 
-    const handleRevokeUser = async () => {
-        const target = revokeRoll.trim();
-        const reason = revokeReason.trim();
+    const handleRevokeUser = async (targetRoll = null, reasonText = null) => {
+        const target = (targetRoll || revokeRoll).trim();
+        const reason = (reasonText || revokeReason).trim();
         if (!target) return;
         if (target === roll) return showAlert('You cannot revoke your own access', 'error');
 
         if (!await run(() => revokeUser(roll, target, reason), 'User revoked')) return;
         setRevoked(prev => [
-            ...(prev || []).filter(r => r.rollNumber !== target),   // no duplicate rows on re-revoke
+            ...(prev || []).filter(r => r.rollNumber !== target),
             { rollNumber: target, reason: reason || 'No reason provided' },
         ]);
-        setRevokeRoll('');
-        setRevokeReason('');
+        if (!targetRoll) {
+            setRevokeRoll('');
+            setRevokeReason('');
+        }
     };
 
     const handleUnrevokeUser = async (targetRollNumber) => {
@@ -354,12 +474,20 @@ export default function AdminScreen() {
             <SafeAreaView style={styles.container} edges={['top']}>
                 <View style={styles.loadingCenter}>
                     <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.loadingCenterText}>Connecting to Admin Service...</Text>
                 </View>
             </SafeAreaView>
         );
     }
 
     const adminName = (state.userName || 'Admin').split(' ')[0];
+
+    const filteredRoster = (roster || []).filter(u => {
+        if (!rosterQuery.trim()) return true;
+        const q = rosterQuery.toLowerCase().trim();
+        return (u.rollNumber && u.rollNumber.toLowerCase().includes(q)) ||
+               (u.studentName && u.studentName.toLowerCase().includes(q));
+    });
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -375,9 +503,23 @@ export default function AdminScreen() {
                             <Text style={styles.heroEyebrow}>COMMAND CENTER</Text>
                             <Text style={styles.heroTitle}>Welcome back, {adminName}</Text>
                         </View>
-                        <View style={styles.livePill}>
-                            <View style={styles.liveDot} />
-                            <Text style={styles.livePillText}>LIVE</Text>
+                        <View style={{ flexDirection: 'row', gap: SPACING.xs, alignItems: 'center' }}>
+                            <TouchableOpacity
+                                style={styles.refreshBtn}
+                                onPress={handleForceRefreshAll}
+                                disabled={forceRefreshing}
+                                activeOpacity={0.7}
+                            >
+                                {forceRefreshing
+                                    ? <ActivityIndicator size="small" color={COLORS.primary} />
+                                    : <PanelIcon name="refresh" color={COLORS.primary} size={14} />}
+                                <Text style={styles.refreshBtnText}>{forceRefreshing ? 'Syncing...' : 'Refresh Cache'}</Text>
+                            </TouchableOpacity>
+
+                            <View style={styles.livePill}>
+                                <View style={styles.liveDot} />
+                                <Text style={styles.livePillText}>LIVE</Text>
+                            </View>
                         </View>
                     </View>
 
@@ -386,11 +528,13 @@ export default function AdminScreen() {
                         <KpiCell label="DAU" value={metrics?.dau} loading={metricsLoading} />
                         <KpiCell label="WAU" value={metrics?.wau} loading={metricsLoading} />
                         <KpiCell label="MAU" value={metrics?.mau} loading={metricsLoading} />
+                        <KpiCell label="TOTAL USERS" value={roster ? roster.length : metrics?.wau != null ? metrics.wau : '—'} loading={metricsLoading || rosterLoading} />
                     </View>
+
                     {metrics?.sparkline?.length > 1 && (
                         <View style={styles.heroSpark}>
-                            <Text style={styles.heroSparkLabel}>7-DAY ACTIVE TREND</Text>
-                            <Sparkline data={metrics.sparkline} color={COLORS.primary} width={300} height={44} />
+                            <Text style={styles.heroSparkLabel}>7-DAY ACTIVE USERS TREND</Text>
+                            <Sparkline data={metrics.sparkline} color={COLORS.primary} width={320} height={44} />
                         </View>
                     )}
                 </View>
@@ -412,26 +556,26 @@ export default function AdminScreen() {
                 {/* ══ ANALYTICS ════════════════════════════════════ */}
                 {category === 'analytics' && (
                     <>
-                        <Panel icon="difficulty" title="Subject Difficulty" accent={COLORS.warning} statusText="Heatmap">
-                            <LazyLoad onVisible={loadSubjects} loading={subjectsLoading}>
+                        <Panel icon="difficulty" title="Subject Difficulty Heatmap" accent={COLORS.warning} statusText="Heatmap">
+                            <LazyLoad onVisible={loadSubjects} loading={subjectsLoading} error={subjectsError} onRetry={() => loadSubjects(true)}>
                                 {subjects && subjects.map((s, i) => (
                                     <View key={i} style={styles.difficultyRow}>
                                         <View style={styles.difficultyInfo}>
                                             <Text style={styles.difficultyName} numberOfLines={1}>{s.name}</Text>
-                                            <Text style={styles.difficultyMeta}>{s.students} students</Text>
+                                            <Text style={styles.difficultyMeta}>{s.students} students tracked</Text>
                                         </View>
                                         <View style={styles.barTrack}>
                                             <View style={[styles.barFill, { width: `${Math.min(s.bunkRate, 100)}%`, backgroundColor: difficultyColor(s.bunkRate) }]} />
                                         </View>
-                                        <Text style={[styles.difficultyPct, { color: difficultyColor(s.bunkRate) }]}>{s.bunkRate.toFixed(0)}%</Text>
+                                        <Text style={[styles.difficultyPct, { color: difficultyColor(s.bunkRate) }]}>{s.bunkRate.toFixed(0)}% bunked</Text>
                                     </View>
                                 ))}
-                                {subjects && subjects.length === 0 && <Text style={styles.emptyText}>Not enough data yet</Text>}
+                                {subjects && subjects.length === 0 && <Text style={styles.emptyText}>Not enough data collected yet</Text>}
                             </LazyLoad>
                         </Panel>
 
                         <Panel icon="trending-down" title="Bunk Culture Index" accent={COLORS.danger} statusText="Weekly">
-                            <LazyLoad onVisible={loadBunk} loading={bunkLoading}>
+                            <LazyLoad onVisible={loadBunk} loading={bunkLoading} error={bunkError} onRetry={() => loadBunk(true)}>
                                 {bunkIndex && bunkIndex.map((d, i) => (
                                     <BarProgress key={i} label={d.day} value={d.bunkRate} maxVal={100} color={d.bunkRate >= 30 ? COLORS.danger : d.bunkRate >= 15 ? COLORS.warning : COLORS.success} />
                                 ))}
@@ -440,14 +584,14 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="users" title="Batch Distribution" accent={COLORS.success} statusText="Cohorts">
-                            <LazyLoad onVisible={loadBatches} loading={batchLoading}>
+                            <LazyLoad onVisible={loadBatches} loading={batchLoading} error={batchError} onRetry={() => loadBatches(true)}>
                                 {batches && batches.map((b, i) => (
                                     <View key={i} style={styles.batchRow}>
                                         <Text style={styles.batchLabel}>{b.batch}</Text>
                                         <View style={styles.barTrack}>
                                             <View style={[styles.barFill, { width: `${b.percentage}%`, backgroundColor: COLORS.primary }]} />
                                         </View>
-                                        <Text style={styles.batchCount}>{b.count}</Text>
+                                        <Text style={styles.batchCount}>{b.count} users ({b.percentage.toFixed(0)}%)</Text>
                                     </View>
                                 ))}
                                 {batches && batches.length === 0 && <Text style={styles.emptyText}>No batch data available</Text>}
@@ -456,17 +600,78 @@ export default function AdminScreen() {
                     </>
                 )}
 
+                {/* ══ USERS & ROSTER (NEW) ═════════════════════════ */}
+                {category === 'users' && (
+                    <Panel icon="users" title="User Roster & Information Explorer" accent={COLORS.primary} statusText={`${roster ? roster.length : 0} Accounts`}>
+                        <LazyLoad onVisible={loadRoster} loading={rosterLoading} error={rosterError} onRetry={() => loadRoster(true)}>
+                            <View style={styles.searchBar}>
+                                <PanelIcon name="search" color={COLORS.textMuted} size={16} />
+                                <TextInput
+                                    style={styles.searchInput}
+                                    value={rosterQuery}
+                                    onChangeText={setRosterQuery}
+                                    placeholder="Search by Roll Number or Name..."
+                                    placeholderTextColor={COLORS.textMuted}
+                                />
+                            </View>
+
+                            {filteredRoster.map((u, i) => {
+                                const lastActiveStr = u.lastActive ? new Date(u.lastActive).toLocaleDateString() : 'Never';
+                                const isRevoked = revoked?.some(r => r.rollNumber === u.rollNumber);
+                                return (
+                                    <TouchableOpacity
+                                        key={i}
+                                        style={styles.userCard}
+                                        onPress={() => setSelectedUser(u)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.userCardHeader}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.userCardTitle}>{u.studentName}</Text>
+                                                <Text style={styles.userCardSub}>Roll: {u.rollNumber} • Last Active: {lastActiveStr}</Text>
+                                            </View>
+                                            <View style={[styles.userBadge, { backgroundColor: isRevoked ? COLORS.dangerLight : u.setupComplete ? COLORS.successLight : COLORS.warningLight }]}>
+                                                <Text style={[styles.userBadgeText, { color: isRevoked ? COLORS.dangerDark : u.setupComplete ? COLORS.successDark : COLORS.warningDark }]}>
+                                                    {isRevoked ? 'REVOKED' : u.setupComplete ? 'ACTIVE' : 'SETUP PENDING'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.userStatsRow}>
+                                            <View style={styles.userStatCell}>
+                                                <Text style={styles.userStatVal}>{u.totalSubjects}</Text>
+                                                <Text style={styles.userStatLbl}>Subjects</Text>
+                                            </View>
+                                            <View style={styles.userStatCell}>
+                                                <Text style={styles.userStatVal}>{u.totalClasses || 0}</Text>
+                                                <Text style={styles.userStatLbl}>Classes</Text>
+                                            </View>
+                                            <View style={styles.userStatCell}>
+                                                <Text style={[styles.userStatVal, { color: u.overallAttendancePct >= 75 ? COLORS.success : COLORS.danger }]}>
+                                                    {u.overallAttendancePct != null ? `${u.overallAttendancePct}%` : '—'}
+                                                </Text>
+                                                <Text style={styles.userStatLbl}>Attendance</Text>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                            {filteredRoster.length === 0 && <Text style={styles.emptyText}>No matching users found</Text>}
+                        </LazyLoad>
+                    </Panel>
+                )}
+
                 {/* ══ OPERATIONS ═══════════════════════════════════ */}
                 {category === 'operations' && (
                     <>
-                        <Panel icon="activity" title="Endpoint Health" accent={COLORS.success} statusText="24h">
-                            <LazyLoad onVisible={loadEndpoints} loading={endpointsLoading}>
+                        <Panel icon="activity" title="Endpoint Health" accent={COLORS.success} statusText="24h Telemetry">
+                            <LazyLoad onVisible={loadEndpoints} loading={endpointsLoading} error={endpointsError} onRetry={() => loadEndpoints(true)}>
                                 {endpoints && endpoints.map((ep, i) => (
                                     <View key={i} style={styles.endpointRow}>
                                         <View style={[styles.statusDot, { backgroundColor: endpointColor(ep.successRate) }]} />
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.endpointName}>{ep.name}</Text>
-                                            <Text style={styles.endpointMeta}>{ep.avgDuration}ms avg</Text>
+                                            <Text style={styles.endpointMeta}>{ep.avgDuration}ms avg latency • {ep.count} calls</Text>
                                         </View>
                                         <Text style={[styles.endpointRate, { color: endpointColor(ep.successRate) }]}>{ep.successRate.toFixed(1)}%</Text>
                                     </View>
@@ -475,25 +680,25 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="alert" title="Parser Failures" accent={COLORS.danger} statusText="Recent">
-                            <LazyLoad onVisible={loadFailures} loading={failuresLoading}>
+                        <Panel icon="alert" title="Parser Failures Log" accent={COLORS.danger} statusText="Recent Errors">
+                            <LazyLoad onVisible={loadFailures} loading={failuresLoading} error={failuresError} onRetry={() => loadFailures(true)}>
                                 {failures && failures.map((f, i) => (
                                     <FailureCard key={i} failure={f} />
                                 ))}
-                                {failures && failures.length === 0 && <Text style={styles.emptyText}>No parser failures</Text>}
+                                {failures && failures.length === 0 && <Text style={styles.emptyText}>No recent parser failures</Text>}
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="zap" title="ERP Downtime" accent={COLORS.success} statusText="Operational">
-                            <LazyLoad onVisible={loadDowntime} loading={downtimeLoading}>
+                        <Panel icon="zap" title="ERP Downtime Manager" accent={COLORS.success} statusText="Status Monitor">
+                            <LazyLoad onVisible={loadDowntime} loading={downtimeLoading} error={downtimeError} onRetry={loadDowntime}>
                                 {downtimeEvents && downtimeEvents.map((ev, i) => (
                                     <View key={i} style={styles.downtimeRow}>
                                         <View style={[styles.statusDot, { backgroundColor: ev.resolvedAt ? COLORS.success : COLORS.danger }]} />
                                         <View style={{ flex: 1 }}>
-                                            <Text style={styles.downtimeType}>{ev.type || 'Unknown'}</Text>
+                                            <Text style={styles.downtimeType}>{ev.type || 'Service Outage'}</Text>
                                             <Text style={styles.downtimeMeta}>
-                                                {ev.reportsCount || 0} reports
-                                                {ev.resolvedAt ? ' • Resolved' : ' • Active'}
+                                                {ev.reportsCount || 0} user reports
+                                                {ev.resolvedAt ? ' • Resolved' : ' • ACTIVE OUTAGE'}
                                             </Text>
                                         </View>
                                         {!ev.resolvedAt && (
@@ -503,12 +708,12 @@ export default function AdminScreen() {
                                         )}
                                     </View>
                                 ))}
-                                {downtimeEvents && downtimeEvents.length === 0 && <Text style={styles.emptyText}>No downtime events</Text>}
+                                {downtimeEvents && downtimeEvents.length === 0 && <Text style={styles.emptyText}>No ERP downtime events recorded</Text>}
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="gauge" title="Rate Limiting" accent={COLORS.warning} statusText="Monitor">
-                            <LazyLoad onVisible={loadRate} loading={rateLoading}>
+                        <Panel icon="gauge" title="Rate Limiting & Sync Frequency" accent={COLORS.warning} statusText="Monitor">
+                            <LazyLoad onVisible={loadRate} loading={rateLoading} error={rateError} onRetry={() => loadRate(true)}>
                                 {rateData && rateData.length > 0 && (
                                     <View style={styles.tableHeader}>
                                         <Text style={[styles.tableCell, { flex: 2 }]}>Roll Number</Text>
@@ -529,7 +734,7 @@ export default function AdminScreen() {
                                         </View>
                                     </View>
                                 ))}
-                                {rateData && rateData.length === 0 && <Text style={styles.emptyText}>No sync activity</Text>}
+                                {rateData && rateData.length === 0 && <Text style={styles.emptyText}>No sync activity recorded</Text>}
                             </LazyLoad>
                         </Panel>
                     </>
@@ -538,15 +743,15 @@ export default function AdminScreen() {
                 {/* ══ CONTROLS ═════════════════════════════════════ */}
                 {category === 'controls' && (
                     <>
-                        <Panel icon="megaphone" title="Announcements" accent={COLORS.primary} statusText="Broadcast">
-                            <LazyLoad onVisible={loadAnnouncements} loading={announcementsLoading}>
+                        <Panel icon="megaphone" title="Broadcast Announcements" accent={COLORS.primary} statusText="Publish">
+                            <LazyLoad onVisible={loadAnnouncements} loading={announcementsLoading} error={announcementsError} onRetry={loadAnnouncements}>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>TITLE</Text>
                                     <TextInput style={styles.input} value={annTitle} onChangeText={setAnnTitle} placeholder="Announcement title" placeholderTextColor={COLORS.textMuted} />
                                 </View>
                                 <View style={styles.inputGroup}>
                                     <Text style={styles.inputLabel}>MESSAGE</Text>
-                                    <TextInput style={[styles.input, { minHeight: 60 }]} value={annBody} onChangeText={setAnnBody} placeholder="Announcement body" placeholderTextColor={COLORS.textMuted} multiline />
+                                    <TextInput style={[styles.input, { minHeight: 60 }]} value={annBody} onChangeText={setAnnBody} placeholder="Announcement body..." placeholderTextColor={COLORS.textMuted} multiline />
                                 </View>
                                 <View style={styles.typeRow}>
                                     {['info', 'warning', 'danger'].map(t => (
@@ -561,7 +766,7 @@ export default function AdminScreen() {
 
                                 {announcements && announcements.length > 0 && (
                                     <View style={{ marginTop: SPACING.md }}>
-                                        <Text style={styles.subSectionLabel}>ACTIVE</Text>
+                                        <Text style={styles.subSectionLabel}>ACTIVE BROADCASTS</Text>
                                         {announcements.map((a, i) => (
                                             <View key={i} style={styles.announcementCard}>
                                                 <View style={{ flex: 1 }}>
@@ -569,7 +774,7 @@ export default function AdminScreen() {
                                                     <Text style={styles.announcementBody} numberOfLines={2}>{a.message}</Text>
                                                 </View>
                                                 <TouchableOpacity onPress={() => handleDeleteAnnouncement(a.id)}>
-                                                    <Text style={{ color: COLORS.danger, fontWeight: '700', fontSize: 16 }}>x</Text>
+                                                    <Text style={{ color: COLORS.danger, fontWeight: '700', fontSize: 16, padding: 4 }}>✕</Text>
                                                 </TouchableOpacity>
                                             </View>
                                         ))}
@@ -578,7 +783,7 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="sliders" title="Feature Flags" accent={COLORS.success} statusText="Config">
+                        <Panel icon="sliders" title="Remote Feature Flags" accent={COLORS.success} statusText="App Config">
                             {Object.keys(flags).length === 0
                                 ? <Text style={styles.emptyText}>No feature flags configured</Text>
                                 : Object.entries(flags).map(([key, val]) => (
@@ -594,9 +799,9 @@ export default function AdminScreen() {
                                 ))}
                         </Panel>
 
-                        <Panel icon="shield" title="Version Gate" accent={COLORS.warning} statusText={`v${minVersion}`}>
+                        <Panel icon="shield" title="Minimum Version Gate" accent={COLORS.warning} statusText={`v${minVersion}`}>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>MINIMUM VERSION</Text>
+                                <Text style={styles.inputLabel}>MINIMUM REQUIRED VERSION</Text>
                                 <TextInput style={styles.input} value={minVersion} onChangeText={setMinVersion} placeholder="e.g. 2.1.0" placeholderTextColor={COLORS.textMuted} />
                             </View>
                             <TouchableOpacity style={styles.actionBtn} onPress={handlePublishVersion} activeOpacity={0.8}>
@@ -604,9 +809,9 @@ export default function AdminScreen() {
                             </TouchableOpacity>
                         </Panel>
 
-                        <Panel icon="wrench" title="Maintenance Mode" accent={maintMode ? COLORS.danger : COLORS.success} statusText={maintMode ? 'Active' : 'Off'}>
+                        <Panel icon="wrench" title="Emergency Maintenance Mode" accent={maintMode ? COLORS.danger : COLORS.success} statusText={maintMode ? 'Active' : 'Off'}>
                             <View style={styles.flagRow}>
-                                <Text style={styles.flagLabel}>Enable Maintenance</Text>
+                                <Text style={styles.flagLabel}>Enable Maintenance Mode</Text>
                                 <Switch
                                     value={maintMode}
                                     onValueChange={handleToggleMaintenance}
@@ -615,31 +820,31 @@ export default function AdminScreen() {
                                 />
                             </View>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.inputLabel}>PUBLIC MESSAGE</Text>
+                                <Text style={styles.inputLabel}>PUBLIC MAINTENANCE MESSAGE</Text>
                                 <TextInput style={[styles.input, { minHeight: 60 }]} value={maintMsg} onChangeText={setMaintMsg} placeholder="Maintenance message..." placeholderTextColor={COLORS.textMuted} multiline />
                             </View>
                             <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.inputBackground }]} onPress={handleSaveMaintMsg} activeOpacity={0.8}>
-                                <Text style={[styles.actionBtnText, { color: COLORS.textPrimary }]}>Save Message</Text>
+                                <Text style={[styles.actionBtnText, { color: COLORS.textPrimary }]}>Save Maintenance Message</Text>
                             </TouchableOpacity>
                         </Panel>
 
-                        <Panel icon="lock" title="User Revocation" accent={COLORS.danger} statusText="Access">
-                            <LazyLoad onVisible={loadRevoked} loading={revokedLoading}>
+                        <Panel icon="lock" title="User Revocation List" accent={COLORS.danger} statusText="Access Lock">
+                            <LazyLoad onVisible={loadRevoked} loading={revokedLoading} error={revokedError} onRetry={loadRevoked}>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>ROLL NUMBER</Text>
+                                    <Text style={styles.inputLabel}>TARGET ROLL NUMBER</Text>
                                     <TextInput style={styles.input} value={revokeRoll} onChangeText={setRevokeRoll} placeholder="e.g. 2410990123" placeholderTextColor={COLORS.textMuted} />
                                 </View>
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>REASON</Text>
-                                    <TextInput style={styles.input} value={revokeReason} onChangeText={setRevokeReason} placeholder="Reason for revocation" placeholderTextColor={COLORS.textMuted} />
+                                    <Text style={styles.inputLabel}>REASON FOR REVOCATION</Text>
+                                    <TextInput style={styles.input} value={revokeReason} onChangeText={setRevokeReason} placeholder="Reason for revoking access..." placeholderTextColor={COLORS.textMuted} />
                                 </View>
-                                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.danger }]} onPress={handleRevokeUser} activeOpacity={0.8}>
+                                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.danger }]} onPress={() => handleRevokeUser()} activeOpacity={0.8}>
                                     <Text style={styles.actionBtnText}>Revoke Access</Text>
                                 </TouchableOpacity>
 
                                 {revoked && revoked.length > 0 && (
                                     <View style={{ marginTop: SPACING.md }}>
-                                        <Text style={styles.subSectionLabel}>REVOKED LIST</Text>
+                                        <Text style={styles.subSectionLabel}>REVOKED ROLL NUMBERS</Text>
                                         {revoked.map((r, i) => (
                                             <View key={i} style={styles.revokedRow}>
                                                 <View style={{ flex: 1 }}>
@@ -660,14 +865,103 @@ export default function AdminScreen() {
 
                 <View style={{ height: 100 }} />
             </ScrollView>
+
+            {/* ══ USER DETAILS MODAL ═════════════════════════════ */}
+            {selectedUser && (
+                <Modal visible transparent animationType="slide" onRequestClose={() => setSelectedUser(null)}>
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalCard}>
+                            <View style={styles.modalHeader}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.modalTitle}>{selectedUser.studentName}</Text>
+                                    <Text style={styles.modalSub}>Roll: {selectedUser.rollNumber} • App v{selectedUser.version}</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setSelectedUser(null)} style={styles.modalCloseBtn}>
+                                    <Text style={styles.modalCloseText}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <ScrollView style={{ maxHeight: 400 }}>
+                                <View style={styles.userModalMetaRow}>
+                                    <View style={styles.userStatCell}>
+                                        <Text style={styles.userStatVal}>{selectedUser.semesterCount}</Text>
+                                        <Text style={styles.userStatLbl}>Semesters</Text>
+                                    </View>
+                                    <View style={styles.userStatCell}>
+                                        <Text style={styles.userStatVal}>{selectedUser.totalAttended}/{selectedUser.totalClasses}</Text>
+                                        <Text style={styles.userStatLbl}>Attended/Total</Text>
+                                    </View>
+                                    <View style={styles.userStatCell}>
+                                        <Text style={[styles.userStatVal, { color: (selectedUser.overallAttendancePct || 0) >= 75 ? COLORS.success : COLORS.danger }]}>
+                                            {selectedUser.overallAttendancePct != null ? `${selectedUser.overallAttendancePct}%` : '—'}
+                                        </Text>
+                                        <Text style={styles.userStatLbl}>Overall %</Text>
+                                    </View>
+                                </View>
+
+                                <Text style={[styles.subSectionLabel, { marginTop: SPACING.md }]}>TRACKED SUBJECTS ({selectedUser.subjects?.length || 0})</Text>
+                                {(selectedUser.subjects || []).map((sub, i) => (
+                                    <View key={i} style={styles.userSubjectRow}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.userSubName}>{sub.name}</Text>
+                                            <Text style={styles.userSubMeta}>{sub.attended}/{sub.total} classes • Target {sub.target}%</Text>
+                                        </View>
+                                        <Text style={[styles.userSubPct, { color: sub.pct >= sub.target ? COLORS.success : COLORS.danger }]}>
+                                            {sub.pct.toFixed(1)}%
+                                        </Text>
+                                    </View>
+                                ))}
+                                {(!selectedUser.subjects || selectedUser.subjects.length === 0) && (
+                                    <Text style={styles.emptyText}>No subject details available for this user.</Text>
+                                )}
+                            </ScrollView>
+
+                            <View style={styles.modalFooter}>
+                                <TouchableOpacity
+                                    style={[styles.actionBtn, { backgroundColor: COLORS.danger, flex: 1 }]}
+                                    onPress={() => {
+                                        handleRevokeUser(selectedUser.rollNumber, 'Revoked from User Explorer');
+                                        setSelectedUser(null);
+                                    }}
+                                >
+                                    <Text style={styles.actionBtnText}>Revoke User Access</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            )}
         </SafeAreaView>
     );
 }
 
 // ─── LAZY LOAD WRAPPER ──────────────────────────────────────────
-function LazyLoad({ onVisible, loading, children }) {
+function LazyLoad({ onVisible, loading, error, onRetry, children }) {
+    const styles = getStyles();
     useEffect(() => { onVisible(); }, []);
-    if (loading) return <ActivityIndicator style={{ padding: SPACING.md }} size="small" color={COLORS.primary} />;
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Fetching data...</Text>
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText} numberOfLines={2}>Failed to load: {error}</Text>
+                {onRetry && (
+                    <TouchableOpacity onPress={onRetry} style={styles.retryBtn}>
+                        <Text style={styles.retryBtnText}>Retry</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        );
+    }
+
     return <>{children}</>;
 }
 
@@ -708,7 +1002,7 @@ function FailureCard({ failure }) {
                 <Text style={styles.failureUser}>{failure.rollNumber}</Text>
                 <Text style={styles.failureTime}>{ts}</Text>
             </View>
-            {expanded && failure.errors.map((err, i) => (
+            {expanded && (failure.errors || []).map((err, i) => (
                 <View key={i} style={styles.failureDetail}>
                     <Text style={styles.failureComponent}>{err.component}</Text>
                     <Text style={styles.failureError}>{err.error}</Text>
@@ -723,6 +1017,17 @@ const getStyles = () => StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
     scrollContent: { paddingHorizontal: SPACING.screenPadding, paddingTop: SPACING.sm },
     loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingCenterText: { marginTop: SPACING.sm, color: COLORS.textMuted, fontSize: 14 },
+
+    loadingContainer: { padding: SPACING.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: SPACING.xs },
+    loadingText: { color: COLORS.textMuted, fontSize: 13 },
+    errorContainer: { padding: SPACING.md, alignItems: 'center', backgroundColor: COLORS.dangerLight, borderRadius: BORDER_RADIUS.md, gap: SPACING.xs },
+    errorText: { color: COLORS.dangerDark, fontSize: 13, textAlign: 'center' },
+    retryBtn: { backgroundColor: COLORS.danger, paddingHorizontal: SPACING.md, paddingVertical: 5, borderRadius: BORDER_RADIUS.sm },
+    retryBtnText: { color: '#FFF', fontWeight: '700', fontSize: 12 },
+
+    refreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryLight, paddingHorizontal: 10, paddingVertical: 5, borderRadius: BORDER_RADIUS.full },
+    refreshBtnText: { ...TYPOGRAPHY.micro, color: COLORS.primary, fontWeight: '700' },
 
     // Hero
     hero: {
@@ -746,15 +1051,15 @@ const getStyles = () => StyleSheet.create({
     livePillText: { ...TYPOGRAPHY.micro, color: COLORS.successDark, fontWeight: '800', letterSpacing: 0.5 },
 
     // KPI strip
-    kpiRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.lg },
+    kpiRow: { flexDirection: 'row', gap: SPACING.xs, marginTop: SPACING.lg },
     kpiCell: {
         flex: 1, alignItems: 'center',
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
-        paddingVertical: SPACING.md,
+        paddingVertical: SPACING.sm,
     },
-    kpiValue: { ...TYPOGRAPHY.displayLarge, color: COLORS.textPrimary, fontSize: 26 },
-    kpiLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 4, letterSpacing: 0.8, fontWeight: '700' },
+    kpiValue: { ...TYPOGRAPHY.displayLarge, color: COLORS.textPrimary, fontSize: 22 },
+    kpiLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 2, letterSpacing: 0.5, fontWeight: '700', fontSize: 9 },
     heroSpark: {
         marginTop: SPACING.md, alignItems: 'center',
         borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, paddingTop: SPACING.md,
@@ -799,87 +1104,103 @@ const getStyles = () => StyleSheet.create({
 
     statusDot: { width: 8, height: 8, borderRadius: 4 },
 
-    // Bar progress
-    barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm, gap: SPACING.sm },
-    barLabel: { ...TYPOGRAPHY.labelSmall, color: COLORS.textSecondary, width: 70 },
+    // Difficulty
+    difficultyRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 6 },
+    difficultyInfo: { width: 120 },
+    difficultyName: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary, fontWeight: '600' },
+    difficultyMeta: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+    difficultyPct: { ...TYPOGRAPHY.labelSmall, width: 75, textAlign: 'right', fontWeight: '700' },
+
+    // Bar / Progress
+    barRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 6 },
+    barLabel: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary, width: 80, fontWeight: '600' },
     barTrack: { flex: 1, height: 8, backgroundColor: COLORS.inputBackground, borderRadius: 4, overflow: 'hidden' },
     barFill: { height: '100%', borderRadius: 4 },
-    barValue: { ...TYPOGRAPHY.labelSmall, color: COLORS.textMuted, width: 42, textAlign: 'right' },
-
-    // Difficulty
-    difficultyRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm, gap: SPACING.sm },
-    difficultyInfo: { width: 120 },
-    difficultyName: { ...TYPOGRAPHY.bodySmall, color: COLORS.textPrimary },
-    difficultyMeta: { ...TYPOGRAPHY.captionSmall, color: COLORS.textMuted },
-    difficultyPct: { ...TYPOGRAPHY.labelMedium, width: 36, textAlign: 'right' },
+    barValue: { ...TYPOGRAPHY.labelSmall, color: COLORS.textPrimary, width: 45, textAlign: 'right', fontWeight: '700' },
 
     // Batch
-    batchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm, gap: SPACING.sm },
-    batchLabel: { ...TYPOGRAPHY.labelSmall, color: COLORS.textSecondary, width: 80 },
-    batchCount: { ...TYPOGRAPHY.labelMedium, color: COLORS.textPrimary, width: 30, textAlign: 'right' },
+    batchRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 6 },
+    batchLabel: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary, width: 90, fontWeight: '600' },
+    batchCount: { ...TYPOGRAPHY.labelSmall, color: COLORS.textMuted, width: 90, textAlign: 'right' },
 
-    // Endpoint
-    endpointRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm, gap: SPACING.sm },
-    endpointName: { ...TYPOGRAPHY.bodySmall, color: COLORS.textPrimary },
-    endpointMeta: { ...TYPOGRAPHY.captionSmall, color: COLORS.textMuted },
-    endpointRate: { ...TYPOGRAPHY.labelMedium },
+    // User Roster
+    searchBar: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, paddingHorizontal: SPACING.md, paddingVertical: Platform.OS === 'ios' ? 10 : 4, marginBottom: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
+    searchInput: { flex: 1, color: COLORS.textPrimary, fontSize: 14 },
+    userCard: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: SPACING.md, marginBottom: SPACING.sm, borderWidth: 1, borderColor: COLORS.borderSubtle },
+    userCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+    userCardTitle: { ...TYPOGRAPHY.labelLarge, color: COLORS.textPrimary, fontWeight: '700' },
+    userCardSub: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 2 },
+    userBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: BORDER_RADIUS.full },
+    userBadgeText: { ...TYPOGRAPHY.micro, fontWeight: '800' },
+    userStatsRow: { flexDirection: 'row', gap: SPACING.xs, marginTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, paddingTop: SPACING.xs },
+    userStatCell: { flex: 1, alignItems: 'center' },
+    userStatVal: { ...TYPOGRAPHY.labelLarge, color: COLORS.textPrimary, fontWeight: '800' },
+    userStatLbl: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, fontSize: 10 },
+
+    // Endpoints
+    endpointRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 8 },
+    endpointName: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary, fontWeight: '600' },
+    endpointMeta: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+    endpointRate: { ...TYPOGRAPHY.labelSmall, fontWeight: '700' },
 
     // Downtime
-    downtimeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm, gap: SPACING.sm },
-    downtimeType: { ...TYPOGRAPHY.bodySmall, color: COLORS.textPrimary },
-    downtimeMeta: { ...TYPOGRAPHY.captionSmall, color: COLORS.textMuted },
-    resolveBtn: { backgroundColor: COLORS.primaryLight, borderRadius: BORDER_RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: 4 },
-    resolveBtnText: { ...TYPOGRAPHY.labelSmall, color: COLORS.primary },
+    downtimeRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: 8 },
+    downtimeType: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary, fontWeight: '600' },
+    downtimeMeta: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+    resolveBtn: { backgroundColor: COLORS.primaryLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: BORDER_RADIUS.sm },
+    resolveBtnText: { ...TYPOGRAPHY.micro, color: COLORS.primary, fontWeight: '700' },
 
-    // Table
-    tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingBottom: SPACING.xs, marginBottom: SPACING.xs },
-    tableRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.xs },
-    tableCell: { ...TYPOGRAPHY.captionMedium, color: COLORS.textSecondary, flex: 1 },
-    statusBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-    statusBadgeText: { ...TYPOGRAPHY.micro },
+    // Failures
+    failureCard: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: SPACING.sm, marginBottom: SPACING.xs },
+    failureHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    failureUser: { ...TYPOGRAPHY.labelSmall, color: COLORS.textPrimary, fontWeight: '700' },
+    failureTime: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+    failureDetail: { marginTop: SPACING.xs, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, paddingTop: 4 },
+    failureComponent: { ...TYPOGRAPHY.micro, color: COLORS.danger, fontWeight: '700' },
+    failureError: { ...TYPOGRAPHY.micro, color: COLORS.textSecondary },
 
-    // Input
+    // Rate Limit Table
+    tableHeader: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle },
+    tableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+    tableCell: { flex: 1, ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary, fontSize: 12 },
+    statusBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: BORDER_RADIUS.full },
+    statusBadgeText: { ...TYPOGRAPHY.micro, fontWeight: '700' },
+
+    // Controls Inputs
     inputGroup: { marginBottom: SPACING.sm },
-    inputLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginBottom: 4 },
-    input: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.sm, paddingHorizontal: SPACING.md, paddingVertical: Platform.OS === 'ios' ? 12 : 10, fontSize: FONT_SIZES.md, color: COLORS.textPrimary, ...Platform.select({ web: { outlineStyle: 'none' } }) },
-
-    // Action button
-    actionBtn: { backgroundColor: COLORS.primary, borderRadius: BORDER_RADIUS.sm, paddingVertical: SPACING.sm + 2, alignItems: 'center', marginTop: SPACING.xs },
-    actionBtnText: { ...TYPOGRAPHY.labelMedium, color: '#FFFFFF' },
-
-    // Type pills
+    inputLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginBottom: 4, fontWeight: '700' },
+    input: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, paddingHorizontal: SPACING.md, paddingVertical: 10, color: COLORS.textPrimary, fontSize: 14, borderWidth: 1, borderColor: COLORS.border },
     typeRow: { flexDirection: 'row', gap: SPACING.xs, marginBottom: SPACING.sm },
-    typePill: { borderRadius: BORDER_RADIUS.full, paddingHorizontal: SPACING.md, paddingVertical: 6, backgroundColor: COLORS.inputBackground },
-    typePillActive: { backgroundColor: COLORS.primary },
-    typePillText: { ...TYPOGRAPHY.labelSmall, color: COLORS.textMuted },
-    typePillTextActive: { color: '#FFFFFF' },
+    typePill: { flex: 1, paddingVertical: 6, alignItems: 'center', borderRadius: BORDER_RADIUS.sm, backgroundColor: COLORS.inputBackground, borderWidth: 1, borderColor: COLORS.border },
+    typePillActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+    typePillText: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, fontWeight: '700', textTransform: 'uppercase' },
+    typePillTextActive: { color: '#FFF' },
+    actionBtn: { backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: BORDER_RADIUS.md, alignItems: 'center', marginTop: SPACING.xs },
+    actionBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
+    flagRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
+    flagLabel: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary, fontWeight: '600' },
+    subSectionLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, letterSpacing: 0.8, fontWeight: '800', marginBottom: SPACING.xs },
+    announcementCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.inputBackground, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, marginBottom: SPACING.xs },
+    announcementTitle: { ...TYPOGRAPHY.labelSmall, color: COLORS.textPrimary, fontWeight: '700' },
+    announcementBody: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 2 },
+    revokedRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.inputBackground, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, marginBottom: SPACING.xs },
+    revokedRoll: { ...TYPOGRAPHY.labelSmall, color: COLORS.danger, fontWeight: '700' },
+    revokedReason: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
 
-    // Sub-section
-    subSectionLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginBottom: SPACING.xs },
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: SPACING.lg },
+    modalCard: { backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.xl, padding: SPACING.lg, maxHeight: '80%', ...SHADOWS.large },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle, paddingBottom: SPACING.sm, marginBottom: SPACING.md },
+    modalTitle: { ...TYPOGRAPHY.headingMedium, color: COLORS.textPrimary, fontSize: 18 },
+    modalSub: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 2 },
+    modalCloseBtn: { padding: 4 },
+    modalCloseText: { color: COLORS.textMuted, fontSize: 18, fontWeight: '700' },
+    userModalMetaRow: { flexDirection: 'row', gap: SPACING.xs, backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: SPACING.md },
+    userSubjectRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle },
+    userSubName: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary, fontWeight: '600' },
+    userSubMeta: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+    userSubPct: { ...TYPOGRAPHY.labelSmall, fontWeight: '800' },
+    modalFooter: { marginTop: SPACING.md, paddingTop: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle },
 
-    // Announcement card
-    announcementCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.sm, padding: SPACING.sm, marginBottom: SPACING.xs, gap: SPACING.sm },
-    announcementTitle: { ...TYPOGRAPHY.labelSmall, color: COLORS.textPrimary },
-    announcementBody: { ...TYPOGRAPHY.captionSmall, color: COLORS.textMuted },
-
-    // Flag row
-    flagRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: SPACING.sm, borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle },
-    flagLabel: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary },
-
-    // Revoked
-    revokedRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.sm, gap: SPACING.sm },
-    revokedRoll: { ...TYPOGRAPHY.labelMedium, color: COLORS.textPrimary },
-    revokedReason: { ...TYPOGRAPHY.captionSmall, color: COLORS.textMuted },
-
-    // Failure
-    failureCard: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.sm, padding: SPACING.sm, marginBottom: SPACING.xs },
-    failureHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-    failureUser: { ...TYPOGRAPHY.labelSmall, color: COLORS.textPrimary },
-    failureTime: { ...TYPOGRAPHY.captionSmall, color: COLORS.textMuted },
-    failureDetail: { marginTop: SPACING.xs, backgroundColor: COLORS.cardBackground, borderRadius: 4, padding: SPACING.xs },
-    failureComponent: { ...TYPOGRAPHY.micro, color: COLORS.warning, marginBottom: 2 },
-    failureError: { ...TYPOGRAPHY.captionSmall, color: COLORS.danger, fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier' },
-
-    // Empty
-    emptyText: { ...TYPOGRAPHY.bodySmall, color: COLORS.textMuted, textAlign: 'center', padding: SPACING.md },
+    emptyText: { ...TYPOGRAPHY.bodyMedium, color: COLORS.textMuted, textAlign: 'center', paddingVertical: SPACING.md },
 });
