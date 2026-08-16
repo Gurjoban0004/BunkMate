@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
@@ -14,6 +14,7 @@ import { getEndGameStats, findLongWeekends } from '../../utils/planner.js';
 import { DisplayMedium, BodySmall } from '../../components/common/Typography';
 
 import { getRiskLevel, getRiskColor, getRiskLabel, getSkipStrategy, OVERALL_MESSAGES, getWeeklyBurnPlan } from '../../utils/endgame';
+import { triggerHaptic } from '../../utils/haptics';
 import { estimateWeeksRemaining } from '../../utils/planner/semesterWindow';
 
 // Semester-scale horizons (a term runs months, not a couple of weeks).
@@ -246,29 +247,105 @@ export default function InsightsScreen() {
                             const riskColor = getRiskColor(risk);
                             const strategy = getSkipStrategy(subject, threshold);
                             const isExpanded = expandedSubject === subject.id;
+                            const tgt = subject.target || threshold;
+                            const progressPct = Math.min(subject.percentage, 100);
+
+                            // Build the strategy buffer text
+                            let bufferTitle, bufferSubtext;
+                            if (risk === 'impossible') {
+                                bufferTitle = 'Target Unreachable';
+                                const maxPossible = subject.totalUnits + subject.remainingUnits > 0
+                                    ? ((subject.attendedUnits + subject.remainingUnits) / (subject.totalUnits + subject.remainingUnits) * 100).toFixed(1)
+                                    : '0.0';
+                                bufferSubtext = `Max possible ${maxPossible}%`;
+                            } else if (subject.canSkip === 0) {
+                                bufferTitle = `Must Attend All`;
+                                bufferSubtext = 'Zero skip margin';
+                            } else if (subject.canSkip <= 2) {
+                                bufferTitle = `${subject.canSkip} Skip${subject.canSkip !== 1 ? 's' : ''} Left`;
+                                bufferSubtext = `Attend ${subject.mustAttend} of ${subject.remainingUnits}`;
+                            } else {
+                                bufferTitle = `${subject.canSkip} Skips Available`;
+                                bufferSubtext = `Attend ${subject.mustAttend} of ${subject.remainingUnits}`;
+                            }
+
+                            const bufferBg = risk === 'impossible' || risk === 'critical'
+                                ? COLORS.dangerLight
+                                : risk === 'tight' ? COLORS.warningLight
+                                : COLORS.successLight;
+
                             return (
-                                <TouchableOpacity key={subject.id} style={styles.subjectCard} onPress={() => setExpandedSubject(isExpanded ? null : subject.id)} activeOpacity={0.8}>
+                                <TouchableOpacity
+                                    key={subject.id}
+                                    style={styles.subjectCard}
+                                    onPress={() => {
+                                        triggerHaptic('light');
+                                        setExpandedSubject(isExpanded ? null : subject.id);
+                                    }}
+                                    activeOpacity={0.82}
+                                >
+                                    {/* ── Header: Title + Risk Badge ── */}
                                     <View style={styles.cardHeader}>
                                         <View style={styles.cardHeaderLeft}>
                                             <View style={[styles.colorDot, { backgroundColor: subject.color }]} />
-                                            <Text style={styles.cardSubjectName} numberOfLines={1}>{subject.name}</Text>
+                                            <View style={styles.cardTitleWrap}>
+                                                <Text style={styles.cardSubjectName} numberOfLines={2}>{subject.name}</Text>
+                                                {subject.weeklyUnits > 0 && (
+                                                    <Text style={styles.weeklyLoadCaption}>{subject.weeklyUnits} {subject.weeklyUnits === 1 ? 'CLASS' : 'CLASSES'} / WEEK</Text>
+                                                )}
+                                            </View>
                                         </View>
                                         <View style={styles.cardHeaderRight}>
                                             <View style={[styles.riskBadge, { borderColor: riskColor, backgroundColor: riskColor + '12' }]}>
                                                 <Text style={[styles.riskLabel, { color: riskColor }]}>{getRiskLabel(risk)}</Text>
                                             </View>
-                                            <Text style={styles.expandChevron}>{isExpanded ? '▲' : '▼'}</Text>
                                         </View>
                                     </View>
-                                    <View style={styles.summaryRow}>
-                                        <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.percentage.toFixed(1)}%</Text><Text style={styles.summaryLabel}>Current</Text></View>
-                                        <Text style={styles.summaryArrowText}>→</Text>
-                                        <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: COLORS.danger }]}>{subject.mustAttend}</Text><Text style={styles.summaryLabel}>Must Attend</Text></View>
-                                        <View style={styles.summaryDivider} />
-                                        <View style={styles.summaryItem}><Text style={[styles.summaryNum, { color: riskColor }]}>{subject.canSkip}</Text><Text style={styles.summaryLabel}>Can Skip</Text></View>
-                                        <View style={styles.summaryDivider} />
-                                        <View style={styles.summaryItem}><Text style={styles.summaryNum}>{subject.remainingUnits}</Text><Text style={styles.summaryLabel}>Remaining</Text></View>
+
+                                    {/* ── Hero Stat + Strategy Buffer Pill ── */}
+                                    <View style={styles.heroStatContainer}>
+                                        <View style={styles.heroStatLeft}>
+                                            <Text style={styles.heroPercentage}>{subject.percentage.toFixed(1)}%</Text>
+                                            <Text style={styles.heroLabel}>CURRENT ATTENDANCE</Text>
+                                        </View>
+                                        <View style={[styles.strategyBufferPill, { backgroundColor: bufferBg }]}>
+                                            <Text style={[styles.strategyBufferTitle, { color: riskColor }]}>{bufferTitle}</Text>
+                                            <Text style={styles.strategyBufferSubtext}>{bufferSubtext}</Text>
+                                        </View>
                                     </View>
+
+                                    {/* ── Progress Track ── */}
+                                    <View style={styles.progressTrackOuter}>
+                                        <View style={styles.progressTrack}>
+                                            <View style={[styles.progressFill, { width: progressPct + '%', backgroundColor: riskColor }]} />
+                                            {/* Threshold marker */}
+                                            <View style={[styles.progressThresholdMark, { left: Math.min(tgt, 100) + '%' }]} />
+                                        </View>
+                                        <Text style={styles.progressTargetLabel}>{tgt}% TARGET</Text>
+                                    </View>
+
+                                    {/* ── 3-Column Micro Stat Chips ── */}
+                                    <View style={styles.microChipRow}>
+                                        <View style={styles.microChip}>
+                                            <Text style={styles.microChipValue}>{subject.attendedUnits} / {subject.totalUnits}</Text>
+                                            <Text style={styles.microChipLabel}>Attended</Text>
+                                        </View>
+                                        <View style={styles.microChip}>
+                                            <Text style={styles.microChipValue}>{subject.remainingUnits}</Text>
+                                            <Text style={styles.microChipLabel}>Remaining</Text>
+                                        </View>
+                                        <View style={styles.microChip}>
+                                            <Text style={styles.microChipValue}>{tgt}%</Text>
+                                            <Text style={styles.microChipLabel}>Target</Text>
+                                        </View>
+                                    </View>
+
+                                    {/* ── Expand Trigger ── */}
+                                    <View style={styles.expandTriggerBar}>
+                                        <Text style={styles.expandTriggerText}>{isExpanded ? 'Hide Details  ▲' : 'Burn Plan & Simulator  ▼'}</Text>
+                                    </View>
+
+                                    {/* ── Expanded Section ── */}
                                     {isExpanded && (
                                         <View style={styles.expandedSection}>
                                             <View style={styles.strategyBox}>
@@ -303,8 +380,8 @@ export default function InsightsScreen() {
                                                             const finalAttended = subject.attendedUnits + attendIfSkipN;
                                                             const finalTotal = subject.totalUnits + subject.remainingUnits;
                                                             const finalPct = calculatePercentage(finalAttended, finalTotal);
-                                                            const tgt = subject.target || threshold;
-                                                            const passes = finalPct >= tgt;
+                                                            const simTgt = subject.target || threshold;
+                                                            const passes = finalPct >= simTgt;
                                                             return (
                                                                  <View key={n} style={[styles.consequenceChip, { borderColor: passes ? COLORS.success : COLORS.danger, backgroundColor: passes ? COLORS.successLight : COLORS.dangerLight }]}>
                                                                     <Text style={styles.consequenceN}>Skip {n}</Text>
@@ -560,8 +637,8 @@ const getStyles = () => StyleSheet.create({
     subjectCard: {
         marginHorizontal: SPACING.screenPadding,
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.lg,
         marginBottom: SPACING.cardGap,
         borderWidth: 1,
         borderColor: COLORS.border,
@@ -570,25 +647,34 @@ const getStyles = () => StyleSheet.create({
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         marginBottom: SPACING.md,
     },
-    cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-    colorDot: { width: 8, height: 8, borderRadius: 4 },
+    cardHeaderLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, flex: 1, marginRight: SPACING.sm },
+    cardTitleWrap: { flex: 1 },
+    colorDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
     cardSubjectName: {
-        fontSize: 15,
-        fontWeight: '700',
+        ...TYPOGRAPHY.headingSmall,
         color: COLORS.textPrimary,
-        flex: 1,
+        lineHeight: 20,
+    },
+    weeklyLoadCaption: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: 3,
     },
     cardHeaderRight: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: SPACING.xs,
+        marginTop: 2,
     },
     riskBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
         borderRadius: BORDER_RADIUS.full,
         borderWidth: 1,
         alignItems: 'center',
@@ -600,42 +686,128 @@ const getStyles = () => StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.4,
     },
-    expandChevron: {
-        fontSize: 10,
+
+    // Hero Stat + Strategy Buffer
+    heroStatContainer: {
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        gap: SPACING.md,
+        marginBottom: SPACING.md,
+    },
+    heroStatLeft: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    heroPercentage: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: COLORS.textPrimary,
+        letterSpacing: -0.5,
+        lineHeight: 32,
+    },
+    heroLabel: {
+        fontSize: 9,
+        fontWeight: '700',
         color: COLORS.textMuted,
-        marginLeft: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: 2,
+    },
+    strategyBufferPill: {
+        flex: 1.2,
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.md,
+        borderRadius: BORDER_RADIUS.md,
+        justifyContent: 'center',
+    },
+    strategyBufferTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        letterSpacing: -0.2,
+    },
+    strategyBufferSubtext: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: COLORS.textSecondary,
+        marginTop: 2,
     },
 
-    // Summary row
-    summaryRow: {
+    // Progress Track
+    progressTrackOuter: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-around',
-        paddingVertical: 4,
+        gap: SPACING.sm,
+        marginBottom: SPACING.md,
     },
-    summaryItem: { flex: 1, alignItems: 'center' },
-    summaryNum: {
-        fontSize: 15,
+    progressTrack: {
+        flex: 1,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: COLORS.inputBackground,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    progressThresholdMark: {
+        position: 'absolute',
+        top: -2,
+        width: 2,
+        height: 10,
+        backgroundColor: COLORS.textMuted,
+        borderRadius: 1,
+        opacity: 0.5,
+    },
+    progressTargetLabel: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        letterSpacing: 0.3,
+    },
+
+    // 3-Column Micro Chips
+    microChipRow: {
+        flexDirection: 'row',
+        gap: SPACING.sm,
+        marginBottom: SPACING.sm,
+    },
+    microChip: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: SPACING.sm,
+        paddingHorizontal: SPACING.xs,
+        backgroundColor: COLORS.inputBackground,
+        borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+    },
+    microChipValue: {
+        fontSize: 13,
         fontWeight: '800',
         color: COLORS.textPrimary,
     },
-    summaryLabel: {
+    microChipLabel: {
         fontSize: 9,
+        fontWeight: '600',
         color: COLORS.textMuted,
-        marginTop: 2,
         textTransform: 'uppercase',
         letterSpacing: 0.3,
-        fontWeight: '600',
+        marginTop: 2,
     },
-    summaryArrowText: {
-        fontSize: 12,
+
+    // Expand Trigger Bar
+    expandTriggerBar: {
+        alignItems: 'center',
+        paddingVertical: SPACING.xs,
+        marginTop: SPACING.xs,
+    },
+    expandTriggerText: {
+        fontSize: 10,
+        fontWeight: '700',
         color: COLORS.textMuted,
-        paddingHorizontal: 2,
-    },
-    summaryDivider: {
-        width: 1,
-        height: 20,
-        backgroundColor: COLORS.border,
+        letterSpacing: 0.3,
     },
 
     // Expanded

@@ -8,23 +8,19 @@
  * Also reads ADMIN_ROLL_NUMBERS (comma-separated) for server-side admin validation.
  */
 
-const admin = require('firebase-admin');
+// Modular API only — firebase-admin v14 dropped the namespaced `admin.apps` /
+// `admin.credential` / `admin.firestore()` surface off the default export.
+const { initializeApp, getApps, cert, applicationDefault } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
-if (!admin.apps.length) {
+if (!getApps().length) {
     const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-
-    if (serviceAccount) {
-        admin.initializeApp({
-            credential: admin.credential.cert(JSON.parse(serviceAccount)),
-        });
-    } else {
-        admin.initializeApp({
-            credential: admin.credential.applicationDefault(),
-        });
-    }
+    initializeApp({
+        credential: serviceAccount ? cert(JSON.parse(serviceAccount)) : applicationDefault(),
+    });
 }
 
-const adminDb = admin.firestore();
+const adminDb = getFirestore();
 
 const ADMIN_ROLL_NUMBERS = (process.env.ADMIN_ROLL_NUMBERS || '2410990296')
     .split(',')

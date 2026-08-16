@@ -19,7 +19,7 @@
  */
 
 const crypto = require('crypto');
-const admin = require('firebase-admin');
+const { getAuth } = require('firebase-admin/auth');
 const { FieldValue } = require('firebase-admin/firestore');
 const { setCorsHeaders } = require('./_session-utils');
 const { adminDb } = require('./_firebase-admin');
@@ -83,7 +83,7 @@ module.exports = async function handler(req, res) {
             await userRef.set({ lastActive: FieldValue.serverTimestamp() }, { merge: true });
         }
 
-        const token = await admin.auth().createCustomToken(code);
+        const token = await getAuth().createCustomToken(code);
         return res.status(200).json({ token });
     } catch (err) {
         return res.status(500).json({ error: 'Could not sign in. Please try again.' });

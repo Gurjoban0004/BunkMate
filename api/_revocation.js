@@ -34,7 +34,16 @@ function getDb() {
 const TTL_MS = 60 * 1000;
 const cache = new Map();
 
-const { isAdminRoll } = require('./_firebase-admin');
+// Lazy for the same reason as getDb(): an eager require here defeats the guard
+// above — a throwing Admin SDK takes down every endpoint that imports this file
+// at module load, before any handler code can turn it into a JSON error.
+function isAdminRoll(roll) {
+    try {
+        return require('./_firebase-admin').isAdminRoll(roll);
+    } catch {
+        return false;   // SDK down → getDb() returns null anyway, so nobody is revoked
+    }
+}
 
 /** @returns {Promise<Object|null>} the revocation record, or null if not revoked */
 async function getRevocation(rollNumber) {
