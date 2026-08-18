@@ -29,6 +29,14 @@ const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
+// Presence is a single-college app (CUIET): every genuine user signs in with a
+// long numeric ERP roll number (e.g. 2410990296). Mock/dev and abandoned-onboarding
+// docs have no such roll, and the dev mock login seeds sample subjects (CS201,
+// "Web Development", …) that are NOT real uni subjects. Gating aggregation on a real
+// roll keeps foreign/junk data out of the admin view and makes the user count honest.
+const REAL_ROLL = /^\d{6,}$/;
+const isRealRoll = (roll) => !!roll && REAL_ROLL.test(String(roll).trim());
+
 // One document per metric. A single shared doc used to hold every metric at
 // once, which put the whole user roster and every other result in one payload —
 // that both blows past Firestore's 1MB document limit as the user base grows and
@@ -82,23 +90,40 @@ const syncMillis = (data) => (data && data.timestamp && data.timestamp.toMillis)
 // ── Metric Computations ──────────────────────────────────────────────
 
 async function computeSubjectDifficulty() {
-    const semestersSnap = await adminDb.collectionGroup('semesters').get();
-    const subjectMap = {};
+    const [usersSnap, semestersSnap] = await Promise.all([
+        adminDb.collection('users').get(),
+        adminDb.collectionGroup('semesters').get(),
+    ]);
 
+    // Only aggregate semesters owned by a real (roll-bearing) user, so mock/test
+    // accounts' sample subjects never enter the heatmap.
+    const realUserIds = new Set(
+        usersSnap.docs.filter(d => isRealRoll(d.data()?.erpRollNumber)).map(d => d.id)
+    );
+
+    const subjectMap = {};
     semestersSnap.forEach(semDoc => {
+        const ownerId = semDoc.ref.parent.parent?.id;
+        if (!ownerId || !realUserIds.has(ownerId)) return;
         const subjects = semDoc.data()?.subjects;
         if (!Array.isArray(subjects)) return;
         subjects.forEach(sub => {
-            const key = sub.name || sub.id;
+            // Normalize the name so casing/whitespace variants collapse into one row
+            // instead of padding the list with near-duplicates.
+            const key = String(sub.name || sub.id || '').trim().replace(/\s+/g, ' ');
             if (!key) return;
-            if (!subjectMap[key]) subjectMap[key] = { name: key, totalPresent: 0, totalAbsent: 0, students: 0 };
-            subjectMap[key].totalPresent += Number(sub.initialAttended) || 0;
-            subjectMap[key].totalAbsent += Math.max(0, (Number(sub.initialTotal) || 0) - (Number(sub.initialAttended) || 0));
-            subjectMap[key].students++;
+            const norm = key.toLowerCase();
+            if (!subjectMap[norm]) subjectMap[norm] = { name: key, totalPresent: 0, totalAbsent: 0, students: 0 };
+            subjectMap[norm].totalPresent += Number(sub.initialAttended) || 0;
+            subjectMap[norm].totalAbsent += Math.max(0, (Number(sub.initialTotal) || 0) - (Number(sub.initialAttended) || 0));
+            subjectMap[norm].students++;
         });
     });
 
     return Object.values(subjectMap)
+        // A "difficulty" signal needs a cohort; a subject only one account tracks is
+        // noise (and where stray/test entries live). Require at least 2 students.
+        .filter(s => s.students >= 2)
         .map(s => {
             const total = s.totalPresent + s.totalAbsent;
             return {
@@ -303,9 +328,12 @@ async function computeActiveUsers() {
     const now = Date.now();
     const DAY = 86400000;
     let dau = 0, wau = 0, mau = 0;
+    // Count only real, onboarded users — placeholder/mock docs shouldn't inflate the total.
+    let realTotal = 0;
 
     usersSnap.forEach(docSnap => {
         const data = docSnap.data();
+        if (isRealRoll(data?.erpRollNumber)) realTotal++;
         if (!data || !data.lastActive) return;
         const lastActive = data.lastActive.toMillis
             ? data.lastActive.toMillis()
@@ -340,7 +368,7 @@ async function computeActiveUsers() {
         dau,
         wau,
         mau,
-        total: usersSnap.size,
+        total: realTotal,
         sparkline: perDay.map(s => s.size),
         sparklineStart: windowStart,
     };

@@ -556,30 +556,29 @@ export default function AdminScreen() {
             >
                 {/* ── HERO ─────────────────────────────────────────── */}
                 <View style={styles.hero}>
-                    <View style={styles.heroTopRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.heroEyebrow}>COMMAND CENTER</Text>
-                            <Text style={styles.heroTitle}>Welcome back, {adminName}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', gap: SPACING.xs, alignItems: 'center' }}>
-                            <TouchableOpacity
-                                style={styles.refreshBtn}
-                                onPress={handleForceRefreshAll}
-                                disabled={forceRefreshing}
-                                activeOpacity={0.7}
-                            >
-                                {forceRefreshing
-                                    ? <ActivityIndicator size="small" color={COLORS.primary} />
-                                    : <PanelIcon name="refresh" color={COLORS.primary} size={14} />}
-                                <Text style={styles.refreshBtnText}>{forceRefreshing ? 'Syncing...' : 'Refresh Cache'}</Text>
-                            </TouchableOpacity>
+                    {/* Controls on their own row so the greeting keeps the full width —
+                       a long first name in the serif title was wrapping mid-word. */}
+                    <View style={styles.heroControlsRow}>
+                        <TouchableOpacity
+                            style={styles.refreshBtn}
+                            onPress={handleForceRefreshAll}
+                            disabled={forceRefreshing}
+                            activeOpacity={0.7}
+                        >
+                            {forceRefreshing
+                                ? <ActivityIndicator size="small" color={COLORS.primary} />
+                                : <PanelIcon name="refresh" color={COLORS.primary} size={14} />}
+                            <Text style={styles.refreshBtnText}>{forceRefreshing ? 'Syncing...' : 'Refresh Cache'}</Text>
+                        </TouchableOpacity>
 
-                            <View style={styles.livePill}>
-                                <View style={styles.liveDot} />
-                                <Text style={styles.livePillText}>LIVE</Text>
-                            </View>
+                        <View style={styles.livePill}>
+                            <View style={styles.liveDot} />
+                            <Text style={styles.livePillText}>LIVE</Text>
                         </View>
                     </View>
+
+                    <Text style={styles.heroEyebrow}>COMMAND CENTER</Text>
+                    <Text style={styles.heroTitle}>Welcome back, {adminName}</Text>
 
                     {/* KPI strip — always visible */}
                     <View style={styles.kpiRow}>
@@ -1094,7 +1093,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
         ...SHADOWS.medium,
     },
-    heroTopRow: { flexDirection: 'row', alignItems: 'flex-start' },
+    heroControlsRow: { flexDirection: 'row', gap: SPACING.xs, alignItems: 'center', justifyContent: 'flex-end', marginBottom: SPACING.sm },
     heroEyebrow: { ...TYPOGRAPHY.micro, color: COLORS.primary, letterSpacing: 1.2, fontWeight: '800' },
     heroTitle: { ...TYPOGRAPHY.headingLarge, color: COLORS.textPrimary, fontSize: 22, marginTop: 4 },
     livePill: {
