@@ -141,8 +141,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     bigPercentage: {
+        fontWeight: '700',
         fontSize: 26,
-        fontWeight: '800',
         letterSpacing: -0.5,
         marginBottom: SPACING.sm,
     },
@@ -154,8 +154,8 @@ const getStyles = () => StyleSheet.create({
         ...TYPOGRAPHY.bodyMedium,
         color: COLORS.textSecondary,
     },
-    textGreen: { color: COLORS.success },
-    textRed: { color: COLORS.danger },
+    textGreen: { color: COLORS.successText },
+    textRed: { color: COLORS.dangerText },
     streakCard: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -175,7 +175,7 @@ const getStyles = () => StyleSheet.create({
     },
     streakCount: {
         ...TYPOGRAPHY.captionMedium,
-        color: COLORS.warning,
+        color: COLORS.warningText,
     },
     sectionTitle: {
         ...TYPOGRAPHY.headingSmall,

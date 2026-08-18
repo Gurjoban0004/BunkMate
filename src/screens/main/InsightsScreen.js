@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
@@ -16,6 +16,8 @@ import { DisplayMedium, BodySmall } from '../../components/common/Typography';
 import { getRiskLevel, getRiskColor, getRiskLabel, getSkipStrategy, OVERALL_MESSAGES, getWeeklyBurnPlan } from '../../utils/endgame';
 import { triggerHaptic } from '../../utils/haptics';
 import { estimateWeeksRemaining } from '../../utils/planner/semesterWindow';
+import { generateWeeklyReport } from '../../utils/insights';
+import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 
 // Semester-scale horizons (a term runs months, not a couple of weeks).
 const WEEK_OPTIONS = [8, 12, 16, 20];
@@ -37,6 +39,10 @@ export default function InsightsScreen() {
         state.subjects, state.attendanceRecords, state.holidays, state.settings?.dangerThreshold,
     ]);
 
+    const weeklyReport = useMemo(() => generateWeeklyReport(state), [
+        state.subjects, state.attendanceRecords, state.holidays, state.devDate,
+    ]);
+
     const subjectStats = useMemo(() => (state.subjects || [])
         .map(sub => {
             const stats = getSubjectAttendance(sub.id, state);
@@ -52,16 +58,16 @@ export default function InsightsScreen() {
     const sortedResults = useMemo(() => {
         const order = { impossible: 0, critical: 1, tight: 2, moderate: 3, comfortable: 4 };
         return [...endGameStats.results].sort((a, b) =>
-            (order[getRiskLevel(a.canSkip, a.mustAttend, a.remainingUnits)] ?? 5) -
-            (order[getRiskLevel(b.canSkip, b.mustAttend, b.remainingUnits)] ?? 5)
+            (order[getRiskLevel(a)] ?? 5) -
+            (order[getRiskLevel(b)] ?? 5)
         );
     }, [endGameStats.results]);
 
     const overallRisk = useMemo(() => {
-        if (sortedResults.some(s => getRiskLevel(s.canSkip, s.mustAttend, s.remainingUnits) === 'impossible')) return 'impossible';
-        if (sortedResults.some(s => getRiskLevel(s.canSkip, s.mustAttend, s.remainingUnits) === 'critical')) return 'critical';
-        if (sortedResults.some(s => getRiskLevel(s.canSkip, s.mustAttend, s.remainingUnits) === 'tight')) return 'tight';
-        if (sortedResults.every(s => getRiskLevel(s.canSkip, s.mustAttend, s.remainingUnits) === 'comfortable')) return 'comfortable';
+        if (sortedResults.some(s => getRiskLevel(s) === 'impossible')) return 'impossible';
+        if (sortedResults.some(s => getRiskLevel(s) === 'critical')) return 'critical';
+        if (sortedResults.some(s => getRiskLevel(s) === 'tight')) return 'tight';
+        if (sortedResults.every(s => getRiskLevel(s) === 'comfortable')) return 'comfortable';
         return 'moderate';
     }, [sortedResults]);
 
@@ -103,6 +109,11 @@ export default function InsightsScreen() {
                     </View>
                 ) : (
                     <>
+                        {/* Week in Review — moved here from Today, where it was a
+                           full-height retrospective sitting above the day's
+                           classes. It belongs with the other retrospectives. */}
+                        <WeeklyReportCard report={weeklyReport} />
+
                         {/* 1. Overall verdict (Semester Outlook) */}
                         <View style={styles.verdictCard}>
                             <Text style={styles.verdictLabel}>Semester Outlook</Text>
@@ -112,17 +123,17 @@ export default function InsightsScreen() {
 
                             <View style={styles.verdictStats}>
                                 <View style={styles.verdictStat}>
-                                    <Text style={styles.verdictStatNum}>{endGameStats.totalRemaining}</Text>
+                                    <Text style={styles.verdictStatNum}>{endGameStats.totalRemainingClasses}</Text>
                                     <Text style={styles.verdictStatLabel}>classes left</Text>
                                 </View>
                                 <View style={styles.verdictDivider} />
                                 <View style={styles.verdictStat}>
-                                    <Text style={[styles.verdictStatNum, { color: COLORS.danger }]}>{endGameStats.totalMustAttend}</Text>
+                                    <Text style={[styles.verdictStatNum, { color: COLORS.dangerText }]}>{endGameStats.totalMustAttendClasses}</Text>
                                     <Text style={styles.verdictStatLabel}>must attend</Text>
                                 </View>
                                 <View style={styles.verdictDivider} />
                                 <View style={styles.verdictStat}>
-                                    <Text style={[styles.verdictStatNum, { color: COLORS.success }]}>{endGameStats.totalCanSkip}</Text>
+                                    <Text style={[styles.verdictStatNum, { color: COLORS.successText }]}>{endGameStats.totalCanSkipClasses}</Text>
                                     <Text style={styles.verdictStatLabel}>can skip</Text>
                                 </View>
                             </View>
@@ -167,11 +178,11 @@ export default function InsightsScreen() {
                                     const barColor = data.percentage < 70 ? COLORS.danger : data.percentage < threshold ? COLORS.warning : COLORS.success;
                                     return (
                                         <View key={dayIdx} style={styles.barCol}>
-                                            <Text style={[styles.barPct, isWorst && { color: COLORS.danger, fontWeight: '700' }]}>{data.percentage?.toFixed(0)}%</Text>
+                                            <Text style={[styles.barPct, isWorst && { color: COLORS.dangerText, fontWeight: '700' }]}>{data.percentage?.toFixed(0)}%</Text>
                                             <View style={[styles.barTrack, { height: barHeight }]}>
                                                 <View style={[styles.barFill, { height: (presentRatio * 100) + '%', backgroundColor: barColor }]} />
                                             </View>
-                                            <Text style={[styles.barLabel, isWorst && { color: COLORS.danger, fontWeight: '700' }]}>{data.name?.slice(0, 3)}</Text>
+                                            <Text style={[styles.barLabel, isWorst && { color: COLORS.dangerText, fontWeight: '700' }]}>{data.name?.slice(0, 3)}</Text>
                                         </View>
                                     );
                                 })}
@@ -243,7 +254,7 @@ export default function InsightsScreen() {
                         {/* 6. Per-subject strategy cards */}
                         <Text style={styles.egSectionLabel}>Subject Strategies</Text>
                         {sortedResults.map(subject => {
-                            const risk = getRiskLevel(subject.canSkip, subject.mustAttend, subject.remainingUnits);
+                            const risk = getRiskLevel(subject);
                             const riskColor = getRiskColor(risk);
                             const strategy = getSkipStrategy(subject, threshold);
                             const isExpanded = expandedSubject === subject.id;
@@ -258,15 +269,15 @@ export default function InsightsScreen() {
                                     ? ((subject.attendedUnits + subject.remainingUnits) / (subject.totalUnits + subject.remainingUnits) * 100).toFixed(1)
                                     : '0.0';
                                 bufferSubtext = `Max possible ${maxPossible}%`;
-                            } else if (subject.canSkip === 0) {
+                            } else if (subject.canSkipClasses === 0) {
                                 bufferTitle = `Must Attend All`;
                                 bufferSubtext = 'Zero skip margin';
-                            } else if (subject.canSkip <= 2) {
-                                bufferTitle = `${subject.canSkip} Skip${subject.canSkip !== 1 ? 's' : ''} Left`;
-                                bufferSubtext = `Attend ${subject.mustAttend} of ${subject.remainingUnits}`;
+                            } else if (subject.canSkipClasses <= 2) {
+                                bufferTitle = `${subject.canSkipClasses} Skip${subject.canSkipClasses !== 1 ? 's' : ''} Left`;
+                                bufferSubtext = `Attend ${subject.mustAttendClasses} of ${subject.remainingClasses} classes`;
                             } else {
-                                bufferTitle = `${subject.canSkip} Skips Available`;
-                                bufferSubtext = `Attend ${subject.mustAttend} of ${subject.remainingUnits}`;
+                                bufferTitle = `${subject.canSkipClasses} Skips Available`;
+                                bufferSubtext = `Attend ${subject.mustAttendClasses} of ${subject.remainingClasses} classes`;
                             }
 
                             const bufferBg = risk === 'impossible' || risk === 'critical'
@@ -290,8 +301,8 @@ export default function InsightsScreen() {
                                             <View style={[styles.colorDot, { backgroundColor: subject.color }]} />
                                             <View style={styles.cardTitleWrap}>
                                                 <Text style={styles.cardSubjectName} numberOfLines={2}>{subject.name}</Text>
-                                                {subject.weeklyUnits > 0 && (
-                                                    <Text style={styles.weeklyLoadCaption}>{subject.weeklyUnits} {subject.weeklyUnits === 1 ? 'CLASS' : 'CLASSES'} / WEEK</Text>
+                                                {subject.weeklyClasses > 0 && (
+                                                    <Text style={styles.weeklyLoadCaption}>{subject.weeklyClasses} {subject.weeklyClasses === 1 ? 'CLASS' : 'CLASSES'} / WEEK</Text>
                                                 )}
                                             </View>
                                         </View>
@@ -331,7 +342,7 @@ export default function InsightsScreen() {
                                             <Text style={styles.microChipLabel}>Attended</Text>
                                         </View>
                                         <View style={styles.microChip}>
-                                            <Text style={styles.microChipValue}>{subject.remainingUnits}</Text>
+                                            <Text style={styles.microChipValue}>{subject.remainingClasses}</Text>
                                             <Text style={styles.microChipLabel}>Remaining</Text>
                                         </View>
                                         <View style={styles.microChip}>
@@ -357,11 +368,11 @@ export default function InsightsScreen() {
                                             </View>
                                             
                                             {/* Weekly Burn Plan */}
-                                            {subject.canSkip > 0 && subject.weeklyUnits > 0 && (
+                                            {subject.canSkipClasses > 0 && subject.weeklyClasses > 0 && (
                                                 <View style={styles.planSection}>
                                                     <Text style={styles.consequenceTitle}>Recommended Plan</Text>
                                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.planScroll}>
-                                                        {getWeeklyBurnPlan(subject.canSkip, endGameStats.weeksLeft, subject.weeklyUnits).map((p, i) => (
+                                                        {getWeeklyBurnPlan(subject.canSkipClasses, endGameStats.weeksLeft, subject.weeklyClasses).map((p, i) => (
                                                             <View key={p.week} style={[styles.planChip, p.skips > 0 ? styles.planChipActive : styles.planChipEmpty]}>
                                                                 <Text style={styles.planWeekText}>Wk {p.week}</Text>
                                                                 <Text style={[styles.planSkipText, p.skips > 0 && {color: COLORS.primary}]}>{p.skips > 0 ? `Skip ${p.skips}` : 'Attend'}</Text>
@@ -375,8 +386,10 @@ export default function InsightsScreen() {
                                                 <View style={styles.consequenceSection}>
                                                     <Text style={styles.consequenceTitle}>Skip Impact Simulator</Text>
                                                     <View style={styles.consequenceRow}>
-                                                        {[1, 2, 3, 5].filter(n => n <= subject.remainingUnits).map(n => {
-                                                            const attendIfSkipN = subject.remainingUnits - n;
+                                                        {[1, 2, 3, 5].filter(n => n <= subject.remainingClasses).map(n => {
+                                                            // n whole classes, each worth a full session of periods
+                                                            const skippedUnits = Math.min(subject.remainingUnits, n * (subject.sessionUnits?.max || 1));
+                                                            const attendIfSkipN = subject.remainingUnits - skippedUnits;
                                                             const finalAttended = subject.attendedUnits + attendIfSkipN;
                                                             const finalTotal = subject.totalUnits + subject.remainingUnits;
                                                             const finalPct = calculatePercentage(finalAttended, finalTotal);
@@ -410,7 +423,7 @@ export default function InsightsScreen() {
                                         <View style={styles.subjectInfo}>
                                             <View style={[styles.subjectDot, { backgroundColor: sub.color }]}/ >
                                             <Text style={styles.subjectName} numberOfLines={1}>{sub.name}</Text>
-                                            <Text style={[styles.subjectPct, isAtRisk && { color: COLORS.danger }]}>{sub.percentage.toFixed(1)}%</Text>
+                                            <Text style={[styles.subjectPct, isAtRisk && { color: COLORS.dangerText }]}>{sub.percentage.toFixed(1)}%</Text>
                                         </View>
                                         <View style={styles.subjectBarTrack}>
                                             <View style={[styles.subjectBarFill, { width: Math.min(sub.percentage, 100) + '%', backgroundColor: isAtRisk ? COLORS.danger : sub.color }]} />
@@ -558,16 +571,16 @@ const getStyles = () => StyleSheet.create({
         ...SHADOWS.small,
     },
     verdictLabel: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         marginBottom: 6,
     },
     verdictText: {
-        fontSize: 15,
         fontWeight: '600',
+        fontSize: 15,
         lineHeight: 20,
         color: COLORS.textPrimary,
         marginBottom: SPACING.md,
@@ -588,14 +601,13 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     verdictStatNum: {
+        fontWeight: '700',
         fontSize: 20,
-        fontWeight: '800',
         color: COLORS.textPrimary,
     },
     verdictStatLabel: {
         fontSize: 10,
         color: COLORS.textSecondary,
-        fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 0.3,
         marginTop: 2,
@@ -606,11 +618,11 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.border,
     },
     exactMathNote: {
+        fontWeight: '600',
         fontSize: 11,
         color: COLORS.primary,
         marginTop: SPACING.md,
         textAlign: 'center',
-        fontWeight: '600',
     },
 
     // Weeks selector
@@ -623,8 +635,8 @@ const getStyles = () => StyleSheet.create({
 
     // EG section label
     egSectionLabel: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -659,8 +671,8 @@ const getStyles = () => StyleSheet.create({
         lineHeight: 20,
     },
     weeklyLoadCaption: {
-        fontSize: 9,
         fontWeight: '700',
+        fontSize: 9,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -681,8 +693,8 @@ const getStyles = () => StyleSheet.create({
         justifyContent: 'center',
     },
     riskLabel: {
-        fontSize: 9,
         fontWeight: '700',
+        fontSize: 9,
         textTransform: 'uppercase',
         letterSpacing: 0.4,
     },
@@ -699,8 +711,8 @@ const getStyles = () => StyleSheet.create({
         justifyContent: 'center',
     },
     heroPercentage: {
+        fontWeight: '700',
         fontSize: 28,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
         lineHeight: 32,
@@ -721,13 +733,13 @@ const getStyles = () => StyleSheet.create({
         justifyContent: 'center',
     },
     strategyBufferTitle: {
+        fontWeight: '700',
         fontSize: 14,
-        fontWeight: '800',
         letterSpacing: -0.2,
     },
     strategyBufferSubtext: {
-        fontSize: 11,
         fontWeight: '500',
+        fontSize: 11,
         color: COLORS.textSecondary,
         marginTop: 2,
     },
@@ -761,8 +773,8 @@ const getStyles = () => StyleSheet.create({
         opacity: 0.5,
     },
     progressTargetLabel: {
-        fontSize: 9,
         fontWeight: '700',
+        fontSize: 9,
         color: COLORS.textMuted,
         letterSpacing: 0.3,
     },
@@ -784,13 +796,12 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.borderSubtle,
     },
     microChipValue: {
+        fontWeight: '700',
         fontSize: 13,
-        fontWeight: '800',
         color: COLORS.textPrimary,
     },
     microChipLabel: {
         fontSize: 9,
-        fontWeight: '600',
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.3,
@@ -804,8 +815,8 @@ const getStyles = () => StyleSheet.create({
         marginTop: SPACING.xs,
     },
     expandTriggerText: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textMuted,
         letterSpacing: 0.3,
     },
@@ -826,17 +837,19 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     strategyHeadline: {
+        fontWeight: '700',
         fontSize: 13,
-        fontWeight: '800',
         marginBottom: 4,
     },
     strategyDetail: {
+        fontWeight: '400',
         fontSize: 12,
         color: COLORS.textSecondary,
         lineHeight: 17,
         marginBottom: 4,
     },
     strategyAction: {
+        fontWeight: '400',
         fontSize: 11,
         color: COLORS.textMuted,
         fontStyle: 'italic',
@@ -859,14 +872,14 @@ const getStyles = () => StyleSheet.create({
     planChipActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
     planChipEmpty: { borderColor: COLORS.border, backgroundColor: COLORS.inputBackground },
     planWeekText: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textSecondary,
         marginBottom: 2,
     },
     planSkipText: {
+        fontWeight: '700',
         fontSize: 12,
-        fontWeight: '800',
         color: COLORS.textMuted,
     },
 
@@ -875,8 +888,8 @@ const getStyles = () => StyleSheet.create({
         marginTop: SPACING.sm,
     },
     consequenceTitle: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.4,
@@ -885,18 +898,17 @@ const getStyles = () => StyleSheet.create({
     consequenceRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
     consequenceChip: { flex: 1, minWidth: 75, alignItems: 'center', padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, borderWidth: 1 },
     consequenceN: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textSecondary,
         marginBottom: 2,
     },
     consequencePct: {
+        fontWeight: '700',
         fontSize: 14,
-        fontWeight: '800',
     },
     consequenceVerdict: {
         fontSize: 9,
-        fontWeight: '700',
         marginTop: 2,
     },
 

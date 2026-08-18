@@ -80,7 +80,7 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
                                 {bestSubject.name}
                             </Text>
                         </View>
-                        <Text style={[styles.statValue, { color: COLORS.success }]}>
+                        <Text style={[styles.statValue, { color: COLORS.successText }]}>
                             {bestSubject.percentage}%
                         </Text>
                     </View>
@@ -94,7 +94,7 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
                                 {worstSubject.name}
                             </Text>
                         </View>
-                        <Text style={[styles.statValue, { color: COLORS.danger }]}>
+                        <Text style={[styles.statValue, { color: COLORS.dangerText }]}>
                             {worstSubject.percentage}%
                         </Text>
                     </View>
@@ -168,8 +168,8 @@ const getStyles = () => StyleSheet.create({
         justifyContent: 'center',
     },
     dismissText: {
-        fontSize: 9,
         fontWeight: '700',
+        fontSize: 9,
         color: COLORS.textMuted,
         letterSpacing: 0.5,
         textTransform: 'uppercase',
@@ -180,14 +180,14 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     headerTitle: {
+        fontWeight: '700',
         fontSize: 16,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         letterSpacing: -0.3,
     },
     headerDate: {
-        fontSize: 11,
         fontWeight: '500',
+        fontSize: 11,
         color: COLORS.textSecondary,
         marginTop: 2,
         letterSpacing: 0.2,
@@ -197,14 +197,14 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     heroPercentage: {
+        fontWeight: '700',
         fontSize: 26,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
     },
     heroLabel: {
+        fontWeight: '400',
         fontSize: 11,
-        fontWeight: '500',
         color: COLORS.textSecondary,
         marginTop: 2,
         letterSpacing: 0.2,
@@ -221,11 +221,12 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     personalityTitle: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textPrimary,
     },
     personalityDesc: {
+        fontWeight: '400',
         fontSize: 11,
         color: COLORS.textSecondary,
         marginTop: 1,
@@ -242,8 +243,8 @@ const getStyles = () => StyleSheet.create({
         marginRight: SPACING.xs,
     },
     statLabel: {
-        fontSize: 10,
         fontWeight: '600',
+        fontSize: 10,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -261,14 +262,14 @@ const getStyles = () => StyleSheet.create({
         marginRight: 4,
     },
     subjectName: {
-        fontSize: 12,
         fontWeight: '600',
+        fontSize: 12,
         color: COLORS.textPrimary,
         flex: 1,
     },
     statValue: {
+        fontWeight: '700',
         fontSize: 16,
-        fontWeight: '800',
         letterSpacing: -0.3,
     },
     barSection: {
@@ -286,10 +287,10 @@ const getStyles = () => StyleSheet.create({
         marginRight: 6,
     },
     barName: {
+        fontWeight: '500',
         fontSize: 11,
         color: COLORS.textSecondary,
         width: 80,
-        fontWeight: '500',
     },
     barTrack: {
         flex: 1,
@@ -304,9 +305,9 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 3,
     },
     barValue: {
+        fontWeight: '600',
         fontSize: 10,
         color: COLORS.textMuted,
-        fontWeight: '600',
         width: 30,
         textAlign: 'right',
     },
@@ -321,11 +322,12 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     footerStatValue: {
-        fontSize: 14,
         fontWeight: '700',
+        fontSize: 14,
         color: COLORS.textPrimary,
     },
     footerStatLabel: {
+        fontWeight: '400',
         fontSize: 10,
         color: COLORS.textMuted,
         marginTop: 2,

@@ -3,7 +3,7 @@
  * Separates the ERP baseline from the local changes (Autopilot + Manual).
  */
 
-import { shouldCountLocalRecord } from './attendance';
+import { shouldCountLocalRecord, recordUnits, recordAttendedUnits } from './attendance';
 
 export function calculateProjectionBreakdown(state, subjectId = null) {
     let erpAttended = 0;
@@ -33,10 +33,11 @@ export function calculateProjectionBreakdown(state, subjectId = null) {
             if (shouldCountLocalRecord(dateKey, subject.id, record, state)) {
                 if (record.status === 'cancelled') {
                     localCancelled += 1;
-                } else if (record.status === 'present') {
-                    localAttended += record.units || 1;
-                } else if (record.status === 'absent') {
-                    localMissed += record.units || 1;
+                } else {
+                    const units = recordUnits(record);
+                    const attended = recordAttendedUnits(record);
+                    localAttended += attended;
+                    localMissed += units - attended;
                 }
             }
         });

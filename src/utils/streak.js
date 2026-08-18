@@ -1,5 +1,5 @@
 import { getDateKey } from './dateHelpers';
-import { getClassesForDay } from './attendance';
+import { getClassesForDay, recordUnits, recordAttendedUnits } from './attendance';
 
 /**
  * Streak Calculations for Presence
@@ -67,11 +67,14 @@ export function calculateOverallStreak(state) {
                     if (record.status === 'cancelled') continue;
 
                     hasMarkedClasses = true;
-                    if (record.status === 'absent') {
+                    // A part-attended day is not a fully attended day — under
+                    // college rules there is no credit for half a class.
+                    const units = recordUnits(record);
+                    if (recordAttendedUnits(record) < units) {
                         allPresent = false;
                         break;
                     }
-                    dayUnits += record.units || 1;
+                    dayUnits += units;
                 }
 
                 if (hasMarkedClasses && allPresent) {
@@ -144,10 +147,10 @@ export function calculateSubjectStreak(subjectId, state) {
             if (record) {
                 if (record.status === 'cancelled') {
                     // skip
-                } else if (record.status === 'present') {
-                    streak += record.units || 1;
+                } else if (recordAttendedUnits(record) === recordUnits(record)) {
+                    streak += recordUnits(record);
                 } else {
-                    break; // absent = broken
+                    break; // absent or part-attended = broken
                 }
             } else if (isScheduled) {
                 // Scheduled but not marked = broken

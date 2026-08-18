@@ -59,12 +59,12 @@ export default function ProjectionTransparencyModal({ visible, onClose, breakdow
                             <Text style={styles.localDesc}>Classes marked while waiting for portal:</Text>
                             
                             <View style={styles.localMathRow}>
-                                <Text style={[styles.monospace, styles.localValue, { color: COLORS.success }]}>+{local.attended}</Text>
+                                <Text style={[styles.monospace, styles.localValue, { color: COLORS.successText }]}>+{local.attended}</Text>
                                 <Text style={styles.localLabel}>Attended</Text>
                             </View>
                             
                             <View style={styles.localMathRow}>
-                                <Text style={[styles.monospace, styles.localValue, { color: COLORS.danger }]}>-{local.missed}</Text>
+                                <Text style={[styles.monospace, styles.localValue, { color: COLORS.dangerText }]}>-{local.missed}</Text>
                                 <Text style={styles.localLabel}>Missed</Text>
                             </View>
 
@@ -136,8 +136,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.xl,
     },
     headerTitle: {
+        fontWeight: '700',
         fontSize: 22,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         marginBottom: 6,
     },
@@ -163,16 +163,16 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 10,
         backgroundColor: COLORS.primaryLight,
         color: COLORS.primaryDark,
-        fontSize: 12,
         fontWeight: '700',
+        fontSize: 12,
         textAlign: 'center',
         lineHeight: 20,
         marginRight: 8,
         overflow: 'hidden',
     },
     sectionTitle: {
-        fontSize: 14,
         fontWeight: '700',
+        fontSize: 14,
         color: COLORS.textPrimary,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -183,6 +183,7 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     dataText: {
+        fontWeight: '400',
         fontSize: 13,
         color: COLORS.textSecondary,
     },
@@ -206,8 +207,8 @@ const getStyles = () => StyleSheet.create({
         marginVertical: 4,
     },
     operator: {
+        fontWeight: '700',
         fontSize: 18,
-        fontWeight: '800',
         color: COLORS.textMuted,
     },
     localDataContainer: {
@@ -224,16 +225,16 @@ const getStyles = () => StyleSheet.create({
         marginBottom: 4,
     },
     localValue: {
-        fontSize: 14,
         fontWeight: '700',
+        fontSize: 14,
         width: 30,
         textAlign: 'right',
         marginRight: 8,
     },
     localLabel: {
+        fontWeight: '500',
         fontSize: 13,
         color: COLORS.textPrimary,
-        fontWeight: '500',
     },
     resultSection: {
         backgroundColor: COLORS.primaryLight,
@@ -248,14 +249,14 @@ const getStyles = () => StyleSheet.create({
         marginTop: 8,
     },
     resultMath: {
-        fontSize: 20,
         fontWeight: '700',
+        fontSize: 20,
         color: COLORS.primaryDark,
         letterSpacing: 1,
     },
     resultPercentage: {
+        fontWeight: '700',
         fontSize: 28,
-        fontWeight: '800',
     },
     closeButton: {
         backgroundColor: COLORS.primary,

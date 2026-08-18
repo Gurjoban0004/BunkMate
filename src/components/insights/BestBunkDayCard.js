@@ -94,8 +94,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     headerTitle: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textPrimary,
         letterSpacing: 0.3,
     },
@@ -112,16 +112,16 @@ const getStyles = () => StyleSheet.create({
         marginRight: SPACING.md,
     },
     dayBadgeText: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.md,
-        fontWeight: '800',
         color: COLORS.textOnPrimary,
     },
     impactInfo: {
         flex: 1,
     },
     impactValue: {
+        fontWeight: '700',
         fontSize: 22,
-        fontWeight: '800',
         color: COLORS.textPrimary,
     },
     impactLabel: {
@@ -130,6 +130,7 @@ const getStyles = () => StyleSheet.create({
         marginTop: 1,
     },
     detail: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
         lineHeight: 18,
@@ -160,13 +161,12 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.dangerLight,
     },
     weekDayLabel: {
+        fontWeight: '500',
         fontSize: 10,
         color: COLORS.textMuted,
-        fontWeight: '500',
     },
     weekDayLabelBest: {
         color: COLORS.primary,
-        fontWeight: '700',
     },
 });
 

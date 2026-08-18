@@ -1,4 +1,5 @@
 import { getDateKey } from './dateHelpers';
+import { recordUnits, recordAttendedUnits, calculatePercentage, roundPct, getSubjectSkipBudget } from './attendance';
 
 /**
  * Get the start of the current week (Monday).
@@ -73,18 +74,17 @@ export function generateWeeklySummary(state) {
             if (subjectId.startsWith('_')) return;
             if (record.status === 'cancelled') return;
 
-            dayTotal += record.units || 1;
-            if (record.status === 'present') {
-                dayAttended += record.units || 1;
-            }
+            const units = recordUnits(record);
+            const attended = recordAttendedUnits(record);
+
+            dayTotal += units;
+            dayAttended += attended;
 
             if (!subjectStats[subjectId]) {
                 subjectStats[subjectId] = { total: 0, attended: 0 };
             }
-            subjectStats[subjectId].total += record.units || 1;
-            if (record.status === 'present') {
-                subjectStats[subjectId].attended += record.units || 1;
-            }
+            subjectStats[subjectId].total += units;
+            subjectStats[subjectId].attended += attended;
         });
 
         totalClasses += dayTotal;
@@ -106,20 +106,25 @@ export function generateWeeklySummary(state) {
             id,
             name: state.subjects.find((s) => s.id === id)?.name || 'Unknown',
             color: state.subjects.find((s) => s.id === id)?.color,
-            percentage: stats.total > 0 ? Math.round((stats.attended / stats.total) * 100) : 0,
+            percentage: roundPct(calculatePercentage(stats.attended, stats.total)),
             total: stats.total,
             attended: stats.attended,
         }))
         .sort((a, b) => b.percentage - a.percentage);
 
-    const overallPercentage = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0;
+    const overallPercentage = roundPct(calculatePercentage(attendedClasses, totalClasses));
 
-    // Generate tip
+    // Generate tip.
+    // The recovery number has to come from the subject's SEMESTER totals — one
+    // bad week says nothing about how many classes actually get you to 75%.
     let tip = 'Great work! Keep maintaining your attendance.';
     const worst = sortedSubjects[sortedSubjects.length - 1];
-    if (worst && worst.percentage < 75) {
-        const needed = Math.ceil((0.75 * worst.total - worst.attended) / (1 - 0.75));
-        tip = `Attend ${Math.max(1, needed)} more ${worst.name} classes to reach 75%!`;
+    if (worst) {
+        const budget = getSubjectSkipBudget(worst.id, state);
+        if (budget && !budget.onTrack && Number.isFinite(budget.needClasses)) {
+            const n = budget.needClasses;
+            tip = `Attend ${n} more ${worst.name} ${n === 1 ? 'class' : 'classes'} to reach ${budget.target}%.`;
+        }
     }
 
     return {

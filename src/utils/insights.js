@@ -6,8 +6,16 @@
  *   2. Weekly Report — stats summary for the past 7 days
  */
 
-import { getClassesForDay, getSubjectAttendance, calculatePercentage } from './attendance';
-import { getDateKey, getTodayKey } from './dateHelpers';
+import {
+    getClassesForDay,
+    getSubjectAttendance,
+    calculatePercentage,
+    roundPct,
+    recordUnits,
+    recordAttendedUnits,
+    maxSkippableUnits,
+} from './attendance';
+import { getDateKey, getTodayKey, parseTimeToMinutes } from './dateHelpers';
 import { calculateOverallStreak } from './streak';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -53,9 +61,7 @@ export function calculateBestBunkDay(state) {
         globalTotal += stats.totalUnits;
     });
 
-    const currentOverall = globalTotal > 0
-        ? Math.round((globalAttended / globalTotal) * 1000) / 10
-        : 0;
+    const currentOverall = calculatePercentage(globalAttended, globalTotal);
 
     // Step 2: For each weekday, find how many units would be added to total (not attended)
     const days = WEEKDAYS.map(dayName => {
@@ -74,11 +80,11 @@ export function calculateBestBunkDay(state) {
         // Sum units across all classes on this day
         let dayUnits = 0;
         const subjects = [];
+        const unitsBySubject = {};
 
         classes.forEach(cls => {
-            const sub = state.subjects.find(s => s.id === cls.subjectId);
-            // Check if skipping this specific class would keep the subject above its target
             dayUnits += cls.units;
+            unitsBySubject[cls.subjectId] = (unitsBySubject[cls.subjectId] || 0) + cls.units;
             subjects.push({
                 name: cls.subjectName,
                 units: cls.units,
@@ -88,18 +94,24 @@ export function calculateBestBunkDay(state) {
         });
 
         // Simulate: total goes up by dayUnits, attended stays the same
-        const simTotal = globalTotal + dayUnits;
-        const simPercentage = simTotal > 0
-            ? Math.round((globalAttended / simTotal) * 1000) / 10
-            : 0;
-        const drop = Math.round((simPercentage - currentOverall) * 10) / 10;
+        const simPercentage = calculatePercentage(globalAttended, globalTotal + dayUnits);
+
+        // Overall staying above threshold is not enough — a single subject can
+        // fall below its own target while the average still looks fine. Check
+        // each subject against its whole day, not one class at a time.
+        const everySubjectSafe = Object.entries(unitsBySubject).every(([subjectId, units]) => {
+            const stats = subjectStats[subjectId];
+            if (!stats) return false;
+            const subTarget = state.subjects.find((sub) => sub.id === subjectId)?.target || threshold;
+            return maxSkippableUnits(stats.attendedUnits, stats.totalUnits, subTarget) >= units;
+        });
 
         return {
             day: dayName,
             totalUnits: dayUnits,
-            drop,
+            drop: roundPct(simPercentage - currentOverall),
             newPercentage: simPercentage,
-            safe: simPercentage >= threshold,
+            safe: simPercentage >= threshold && everySubjectSafe,
             subjects,
         };
     });
@@ -152,6 +164,18 @@ export function calculateBestBunkDay(state) {
  *   weekEndDate: string,
  * }}
  */
+/**
+ * Has this scheduled class already ended? Past days: yes. Today: only if its
+ * end time has passed. Counting a class that has not happened yet as missed
+ * made the weekly number sag every morning and recover by evening.
+ */
+function hasClassFinished(dateKey, cls, todayKey, now) {
+    if (dateKey < todayKey) return true;
+    if (dateKey > todayKey) return false;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    return nowMinutes >= parseTimeToMinutes(cls.endTime);
+}
+
 export function generateWeeklyReport(state) {
     const devDate = state.devDate ? new Date(state.devDate) : new Date();
     const todayKey = getTodayKey(state.devDate);
@@ -200,12 +224,11 @@ export function generateWeeklyReport(state) {
 
             const record = dayData?.[cls.subjectId];
             if (record && record.status !== 'cancelled') {
-                subjectWeek[cls.subjectId].total += (record.units || cls.units);
-                if (record.status === 'present') {
-                    subjectWeek[cls.subjectId].attended += (record.units || cls.units);
-                }
-            } else if (!record) {
-                // Unmarked scheduled class — count as total but not attended
+                subjectWeek[cls.subjectId].total += recordUnits(record);
+                subjectWeek[cls.subjectId].attended += recordAttendedUnits(record);
+            } else if (!record && hasClassFinished(dateKey, cls, todayKey, devDate)) {
+                // Unmarked class that has already happened — counts as missed.
+                // A class later today has not been missed yet.
                 subjectWeek[cls.subjectId].total += cls.units;
             }
         });
@@ -218,17 +241,13 @@ export function generateWeeklyReport(state) {
         color: data.color,
         attended: data.attended,
         total: data.total,
-        percentage: data.total > 0
-            ? Math.round((data.attended / data.total) * 1000) / 10
-            : 0,
+        percentage: roundPct(calculatePercentage(data.attended, data.total)),
     }));
 
     // Overall week stats
     const weekAttended = perSubject.reduce((sum, s) => sum + s.attended, 0);
     const weekTotal = perSubject.reduce((sum, s) => sum + s.total, 0);
-    const weekPercentage = weekTotal > 0
-        ? Math.round((weekAttended / weekTotal) * 1000) / 10
-        : 0;
+    const weekPercentage = roundPct(calculatePercentage(weekAttended, weekTotal));
 
     // Best and worst subjects (by percentage, min 1 class)
     const withClasses = perSubject.filter(s => s.total > 0);
