@@ -43,7 +43,7 @@ const SettingsScreen = ({ navigation }) => {
         smartAlertsEnabled = true,
         weeklySummaryEnabled = true,
         theme = 'light',
-        uiPalette = 'nordic',
+        uiPalette = 'chalkpad',
         semesterEndDate = null,
     } = state.settings || {};
 
@@ -246,7 +246,7 @@ const SettingsScreen = ({ navigation }) => {
                                     }}
                                     disabled={isErpSyncing}
                                 >
-                                    <Text style={[styles.linkText, { color: COLORS.danger }]}>Disconnect portal</Text>
+                                    <Text style={[styles.linkText, { color: COLORS.dangerText }]}>Disconnect portal</Text>
                                     <Text style={styles.chevron}>›</Text>
                                 </TouchableOpacity>
                             </>
@@ -647,8 +647,8 @@ const getStyles = () => StyleSheet.create({
         gap: 6,
     },
     thresholdValueText: {
-        fontSize: 16,
         fontWeight: '700',
+        fontSize: 16,
         color: COLORS.primary,
     },
     dropdownIcon: {
@@ -669,8 +669,8 @@ const getStyles = () => StyleSheet.create({
         gap: 8,
     },
     subjectName: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '500',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textPrimary,
         flex: 1,
     },
@@ -680,8 +680,8 @@ const getStyles = () => StyleSheet.create({
         gap: 4,
     },
     thresholdValue: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.primary,
     },
     colorDot: {
@@ -696,8 +696,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.sm,
     },
     editButtonText: {
-        fontSize: 12,
         fontWeight: '600',
+        fontSize: 12,
         color: COLORS.textPrimary,
     },
     thresholdEditorDesc: {
@@ -723,8 +723,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.primary,
     },
     thresholdOptionText: {
-        fontSize: 14,
         fontWeight: '600',
+        fontSize: 14,
         color: COLORS.textPrimary,
     },
     thresholdOptionTextActive: {
@@ -759,14 +759,13 @@ const getStyles = () => StyleSheet.create({
         minWidth: 100,
     },
     stepperValueText: {
+        fontWeight: '700',
         fontSize: 26,
-        fontWeight: '800',
         color: COLORS.primary,
         letterSpacing: -0.5,
     },
     stepperValueLabel: {
         fontSize: 12,
-        fontWeight: '600',
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         marginTop: -4,
@@ -786,8 +785,8 @@ const getStyles = () => StyleSheet.create({
         gap: SPACING.sm,
     },
     paletteSectionLabel: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -822,14 +821,15 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     paletteName: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textPrimary,
     },
     paletteNameActive: {
         fontWeight: '700',
     },
     paletteDesc: {
+        fontWeight: '400',
         fontSize: 10,
         color: COLORS.textSecondary,
         marginTop: 1,
@@ -854,7 +854,7 @@ const getStyles = () => StyleSheet.create({
     linkText: { fontSize: FONT_SIZES.md, fontWeight: '500', color: COLORS.textPrimary },
     chevron: { fontSize: 20, color: COLORS.textMuted },
     dangerCard: { backgroundColor: COLORS.dangerLight, alignItems: 'center', paddingVertical: SPACING.md },
-    dangerText: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.danger },
+    dangerText: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.dangerText },
     logoutButton: {
         backgroundColor: COLORS.cardBackground,
         borderRadius: 0,
@@ -871,22 +871,23 @@ const getStyles = () => StyleSheet.create({
     },
     logoutIcon: {
         fontSize: 24,
-        color: COLORS.warning,
+        color: COLORS.warningText,
     },
     deleteIcon: {
         fontSize: 24,
-        color: COLORS.danger,
+        color: COLORS.dangerText,
     },
     accountButtonTextContainer: {
         flex: 1,
     },
     accountButtonTitle: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         marginBottom: 2,
     },
     accountButtonSubtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
@@ -907,8 +908,8 @@ const getStyles = () => StyleSheet.create({
     },
     syncButtonText: {
         color: COLORS.primary,
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
     },
 
     // Login with Different Code card styles
@@ -918,12 +919,13 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.md,
     },
     loginButtonCardTitle: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         marginBottom: 2,
     },
     loginButtonCardDesc: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
@@ -937,12 +939,13 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.primary,
     },
     loginButtonText: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.primary,
         marginBottom: SPACING.xs,
     },
     loginButtonSubtext: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
     },
@@ -956,7 +959,7 @@ const getStyles = () => StyleSheet.create({
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
     modalTitle: { fontSize: FONT_SIZES.lg, fontWeight: '700', color: COLORS.textPrimary },
     modalCloseText: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5 },
-    modalSubtitle: { fontSize: FONT_SIZES.sm, color: COLORS.danger, marginBottom: SPACING.lg },
+    modalSubtitle: { fontSize: FONT_SIZES.sm, color: COLORS.dangerText, marginBottom: SPACING.lg },
     backupInput: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: SPACING.md, fontSize: FONT_SIZES.sm, color: COLORS.textPrimary, minHeight: 100, textAlignVertical: 'top', marginBottom: SPACING.lg, ...Platform.select({ web: { outlineStyle: 'none' } }) },
     modalActions: { flexDirection: 'row', gap: SPACING.md },
     modalButton: { flex: 1, paddingVertical: SPACING.md, borderRadius: BORDER_RADIUS.md, alignItems: 'center' },
@@ -971,13 +974,13 @@ const getStyles = () => StyleSheet.create({
     resetEmoji: { fontSize: 56, marginBottom: SPACING.md },
     resetTitle: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary, marginBottom: SPACING.sm },
     resetDescription: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: SPACING.md, paddingHorizontal: SPACING.lg },
-    resetWarning: { fontSize: FONT_SIZES.sm, color: COLORS.danger, fontWeight: '600', textAlign: 'center', marginBottom: SPACING.xl },
+    resetWarning: { fontSize: FONT_SIZES.sm, color: COLORS.dangerText, fontWeight: '600', textAlign: 'center', marginBottom: SPACING.xl },
     resetActions: { flexDirection: 'column', gap: SPACING.sm, width: '100%' },
     resetButton: { paddingVertical: SPACING.md + 2, borderRadius: BORDER_RADIUS.md, alignItems: 'center', width: '100%' },
     resetButtonCancel: { backgroundColor: COLORS.successLight },
     resetButtonConfirm: { backgroundColor: COLORS.dangerLight },
     resetButtonCancelText: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.successDark },
-    resetButtonConfirmText: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.danger },
+    resetButtonConfirmText: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.dangerText },
 });
 
 export default SettingsScreen;

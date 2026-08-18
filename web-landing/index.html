@@ -7,18 +7,23 @@
   <title>Presence · Attendance, solved.</title>
 
   <meta name="description"
-    content="Presence syncs with your college portal so you always know exactly when you can skip a class. Calm, precise attendance tracking for students.">
+    content="Presence keeps your attendance up to date on its own, so you always know exactly when you can skip a class. Calm, precise attendance tracking for students.">
   <meta name="theme-color" content="#FDFDFD">
 
   <meta property="og:title" content="Presence · Attendance, solved.">
-  <meta property="og:description" content="Sync your college portal. Know exactly when you can skip.">
+  <meta property="og:description" content="Know exactly when you can skip, before you decide.">
   <meta property="og:type" content="website">
 
   <link rel="icon" type="image/png" href="/icon192.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-  <!-- No webfont: the app renders in a system serif (SERIF_FONT in src/theme/theme.js),
-       so the site matches it exactly and loads with zero font requests. -->
+  <!-- Same two faces the app ships: Tinos (the libre Times clone) for display,
+       Inter for everything you operate. Both fall back to metrically-close
+       system faces, so the page is readable before the fonts land. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Tinos:wght@400;700&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -30,7 +35,7 @@
       <div class="brand-mark" aria-hidden="true">P</div>
       <h1 class="app-name">Presence</h1>
       <p class="tagline">Attendance, solved.</p>
-      <p class="value-prop">Sync your college portal and know exactly when you can skip, before you decide.</p>
+      <p class="value-prop">Know exactly when you can skip, before you decide.</p>
     </header>
 
     <!-- ====== Install ====== -->
@@ -109,7 +114,7 @@
             <span class="step-num">3</span>
             <div class="step-body">
               <strong>Install &amp; open</strong>
-              <span>Tap <em>Install</em>, then open Presence and sign in with your portal.</span>
+              <span>Tap <em>Install</em>, then open Presence and sign in.</span>
             </div>
           </li>
         </ol>
@@ -169,8 +174,8 @@
           </svg>
         </span>
         <div class="feature-text">
-          <strong>Portal sync</strong>
-          <span>Pulls your timetable and attendance straight from the college portal.</span>
+          <strong>Always up to date</strong>
+          <span>Your subjects, timetable and attendance stay in sync on their own.</span>
         </div>
       </div>
       <div class="feature">
@@ -181,7 +186,7 @@
         </span>
         <div class="feature-text">
           <strong>Yours, and private</strong>
-          <span>Your login talks to your portal directly. We store a token, never your password.</span>
+          <span>Your password goes straight to your university and is never stored.</span>
         </div>
       </div>
       <div class="feature">
@@ -220,7 +225,7 @@
           <span class="version-date">2026</span>
         </div>
         <ul class="changelog-list">
-          <li><strong>Portal sync:</strong> timetable and attendance import automatically.</li>
+          <li><strong>Automatic sync:</strong> timetable and attendance stay current on their own.</li>
           <li><strong>Skip &amp; recovery planner:</strong> see precisely what you can skip.</li>
           <li><strong>Week in Review:</strong> richer, calmer insights.</li>
           <li><strong>Redesigned interface:</strong> a quiet, precise look built around the number that matters.</li>

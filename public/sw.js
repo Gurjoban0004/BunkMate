@@ -72,7 +72,10 @@ self.addEventListener('fetch', (event) => {
     if (
         url.hostname.includes('firestore.googleapis.com') ||
         url.hostname.includes('firebase') ||
-        url.hostname.includes('googleapis.com')
+        url.hostname.includes('googleapis.com') ||
+        // Vercel Web Analytics — never cache the beacon or its script, or the
+        // offline cache would start replaying stale analytics assets.
+        url.pathname.startsWith('/_vercel/')
     ) {
         return;
     }

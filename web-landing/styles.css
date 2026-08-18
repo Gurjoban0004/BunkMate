@@ -1,6 +1,7 @@
 /* =========================================================
    Presence — landing / install page
-   Palette + type mirror the app's default "Nordic Slate" theme and its serif face.
+   Palette + type mirror the app's default "Chalkpad Classic" theme:
+   the serif carries display, Inter carries everything you operate.
    ========================================================= */
 
 :root {
@@ -8,31 +9,36 @@
   --brand-paper: #F9F8F4;
   --brand-sage: #688E7F;
 
-  /* Nordic Slate — light (mirrors PALETTES.nordic.light in src/theme/theme.js) */
-  --bg: #FDFDFD;
+  /* Type — same split as TYPOGRAPHY in src/theme/theme.js. Tinos is the libre
+     Times clone the app ships, so the fallback is metrically identical. */
+  --font-serif: 'Tinos', 'Times New Roman', Times, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Chalkpad Classic — light (mirrors PALETTES.chalkpad.light in src/theme/theme.js) */
+  --bg: #FAFBFD;
   --surface: #FFFFFF;
-  --sidebar: #F4F3EF;
-  --input: #F4F3EF;
-  --border: #E6E4E0;
-  --border-subtle: #F5F4F0;
-  --ink: #1C1917;
-  --ink-2: #57534E;
-  --muted: #736E67;
-  --primary: #1C1917;
-  --primary-ink: #FFFFFF;
-  --primary-light: #F4F3EF;
-  --success: #609384;
-  --success-ink: #3D6B5E;
-  --success-bg: #E2ECE9;
-  --warning: #B89647;
-  --warning-ink: #8F7436;
-  --warning-bg: #FAF4E5;
-  --danger: #C85B49;
-  --danger-ink: #A0483A;
-  --danger-bg: #F7EBE8;
-  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
-  --shadow-md: 0 4px 16px rgba(28, 25, 23, 0.08);
-  --shadow-lg: 0 12px 40px rgba(28, 25, 23, 0.12);
+  --sidebar: #F1F5F9;
+  --input: #F1F5F9;
+  --border: #E2E8F0;
+  --border-subtle: #F8FAFC;
+  --ink: #0F172A;
+  --ink-2: #495465;
+  --muted: #656F7E;
+  --primary: #5B9BF2;
+  --primary-ink: #0F172A;
+  --primary-light: #E8F1FF;
+  --success: #34D399;
+  --success-ink: #1F7D5B;
+  --success-bg: #ECFDF5;
+  --warning: #FBBF24;
+  --warning-ink: #8B6914;
+  --warning-bg: #FFFBEB;
+  --danger: #F87171;
+  --danger-ink: #B15151;
+  --danger-bg: #FEF2F2;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.12);
   --r-sm: 10px;
   --r-md: 16px;
   --r-lg: 22px;
@@ -44,7 +50,7 @@
 html { font-size: 16px; -webkit-tap-highlight-color: transparent; color-scheme: light; }
 
 body {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--ink);
   min-height: 100dvh;
@@ -64,7 +70,7 @@ body {
 
 /* ---------- Section titles ---------- */
 .section-title {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--font-serif);
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -81,8 +87,8 @@ body {
   background: var(--brand-paper);
   box-shadow: var(--shadow-md);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Times New Roman', Times, serif;
-  font-weight: 400;
+  font-family: var(--font-serif);
+  font-weight: 700;
   font-size: 50px;
   line-height: 1;
   color: var(--brand-sage);
@@ -93,7 +99,7 @@ body {
 .hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
 .hero .brand-mark { margin-bottom: 20px; }
 .app-name {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--font-serif);
   font-size: 2.6rem;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -120,7 +126,7 @@ body {
   border: none;
   background: transparent;
   border-radius: 12px;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--font-sans);
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--ink-2);
@@ -142,7 +148,7 @@ body {
   padding: 15px 18px;
   border: none;
   border-radius: var(--r-md);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--font-sans);
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
@@ -190,7 +196,7 @@ body {
   flex-direction: column;
   gap: 10px;
 }
-.p-greeting { font-family: 'Times New Roman', Times, serif; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--ink); }
+.p-greeting { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; color: var(--ink); }
 .p-date { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
 .p-answer {
   display: flex; flex-direction: column; gap: 3px;
@@ -201,7 +207,7 @@ body {
   margin-bottom: 6px;
 }
 .p-answer-label { font-size: 0.8rem; color: var(--ink-2); font-weight: 500; }
-.p-answer-value { font-family: 'Times New Roman', Times, serif; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; color: var(--success-ink); }
+.p-answer-value { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; color: var(--success-ink); }
 
 .p-row {
   display: flex; align-items: center; gap: 12px;
@@ -272,7 +278,7 @@ body {
 }
 .changelog-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .version-badge {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--font-sans);
   font-size: 0.8rem; font-weight: 700;
   color: var(--primary-ink);
   background: var(--primary);
