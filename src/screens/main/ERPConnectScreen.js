@@ -54,6 +54,24 @@ export default function ERPConnectScreen({ navigation }) {
     const [calendarSyncing, setCalendarSyncing] = useState(false);
     const [calendarResult, setCalendarResult] = useState(null);
 
+    // Shared tail of the trusted-login and OTP-verify paths: persist the token,
+    // pull attendance, and advance to preview.
+    const finishWithSession = useCallback(async (sessionResult) => {
+        setToken(sessionResult.token);
+        setStudentName(sessionResult.studentName || '');
+        await saveErpToken(sessionResult.token, sessionResult.studentName || '', sessionResult.persistentToken);
+
+        const attendanceResult = await erpFetchAttendance(sessionResult.token);
+        if (!attendanceResult.subjects || attendanceResult.subjects.length === 0) {
+            setError(attendanceResult.warning || 'No attendance data found. The portal format may have changed.');
+            return;
+        }
+        setErpSubjects(attendanceResult.subjects);
+        const mapping = mapErpToAppState(attendanceResult.subjects, state.subjects);
+        setMappingResult(mapping);
+        setStep(STEP_PREVIEW);
+    }, [state.subjects]);
+
     // ─── STEP 1: LOGIN ─────────────────────────────────────────────
     const handleLogin = useCallback(async () => {
         if (!username.trim() || !password.trim()) {
@@ -66,6 +84,11 @@ export default function ERPConnectScreen({ navigation }) {
 
         try {
             const result = await erpLogin(username.trim(), password);
+            // Trusted device: full session, no OTP — finish directly.
+            if (result.trusted && result.token) {
+                await finishWithSession(result);
+                return;
+            }
             setAuthUserId(result.authUserId);
             setStep(STEP_OTP);
         } catch (err) {
@@ -73,7 +96,7 @@ export default function ERPConnectScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
-    }, [username, password]);
+    }, [username, password, finishWithSession]);
 
     // Resend-OTP cooldown countdown
     useEffect(() => {
@@ -107,33 +130,13 @@ export default function ERPConnectScreen({ navigation }) {
         try {
             // Verify OTP → get encrypted token
             const otpResult = await erpVerifyOtp(authUserId, otp.trim(), username.trim(), password);
-            setToken(otpResult.token);
-            setStudentName(otpResult.studentName || '');
-
-            // Save token for future syncs
-            await saveErpToken(otpResult.token, otpResult.studentName || '', otpResult.persistentToken);
-
-            // Immediately fetch attendance
-            const attendanceResult = await erpFetchAttendance(otpResult.token);
-
-            if (!attendanceResult.subjects || attendanceResult.subjects.length === 0) {
-                setError(attendanceResult.warning || 'No attendance data found. The portal format may have changed.');
-                setLoading(false);
-                return;
-            }
-
-            setErpSubjects(attendanceResult.subjects);
-
-            // Map to app state
-            const mapping = mapErpToAppState(attendanceResult.subjects, state.subjects);
-            setMappingResult(mapping);
-            setStep(STEP_PREVIEW);
+            await finishWithSession(otpResult);
         } catch (err) {
             setError(err.message || 'OTP verification failed. Please try again.');
         } finally {
             setLoading(false);
         }
-    }, [otp, authUserId, username, password, state.subjects]);
+    }, [otp, authUserId, username, password, finishWithSession]);
 
     // ─── STEP 3: IMPORT ─────────────────────────────────────────────
     const handleImport = useCallback(() => {

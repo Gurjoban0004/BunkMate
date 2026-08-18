@@ -71,6 +71,30 @@ export default function ERPSetupScreen({ navigation }) {
     const [mappingResult, setMappingResult] = useState(null);
 
     // ─── STEP 1: SIGN IN ───────────────────────────────────────────
+    // Shared tail of both the trusted-login and OTP-verify paths: persist the
+    // token, pull the attendance preview, and advance to the theme step.
+    const finishWithSession = useCallback(async (sessionResult) => {
+        setToken(sessionResult.token);
+        tokenRef.current = sessionResult.token;
+        setStudentName(sessionResult.studentName || '');
+        // Save session token + persistent token (no expiry — refreshed on failure)
+        await saveErpToken(sessionResult.token, sessionResult.studentName || '', sessionResult.persistentToken);
+
+        const attendanceResult = await erpFetchAttendance(sessionResult.token);
+        if (!attendanceResult.subjects || attendanceResult.subjects.length === 0) {
+            setError({
+                title: 'No attendance yet',
+                message: attendanceResult.warning
+                    || 'Your university has not published any attendance for this term. Try again once your first classes are marked.',
+            });
+            return;
+        }
+        setErpSubjects(attendanceResult.subjects);
+        const mapping = mapErpToAppState(attendanceResult.subjects, []);
+        setMappingResult(mapping);
+        setStep(STEP_THEME);
+    }, []);
+
     const handleLogin = useCallback(async () => {
         if (!username.trim() || !password.trim()) {
             setError({ title: 'Two fields to go', message: 'Enter your university ID and password to continue.' });
@@ -80,6 +104,12 @@ export default function ERPSetupScreen({ navigation }) {
         setError(null);
         try {
             const result = await erpLogin(username.trim(), password);
+            // Trusted device: the ERP returned a full session and sent NO OTP.
+            // Skip the OTP screen and finish with the token directly.
+            if (result.trusted && result.token) {
+                await finishWithSession(result);
+                return;
+            }
             setAuthUserId(result.authUserId);
             setStep(STEP_OTP);
         } catch (err) {
@@ -88,7 +118,7 @@ export default function ERPSetupScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
-    }, [username, password]);
+    }, [username, password, finishWithSession]);
 
     // Resend-OTP cooldown countdown
     useEffect(() => {
@@ -122,34 +152,14 @@ export default function ERPSetupScreen({ navigation }) {
         try {
             // Pass username + password so server builds the persistent token
             const otpResult = await erpVerifyOtp(authUserId, otp.trim(), username.trim(), password);
-            setToken(otpResult.token);
-            tokenRef.current = otpResult.token;
-            setStudentName(otpResult.studentName || '');
-            // Save session token + persistent token (no expiry — refreshed on failure)
-            await saveErpToken(otpResult.token, otpResult.studentName || '', otpResult.persistentToken);
-
-            // Fetch attendance preview
-            const attendanceResult = await erpFetchAttendance(otpResult.token);
-            if (!attendanceResult.subjects || attendanceResult.subjects.length === 0) {
-                setError({
-                    title: 'No attendance yet',
-                    message: attendanceResult.warning
-                        || 'Your university has not published any attendance for this term. Try again once your first classes are marked.',
-                });
-                setLoading(false);
-                return;
-            }
-            setErpSubjects(attendanceResult.subjects);
-            const mapping = mapErpToAppState(attendanceResult.subjects, []);
-            setMappingResult(mapping);
-            setStep(STEP_THEME);
+            await finishWithSession(otpResult);
         } catch (err) {
             logger.warn('Verification failed:', err.message);
             setError(friendlyError(err, 'otp'));
         } finally {
             setLoading(false);
         }
-    }, [otp, authUserId, username, password]);
+    }, [otp, authUserId, username, password, finishWithSession]);
 
     // ─── STEP 3: IMPORT & COMPLETE SETUP ────────────────────────────
     const handleImport = useCallback(async () => {

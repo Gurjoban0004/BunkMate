@@ -331,6 +331,39 @@ export function useErpAutoSync(state, dispatch) {
                                 erpSubjectIdStamps: result.erpSubjectIdStamps,
                             },
                         });
+
+                        // Chalkpad discrepancy: the register carries its own rolled-up
+                        // per-subject total (the total_ cell), in the SAME period basis as
+                        // the showAttendance summary, and it is sometimes fresher — a class
+                        // shows in the register before the summary card catches up. Reconcile
+                        // the register totals through the same non-regression-guarded overwrite
+                        // as Step 1: the register wins only when it is genuinely ahead; a
+                        // lagging/partial register can never pull a subject backwards.
+                        const registerTotals = (calData.subjects || [])
+                            .map(s => normalizeErpSubject({
+                                name: s.name,
+                                code: s.code,
+                                erpSubjectId: s.erpSubjectId || s.code,
+                                delivered: s.total,
+                                attended: s.attended,
+                                percentage: s.percentage,
+                            }))
+                            .filter(validateErpSubject);
+                        if (registerTotals.length > 0) {
+                            const regMap = mapErpToAppState(registerTotals, latestSubjects);
+                            const aheadUpdates = regMap.matchedUpdates.filter(u => {
+                                const existing = latestSubjects.find(s => s.id === u.subjectId);
+                                return isNonRegressingErpUpdate(existing, u)
+                                    && !(existing
+                                        && existing.initialAttended === u.newAttended
+                                        && existing.initialTotal === u.newTotal);
+                            });
+                            if (aheadUpdates.length > 0) {
+                                dispatch({ type: 'ERP_OVERWRITE_ATTENDANCE', payload: buildResyncPayload(aheadUpdates) });
+                                logger.info('🔁', `Register ahead of summary: corrected ${aheadUpdates.length} subject total(s)`);
+                            }
+                        }
+
                         setSyncStatus({ calendarSyncStatus: 'ok' });
                         logger.info('✅', `ERP calendar sync: ${result.totalDays} days, ${Object.keys(result.subjectMapping).length} subjects mapped`);
                     } else if (calData.subjects?.length > 0) {
@@ -380,12 +413,15 @@ export function useErpAutoSync(state, dispatch) {
             // ── Step 3: Timetable (once per 24h, non-blocking) ────
             const TIMETABLE_INTERVAL_MS = 24 * 60 * 60 * 1000;
             // Real timetable sources are cached for 24h; 'manual' is never auto-overwritten; any
-            // other/empty source is retried each cycle until we get a real one.
+            // other/empty source is retried each cycle until we get a real one. A manual refresh
+            // (force) bypasses the 24h throttle so an upstream timetable change shows immediately
+            // instead of waiting out the cache — the grid is replaced wholesale on each fetch.
             const REAL_TT_SOURCES = ['erp', 'portal-web', 'register-derived'];
             const lastTtFetch = currentState.timetableMeta?.fetchedAt;
             const ttSource = currentState.timetableMeta?.source;
             const shouldFetchTimetable = (
                 ttSource !== 'manual' && (
+                    force ||
                     !lastTtFetch ||
                     !REAL_TT_SOURCES.includes(ttSource) ||
                     (Date.now() - new Date(lastTtFetch).getTime()) > TIMETABLE_INTERVAL_MS

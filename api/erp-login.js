@@ -4,8 +4,15 @@
  * POST /api/erp-login
  * Body: { username, password }
  *
- * 1. Authenticates with the captured legacy mobile endpoint
- * 2. Returns { success, authUserId } for OTP step
+ * Mirrors the APK login (index.html:1462): appLoginAuthV2 is sent WITH a stable
+ * deviceIdUUID. A device that has verified OTP once is trusted and the ERP returns
+ * status==1 (full session, NO OTP). Only a new/unknown device gets status==4 (OTP).
+ *
+ * The old code called loginLegacy without deviceIdUUID, so the ERP saw a new device
+ * on every sign-in and emailed a fresh OTP each time — the "false OTP every login" bug.
+ * reloginERP sends generateDeviceUUID(username) and reports which path the ERP chose:
+ *   - trusted device → { session } here → mint token, client skips OTP entirely
+ *   - new device     → { needsOtp, authUserId } → client shows the OTP screen
  *
  * SECURITY: ERP base URL and school code are server-side only (env vars).
  *           Credentials are forwarded once and never stored or logged.
@@ -13,9 +20,11 @@
 
 const {
     setCorsHeaders,
+    reloginERP,
+    mintSessionToken,
+    encryptPersistent,
     ERP_BASE,
 } = require('./_session-utils');
-const { loginLegacy } = require('./_erp-provider');
 
 
 module.exports = async function handler(req, res) {
@@ -34,18 +43,39 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    if (!ERP_BASE) {
-        console.error('ERP_BASE_URL environment variable is not set');
+    if (!ERP_BASE || !process.env.ENCRYPTION_SECRET) {
+        console.error('ERP_BASE_URL or ENCRYPTION_SECRET is not set');
         return res.status(500).json({ error: 'Server configuration error' });
     }
 
     try {
-        const login = await loginLegacy(username, password);
+        const result = await reloginERP(username.trim(), password);
 
+        // Trusted device: full session, no OTP. Mint the same tokens erp-verify-otp
+        // would, so the client can go straight to fetching attendance.
+        if (result.session && result.session.sessionId && result.session.apiKey) {
+            const token = mintSessionToken(result.session, { username });
+            const persistentToken = encryptPersistent({
+                username, password,
+                studentName: result.session.studentName,
+                isMock: result.session.isMock || false,
+            });
+            return res.status(200).json({
+                success:      true,
+                trusted:      true,
+                token,
+                persistentToken,
+                studentName:  result.session.studentName || '',
+                studentPhoto: result.session.studentPhoto || '',
+            });
+        }
+
+        // New device: ERP emailed an OTP.
         return res.status(200).json({
-            success:  true,
-            authUserId: login.authUserId,
-            message:  login.otpHint || 'OTP sent to your registered mobile/email',
+            success:    true,
+            needsOtp:   true,
+            authUserId: result.authUserId,
+            message:    'OTP sent to your registered mobile/email',
         });
 
     } catch (err) {
@@ -54,6 +84,9 @@ module.exports = async function handler(req, res) {
                 error: 'Invalid credentials',
                 message: err.message || 'Username or password is incorrect',
             });
+        }
+        if (err.code === 'ERP_LOGIN_BLOCKED') {
+            return res.status(403).json({ error: 'Login blocked', message: err.message });
         }
         console.error('ERP login error:', err.message);
         return res.status(500).json({
