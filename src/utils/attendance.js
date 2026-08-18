@@ -1,15 +1,100 @@
 import { getTodayDayName, parseTimeToMinutes } from './dateHelpers';
 
 /**
- * Calculate attendance percentage, rounded to 1 decimal.
+ * ── UNITS vs CLASSES ────────────────────────────────────────────────
+ * A *unit* is one period on the ERP register (one hour). A *class* is one
+ * physical session, which is all-or-nothing per college rules: a 2-hour class
+ * is 2 units, and you either get both or neither.
+ *
+ * All percentage math runs in units, because that is exactly what the ERP
+ * counts. Anything shown to a student as "classes" must be converted through
+ * the subject's session size — see unitsToSkippableClasses / unitsToNeededClasses.
+ */
+
+/**
+ * Exact attendance percentage — NOT rounded.
+ * Rounding here used to leak into decisions: 74.96% rounded to 75.0 and the app
+ * called it safe. Round at the point of display instead (roundPct).
  * Returns 0 if total is 0 (avoids division by zero).
  */
 export function calculatePercentage(attended, total) {
     const safeTotal = Number(total);
     const safeAttended = Number(attended);
     if (!Number.isFinite(safeTotal) || safeTotal <= 0 || !Number.isFinite(safeAttended)) return 0;
-    return Math.round((Math.min(Math.max(safeAttended, 0), safeTotal) / safeTotal) * 100 * 10) / 10;
+    // Multiply before dividing. (a / t) * 100 rounds twice, so an exact result
+    // can land just under: 87/150*100 gives 57.99999999999999, which read as
+    // below a 58% target even though 100*87 === 58*150 exactly.
+    return (Math.min(Math.max(safeAttended, 0), safeTotal) * 100) / safeTotal;
 }
+
+/** Display helper: 1 decimal place. Never feed this back into a comparison. */
+export function roundPct(percentage) {
+    const n = Number(percentage);
+    return Number.isFinite(n) ? Math.round(n * 10) / 10 : 0;
+}
+
+/**
+ * Max units that can be added to total (without attending) and still hold target.
+ * Closed form: A/(T+S) >= p  →  S <= 100A/p - T
+ * The floor is then corrected against the predicate itself, so float error in
+ * the division can never produce an off-by-one in either direction.
+ */
+export function maxSkippableUnits(attended, total, targetPercent) {
+    const A = attendanceNumber(attended);
+    const T = attendanceNumber(total);
+    const p = Number(targetPercent);
+    if (!Number.isFinite(p) || p <= 0) return Infinity;
+    if (100 * A < p * T) return 0; // already below target
+
+    let s = Math.floor((100 * A - p * T) / p);
+    if (!Number.isFinite(s)) return 0;
+    while (s > 0 && 100 * A < p * (T + s)) s--;
+    while (100 * A >= p * (T + s + 1)) s++;
+    return Math.max(0, s);
+}
+
+/**
+ * Units that must be attended consecutively to reach target.
+ * Closed form: (A+N)/(T+N) >= p  →  N >= (pT - 100A)/(100 - p)
+ * Returns Infinity when the target is unreachable (p >= 100 with a miss on record).
+ */
+export function unitsToReachTarget(attended, total, targetPercent) {
+    const A = attendanceNumber(attended);
+    const T = attendanceNumber(total);
+    const p = Number(targetPercent);
+    if (!Number.isFinite(p) || p <= 0) return 0;
+    if (T > 0 && 100 * A >= p * T) return 0;
+    if (p >= 100) return A >= T ? 0 : Infinity;
+
+    let n = Math.ceil((p * T - 100 * A) / (100 - p));
+    if (!Number.isFinite(n)) return Infinity;
+    while (n > 0 && 100 * (A + n - 1) >= p * (T + n - 1)) n--;
+    while (100 * (A + n) < p * (T + n)) n++;
+    return Math.max(0, n);
+}
+
+/**
+ * Convert a unit budget into whole classes a student may skip.
+ * Classes are atomic, so a 3-unit budget buys only one 2-hour class.
+ * Uses the LARGEST session size so the number is never overstated.
+ */
+export function unitsToSkippableClasses(units, sessionUnits) {
+    if (!Number.isFinite(units)) return units; // Infinity passes through
+    const size = Math.max(1, sessionUnits?.max || sessionUnits || 1);
+    return Math.max(0, Math.floor(units / size));
+}
+
+/**
+ * Convert required units into whole classes a student must attend.
+ * Uses the SMALLEST session size so the number is never understated.
+ */
+export function unitsToNeededClasses(units, sessionUnits) {
+    if (!Number.isFinite(units)) return units;
+    const size = Math.max(1, sessionUnits?.min || sessionUnits || 1);
+    return Math.max(0, Math.ceil(units / size));
+}
+
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function attendanceNumber(value) {
     const number = Number(value);
@@ -71,11 +156,8 @@ export function getSubjectAttendance(subjectId, state) {
             if (!shouldCountLocalRecord(dateKey, subjectId, record, state)) return;
 
             hasPredictions = true;
-            const units = attendanceNumber(record.units) || 1;
-            recordedTotal += units;
-            if (record.status === 'present') {
-                recordedAttended += units;
-            }
+            recordedTotal += recordUnits(record);
+            recordedAttended += recordAttendedUnits(record);
         }
     });
 
@@ -90,6 +172,80 @@ export function getSubjectAttendance(subjectId, state) {
         attendedUnits,
         percentage,
         hasPredictions,
+        sessionUnits: getSubjectSessionUnits(subjectId, state),
+    };
+}
+
+/**
+ * Units covered by one attendance record.
+ */
+export function recordUnits(record) {
+    return attendanceNumber(record?.units) || 1;
+}
+
+/**
+ * Units actually attended in one record.
+ *
+ * A record can cover several periods of the same subject on one day, and those
+ * periods are not always one block — e.g. period 1 and period 5. The ERP
+ * register knows how many of them were attended, so trust `attendedUnits` when
+ * it is present instead of assuming a single status covers every period.
+ */
+export function recordAttendedUnits(record) {
+    if (!record) return 0;
+    const explicit = Number(record.attendedUnits);
+    if (Number.isFinite(explicit) && explicit >= 0) {
+        return Math.min(explicit, recordUnits(record));
+    }
+    return record.status === 'present' ? recordUnits(record) : 0;
+}
+
+/**
+ * Session sizes (in units) for a subject across the week.
+ * Returns { min, max } — equal for the common case where every session of a
+ * subject is the same length. Defaults to 1/1 when the timetable is unknown.
+ */
+export function getSubjectSessionUnits(subjectId, state) {
+    let min = Infinity;
+    let max = 1;
+
+    DAY_NAMES.forEach((dayName) => {
+        getClassesForDay(state, dayName).forEach((cls) => {
+            if (cls.subjectId !== subjectId) return;
+            min = Math.min(min, cls.units);
+            max = Math.max(max, cls.units);
+        });
+    });
+
+    return { min: Number.isFinite(min) ? min : 1, max };
+}
+
+/**
+ * The one call a screen should make to answer "can I skip this subject?".
+ * Percentages are exact; counts come back in both units (ERP periods) and
+ * whole classes (what a student actually attends or misses).
+ */
+export function getSubjectSkipBudget(subjectId, state, targetPercent) {
+    const stats = getSubjectAttendance(subjectId, state);
+    if (!stats) return null;
+
+    const subject = state.subjects.find((s) => s.id === subjectId);
+    const target = targetPercent
+        ?? subject?.target
+        ?? state.settings?.dangerThreshold
+        ?? 75;
+
+    const skipUnits = maxSkippableUnits(stats.attendedUnits, stats.totalUnits, target);
+    const needUnits = unitsToReachTarget(stats.attendedUnits, stats.totalUnits, target);
+
+    return {
+        ...stats,
+        target,
+        onTrack: needUnits === 0,
+        skipUnits,
+        skipClasses: unitsToSkippableClasses(skipUnits, stats.sessionUnits),
+        needUnits,
+        needClasses: unitsToNeededClasses(needUnits, stats.sessionUnits),
     };
 }
 
@@ -107,16 +263,19 @@ export function getClassesForDay(state, dayName) {
     let lastClass = null;
 
     // Sort schedule by time slot start time
+    const timeSlots = state.timeSlots || [];
+    const subjects = state.subjects || [];
+
     const sortedSchedule = [...daySchedule].sort((a, b) => {
-        const slotA = state.timeSlots.find((ts) => ts.id === a.slotId);
-        const slotB = state.timeSlots.find((ts) => ts.id === b.slotId);
+        const slotA = timeSlots.find((ts) => ts.id === a.slotId);
+        const slotB = timeSlots.find((ts) => ts.id === b.slotId);
         if (!slotA || !slotB) return 0;
         return parseTimeToMinutes(slotA.start) - parseTimeToMinutes(slotB.start);
     });
 
     sortedSchedule.forEach((slot) => {
-        const timeSlot = state.timeSlots.find((ts) => ts.id === slot.slotId);
-        const subject = state.subjects.find((s) => s.id === slot.subjectId);
+        const timeSlot = timeSlots.find((ts) => ts.id === slot.slotId);
+        const subject = subjects.find((s) => s.id === slot.subjectId);
 
         // Need either a matching timeSlot OR custom times on the slot itself
         if ((!timeSlot && !slot.customStart) || !subject) return;
@@ -127,13 +286,13 @@ export function getClassesForDay(state, dayName) {
         const currentStartMins = parseTimeToMinutes(startTime);
         const lastEndMins = lastClass ? parseTimeToMinutes(lastClass.endTime) : 0;
 
-        // Check if this slot is consecutive with the last one for the same subject
-        // Allow up to a 30-minute gap to still consider it a single block
-        // Overlapping slots (negative gap) are also merged, which happens for 2-hour classes
+        // Consecutive periods of the same subject are ONE class under college
+        // rules — all-or-nothing, no attendance for attending just one hour.
+        // Allow up to a 30-minute break, and any overlap (negative gap), which
+        // is how the portal encodes a 2-hour class across two period slots.
         if (
             lastClass &&
             lastClass.subjectId === slot.subjectId &&
-            (currentStartMins - lastEndMins) >= 0 &&
             (currentStartMins - lastEndMins) <= 30
         ) {
             // Extend end time only if this slot ends later
@@ -168,76 +327,53 @@ export function getTodayClasses(state, devDate = null) {
 }
 
 /**
- * Get the typical units for a subject based on its timetable entries.
- * Returns the max consecutive slots found for this subject.
+ * Skip / recovery verdict for a subject.
+ *
+ * `count` is in UNITS (ERP periods). Pass `sessionUnits` to also get
+ * `classes`, the count in whole physical classes — that is the number to
+ * show a student, since a 2-hour class cannot be half-skipped.
  */
-export function getSubjectUnits(subjectId, state) {
-    let maxUnits = 1;
-    const timetable = state.timetable || {};
-
-    Object.values(timetable).forEach((daySlots) => {
-        let consecutiveCount = 0;
-        let lastSubject = null;
-
-        daySlots.forEach((slot) => {
-            if (slot.subjectId === subjectId) {
-                consecutiveCount = lastSubject === subjectId ? consecutiveCount + 1 : 1;
-                maxUnits = Math.max(maxUnits, consecutiveCount);
-            }
-            lastSubject = slot.subjectId;
-        });
-    });
-
-    return maxUnits;
-}
-
-export function calculateSkips(attended, total, targetPercent) {
-    if (total === 0) {
+export function calculateSkips(attended, total, targetPercent, sessionUnits = 1) {
+    if (!(Number(total) > 0)) {
         return {
             status: 'safe',
             count: 0,
+            classes: 0,
             message: 'No classes recorded yet',
         };
     }
 
-    const exactCurrentPercent = (attended / total) * 100;
+    const needUnits = unitsToReachTarget(attended, total, targetPercent);
 
-    if (exactCurrentPercent >= targetPercent) {
-        // Integer-friendly math: S <= (100 * A - P * T) / P
-        let canSkip = 0;
-        if (targetPercent > 0) {
-            const rawSkips = (100 * attended - targetPercent * total) / targetPercent;
-            canSkip = Math.floor(rawSkips + 1e-9);
-        }
-        
+    if (needUnits === 0) {
+        const canSkip = maxSkippableUnits(attended, total, targetPercent);
+        const classes = unitsToSkippableClasses(canSkip, sessionUnits);
         return {
             status: 'safe',
-            count: Math.max(0, canSkip),
-            message: `You can skip ${Math.max(0, canSkip)} more classes`,
-        };
-    } else {
-        // Integer-friendly math: F >= (P * T - 100 * A) / (100 - P)
-        const divisor = 100 - targetPercent;
-        if (divisor <= 0) {
-            // Target is 100% or more, you'll never reach it if you've missed even one class
-            return {
-                status: 'danger',
-                count: Infinity,
-                message: `You missed a class, you can't reach 100% attendance!`,
-            };
-        }
-
-        const rawAttend = (targetPercent * total - 100 * attended) / divisor;
-        const needAttend = Math.ceil(rawAttend - 1e-9);
-
-        return {
-            status: 'danger',
-            count: Math.max(0, needAttend),
-            message: needAttend > 9999
-                ? `You can't realistically reach ${targetPercent}% anymore`
-                : `You need to attend ${Math.max(0, needAttend)} more classes`,
+            count: canSkip,
+            classes,
+            message: `You can skip ${classes} more ${classes === 1 ? 'class' : 'classes'}`,
         };
     }
+
+    if (!Number.isFinite(needUnits)) {
+        return {
+            status: 'danger',
+            count: Infinity,
+            classes: Infinity,
+            message: `You missed a class, you can't reach ${targetPercent}% attendance!`,
+        };
+    }
+
+    const classes = unitsToNeededClasses(needUnits, sessionUnits);
+    return {
+        status: 'danger',
+        count: needUnits,
+        classes,
+        message: classes > 9999
+            ? `You can't realistically reach ${targetPercent}% anymore`
+            : `You need to attend ${classes} more ${classes === 1 ? 'class' : 'classes'}`,
+    };
 }
 
 /**
@@ -272,6 +408,5 @@ export function calculateOverallPercentage(state) {
         }
     });
 
-    if (totalUnits === 0) return 0;
-    return Math.round((totalAttended / totalUnits) * 100 * 10) / 10;
+    return calculatePercentage(totalAttended, totalUnits);
 }

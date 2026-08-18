@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { COLORS, BORDER_RADIUS, FONT_SIZES, SPACING, SHADOWS } from '../../theme/theme';
+import { shortSubjectName } from '../../utils/subjectName';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -77,8 +78,12 @@ const TimetableGrid = ({ state, onCellPress }) => {
                                                     activeOpacity={0.7}
                                                     disabled={!onCellPress}
                                                 >
-                                                    <Text style={[styles.subjectText, { color: subject.color }]} numberOfLines={2}>
-                                                        {subject.name}
+                                                    <Text
+                                                        style={[styles.subjectText, { color: subject.color }]}
+                                                        numberOfLines={2}
+                                                        accessibilityLabel={subject.name}
+                                                    >
+                                                        {shortSubjectName(subject.name, 8)}
                                                     </Text>
                                                 </TouchableOpacity>
                                             );
@@ -140,9 +145,9 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
     },
     timeText: {
+        fontWeight: '500',
         fontSize: 10,
         color: COLORS.textSecondary,
-        fontWeight: '500',
     },
     dayText: {
         fontSize: FONT_SIZES.sm,
@@ -156,8 +161,8 @@ const getStyles = () => StyleSheet.create({
         paddingHorizontal: 4,
     },
     subjectText: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xs,
         textAlign: 'center',
     },
     emptyText: {

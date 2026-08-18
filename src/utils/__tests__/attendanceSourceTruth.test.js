@@ -34,10 +34,10 @@ describe('ERP source of truth for local bridge records', () => {
       },
     };
 
-    expect(getSubjectAttendance('math', state)).toEqual({
+    expect(getSubjectAttendance('math', state)).toMatchObject({
       attendedUnits: 9,
       totalUnits: 11,
-      percentage: 81.8,
+      percentage: expect.closeTo(81.8, 1),
       hasPredictions: true,
     });
   });
@@ -77,10 +77,10 @@ describe('ERP source of truth for local bridge records', () => {
       },
     };
 
-    expect(getSubjectAttendance('math', state)).toEqual({
+    expect(getSubjectAttendance('math', state)).toMatchObject({
       attendedUnits: 9,
       totalUnits: 11,
-      percentage: 81.8,
+      percentage: expect.closeTo(81.8, 1),
       hasPredictions: true,
     });
   });
@@ -95,10 +95,10 @@ describe('ERP source of truth for local bridge records', () => {
       },
     };
 
-    expect(getSubjectAttendance('math', state)).toEqual({
+    expect(getSubjectAttendance('math', state)).toMatchObject({
       attendedUnits: 10,
       totalUnits: 12,
-      percentage: 83.3,
+      percentage: expect.closeTo(83.3, 1),
       hasPredictions: true,
     });
   });

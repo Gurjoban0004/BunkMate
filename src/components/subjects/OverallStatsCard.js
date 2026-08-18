@@ -10,68 +10,46 @@ const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
 
     const showStaleness = staleness?.isProjected && staleness?.staleCount > 0;
 
+    // One column, four stacked lines. The old two-column layout with a divider
+    // and three dotted health rows was the tallest thing on the screen and the
+    // subject list underneath already groups by exactly those three states.
+    const counts = [
+        dangerCount && `${dangerCount} Below Goal`,
+        edgeCount && `${edgeCount} On Edge`,
+        safeCount && `${safeCount} Safe`,
+    ].filter(Boolean);
+
     return (
         <View style={styles.container}>
-            <View style={styles.row}>
-                {/* Left Column: Average Attendance */}
-                <View style={styles.leftCol}>
-                    <Text style={styles.columnTitle}>Avg. Attendance</Text>
-                    <Text style={[
-                        styles.percentage,
-                        isAboveThreshold ? styles.percentageSafe : styles.percentageDanger,
-                    ]}>
-                        {percentage}%
-                    </Text>
-
-                    <View style={styles.progressBar}>
-                        <View
-                            style={[
-                                styles.progressFill,
-                                {
-                                    width: `${Math.min(numericPercentage, 100)}%`,
-                                    backgroundColor: isAboveThreshold ? COLORS.success : COLORS.danger,
-                                },
-                            ]}
-                        />
-                    </View>
-
-                    <Text style={styles.marksText}>
-                        {attended} / {total} classes
-                    </Text>
-                    <Text style={styles.goalText}>
-                        Goal: {threshold}%
-                    </Text>
-                </View>
-
-                {/* Vertical Divider */}
-                <View style={styles.divider} />
-
-                {/* Right Column: Subject Health */}
-                <View style={styles.rightCol}>
-                    <Text style={styles.columnTitle}>Subject Health</Text>
-
-                    <View style={styles.healthRow}>
-                        <View style={[styles.healthDot, { backgroundColor: COLORS.danger }]} />
-                        <Text style={styles.healthLabel}>
-                            {dangerCount} Below Goal
-                        </Text>
-                    </View>
-
-                    <View style={styles.healthRow}>
-                        <View style={[styles.healthDot, { backgroundColor: COLORS.warning }]} />
-                        <Text style={styles.healthLabel}>
-                            {edgeCount} On Edge
-                        </Text>
-                    </View>
-
-                    <View style={styles.healthRow}>
-                        <View style={[styles.healthDot, { backgroundColor: COLORS.success }]} />
-                        <Text style={styles.healthLabel}>
-                            {safeCount} Safe
-                        </Text>
-                    </View>
-                </View>
+            <View style={styles.heroRow}>
+                <Text style={[
+                    styles.percentage,
+                    isAboveThreshold ? styles.percentageSafe : styles.percentageDanger,
+                ]}>
+                    {percentage}%
+                </Text>
+                <Text style={styles.heroLabel}>Overall</Text>
             </View>
+
+            <Text style={styles.metaText}>
+                {attended} / {total} classes  ·  Goal {threshold}%
+            </Text>
+
+            <View style={styles.progressBar}>
+                <View
+                    style={[
+                        styles.progressFill,
+                        {
+                            width: `${Math.min(numericPercentage, 100)}%`,
+                            backgroundColor: isAboveThreshold ? COLORS.success : COLORS.danger,
+                        },
+                    ]}
+                />
+            </View>
+
+            {counts.length > 0 && (
+                <Text style={styles.countsText}>{counts.join('  ·  ')}</Text>
+            )}
 
             {showStaleness && (
                 <TouchableOpacity 
@@ -96,7 +74,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
         borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
+        paddingVertical: SPACING.sm + 4,
+        paddingHorizontal: SPACING.md + 2,
         borderWidth: 1,
         borderColor: COLORS.border,
         ...Platform.select({
@@ -114,43 +93,32 @@ const getStyles = () => StyleSheet.create({
             }
         }),
     },
-    row: {
+    heroRow: {
         flexDirection: 'row',
-        alignItems: 'center',
-    },
-    leftCol: {
-        flex: 1.2,
-        paddingRight: SPACING.sm,
-    },
-    rightCol: {
-        flex: 1,
-        paddingLeft: SPACING.md,
-        justifyContent: 'center',
-    },
-    divider: {
-        width: 1,
-        height: 70,
-        backgroundColor: COLORS.border,
-    },
-    columnTitle: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: COLORS.textMuted,
-        marginBottom: SPACING.xs,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        alignItems: 'baseline',
+        gap: SPACING.sm,
     },
     percentage: {
-        fontSize: 28,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-        marginVertical: 2,
+        fontWeight: '700',
+        fontSize: 25,
+        letterSpacing: -0.3,
     },
     percentageSafe: {
-        color: COLORS.success,
+        color: COLORS.successText,
     },
     percentageDanger: {
-        color: COLORS.danger,
+        color: COLORS.dangerText,
+    },
+    heroLabel: {
+        fontWeight: '600',
+        fontSize: FONT_SIZES.md,
+        color: COLORS.textSecondary,
+    },
+    metaText: {
+        fontWeight: '500',
+        fontSize: FONT_SIZES.sm,
+        color: COLORS.textSecondary,
+        marginTop: 3,
     },
     progressBar: {
         width: '100%',
@@ -158,38 +126,17 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
         borderRadius: 2,
         overflow: 'hidden',
-        marginVertical: SPACING.xs,
+        marginTop: SPACING.sm,
     },
     progressFill: {
         height: '100%',
         borderRadius: 2,
     },
-    marksText: {
+    countsText: {
+        fontWeight: '600',
         fontSize: FONT_SIZES.sm,
-        color: COLORS.textPrimary,
-        fontWeight: '600',
-    },
-    goalText: {
-        fontSize: 10,
         color: COLORS.textSecondary,
-        fontWeight: '500',
-        marginTop: 1,
-    },
-    healthRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 4,
-        gap: SPACING.xs,
-    },
-    healthDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    healthLabel: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-        fontWeight: '600',
+        marginTop: SPACING.sm,
     },
     stalenessBanner: {
         marginTop: SPACING.md,
@@ -203,15 +150,15 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.warning,
     },
     stalenessText: {
-        fontSize: 11,
         fontWeight: '600',
+        fontSize: 11,
         color: COLORS.warningDark,
         textAlign: 'center',
         marginBottom: 2,
     },
     stalenessAction: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.warningDark || '#856404',
         textAlign: 'center',
         textTransform: 'uppercase',

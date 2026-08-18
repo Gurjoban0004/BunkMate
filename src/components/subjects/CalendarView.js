@@ -203,8 +203,8 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
             {/* Legend */}
             <View style={styles.legend}>
                 {[
-                    { label: 'Present', color: COLORS.success },
-                    { label: 'Absent',  color: COLORS.danger },
+                    { label: 'Present', color: COLORS.successText },
+                    { label: 'Absent',  color: COLORS.dangerText },
                     { label: 'Holiday', color: COLORS.primary },
                     { label: 'By you', hollow: true },
                 ].map(({ label, color, hollow }) => (
@@ -281,6 +281,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                                                 }]}>
                                                     <Text style={[styles.statusPillText, {
                                                         color: sd.status === 'present' ? COLORS.successDark : COLORS.dangerDark,
+                                                        fontWeight: '400',
                                                         fontSize: 11,
                                                     }]}>
                                                         {sd.status === 'present' ? 'Present' : sd.status === 'absent' ? 'Absent' : 'Cancelled'}
@@ -355,15 +356,14 @@ const getStyles = () => StyleSheet.create({
     navBtnText: {
         fontSize: 18,
         color: COLORS.textPrimary,
-        fontWeight: '700',
         marginTop: Platform.OS === 'ios' ? -2 : 0,
     },
     navBtnDisabled: {
         opacity: 0.4,
     },
     monthTitle: {
+        fontWeight: '700',
         fontSize: 15,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         textAlign: 'center',
         flex: 1,
@@ -378,6 +378,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textMuted,
         width: `${100 / 7}%`,
         textAlign: 'center',
+        fontWeight: '700',
         fontWeight: '700',
         fontSize: 11,
     },
@@ -404,6 +405,7 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.primary,
     },
     dayText: {
+        fontWeight: '400',
         fontSize: 12,
         color: COLORS.textSecondary,
         lineHeight: 15,
@@ -453,8 +455,8 @@ const getStyles = () => StyleSheet.create({
         gap: 2,
     },
     legendText: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textSecondary,
         textTransform: 'uppercase',
         letterSpacing: 0.3,
@@ -497,8 +499,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.full,
     },
     statusPillText: {
-        fontSize: 13,
         fontWeight: '600',
+        fontSize: 13,
     },
     sourcePill: {
         paddingHorizontal: SPACING.sm,
@@ -509,11 +511,12 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.border,
     },
     sourcePillText: {
+        fontWeight: '500',
         fontSize: 11,
         color: COLORS.textMuted,
-        fontWeight: '500',
     },
     dayDetailUnits: {
+        fontWeight: '400',
         fontSize: 12,
         color: COLORS.textMuted,
         marginLeft: 4,
@@ -537,9 +540,9 @@ const getStyles = () => StyleSheet.create({
     },
     dayDetailSubjectName: {
         flex: 1,
+        fontWeight: '500',
         fontSize: 14,
         color: COLORS.textPrimary,
-        fontWeight: '500',
     },
     dayDetailEmpty: {
         ...TYPOGRAPHY.captionMedium,

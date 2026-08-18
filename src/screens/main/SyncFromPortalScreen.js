@@ -285,12 +285,13 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     headerTitle: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.xl,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         marginBottom: SPACING.xs,
     },
     headerSub: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         textAlign: 'center',
@@ -320,14 +321,14 @@ const getStyles = () => StyleSheet.create({
         marginRight: SPACING.sm,
     },
     subjectName: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         flex: 1,
     },
     currentBadge: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
     },
     inputRow: {
         flexDirection: 'row',
@@ -338,9 +339,9 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     inputLabel: {
+        fontWeight: '600',
         fontSize: 10,
         color: COLORS.textMuted,
-        fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         marginBottom: 4,
@@ -350,8 +351,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.sm,
         paddingHorizontal: SPACING.sm,
         paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-        fontSize: FONT_SIZES.lg,
         fontWeight: '700',
+        fontSize: FONT_SIZES.lg,
         color: COLORS.textPrimary,
         textAlign: 'center',
         ...Platform.select({ web: { outlineStyle: 'none' } }),
@@ -360,14 +361,14 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.primaryLight,
     },
     divider: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.xl,
         color: COLORS.textMuted,
-        fontWeight: '300',
         paddingBottom: 6,
     },
     newPercentage: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
         paddingBottom: 8,
         minWidth: 60,
         textAlign: 'right',
@@ -393,8 +394,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
     },
     syncButtonText: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: '#FFFFFF',
     },
     erpCard: {
@@ -429,12 +430,13 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     erpCardTitle: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         marginBottom: 2,
     },
     erpCardSub: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
         lineHeight: 18,
@@ -455,8 +457,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.border,
     },
     orText: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textMuted,
         letterSpacing: 0.5,
         marginHorizontal: SPACING.md,
@@ -470,10 +472,10 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.warning || '#ffc107',
     },
     staleBannerText: {
+        fontWeight: '500',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textPrimary,
         textAlign: 'center',
-        fontWeight: '500',
     },
     calendarWarnBanner: {
         backgroundColor: COLORS.dangerLight || '#f8d7da',
@@ -484,9 +486,9 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.danger || '#f5c6cb',
     },
     calendarWarnText: {
+        fontWeight: '500',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textPrimary,
         textAlign: 'center',
-        fontWeight: '500',
     },
 });

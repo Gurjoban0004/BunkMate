@@ -150,7 +150,8 @@ const getStyles = () => StyleSheet.create({
         right: 0,
         top: -14,
         ...TYPOGRAPHY.captionMedium,
-        color: COLORS.danger,
+        color: COLORS.dangerText,
+        fontWeight: '400',
         fontSize: 10,
     },
     barsRow: {
@@ -172,6 +173,7 @@ const getStyles = () => StyleSheet.create({
     dayLabel: {
         ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
+        fontWeight: '400',
         fontSize: 9,
         marginTop: 2,
     },
@@ -194,6 +196,7 @@ const getStyles = () => StyleSheet.create({
     legendText: {
         ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
+        fontWeight: '400',
         fontSize: 10,
     },
 });

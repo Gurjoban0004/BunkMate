@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import { getSubjectAttendance, calculateSkips, getSubjectUnits } from '../../utils/attendance';
+import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
 import { calculateGlobalStaleness } from '../../utils/erpFreshness';
 
 // Components
@@ -51,20 +51,10 @@ const SubjectsScreen = ({ navigation }) => {
             const attendedUnits = stats?.attendedUnits ?? 0;
             const totalUnits = stats?.totalUnits ?? 0;
             const percentage = stats?.percentage ?? 0;
-            const skipInfo = calculateSkips(attendedUnits, totalUnits, target);
-
-            // How many periods make up one physical class for this subject.
-            // e.g. a 2-hr class = 2 periods → unitsPerClass = 2
-            // We use this to convert "periods can skip" → "physical classes can skip".
-            const unitsPerClass = Math.max(1, getSubjectUnits(subject.id, state));
-
-            // Convert period-based skip count to physical class count
-            const physicalSkipInfo = {
-                ...skipInfo,
-                count: skipInfo.count === Infinity
-                    ? Infinity
-                    : Math.floor(skipInfo.count / unitsPerClass),
-            };
+            // calculateSkips reports both: `count` in ERP periods and
+            // `classes` in physical classes. Students think in classes.
+            const skipInfo = calculateSkips(attendedUnits, totalUnits, target, stats?.sessionUnits);
+            const physicalSkipInfo = { ...skipInfo, count: skipInfo.classes };
 
             return {
                 ...subject,
@@ -99,9 +89,15 @@ const SubjectsScreen = ({ navigation }) => {
             }
         });
 
+        // Most-slack-first. Two subjects at 89% are not equally skippable —
+        // the one with 13 spare classes is the one to bunk.
+        const slack = (s) => (s.skipInfo?.count === Infinity
+            ? Number.MAX_SAFE_INTEGER
+            : s.skipInfo?.count ?? 0);
+
         danger.sort((a, b) => a.percentage - b.percentage);
         edge.sort((a, b) => a.percentage - b.percentage);
-        safe.sort((a, b) => b.percentage - a.percentage);
+        safe.sort((a, b) => slack(b) - slack(a) || b.percentage - a.percentage);
 
         return { danger, edge, safe };
     }, [subjectsWithStats]);
@@ -155,8 +151,8 @@ const SubjectsScreen = ({ navigation }) => {
                     {/* View Mode Segmented Control */}
                     <View style={styles.toggleContainer}>
                         {[
-                            { key: 'list', label: 'Subjects List' },
-                            { key: 'calendar', label: 'Attendance Heatmap' },
+                            { key: 'list', label: 'Subjects' },
+                            { key: 'calendar', label: 'Heatmap' },
                         ].map(tab => (
                             <TouchableOpacity
                                 key={tab.key}
@@ -190,11 +186,6 @@ const SubjectsScreen = ({ navigation }) => {
                                     <Text style={styles.sectionTitle}>
                                         Needs Attention
                                     </Text>
-                                    <View style={[styles.sectionBadge, styles.sectionBadgeDanger]}>
-                                        <Text style={styles.sectionBadgeText}>
-                                            {categorizedSubjects.danger.length}
-                                        </Text>
-                                    </View>
                                 </View>
 
                                 {categorizedSubjects.danger.map(subject => (
@@ -217,11 +208,6 @@ const SubjectsScreen = ({ navigation }) => {
                                     <Text style={styles.sectionTitle}>
                                         Borderline
                                     </Text>
-                                    <View style={[styles.sectionBadge, styles.sectionBadgeEdge]}>
-                                        <Text style={styles.sectionBadgeText}>
-                                            {categorizedSubjects.edge.length}
-                                        </Text>
-                                    </View>
                                 </View>
 
                                 {categorizedSubjects.edge.map(subject => (
@@ -244,11 +230,6 @@ const SubjectsScreen = ({ navigation }) => {
                                     <Text style={styles.sectionTitle}>
                                         Safe
                                     </Text>
-                                    <View style={[styles.sectionBadge, styles.sectionBadgeSafe]}>
-                                        <Text style={styles.sectionBadgeText}>
-                                            {categorizedSubjects.safe.length}
-                                        </Text>
-                                    </View>
                                 </View>
 
                                 {categorizedSubjects.safe.map(subject => (
@@ -311,8 +292,8 @@ const getStyles = () => StyleSheet.create({
         justifyContent: 'space-between',
     },
     headerTitle: {
+        fontWeight: '700',
         fontSize: 26,
-        fontWeight: '800',
         letterSpacing: 0,
         color: COLORS.textPrimary,
     },
@@ -327,7 +308,7 @@ const getStyles = () => StyleSheet.create({
     },
     toggleTab: {
         flex: 1,
-        paddingVertical: 8,
+        paddingVertical: 10,
         alignItems: 'center',
         borderRadius: BORDER_RADIUS.sm,
         borderWidth: 1,
@@ -352,8 +333,8 @@ const getStyles = () => StyleSheet.create({
         }),
     },
     toggleTabText: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textMuted,
     },
     toggleTabTextActive: {
@@ -361,13 +342,13 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '700',
     },
     section: {
-        marginTop: SPACING.cardGap,
+        marginTop: SPACING.lg,
     },
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.sm,
+        marginBottom: SPACING.md - 4,
         gap: SPACING.sm,
     },
     sectionRule: {
@@ -385,30 +366,10 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.success,
     },
     sectionTitle: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xs,
         letterSpacing: 0.5,
         color: COLORS.textMuted,
-    },
-    sectionBadge: {
-        marginLeft: SPACING.sm,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: 2,
-        borderRadius: BORDER_RADIUS.sm,
-    },
-    sectionBadgeDanger: {
-        backgroundColor: COLORS.dangerLight,
-    },
-    sectionBadgeEdge: {
-        backgroundColor: COLORS.warningLight,
-    },
-    sectionBadgeSafe: {
-        backgroundColor: COLORS.successLight,
-    },
-    sectionBadgeText: {
-        fontSize: FONT_SIZES.xs,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
     },
     bottomPadding: {
         height: 100,

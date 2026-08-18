@@ -393,8 +393,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.successLight,
     },
     holidayBtnText: {
-        fontSize: 12,
         fontWeight: '600',
+        fontSize: 12,
     },
     classRow: {
         flexDirection: 'row',
@@ -458,14 +458,14 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.dangerLight,
     },
     presentSmallText: {
-        fontSize: 13,
         fontWeight: '700',
+        fontSize: 13,
         color: COLORS.successDark,
     },
     absentSmallText: {
-        fontSize: 13,
         fontWeight: '700',
-        color: COLORS.danger,
+        fontSize: 13,
+        color: COLORS.dangerText,
     },
     footer: {
         marginTop: SPACING.lg,
@@ -482,6 +482,7 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.sm,
     },
     autoMarkedText: {
+        fontWeight: '400',
         fontSize: 12,
     },
 
@@ -510,8 +511,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.sm,
     },
     heroActionText: {
-        fontSize: 12,
         fontWeight: '700',
+        fontSize: 12,
         color: '#FFFFFF',
     },
     heroSubtitle: {
@@ -543,8 +544,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.danger,
     },
     bulkBtnText: {
-        fontSize: 14, 
         fontWeight: '700',
+        fontSize: 14, 
         color: '#FFFFFF',
     },
     reviewCardItem: {
@@ -593,14 +594,14 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.dangerLight,
     },
     statusBoxChar: {
-        fontSize: 14,
         fontWeight: '700',
+        fontSize: 14,
     },
     textPresent: {
-        color: COLORS.success,
+        color: COLORS.successText,
     },
     textAbsent: {
-        color: COLORS.danger,
+        color: COLORS.dangerText,
     },
     approveQuickBtn: {
         backgroundColor: COLORS.primary,
@@ -610,6 +611,7 @@ const getStyles = () => StyleSheet.create({
     },
     approveQuickText: {
         color: COLORS.textOnPrimary,
+        fontWeight: '700',
         fontWeight: '700',
         fontSize: 14,
     },
@@ -630,8 +632,8 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.border,
     },
     reviewActionText: {
-        fontSize: 13,
         fontWeight: '600',
+        fontSize: 13,
     },
     undoBtn: {
         paddingVertical: SPACING.sm,
@@ -666,6 +668,7 @@ const getStyles = () => StyleSheet.create({
     approveAllText: {
         color: COLORS.textOnPrimary,
         fontWeight: 'bold',
+        fontWeight: '400',
         fontSize: 16,
     },
     summaryCard: {

@@ -141,7 +141,7 @@ const EditSubjectsScreen = ({ navigation }) => {
                                         </Text>
                                     </View>
                                     <Text style={styles.statsText}>
-                                        {stats.percentage}% • {stats.attendedUnits}/{stats.totalUnits} marks
+                                        {stats.percentage.toFixed(1)}% • {stats.attendedUnits}/{stats.totalUnits} marks
                                     </Text>
                                 </View>
 
@@ -156,7 +156,7 @@ const EditSubjectsScreen = ({ navigation }) => {
                                         style={[styles.actionButton, { backgroundColor: COLORS.dangerLight }]}
                                         onPress={() => handleDelete(subject)}
                                     >
-                                        <Text style={[styles.actionIcon, { color: COLORS.danger }]}>Delete</Text>
+                                        <Text style={[styles.actionIcon, { color: COLORS.dangerText }]}>Delete</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -272,8 +272,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     headerSubtitle: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
     },
     subjectCard: {
@@ -304,12 +304,13 @@ const getStyles = () => StyleSheet.create({
         marginRight: SPACING.sm,
     },
     subjectName: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         flex: 1,
     },
     statsText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         marginLeft: SPACING.md + 4,
@@ -339,8 +340,8 @@ const getStyles = () => StyleSheet.create({
         borderStyle: 'dashed',
     },
     addButtonText: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.primary,
     },
     emptyState: {
@@ -352,6 +353,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     emptyText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.md,
         color: COLORS.textSecondary,
     },
@@ -374,8 +376,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.lg,
     },
     modalTitle: {
-        fontSize: FONT_SIZES.lg,
         fontWeight: '700',
+        fontSize: FONT_SIZES.lg,
         color: COLORS.textPrimary,
     },
     closeModalText: {
@@ -384,8 +386,8 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.xs,
     },
     inputLabel: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginBottom: SPACING.xs,
         marginTop: SPACING.md,
@@ -394,6 +396,7 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
+        fontWeight: '400',
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
 
@@ -430,6 +433,7 @@ const getStyles = () => StyleSheet.create({
 
     },
     attendanceLabel: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginRight: SPACING.sm,
@@ -437,6 +441,7 @@ const getStyles = () => StyleSheet.create({
     attendanceInput: {
         flex: 1,
         paddingVertical: SPACING.md,
+        fontWeight: '400',
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
     },

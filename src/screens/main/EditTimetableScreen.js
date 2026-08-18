@@ -214,7 +214,7 @@ const EditTimetableScreen = ({ navigation }) => {
                                                 style={styles.iconButton}
                                                 onPress={() => handleDeleteClass(slot.id)}
                                             >
-                                                <Text style={[styles.iconButtonText, { color: COLORS.danger }]}>Delete</Text>
+                                                <Text style={[styles.iconButtonText, { color: COLORS.dangerText }]}>Delete</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -393,8 +393,8 @@ const getStyles = () => StyleSheet.create({
         paddingBottom: SPACING.sm,
     },
     headerTitle: {
-        fontSize: FONT_SIZES.lg,
         fontWeight: '700',
+        fontSize: FONT_SIZES.lg,
         color: COLORS.textPrimary,
         paddingHorizontal: SPACING.lg,
         marginBottom: SPACING.sm,
@@ -412,8 +412,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.primary,
     },
     dayTabText: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textSecondary,
     },
     dayTabTextActive: {
@@ -423,8 +423,8 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.lg,
     },
     dayTitle: {
-        fontSize: FONT_SIZES.lg,
         fontWeight: '700',
+        fontSize: FONT_SIZES.lg,
         color: COLORS.textPrimary,
         marginBottom: SPACING.lg,
     },
@@ -432,8 +432,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     timeLabel: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginBottom: 4,
         marginLeft: 4,
@@ -453,11 +453,12 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     subjectName: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
     },
     teacherName: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
         marginTop: 2,
@@ -488,9 +489,9 @@ const getStyles = () => StyleSheet.create({
         borderStyle: 'dashed',
     },
     freePeriodText: {
+        fontWeight: '500',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textMuted,
-        fontWeight: '500',
     },
     addSlotButton: {
         marginTop: SPACING.lg,
@@ -502,6 +503,7 @@ const getStyles = () => StyleSheet.create({
     addSlotButtonText: {
         color: COLORS.primary,
         fontWeight: '600',
+        fontWeight: '600',
         fontSize: FONT_SIZES.md,
     },
     emptyState: {
@@ -510,6 +512,7 @@ const getStyles = () => StyleSheet.create({
     },
     emptyText: {
         color: COLORS.textMuted,
+        fontWeight: '400',
         fontSize: FONT_SIZES.md,
     },
     modalOverlay: {
@@ -532,11 +535,12 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     modalTitle: {
-        fontSize: FONT_SIZES.lg,
         fontWeight: '700',
+        fontSize: FONT_SIZES.lg,
         color: COLORS.textPrimary,
     },
     modalSubtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginBottom: SPACING.md,
@@ -546,14 +550,14 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textMuted,
     },
     slotTimeText: {
+        fontWeight: '600',
         fontSize: FONT_SIZES.md,
         color: COLORS.primary,
-        fontWeight: '600',
         marginBottom: SPACING.lg,
     },
     inputLabel: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginBottom: SPACING.xs,
         marginTop: SPACING.md,
@@ -562,6 +566,7 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
         padding: SPACING.md,
+        fontWeight: '400',
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
 
@@ -589,11 +594,11 @@ const getStyles = () => StyleSheet.create({
         marginRight: SPACING.sm,
     },
     subjectOptionText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
     },
     subjectOptionTextSelected: {
-        fontWeight: '600',
         color: COLORS.primary,
     },
     newSubjectButton: {
@@ -632,8 +637,9 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '600',
     },
     durationWarning: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
-        color: COLORS.warning,
+        color: COLORS.warningText,
         marginTop: SPACING.sm,
     },
     modalActions: {

@@ -2,18 +2,14 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { getSubjectAttendance, calculateSkips, getErpCoverageDateForSubject, shouldCountLocalRecord } from '../../utils/attendance';
-import { calculateSubjectStreak, getStreakMessage } from '../../utils/streak';
+import { getSubjectAttendance, getErpCoverageDateForSubject, shouldCountLocalRecord } from '../../utils/attendance';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import CalendarView from '../../components/subjects/CalendarView';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
-import StatusHeader from '../../components/planner/SubjectDetail/StatusHeader';
-import NextClassDecision from '../../components/planner/SubjectDetail/NextClassDecision';
-import RecoveryPaths from '../../components/planner/SubjectDetail/RecoveryPaths';
+import SubjectSummaryCard from '../../components/planner/SubjectDetail/SubjectSummaryCard';
 import WhatIfSimulator from '../../components/planner/SubjectDetail/WhatIfSimulator';
-import Next7DaysView from '../../components/planner/SubjectDetail/Next7DaysView';
 import PatternsInsights from '../../components/planner/SubjectDetail/PatternsInsights';
 import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
 import { simulateAttendance } from '../../utils/planner/attendanceCalculations';
@@ -27,17 +23,7 @@ export default function SubjectDetailScreen({ route }) {
     const [showHistory, setShowHistory] = useState(false);
 
     const subject = state.subjects.find((s) => s.id === subjectId);
-    const subjectColor = subject?.color || COLORS.primary;
-    const target = subject?.target || state.settings?.dangerThreshold || 75;
     const stats = useMemo(() => getSubjectAttendance(subjectId, state), [subjectId, state]);
-    const skip = useMemo(
-        () => (stats ? calculateSkips(stats.attendedUnits, stats.totalUnits, target) : null),
-        [stats, target]
-    );
-
-    // Streak
-    const streak = useMemo(() => calculateSubjectStreak(subjectId, state), [subjectId, state]);
-    const streakMsg = getStreakMessage(streak);
 
     // Portal sync note: coverage date + how many of the user's own marks are
     // still bridging the gap until the portal catches up.
@@ -62,8 +48,6 @@ export default function SubjectDetailScreen({ route }) {
         );
     }
 
-    const isGood = stats.percentage >= target;
-
     // Recent records with edit support (last 2 weeks)
     const recentRecords = useMemo(() => {
         const records = [];
@@ -86,21 +70,13 @@ export default function SubjectDetailScreen({ route }) {
         return records;
     }, [state.attendanceRecords, subjectId]);
 
-    const subjectDataForHeader = useMemo(() => ({
-        name: subject.name,
-        color: subjectColor,
-        attended: stats.attendedUnits,
-        total: stats.totalUnits,
-        percentage: stats.percentage,
-        target: target
-    }), [subject, subjectColor, stats, target]);
-
     // Planner data for merged components
     const plannerData = useMemo(() => getSubjectPlannerData(subjectId, state), [subjectId, state]);
     const [simulationOffset, setSimulationOffset] = useState(0);
     const simulatedData = useMemo(() => {
         if (!plannerData || simulationOffset === 0) return plannerData;
-        const sim = simulateAttendance(plannerData.attended, plannerData.total, simulationOffset);
+        // The simulator stepper counts classes, so each step costs a whole session.
+        const sim = simulateAttendance(plannerData.attended, plannerData.total, simulationOffset, plannerData.unitsPerClass);
         return { ...plannerData, attended: sim.attended, total: sim.total, percentage: sim.percentage };
     }, [plannerData, simulationOffset]);
 
@@ -132,14 +108,8 @@ export default function SubjectDetailScreen({ route }) {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Main stats */}
-                <StatusHeader subjectData={subjectDataForHeader} />
-
-                {/* Planner: Next class decision */}
-                {simulatedData && <NextClassDecision subjectData={simulatedData} />}
-
-                {/* Planner: Recovery paths */}
-                {simulatedData && <RecoveryPaths subjectData={simulatedData} />}
+                {/* Where it stands + what the next class does + the way back */}
+                {simulatedData && <SubjectSummaryCard subjectData={simulatedData} />}
 
                 {/* Planner: What-If Simulator */}
                 {plannerData && (
@@ -286,54 +256,6 @@ const getStyles = () => StyleSheet.create({
         textAlign: 'center',
         marginTop: SPACING.xxl,
     },
-    textDisabled: { color: COLORS.textMuted },
-    streakCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: SPACING.md,
-        backgroundColor: COLORS.warningLight,
-
-
-    },
-    streakText: {
-        ...TYPOGRAPHY.bodyMedium,
-        fontWeight: '600',
-        color: COLORS.warningDark,
-    },
-    streakCount: {
-        ...TYPOGRAPHY.captionMedium,
-        color: COLORS.warning,
-        fontWeight: '600',
-    },
-    skipCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: SPACING.lg,
-        gap: 8,
-    },
-    skipSafe: {
-        backgroundColor: COLORS.successLight,
-        borderColor: COLORS.success,
-        borderWidth: 1,
-    },
-    skipDanger: {
-        backgroundColor: COLORS.dangerLight,
-        borderColor: COLORS.danger,
-        borderWidth: 1,
-    },
-    skipLabel: {
-        ...TYPOGRAPHY.bodyMedium,
-        color: COLORS.textSecondary,
-    },
-    skipNumber: {
-        fontSize: 20,
-        fontWeight: 'bold', 
-    },
-    calendarCard: {
-        marginBottom: SPACING.md,
-    },
     syncNote: {
         ...TYPOGRAPHY.captionMedium,
         color: COLORS.textMuted,
@@ -393,16 +315,16 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     historyStatus: {
-        fontSize: 12,
         fontWeight: '700',
+        fontSize: 12,
     },
     editBtn: {
         paddingHorizontal: SPACING.sm,
         paddingVertical: SPACING.xs,
     },
     editBtnText: {
-        fontSize: 12,
         fontWeight: '600',
+        fontSize: 12,
         color: COLORS.primary,
     },
     editHint: {
