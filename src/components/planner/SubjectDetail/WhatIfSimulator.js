@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../../theme/theme';
-import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses } from '../../../utils/planner/attendanceCalculations';
+import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses, calculateSkipAllowance } from '../../../utils/planner/attendanceCalculations';
 import { generateRecoveryPaths } from '../../../utils/planner/recoveryPlanner';
 import { useApp } from '../../../context/AppContext';
 import { getPlannerEndDate, getPlannableSubjectClasses } from '../../../utils/planner/semesterWindow';
@@ -12,7 +12,7 @@ import { getPlannerEndDate, getPlannableSubjectClasses } from '../../../utils/pl
  */
 export default function WhatIfSimulator({ subjectData, initialMode = 'skip', simulationOffset = 0, setSimulationOffset }) {
     const styles = getStyles();
-    const { attended, total, target } = subjectData;
+    const { attended, total, target, unitsPerClass = 1 } = subjectData;
 
     // 'skip' or 'attend' (fix)
     const [mode, setMode] = useState(initialMode === 'skip' ? 'skip' : 'attend');
@@ -33,8 +33,8 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
         [state, subjectData.id]
     );
     const hasSemesterEndDate = !!getPlannerEndDate(state);
-    const futureClassUnits = plannableClasses.reduce((sum, item) => sum + (item.units || 1), 0);
-    const maxSimulatorSteps = Math.min(40, futureClassUnits > 0 ? futureClassUnits : 20);
+    // The stepper counts CLASSES, so cap it by classes left, not periods.
+    const maxSimulatorSteps = Math.min(40, plannableClasses.length > 0 ? plannableClasses.length : 20);
 
     const manualSteps = Math.abs(simulationOffset);
     const activeSteps = Math.min(maxSimulatorSteps, manualSteps);
@@ -50,7 +50,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
 
     // Simulation Data
     const currentPercentage = calculatePlannerPercentage(attended, total);
-    const simulated = simulateAttendance(attended, total, offset);
+    const simulated = simulateAttendance(attended, total, offset, unitsPerClass);
     const delta = (simulated.percentage - currentPercentage).toFixed(1);
 
     const handleStep = (val) => {
@@ -65,7 +65,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
         if (mode === 'skip') {
             if (simulated.percentage < target) {
                 // How many to recover?
-                const recovery = calculateRecoveryClasses(simulated.attended, simulated.total, target);
+                const recovery = calculateRecoveryClasses(simulated.attended, simulated.total, target, unitsPerClass);
                 if (recovery) {
                     // Try to get recovery paths for timeline/specific dates
                     // We simulate the subject state with the newly skipped classes
@@ -84,21 +84,18 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                     return {
                         label: 'Warning',
                         text: `Requires ${recovery.classesNeeded} classes to recover${extraText}.`,
-                        color: COLORS.danger
+                        color: COLORS.dangerText
                     };
                 }
                 return {
                     label: 'Warning',
                     text: `Danger! You will drop below ${target}%.`,
-                    color: COLORS.danger
+                    color: COLORS.dangerText
                 };
             } else {
                 // Calculate absolute consecutive skips possible from real state
-                let maxSafeSkips = 0;
-                while (calculatePlannerPercentage(attended, total + maxSafeSkips + 1) >= target) {
-                    maxSafeSkips++;
-                }
-                const remainingSkips = maxSafeSkips - Math.abs(offset);
+                const maxSafeSkips = calculateSkipAllowance(target, attended, total, unitsPerClass).skips;
+                const remainingSkips = maxSafeSkips - activeSteps;
 
                 if (remainingSkips > 0) {
                     return {
@@ -124,7 +121,7 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 };
             } else {
                 // Per class gain at current state
-                const plusOne = simulateAttendance(simulated.attended, simulated.total, 1);
+                const plusOne = simulateAttendance(simulated.attended, simulated.total, 1, unitsPerClass);
                 const gain = (plusOne.percentage - simulated.percentage).toFixed(1);
                 return {
                     label: 'Improving',
@@ -265,8 +262,7 @@ const getStyles = () => StyleSheet.create({
     resultMain: {
         fontSize: 32,
         lineHeight: 36,
-        fontFamily: 'Outfit-ExtraBold',
-        fontWeight: '800',
+        fontWeight: '700',
     },
     resultDelta: {
         ...TYPOGRAPHY.bodySmall,
@@ -304,8 +300,7 @@ const getStyles = () => StyleSheet.create({
     stepperValue: {
         fontSize: 28,
         lineHeight: 32,
-        fontFamily: 'Outfit-ExtraBold',
-        fontWeight: '800',
+        fontWeight: '700',
         color: COLORS.textPrimary,
     },
     stepperUnit: {

@@ -1,3 +1,5 @@
+import { getClassesForDay } from '../attendance';
+
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export function toPlannerDateKey(date) {
@@ -76,23 +78,24 @@ export function getUpcomingSubjectClasses(state, subjectId, options = {}) {
         const dateKey = toPlannerDateKey(currentDate);
         if (!holidays.includes(dateKey)) {
             const dayName = DAY_NAMES[currentDate.getDay()];
-            const dayClasses = state.timetable[dayName] || [];
-            const subjectClasses = dayClasses.filter(cls => cls.subjectId === subjectId);
+            // Merged classes, not raw period slots: a 2-hour class is ONE
+            // selectable class worth 2 units. Offering its halves separately
+            // would let the planner promise a skip that cannot happen.
+            const subjectClasses = getClassesForDay(state, dayName)
+                .filter(cls => cls.subjectId === subjectId);
 
             subjectClasses.forEach(cls => {
                 if (classes.length >= maxClasses) return;
 
-                const timeSlot = (state.timeSlots || []).find(ts => ts.id === cls.slotId);
-                const units = cls.units || timeSlot?.units || 1;
                 classes.push({
                     ...cls,
                     subjectId,
-                    classKey: `${dateKey}:${cls.slotId || cls.time || classes.length}`,
+                    classKey: `${dateKey}:${cls.startTime}`,
                     date: new Date(currentDate),
                     dateKey,
                     dayName,
-                    time: timeSlot?.start || cls.time || '09:00',
-                    units,
+                    time: cls.startTime,
+                    units: cls.units || 1,
                 });
             });
         }

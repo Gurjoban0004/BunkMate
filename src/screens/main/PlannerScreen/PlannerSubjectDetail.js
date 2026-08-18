@@ -34,7 +34,8 @@ export default function PlannerSubjectDetail({ route }) {
         if (!subjectData) return null;
         if (simulationOffset === 0) return subjectData;
 
-        const sim = simulateAttendance(subjectData.attended, subjectData.total, simulationOffset);
+        // The simulator stepper counts classes, so each step costs a whole session.
+        const sim = simulateAttendance(subjectData.attended, subjectData.total, simulationOffset, subjectData.unitsPerClass);
         return {
             ...subjectData,
             attended: sim.attended,

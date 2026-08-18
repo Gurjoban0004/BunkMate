@@ -127,8 +127,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     title: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
     },
     totalBadge: {
@@ -138,8 +138,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.full,
     },
     totalText: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.primaryDark,
     },
     daysRow: {
@@ -157,14 +157,13 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.primaryLight,
     },
     dayName: {
+        fontWeight: '500',
         fontSize: 11,
         color: COLORS.textMuted,
-        fontWeight: '500',
         marginBottom: 2,
     },
     dateNum: {
         fontSize: FONT_SIZES.sm,
-        fontWeight: '600',
         color: COLORS.textPrimary,
         marginBottom: SPACING.xs,
     },
@@ -186,8 +185,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
     },
     countText: {
-        fontSize: 12,
         fontWeight: '700',
+        fontSize: 12,
     },
     countTextActive: {
         color: COLORS.textOnPrimary,
@@ -196,6 +195,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textMuted,
     },
     timeText: {
+        fontWeight: '400',
         fontSize: 9,
         color: COLORS.textMuted,
         marginTop: 3,

@@ -43,7 +43,7 @@ export default function SkipModeView({ subjects, onSubjectPress, activeDate = ne
             const status = determineStatus(s.percentage, s.target);
             if (status === 'safe') {
                 safeCount++;
-                const allowance = calculateSkipAllowance(s.target, s.attended, s.total);
+                const allowance = calculateSkipAllowance(s.target, s.attended, s.total, s.unitsPerClass);
                 totalSkippable += allowance.skips;
             } else if (status === 'warning') {
                 warningCount++;
@@ -166,20 +166,21 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     quickAnswerLabel: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.4,
         marginBottom: 2,
     },
     quickAnswerTitle: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.lg,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         marginBottom: 2,
     },
     quickAnswerSubtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
@@ -199,8 +200,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     statNum: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
 });

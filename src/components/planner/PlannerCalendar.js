@@ -229,7 +229,6 @@ const getStyles = () => StyleSheet.create({
     navBtnText: {
         fontSize: 18,
         color: COLORS.textPrimary,
-        fontWeight: '700',
     },
     monthTitle: {
         ...TYPOGRAPHY.headingSmall,
@@ -273,10 +272,10 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.primary,
     },
     dayText: {
+        fontWeight: '600',
         fontSize: 13,
         color: COLORS.textPrimary,
         lineHeight: 16,
-        fontWeight: '600',
     },
     dot: {
         width: 4,

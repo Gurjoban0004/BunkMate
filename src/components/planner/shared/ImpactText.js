@@ -42,12 +42,13 @@ const getStyles = () => StyleSheet.create({
         gap: 4, // slightly tighter gap
     },
     label: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
     percentage: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xs,
     },
     change: {
         fontSize: 11, // slightly smaller than xs

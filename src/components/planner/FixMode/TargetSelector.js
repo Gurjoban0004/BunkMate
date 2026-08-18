@@ -61,11 +61,12 @@ const getStyles = () => StyleSheet.create({
         ...SHADOWS.small,
     },
     label: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
     },
     subLabel: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
         marginTop: 2,
@@ -87,8 +88,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
     },
     buttonText: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.xl,
-        fontWeight: '600',
         color: COLORS.primaryDark,
         lineHeight: FONT_SIZES.xl + 2,
     },
@@ -100,8 +101,8 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     value: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.xl,
-        fontWeight: '800',
         color: COLORS.primary,
     },
 });

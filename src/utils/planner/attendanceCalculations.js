@@ -1,135 +1,126 @@
 /**
- * Core attendance calculation functions for the planner.
- * All functions work with simple attended/total numbers.
+ * Planner-facing wrappers over the shared attendance math.
+ *
+ * The formulas live in ../attendance.js — one implementation, one place to be
+ * wrong. Everything here works in UNITS (ERP periods) and reports classes
+ * separately, because a 2-hour class is 2 units that can only be taken or
+ * missed together.
  */
 
+import {
+    calculatePercentage,
+    maxSkippableUnits,
+    unitsToReachTarget,
+    unitsToSkippableClasses,
+    unitsToNeededClasses,
+    roundPct,
+} from '../attendance';
+
 /**
- * Calculate attendance percentage.
+ * Calculate attendance percentage (exact, unrounded — round at display).
  */
 export function calculatePlannerPercentage(attended, total) {
-    if (total === 0) return 0;
-    return (attended / total) * 100;
+    return calculatePercentage(attended, total);
 }
 
 /**
- * Calculate impact of skipping next class.
+ * Impact of skipping the next class.
+ * `units` is the size of that class: a 2-hour class adds 2 to the total.
  */
-export function calculateSkipImpact(attended, total) {
-    const current = calculatePlannerPercentage(attended, total);
-    const newTotal = total + 1;
-    const newPercentage = calculatePlannerPercentage(attended, newTotal);
+export function calculateSkipImpact(attended, total, units = 1) {
+    const step = Math.max(1, units);
+    const current = calculatePercentage(attended, total);
+    const newTotal = total + step;
+    const newPercentage = calculatePercentage(attended, newTotal);
 
     return {
         newAttended: attended,
         newTotal,
-        newPercentage: parseFloat(newPercentage.toFixed(1)),
-        change: parseFloat((newPercentage - current).toFixed(1)),
+        units: step,
+        newPercentage: roundPct(newPercentage),
+        exactPercentage: newPercentage,
+        change: roundPct(newPercentage - current),
     };
 }
 
 /**
- * Calculate impact of attending next class.
+ * Impact of attending the next class.
  */
-export function calculateAttendImpact(attended, total) {
-    const current = calculatePlannerPercentage(attended, total);
-    const newAttended = attended + 1;
-    const newTotal = total + 1;
-    const newPercentage = calculatePlannerPercentage(newAttended, newTotal);
+export function calculateAttendImpact(attended, total, units = 1) {
+    const step = Math.max(1, units);
+    const current = calculatePercentage(attended, total);
+    const newAttended = attended + step;
+    const newTotal = total + step;
+    const newPercentage = calculatePercentage(newAttended, newTotal);
 
     return {
         newAttended,
         newTotal,
-        newPercentage: parseFloat(newPercentage.toFixed(1)),
-        change: parseFloat((newPercentage - current).toFixed(1)),
+        units: step,
+        newPercentage: roundPct(newPercentage),
+        exactPercentage: newPercentage,
+        change: roundPct(newPercentage - current),
     };
 }
 
 /**
- * Simulate skip/attend N classes.
+ * Simulate attending/skipping N classes of `units` each.
  * offset > 0 = attend, offset < 0 = skip
  */
-export function simulateAttendance(attended, total, offset) {
-    let newAttended = attended;
-    let newTotal = total;
-
-    if (offset > 0) {
-        newAttended += offset;
-        newTotal += offset;
-    } else if (offset < 0) {
-        newTotal += Math.abs(offset);
-    }
+export function simulateAttendance(attended, total, offset, units = 1) {
+    const step = Math.max(1, units);
+    const delta = Math.abs(offset) * step;
+    const newAttended = offset > 0 ? attended + delta : attended;
+    const newTotal = offset === 0 ? total : total + delta;
 
     return {
         attended: newAttended,
         total: newTotal,
-        percentage: calculatePlannerPercentage(newAttended, newTotal),
+        percentage: calculatePercentage(newAttended, newTotal),
     };
 }
 
 /**
- * Calculate classes needed to reach target using closed-form formula.
- * Derivation: (attended + n) / (total + n) >= target → n >= (target*total - attended) / (1 - target)
- * Returns null only if target is 100% and student has missed at least one class.
+ * Classes needed to reach a target, attending every one of them.
+ * Returns null only when the target is unreachable (100% with a miss on record).
  */
-export function calculateRecoveryClasses(attended, total, targetPercentage) {
-    // Handle 100% target edge case
-    if (targetPercentage >= 100) {
-        if (attended < total) return null; // Impossible — already missed classes
-        return { classesNeeded: 0, resultPercentage: 100, newAttended: attended, newTotal: total };
-    }
-
+export function calculateRecoveryClasses(attended, total, targetPercentage, sessionUnits = 1) {
     if (total === 0) {
-        return { classesNeeded: 0, resultPercentage: 100, newAttended: 0, newTotal: 0 };
+        return { classesNeeded: 0, unitsNeeded: 0, resultPercentage: 100, newAttended: 0, newTotal: 0 };
     }
 
-    const currentExact = (attended * 100) / total;
-    if (currentExact >= targetPercentage) {
-        return { 
-            classesNeeded: 0, 
-            resultPercentage: parseFloat(currentExact.toFixed(1)), 
-            newAttended: attended, 
-            newTotal: total 
-        };
-    }
+    const unitsNeeded = unitsToReachTarget(attended, total, targetPercentage);
+    if (!Number.isFinite(unitsNeeded)) return null; // impossible
 
-    // Integer-friendly math to avoid floating point precision errors (e.g., ceil(2.0000000000004) -> 3)
-    // F >= (P * T - 100 * A) / (100 - P)
-    const divisor = 100 - targetPercentage;
-    const rawAttend = (targetPercentage * total - 100 * attended) / divisor;
-    const classesNeeded = Math.ceil(rawAttend - 1e-9);
-
-    const newAttended = attended + classesNeeded;
-    const newTotal = total + classesNeeded;
+    const newAttended = attended + unitsNeeded;
+    const newTotal = total + unitsNeeded;
 
     return {
-        classesNeeded,
-        resultPercentage: parseFloat(((newAttended / newTotal) * 100).toFixed(1)),
+        classesNeeded: unitsToNeededClasses(unitsNeeded, sessionUnits),
+        unitsNeeded,
+        resultPercentage: roundPct(calculatePercentage(newAttended, newTotal)),
         newAttended,
         newTotal,
     };
 }
 
 /**
- * Calculate absolute skip allowance using closed-form formula.
- * Derivation: attended / (total + n) >= target → n <= attended/target - total
+ * How much can be skipped and still hold the target.
  */
-export function calculateSkipAllowance(targetPercentage, currentAttended, currentTotal) {
-    if (targetPercentage <= 0) return { skips: Infinity, outOf: Infinity, ratio: '∞', simplified: '∞' };
-
-    let maxSafeSkips = 0;
-    const currentExact = currentTotal === 0 ? 0 : (currentAttended * 100) / currentTotal;
-
-    if (currentExact >= targetPercentage) {
-        // Integer-friendly math: S <= (100 * A - P * T) / P
-        const rawSkips = (100 * currentAttended - targetPercentage * currentTotal) / targetPercentage;
-        maxSafeSkips = Math.max(0, Math.floor(rawSkips + 1e-9));
+export function calculateSkipAllowance(targetPercentage, currentAttended, currentTotal, sessionUnits = 1) {
+    if (targetPercentage <= 0) {
+        return { skips: Infinity, units: Infinity, outOf: Infinity, ratio: '∞', simplified: '∞' };
     }
 
+    const units = maxSkippableUnits(currentAttended, currentTotal, targetPercentage);
+    const skips = unitsToSkippableClasses(units, sessionUnits);
+
     return {
-        skips: maxSafeSkips,
-        outOf: maxSafeSkips,
-        ratio: `${maxSafeSkips} consecutive`,
-        simplified: `${maxSafeSkips} consecutive`,
+        skips,
+        units,
+        outOf: skips,
+        ratio: `${skips} consecutive`,
+        simplified: `${skips} consecutive`,
     };
 }
 

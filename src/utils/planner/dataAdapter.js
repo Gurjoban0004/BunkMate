@@ -12,7 +12,7 @@
  *   { id, name, color, attended, total, percentage, target, history[], schedule }
  */
 
-import { getSubjectAttendance, calculatePercentage } from '../attendance';
+import { getSubjectAttendance, recordUnits, recordAttendedUnits } from '../attendance';
 
 const DAY_NAME_TO_NUMBER = {
     Sunday: 0,
@@ -60,12 +60,14 @@ function buildHistory(subjectId, state) {
                 }
             }
 
-            // Each unit counts as a separate entry for pattern analysis
-            const units = record.units || 1;
+            // Each unit counts as a separate entry for pattern analysis. A day
+            // can be part attended, so emit the attended ones as present.
+            const units = recordUnits(record);
+            const attended = recordAttendedUnits(record);
             for (let u = 0; u < units; u++) {
                 history.push({
                     date: dateKey + (time ? `T${time}:00` : 'T12:00:00'),
-                    status: record.status === 'present' ? 'present' : 'absent',
+                    status: u < attended ? 'present' : 'absent',
                     time,
                 });
             }
@@ -147,6 +149,10 @@ export function getSubjectPlannerData(subjectId, state) {
         total,
         percentage,
         target,
+        // Periods in one physical class — 2 for a 2-hour class. Every "how many
+        // classes" number downstream depends on this.
+        sessionUnits: stats.sessionUnits,
+        unitsPerClass: stats.sessionUnits?.max || 1,
         history,
         schedule,
         semesterEndDate: state.settings?.semesterEndDate || null,

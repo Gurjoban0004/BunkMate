@@ -6,6 +6,7 @@ import {
 
 describe('semesterWindow planner helpers', () => {
     const state = {
+        subjects: [{ id: 'math', name: 'Math', initialAttended: 0, initialTotal: 0 }],
         settings: { semesterEndDate: '2026-05-08T00:00:00.000Z' },
         holidays: ['2026-05-06'],
         timetable: {

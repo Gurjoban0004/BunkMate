@@ -3,6 +3,8 @@
  * Works with the history[] array from our data adapter.
  */
 
+import { calculatePercentage } from '../attendance';
+
 /**
  * Analyze attendance patterns for a subject.
  */
@@ -174,20 +176,21 @@ function analyzeTrends(subject) {
         new Date(a.date) - new Date(b.date)
     );
 
-    const interval = Math.floor(sorted.length / 5);
+    // Running average over the whole history, sampled at 5 points.
+    // The first sample must span a real window: a cumulative average over one
+    // class is always 0% or 100%, which used to make every subject look like a
+    // dramatic trend.
     const dataPoints = [];
+    const step = sorted.length / 5;
 
-    for (let i = 0; i < 5; i++) {
-        const index = i * interval;
-        if (index >= sorted.length) break;
-
-        const upToHere = sorted.slice(0, index + 1);
+    for (let i = 1; i <= 5; i++) {
+        const end = Math.max(1, Math.round(step * i));
+        const upToHere = sorted.slice(0, end);
         const attendedCount = upToHere.filter(e => e.status === 'present').length;
-        const totalCount = upToHere.length;
 
         dataPoints.push({
-            date: sorted[index].date,
-            percentage: (attendedCount / totalCount) * 100,
+            date: sorted[end - 1].date,
+            percentage: (attendedCount / upToHere.length) * 100,
         });
     }
 
@@ -195,14 +198,15 @@ function analyzeTrends(subject) {
     if (total > 0) {
         dataPoints.push({
             date: new Date().toISOString(),
-            percentage: (attended / total) * 100,
+            percentage: calculatePercentage(attended, total),
         });
     }
 
-    // Determine direction
-    const first = dataPoints[0]?.percentage || 0;
-    const last = dataPoints[dataPoints.length - 1]?.percentage || 0;
-    const diff = last - first;
+    // Direction compares the two halves of the history, not two running
+    // averages — a running average always drags toward the overall mean.
+    const mid = Math.floor(sorted.length / 2);
+    const rate = (slice) => (slice.length ? slice.filter(e => e.status === 'present').length / slice.length : 0);
+    const diff = (rate(sorted.slice(mid)) - rate(sorted.slice(0, mid))) * 100;
 
     let direction;
     if (diff < -3) direction = 'declining';

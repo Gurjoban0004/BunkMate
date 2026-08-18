@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../../theme/theme';
 import { useApp } from '../../../context/AppContext';
+import { calculatePercentage } from '../../../utils/attendance';
 import StatusDot from '../../../components/planner/shared/StatusDot';
 import PlannerProgressBar from '../../../components/planner/shared/PlannerProgressBar';
 import { determineStatus } from '../../../utils/planner/attendanceCalculations';
@@ -24,7 +25,7 @@ export default function NoClassesTodayView({ subjects, onSubjectPress }) {
         return {
             attended,
             total,
-            percentage: total > 0 ? (attended / total) * 100 : 0,
+            percentage: calculatePercentage(attended, total),
         };
     }, [subjects]);
 
@@ -150,11 +151,12 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     heroText: {
-        fontSize: FONT_SIZES.xl,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xl,
         color: COLORS.textPrimary,
     },
     heroSub: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginTop: SPACING.xs,
@@ -190,6 +192,7 @@ const getStyles = () => StyleSheet.create({
         gap: 4,
     },
     countText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
@@ -202,8 +205,8 @@ const getStyles = () => StyleSheet.create({
         ...SHADOWS.small,
     },
     sectionTitle: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         marginBottom: SPACING.md,
     },
@@ -227,6 +230,7 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     subjectName: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textPrimary,
         flex: 1,
@@ -239,6 +243,7 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '700',
     },
     subjectFraction: {
+        fontWeight: '400',
         fontSize: 10,
         color: COLORS.textMuted,
     },
@@ -249,8 +254,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.xs,
     },
     insightSubject: {
-        fontSize: 10,
         fontWeight: '600',
+        fontSize: 10,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.5,

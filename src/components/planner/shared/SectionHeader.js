@@ -35,8 +35,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.border,
     },
     title: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         letterSpacing: 0.5,
         textTransform: 'uppercase',

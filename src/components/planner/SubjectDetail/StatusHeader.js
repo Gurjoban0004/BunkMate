@@ -91,11 +91,10 @@ const getStyles = (accentColor) => StyleSheet.create({
         fontSize: 34,
         fontWeight: '800',
         letterSpacing: -0.5,
-        fontFamily: 'Outfit-ExtraBold',
+        fontWeight: '700',
     },
     subLabel: {
         fontSize: 10,
-        fontWeight: '700',
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -118,14 +117,14 @@ const getStyles = (accentColor) => StyleSheet.create({
         alignItems: 'center',
     },
     statLabel: {
+        fontWeight: '500',
         fontSize: 11,
         color: COLORS.textSecondary,
-        fontWeight: '500',
     },
     statValue: {
+        fontWeight: '700',
         fontSize: 12,
         color: COLORS.textPrimary,
-        fontWeight: '700',
     },
     progressBarWrapper: {
         marginTop: SPACING.md,

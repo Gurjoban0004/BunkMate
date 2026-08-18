@@ -77,8 +77,8 @@ const getStyles = () => StyleSheet.create({
         flexShrink: 0,
     },
     name: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textPrimary,
         flex: 1,
     },
@@ -88,10 +88,11 @@ const getStyles = () => StyleSheet.create({
         gap: 10,
     },
     percentage: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.sm,
-        fontWeight: '800',
     },
     nextLabel: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         minWidth: 55,

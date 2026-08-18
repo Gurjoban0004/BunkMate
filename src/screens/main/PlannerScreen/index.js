@@ -151,8 +151,8 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     headerTitle: {
+        fontWeight: '700',
         fontSize: 26,
-        fontWeight: '800',
         letterSpacing: 0,
         color: COLORS.textPrimary,
     },

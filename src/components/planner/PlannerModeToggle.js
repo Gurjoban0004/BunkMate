@@ -98,8 +98,8 @@ const getStyles = () => StyleSheet.create({
         zIndex: 1,
     },
     tabText: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
     },
     activeTabWeight: {
         fontWeight: '800',

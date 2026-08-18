@@ -9,11 +9,11 @@ import { calculateSkipImpact, calculateAttendImpact, determineStatus } from '../
  */
 export default function NextClassDecision({ subjectData }) {
     const styles = getStyles();
-    const { attended, total, target } = subjectData;
+    const { attended, total, target, unitsPerClass } = subjectData;
 
-    const skipImpact = calculateSkipImpact(attended, total);
-    const attendImpact = calculateAttendImpact(attended, total);
-    const skipStatus = determineStatus(skipImpact.newPercentage, target);
+    const skipImpact = calculateSkipImpact(attended, total, unitsPerClass);
+    const attendImpact = calculateAttendImpact(attended, total, unitsPerClass);
+    const skipStatus = determineStatus(skipImpact.exactPercentage, target);
 
     return (
         <View style={styles.container}>
@@ -29,7 +29,7 @@ export default function NextClassDecision({ subjectData }) {
                     <Text style={[styles.percentageText, { color: skipStatus === 'danger' ? COLORS.danger : COLORS.warningDark }]}>
                         {skipImpact.newPercentage.toFixed(1)}%
                     </Text>
-                    <Text style={[styles.changeText, { color: COLORS.danger }]}>
+                    <Text style={[styles.changeText, { color: COLORS.dangerText }]}>
                         {skipImpact.change}%
                     </Text>
                 </View>
@@ -48,7 +48,7 @@ export default function NextClassDecision({ subjectData }) {
                     <Text style={[styles.percentageText, { color: COLORS.successDark }]}>
                         {attendImpact.newPercentage.toFixed(1)}%
                     </Text>
-                    <Text style={[styles.changeText, { color: COLORS.success }]}>
+                    <Text style={[styles.changeText, { color: COLORS.successText }]}>
                         +{attendImpact.change}%
                     </Text>
                 </View>
@@ -81,8 +81,8 @@ const getStyles = () => StyleSheet.create({
         }),
     },
     title: {
-        fontSize: 10,
         fontWeight: '700',
+        fontSize: 10,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
@@ -105,8 +105,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 4,
     },
     impactText: {
-        fontSize: 13,
         fontWeight: '600',
+        fontSize: 13,
         color: COLORS.textSecondary,
     },
     rightStats: {
@@ -115,12 +115,12 @@ const getStyles = () => StyleSheet.create({
         gap: 6,
     },
     percentageText: {
-        fontSize: 16,
         fontWeight: '700',
+        fontSize: 16,
     },
     changeText: {
-        fontSize: 11,
         fontWeight: '700',
+        fontSize: 11,
     },
     divider: {
         height: 1,

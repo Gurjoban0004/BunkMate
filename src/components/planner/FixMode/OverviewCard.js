@@ -27,7 +27,7 @@ export default function OverviewCard({ needsWorkCount, onTrackCount, target }) {
                     </Text>
                     <View style={styles.row}>
                         <View style={styles.stat}>
-                            <Text style={[styles.statNumber, { color: COLORS.danger }]}>{needsWorkCount}</Text>
+                            <Text style={[styles.statNumber, { color: COLORS.dangerText }]}>{needsWorkCount}</Text>
                             <Text style={styles.statLabel}>Below / close</Text>
                         </View>
                         <View style={styles.divider} />
@@ -63,25 +63,26 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.success,
     },
     kicker: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         letterSpacing: 0.4,
         marginBottom: SPACING.xs,
     },
     answer: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.lg,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         marginBottom: SPACING.md,
     },
     allGoodText: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.lg,
-        fontWeight: '800',
         color: COLORS.textPrimary,
     },
     allGoodSub: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginTop: SPACING.xs,
@@ -96,10 +97,11 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     statNumber: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.xl,
-        fontWeight: '800',
     },
     statLabel: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         marginTop: 4,

@@ -4,20 +4,21 @@
  */
 
 import { calculateRecoveryClasses, calculateSkipAllowance } from './attendanceCalculations';
+import { calculatePercentage } from '../attendance';
 import { getPlannerEndDate, parseLocalDate, toPlannerDateKey } from './semesterWindow';
 
 /**
  * Generate recovery paths for a subject at multiple target levels.
  */
 export function generateRecoveryPaths(subject, targets = [75, 80, 85]) {
-    const { attended, total, target: userTarget } = subject;
-    const currentPercentage = total > 0 ? (attended / total) * 100 : 0;
+    const { attended, total, target: userTarget, unitsPerClass = 1 } = subject;
+    const currentPercentage = calculatePercentage(attended, total);
 
     // Filter targets above current percentage
     const relevantTargets = targets.filter(t => t > currentPercentage);
 
     const paths = relevantTargets.map(targetPercentage => {
-        const recovery = calculateRecoveryClasses(attended, total, targetPercentage);
+        const recovery = calculateRecoveryClasses(attended, total, targetPercentage, unitsPerClass);
 
         if (!recovery) return null; // Impossible
 
@@ -41,7 +42,8 @@ export function generateRecoveryPaths(subject, targets = [75, 80, 85]) {
         const skipAllowance = calculateSkipAllowance(
             targetPercentage,
             recovery.newAttended,
-            recovery.newTotal
+            recovery.newTotal,
+            unitsPerClass
         );
 
         return {

@@ -9,6 +9,7 @@ import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
 import { getPlannableSubjectClasses } from '../../utils/planner/semesterWindow';
 import {
     calculatePlannerPercentage,
+    calculateSkipAllowance,
     simulateAttendance,
     calculateRecoveryClasses,
 } from '../../utils/planner/attendanceCalculations';
@@ -55,18 +56,20 @@ export default function SubjectPlannerScreen({ route }) {
         );
     }
 
-    const { attended, total, target, name } = planner;
+    const { attended, total, target, name, unitsPerClass = 1 } = planner;
     const accent = mode === 'skip' ? COLORS.danger : COLORS.success;
     const accentDark = mode === 'skip' ? COLORS.dangerDark : COLORS.successDark;
 
     // ── Selection → projection ──────────────────────────────────────
-    const selectedUnits = plannable.reduce(
-        (sum, cls) => (selected[cls.classKey] ? sum + (cls.units || 1) : sum),
-        0
-    );
+    // Units drive the maths; the class count is what the sentences say.
+    const selectedClasses = plannable.filter((cls) => selected[cls.classKey]);
+    const selectedUnits = selectedClasses.reduce((sum, cls) => sum + (cls.units || 1), 0);
+    const selectedCount = selectedClasses.length;
     const offset = mode === 'skip' ? -selectedUnits : selectedUnits;
 
     const currentPercentage = calculatePlannerPercentage(attended, total);
+    // offset is already in periods (summed from the selected classes), so this
+    // one does NOT take unitsPerClass — passing it would double-count.
     const simulated = simulateAttendance(attended, total, offset);
     const delta = +(simulated.percentage - currentPercentage).toFixed(1);
     const belowTarget = simulated.percentage < target;
@@ -101,7 +104,7 @@ export default function SubjectPlannerScreen({ route }) {
     const insight = useMemo(() => {
         if (mode === 'skip') {
             if (belowTarget) {
-                const recovery = calculateRecoveryClasses(simulated.attended, simulated.total, target);
+                const recovery = calculateRecoveryClasses(simulated.attended, simulated.total, target, unitsPerClass);
                 return {
                     label: 'Below target',
                     text: recovery
@@ -111,9 +114,7 @@ export default function SubjectPlannerScreen({ route }) {
                 };
             }
             // Max additional safe skips from the *current* real state.
-            let maxSafe = 0;
-            while (calculatePlannerPercentage(attended, total + maxSafe + 1) >= target) maxSafe++;
-            const remaining = maxSafe - selectedUnits;
+            const remaining = calculateSkipAllowance(target, attended, total, unitsPerClass).skips - selectedCount;
             if (remaining > 0) {
                 return {
                     label: 'Safe',
@@ -131,20 +132,20 @@ export default function SubjectPlannerScreen({ route }) {
         if (currentPercentage < target && simulated.percentage >= target) {
             return {
                 label: 'Recovered',
-                text: `Attending these ${selectedUnits} get${selectedUnits === 1 ? 's' : ''} you back to ${target}%.`,
+                text: `Attending ${selectedCount === 1 ? 'this class gets' : `these ${selectedCount} classes get`} you back to ${target}%.`,
                 tone: 'success',
             };
         }
-        const plusOne = simulateAttendance(simulated.attended, simulated.total, 1);
+        const plusOne = simulateAttendance(simulated.attended, simulated.total, 1, unitsPerClass);
         const gain = (plusOne.percentage - simulated.percentage).toFixed(1);
         return {
             label: 'Climbing',
-            text: selectedUnits > 0
+            text: selectedCount > 0
                 ? `Each attended class adds about +${gain}% from here.`
                 : `Tap upcoming classes you plan to attend.`,
             tone: 'success',
         };
-    }, [mode, belowTarget, simulated, target, attended, total, selectedUnits, currentPercentage]);
+    }, [mode, belowTarget, simulated, target, attended, total, selectedUnits, selectedCount, currentPercentage, unitsPerClass]);
 
     const toneColor = {
         success: COLORS.successDark,
@@ -238,11 +239,11 @@ export default function SubjectPlannerScreen({ route }) {
                         <View style={[styles.targetMarker, { left: `${Math.min(100, target)}%` }]} />
                     </View>
                     <View style={styles.progressLabels}>
-                        <Text style={styles.progressLabel}>{verb} {selectedUnits} class{selectedUnits === 1 ? '' : 'es'}</Text>
+                        <Text style={styles.progressLabel}>{verb} {selectedCount} class{selectedCount === 1 ? '' : 'es'}</Text>
                         <Text style={styles.progressLabel}>Target {target}%</Text>
                     </View>
 
-                    {selectedUnits > 0 && (
+                    {selectedCount > 0 && (
                         <View style={[styles.deltaChip, { backgroundColor: delta < 0 ? COLORS.dangerLight : COLORS.successLight }]}>
                             <Text style={[styles.deltaChipText, { color: delta < 0 ? COLORS.dangerDark : COLORS.successDark }]}>
                                 {delta > 0 ? '+' : ''}{delta}% vs now
@@ -424,9 +425,9 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textSecondary,
     },
     projValue: {
+        fontWeight: '700',
         fontSize: 40,
         lineHeight: 44,
-        fontWeight: '800',
         color: COLORS.textPrimary,
     },
     projArrow: {
@@ -598,8 +599,8 @@ const getStyles = () => StyleSheet.create({
         ...TYPOGRAPHY.labelSmall,
     },
     chipX: {
-        fontSize: 14,
         fontWeight: '700',
+        fontSize: 14,
         marginTop: -1,
     },
     // Empty / error

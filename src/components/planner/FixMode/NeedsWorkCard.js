@@ -9,9 +9,9 @@ import { calculateRecoveryClasses } from '../../../utils/planner/attendanceCalcu
  * Props: subjectData, target (override), onPress
  */
 export default function NeedsWorkCard({ subjectData, target, onPress }) {
-    const { name, color, attended, total, percentage } = subjectData;
+    const { name, color, attended, total, percentage, unitsPerClass } = subjectData;
     const effectiveTarget = target || subjectData.target;
-    const recovery = calculateRecoveryClasses(attended, total, effectiveTarget);
+    const recovery = calculateRecoveryClasses(attended, total, effectiveTarget, unitsPerClass);
     const classesNeeded = recovery ? recovery.classesNeeded : '∞';
 
     return (
@@ -25,7 +25,7 @@ export default function NeedsWorkCard({ subjectData, target, onPress }) {
                     <View style={[styles.subjectAccent, { backgroundColor: color || COLORS.danger }]} />
                     <Text style={styles.name} numberOfLines={1}>{name}</Text>
                 </View>
-                <Text style={[styles.percentage, { color: COLORS.danger }]}>
+                <Text style={[styles.percentage, { color: COLORS.dangerText }]}>
                     {percentage.toFixed(1)}%
                 </Text>
             </View>
@@ -78,14 +78,14 @@ const styles = StyleSheet.create({
         flexShrink: 0,
     },
     name: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         flex: 1,
     },
     percentage: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.lg,
-        fontWeight: '800',
     },
     footer: {
         flexDirection: 'row',
@@ -94,12 +94,13 @@ const styles = StyleSheet.create({
         gap: SPACING.sm,
     },
     gap: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
-        color: COLORS.danger,
+        color: COLORS.dangerText,
     },
     needed: {
+        fontWeight: '600',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
-        fontWeight: '600',
     },
 });

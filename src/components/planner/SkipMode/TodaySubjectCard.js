@@ -6,6 +6,7 @@ import PercentageBadge from '../shared/PercentageBadge';
 import PlannerProgressBar from '../shared/PlannerProgressBar';
 import { calculateSkipImpact, determineStatus } from '../../../utils/planner/attendanceCalculations';
 import { getNextClass, formatRelativeDate } from '../../../utils/planner/scheduleProcessor';
+import { shortSubjectName } from '../../../utils/subjectName';
 
 /**
  * Expanded subject card for today's classes.
@@ -14,11 +15,11 @@ import { getNextClass, formatRelativeDate } from '../../../utils/planner/schedul
 export default function TodaySubjectCard({ subjectData, onPress }) {
     const styles = getStyles();
     const { scale, onPressIn, onPressOut } = usePressScale(0.97);
-    const { name, color, attended, total, percentage, target } = subjectData;
+    const { name, color, attended, total, percentage, target, unitsPerClass } = subjectData;
 
-    const skipImpact = calculateSkipImpact(attended, total);
+    const skipImpact = calculateSkipImpact(attended, total, unitsPerClass);
     const currentStatus = determineStatus(percentage, target);
-    const skipStatus = determineStatus(skipImpact.newPercentage, target);
+    const skipStatus = determineStatus(skipImpact.exactPercentage, target);
 
     const nextClass = getNextClass(subjectData);
 
@@ -41,7 +42,7 @@ export default function TodaySubjectCard({ subjectData, onPress }) {
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
                     <View style={[styles.colorDot, { backgroundColor: color || borderColor }]} />
-                    <Text style={styles.subjectName} numberOfLines={1}>{name}</Text>
+                    <Text style={styles.subjectName} numberOfLines={1} accessibilityLabel={name}>{shortSubjectName(name)}</Text>
                 </View>
                 <PercentageBadge percentage={percentage} status={currentStatus} size="sm" />
             </View>
@@ -105,8 +106,8 @@ const getStyles = () => StyleSheet.create({
         flexShrink: 0,
     },
     subjectName: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         flex: 1,
     },
@@ -122,8 +123,8 @@ const getStyles = () => StyleSheet.create({
         gap: 6,
     },
     impactValue: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.lg,
-        fontWeight: '800',
         color: COLORS.textPrimary,
     },
     impactArrow: {
@@ -132,15 +133,17 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '600',
     },
     impactValueNew: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.lg,
-        fontWeight: '800',
     },
     impactDetail: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
         marginLeft: 2,
     },
     nextClass: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
@@ -155,8 +158,8 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.danger,
     },
     warningText: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.dangerDark,
         flex: 1,
     },

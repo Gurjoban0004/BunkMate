@@ -1,20 +1,32 @@
-import { getSubjectAttendance, calculatePercentage, getClassesForDay, calculateSkips } from './attendance';
+import {
+    getSubjectAttendance,
+    calculatePercentage,
+    getClassesForDay,
+    maxSkippableUnits,
+    unitsToSkippableClasses,
+    unitsToNeededClasses,
+} from './attendance';
 import { getDateKey } from './dateHelpers';
 import { toPlannerDateKey } from './planner/semesterWindow';
+import { shortSubjectName } from './subjectName';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * Simulate skipping a class and return safety info.
+ * Simulate skipping a whole class and return safety info.
+ * `units` is the size of the class — a 2-hour class costs 2 units, all or nothing.
  */
 export function canSkipClass(attended, total, units, target = 75) {
-    const newTotal = total + units;
+    const cost = Math.max(1, units || 1);
+    const newTotal = total + cost;
+    const currentPercentage = calculatePercentage(attended, total);
     const newPercentage = calculatePercentage(attended, newTotal);
     return {
-        safe: newPercentage >= target,
-        currentPercentage: calculatePercentage(attended, total),
+        // Exact comparison: 74.96% is not 75%, however it rounds for display.
+        safe: maxSkippableUnits(attended, total, target) >= cost,
+        currentPercentage,
         newPercentage,
-        drop: calculatePercentage(attended, total) - newPercentage,
+        drop: currentPercentage - newPercentage,
     };
 }
 
@@ -73,160 +85,15 @@ export function getDayStatus(state, dayName, defaultThreshold = 75, dateKey = nu
 }
 
 /**
- * Get the week plan (Mon–Sat) with status for each day.
- */
-export function getWeekPlan(state, threshold = 75) {
-    const today = new Date();
-    const todayDayIndex = today.getDay(); // 0=Sun, 1=Mon...
-
-    return DAY_NAMES.map((dayName, i) => {
-        const dayIndex = i + 1; // Mon=1, Tue=2 ... Sat=6
-        const diff = dayIndex - todayDayIndex;
-        const date = new Date(today);
-        date.setDate(today.getDate() + diff);
-        const dateKey = getDateKey(date);
-
-        const dayStatus = getDayStatus(state, dayName, threshold, dateKey);
-
-        return {
-            dayName,
-            shortName: dayName.slice(0, 3),
-            dateNum: date.getDate(),
-            isToday: diff === 0,
-            isPast: diff < 0,
-            status: dayStatus.status,
-            classes: dayStatus.classes,
-            safeCount: dayStatus.safeCount,
-            riskyCount: dayStatus.riskyCount,
-        };
-    });
-}
-
-/**
- * How many consecutive classes needed to reach threshold.
- */
-export function getRecoveryNeeded(attended, total, threshold = 75) {
-    const target = threshold / 100;
-    const currentPercent = calculatePercentage(attended, total);
-
-    if (currentPercent >= threshold) return 0;
-    if (target >= 1) return attended < total ? Infinity : 0;
-
-    // (attended + X) / (total + X) = target
-    // attended + X = target * total + target * X
-    // X(1 - target) = target * total - attended
-    // X = (target * total - attended) / (1 - target)
-    const needed = Math.ceil((target * total - attended) / (1 - target));
-    return Math.max(0, needed);
-}
-
-/**
- * Get subjects sorted by urgency (priority list for recovery mode).
- */
-export function getPriorityList(state, threshold = 75) {
-    return state.subjects
-        .map((subject) => {
-            const stats = getSubjectAttendance(subject.id, state);
-            if (!stats) return null;
-
-            const buffer = stats.percentage - threshold;
-            const recoveryNeeded = getRecoveryNeeded(
-                stats.attendedUnits,
-                stats.totalUnits,
-                threshold
-            );
-
-            // Count weekly classes for this subject
-            let weeklyClasses = 0;
-            DAY_NAMES.forEach((day) => {
-                const classes = getClassesForDay(state, day);
-                classes.forEach((cls) => {
-                    if (cls.subjectId === subject.id) {
-                        weeklyClasses += cls.units;
-                    }
-                });
-            });
-
-            const weeksToRecover = weeklyClasses > 0
-                ? Math.ceil(recoveryNeeded / weeklyClasses)
-                : Infinity;
-
-            // Safe skips available (if above threshold)
-            const target = threshold / 100;
-            const safeSkips = buffer > 0
-                ? Math.max(0, Math.floor(stats.attendedUnits / target - stats.totalUnits))
-                : 0;
-
-            return {
-                ...subject,
-                ...stats,
-                buffer,
-                recoveryNeeded,
-                weeklyClasses,
-                weeksToRecover,
-                safeSkips,
-                priority: buffer < 0 ? 'critical' : buffer <= 3 ? 'warning' : 'safe',
-            };
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.buffer - b.buffer);
-}
-
-/**
- * Generate quick-win suggestions for recovery mode.
- */
-export function getQuickWins(state, threshold = 75) {
-    const priorityList = getPriorityList(state, threshold);
-    const wins = [];
-
-    // Find subjects just below threshold that need few classes
-    priorityList.forEach((subject) => {
-        if (subject.priority === 'critical' && subject.recoveryNeeded <= 4) {
-            const newPercent = calculatePercentage(
-                subject.attendedUnits + subject.recoveryNeeded,
-                subject.totalUnits + subject.recoveryNeeded
-            );
-            wins.push({
-                type: 'quick_recovery',
-                subject: subject.name,
-                subjectId: subject.id,
-                color: subject.color,
-                classesNeeded: subject.recoveryNeeded,
-                currentPercent: subject.percentage,
-                targetPercent: newPercent,
-                emoji: '🎯',
-            });
-        }
-    });
-
-    // Perfect week challenge
-    const criticalSubjects = priorityList.filter((s) => s.priority === 'critical');
-    if (criticalSubjects.length > 0 && criticalSubjects.length <= 3) {
-        const improvements = criticalSubjects.map((s) => {
-            const weeklyTotal = s.totalUnits + s.weeklyClasses;
-            const weeklyAttended = s.attendedUnits + s.weeklyClasses;
-            const newPercent = calculatePercentage(weeklyAttended, weeklyTotal);
-            return { name: s.name, current: s.percentage, after: newPercent };
-        });
-
-        wins.push({
-            type: 'perfect_week',
-            emoji: '⚡',
-            title: 'Perfect Week Challenge',
-            description: 'Attend ALL classes this week',
-            improvements,
-        });
-    }
-
-    return wins;
-}
-
-/**
  * End-game / minimum effort calculator.
  */
 export function getEndGameStats(state, threshold = 75, weeksLeft = 6) {
     if (!state?.subjects?.length) {
-        return { results: [], totalRemaining: 0, totalMustAttend: 0, totalCanSkip: 0, weeksLeft, isExactMath: false, daysLeft: null };
+        return {
+            results: [], weeksLeft, isExactMath: false, daysLeft: null,
+            totalRemaining: 0, totalMustAttend: 0, totalCanSkip: 0,
+            totalRemainingClasses: 0, totalMustAttendClasses: 0, totalCanSkipClasses: 0,
+        };
     }
 
     const hasEndDate = !!state.settings?.semesterEndDate;
@@ -248,72 +115,81 @@ export function getEndGameStats(state, threshold = 75, weeksLeft = 6) {
 
         let remainingUnits = 0;
         let weeklyUnits = 0;
+        let weeklyClasses = 0;
 
-        // Count weekly classes for this subject
+        // Count weekly load for this subject, in periods and in classes
         DAY_NAMES.forEach((day) => {
             const classes = getClassesForDay(state, day);
             classes.forEach((cls) => {
                 if (cls.subjectId === subject.id) {
                     weeklyUnits += cls.units || 1;
+                    weeklyClasses += 1;
                 }
             });
         });
 
-        if (hasEndDate && exactRemaining) {
-            remainingUnits = exactRemaining[subject.id] || 0;
-        } else {
-            remainingUnits = weeklyUnits * weeksLeft;
-        }
+        // Exact counts when the semester end date is known; otherwise project
+        // the weekly load forward.
+        const exact = hasEndDate && exactRemaining ? exactRemaining[subject.id] : null;
+        remainingUnits = exact ? exact.units : (hasEndDate ? 0 : weeklyUnits * weeksLeft);
+        const remainingClasses = exact ? exact.classes : (hasEndDate ? 0 : weeklyClasses * weeksLeft);
 
         const futureTotal = stats.totalUnits + remainingUnits;
         const targetValue = subject.target || threshold;
-        
-        let mustAttend = 0;
-        let canSkip = 0;
-        
-        // Max possible percentage if we attend every remaining class
-        const maxPossiblePct = calculatePercentage(stats.attendedUnits + remainingUnits, futureTotal);
-        
-        if (maxPossiblePct < targetValue) {
-            // Impossible to reach target
-            canSkip = 0;
-            // Calculate how many they actually needed to reach target (will be > remainingUnits)
-            mustAttend = Math.max(0, Math.ceil((targetValue / 100) * futureTotal) - stats.attendedUnits);
-        } else {
-            // It's possible. Find exact canSkip by backing down from maximum
-            while (canSkip <= remainingUnits) {
-                const simulatedAttended = stats.attendedUnits + remainingUnits - canSkip;
-                const simulatedPct = calculatePercentage(simulatedAttended, futureTotal);
-                if (simulatedPct >= targetValue) {
-                    canSkip++;
-                } else {
-                    break;
-                }
-            }
-            canSkip = Math.max(0, canSkip - 1);
-            mustAttend = remainingUnits - canSkip;
-        }
+
+        // Attend every remaining unit and you land here. Anything skipped comes
+        // straight off the numerator, since the denominator is already fixed.
+        const maxPossibleAttended = stats.attendedUnits + remainingUnits;
+
+        // Smallest attended count that still clears the target:
+        //   100 * A >= target * futureTotal
+        let minAttendedForTarget = Math.ceil((targetValue * futureTotal) / 100);
+        while (minAttendedForTarget > 0 && 100 * (minAttendedForTarget - 1) >= targetValue * futureTotal) minAttendedForTarget--;
+        while (100 * minAttendedForTarget < targetValue * futureTotal) minAttendedForTarget++;
+
+        const isPossible = maxPossibleAttended >= minAttendedForTarget;
+        // You can never skip more than what is actually left to attend.
+        const canSkip = isPossible ? Math.min(remainingUnits, maxPossibleAttended - minAttendedForTarget) : 0;
+        const mustAttend = isPossible
+            ? remainingUnits - canSkip
+            : Math.max(0, minAttendedForTarget - stats.attendedUnits);
+
+        // Same figures in whole classes — what the student actually attends or
+        // misses. A 2-hour class is one class worth 2 periods.
+        const canSkipClasses = unitsToSkippableClasses(canSkip, stats.sessionUnits);
+        const mustAttendClasses = isPossible
+            ? Math.max(0, remainingClasses - canSkipClasses)
+            // Deliberately allowed to exceed remainingClasses — that overflow is
+            // what marks the target as unreachable.
+            : unitsToNeededClasses(mustAttend, stats.sessionUnits);
 
         return {
             ...subject,
             ...stats,
             weeklyUnits,
+            weeklyClasses,
             remainingUnits,
             futureTotal,
             mustAttend,
             canSkip,
+            remainingClasses,
+            canSkipClasses,
+            mustAttendClasses,
         };
     }).filter(Boolean);
 
-    const totalRemaining = results.reduce((sum, r) => sum + r.remainingUnits, 0);
-    const totalMustAttend = results.reduce((sum, r) => sum + r.mustAttend, 0);
-    const totalCanSkip = results.reduce((sum, r) => sum + r.canSkip, 0);
+    const sum = (key) => results.reduce((acc, r) => acc + r[key], 0);
 
-    return { 
-        results, 
-        totalRemaining, 
-        totalMustAttend, 
-        totalCanSkip, 
+    return {
+        results,
+        // Periods, matching the portal's own counts
+        totalRemaining: sum('remainingUnits'),
+        totalMustAttend: sum('mustAttend'),
+        totalCanSkip: sum('canSkip'),
+        // Whole classes, for anything labelled "classes" on screen
+        totalRemainingClasses: sum('remainingClasses'),
+        totalMustAttendClasses: sum('mustAttendClasses'),
+        totalCanSkipClasses: sum('canSkipClasses'),
         weeksLeft: hasEndDate ? Math.ceil(daysLeft / 7) : weeksLeft,
         isExactMath: hasEndDate,
         daysLeft
@@ -337,44 +213,17 @@ export function getDayRecommendation(dayClasses) {
         return 'Attend all classes today — skipping is too risky.';
     }
 
-    // Build strategy
-    const safeNames = safeClasses.map((c) => c.subjectName).join(', ');
-    const riskyNames = riskyClasses.map((c) => c.subjectName).join(', ');
+    // Abbreviated, like everywhere else the subject is named in a list —
+    // "Skip PAUJ, SD" is the sentence a student would actually say.
+    const safeNames = safeClasses.map((c) => shortSubjectName(c.subjectName)).join(', ');
+    const riskyNames = riskyClasses.map((c) => shortSubjectName(c.subjectName)).join(', ');
     return `Skip ${safeNames}. Must attend ${riskyNames}.`;
 }
 
 /**
- * Get recovery progress steps for visualisation.
- */
-export function getRecoverySteps(attended, total, needed, threshold = 75) {
-    const steps = [];
-    const stepSize = Math.max(1, Math.ceil(needed / 4));
-
-    for (let i = 0; i <= needed; i += stepSize) {
-        const current = i === 0 ? 0 : i;
-        const pct = calculatePercentage(attended + current, total + current);
-        steps.push({
-            classesAttended: current,
-            percentage: pct,
-            reachedTarget: pct >= threshold,
-        });
-    }
-
-    // Ensure the final step is included
-    if (steps.length === 0 || steps[steps.length - 1].classesAttended !== needed) {
-        const pct = calculatePercentage(attended + needed, total + needed);
-        steps.push({
-            classesAttended: needed,
-            percentage: pct,
-            reachedTarget: pct >= threshold,
-        });
-    }
-
-    return steps;
-}
-
-/**
- * Calculates exact remaining classes until the semester end date
+ * Exact remaining load per subject until the semester end date.
+ * Returns { [subjectId]: { units, classes } } — periods and whole classes,
+ * counted off the real merged timetable rather than estimated from an average.
  */
 export function getRemainingClassesUntilDate(state, endDateStr) {
     if (!endDateStr || !state?.timetable) return {};
@@ -402,18 +251,18 @@ export function getRemainingClassesUntilDate(state, endDateStr) {
     currentDate.setDate(currentDate.getDate() + 1); // Start from tomorrow
 
     let safeGuard = 0;
-    while (currentDate <= endDate && safeGuard < 200) {
+    while (currentDate <= endDate && safeGuard < 400) {
         const dateKey = toPlannerDateKey(currentDate);
         const isHoliday = holidays.includes(dateKey);
         
         if (!isHoliday) {
             const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-            const classes = (state.timetable[dayName]) || [];
-            
-            classes.forEach(cls => {
+            // Merged classes: consecutive periods of one subject are one class.
+            getClassesForDay(state, dayName).forEach(cls => {
                 const subId = cls.subjectId;
-                if (!subjectRemaining[subId]) subjectRemaining[subId] = 0;
-                subjectRemaining[subId] += cls.units || 1;
+                if (!subjectRemaining[subId]) subjectRemaining[subId] = { units: 0, classes: 0 };
+                subjectRemaining[subId].units += cls.units || 1;
+                subjectRemaining[subId].classes += 1;
             });
         }
         
@@ -431,70 +280,52 @@ export function getRemainingClassesUntilDate(state, endDateStr) {
 export function findLongWeekends(state, defaultThreshold = 75) {
     if (!state?.timetable || !state?.subjects?.length) return [];
 
+    /**
+     * Can the whole day be skipped without any subject dropping below target?
+     * Works on merged classes so a 2-hour class costs its full 2 units.
+     */
+    const dayIsFullySkippable = (dayName) => {
+        const classes = getClassesForDay(state, dayName);
+        if (classes.length === 0) return null;
+
+        const unitsBySubject = {};
+        classes.forEach((cls) => {
+            unitsBySubject[cls.subjectId] = (unitsBySubject[cls.subjectId] || 0) + cls.units;
+        });
+
+        for (const subId of Object.keys(unitsBySubject)) {
+            const stats = getSubjectAttendance(subId, state);
+            if (!stats) return null;
+            const tgt = state.subjects.find((s) => s.id === subId)?.target || defaultThreshold;
+            if (maxSkippableUnits(stats.attendedUnits, stats.totalUnits, tgt) < unitsBySubject[subId]) {
+                return null;
+            }
+        }
+
+        return classes.length;
+    };
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weekends = [];
-    
+
     // Look ahead 4 weeks
     for (let w = 0; w < 4; w++) {
         // Find next Friday
         const friday = new Date(today);
         friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7) + (w * 7));
         if (friday < today) friday.setDate(friday.getDate() + 7);
-        
+
         const monday = new Date(friday);
         monday.setDate(monday.getDate() + 3); // The following Monday
-        
-        // Evaluate Friday
-        const friDayName = 'Friday';
-        const friClasses = state.timetable[friDayName] || [];
-        if (friClasses.length > 0) {
-            // Aggregate units by subject for Friday
-            const subjectUnitsFri = {};
-            friClasses.forEach(c => {
-                subjectUnitsFri[c.subjectId] = (subjectUnitsFri[c.subjectId] || 0) + (c.units || 1);
-            });
-            
-            let safeToSkipAllFri = true;
-            for (const subId in subjectUnitsFri) {
-                const stats = getSubjectAttendance(subId, state);
-                const tgt = state.subjects.find(s => s.id === subId)?.target || defaultThreshold;
-                const skipInfo = stats ? calculateSkips(stats.attendedUnits, stats.totalUnits, tgt) : null;
-                if (!skipInfo || !Number.isFinite(skipInfo.count) || skipInfo.count < subjectUnitsFri[subId]) {
-                    safeToSkipAllFri = false;
-                    break;
-                }
-            }
-            if (safeToSkipAllFri) {
-                weekends.push({ date: new Date(friday), type: 'Friday', classesToSkip: friClasses.length });
-            }
-        }
-        
-        // Evaluate Monday
-        const monDayName = 'Monday';
-        const monClasses = state.timetable[monDayName] || [];
-        if (monClasses.length > 0) {
-            const subjectUnitsMon = {};
-            monClasses.forEach(c => {
-                subjectUnitsMon[c.subjectId] = (subjectUnitsMon[c.subjectId] || 0) + (c.units || 1);
-            });
-            
-            let safeToSkipAllMon = true;
-            for (const subId in subjectUnitsMon) {
-                const stats = getSubjectAttendance(subId, state);
-                const tgt = state.subjects.find(s => s.id === subId)?.target || defaultThreshold;
-                const skipInfo = stats ? calculateSkips(stats.attendedUnits, stats.totalUnits, tgt) : null;
-                if (!skipInfo || !Number.isFinite(skipInfo.count) || skipInfo.count < subjectUnitsMon[subId]) {
-                    safeToSkipAllMon = false;
-                    break;
-                }
-            }
-            if (safeToSkipAllMon) {
-                weekends.push({ date: new Date(monday), type: 'Monday', classesToSkip: monClasses.length });
-            }
-        }
+
+        const friCount = dayIsFullySkippable('Friday');
+        if (friCount) weekends.push({ date: new Date(friday), type: 'Friday', classesToSkip: friCount });
+
+        const monCount = dayIsFullySkippable('Monday');
+        if (monCount) weekends.push({ date: new Date(monday), type: 'Monday', classesToSkip: monCount });
     }
-    
+
     // Sort by date closest to today
     weekends.sort((a, b) => a.date - b.date);
     return weekends;

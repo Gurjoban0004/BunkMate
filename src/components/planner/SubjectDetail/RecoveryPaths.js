@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../../theme/theme';
 import { generateRecoveryPaths, generateRewards } from '../../../utils/planner/recoveryPlanner';
 
-export default function RecoveryPaths({ subjectData }) {
+export default function RecoveryPaths({ subjectData, flat = false }) {
     const styles = getStyles();
     const [expanded, setExpanded] = useState(false);
 
@@ -17,7 +17,7 @@ export default function RecoveryPaths({ subjectData }) {
     const toggle = () => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setExpanded(!expanded); };
 
     return (
-        <TouchableOpacity style={styles.strip} onPress={toggle} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.strip, flat && styles.stripFlat]} onPress={toggle} activeOpacity={0.7}>
             <View style={styles.stripRow}>
                 <Text style={[styles.stripText, { color: COLORS.warningDark }]}>
                     Attend {firstPath.classesNeeded} more{firstPath.timeline ? ` (~${firstPath.timeline.days}d)` : ''} → {firstPath.targetPercentage}%
@@ -62,6 +62,18 @@ const getStyles = () => StyleSheet.create({
         borderWidth: 1,
         borderColor: COLORS.border,
         ...SHADOWS.small,
+    },
+    // Nested inside another card (SubjectSummaryCard) — a bordered box inside a
+    // bordered box is the thing we set out to remove.
+    stripFlat: {
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        padding: 0,
+        marginBottom: 0,
+        marginTop: SPACING.md,
+        shadowOpacity: 0,
+        elevation: 0,
+        boxShadow: 'none',
     },
     stripRow: {
         flexDirection: 'row',

@@ -9,9 +9,9 @@ import { calculateSkipAllowance } from '../../../utils/planner/attendanceCalcula
  * Props: subjectData, target (override), onPress
  */
 export default function OnTrackCard({ subjectData, target, onPress }) {
-    const { name, color, attended, total, percentage } = subjectData;
+    const { name, color, attended, total, percentage, unitsPerClass } = subjectData;
     const effectiveTarget = target || subjectData.target;
-    const skipAllowance = calculateSkipAllowance(effectiveTarget, attended, total);
+    const skipAllowance = calculateSkipAllowance(effectiveTarget, attended, total, unitsPerClass);
 
     return (
         <TouchableOpacity
@@ -75,8 +75,8 @@ const styles = StyleSheet.create({
         flexShrink: 0,
     },
     name: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         flex: 1,
     },
@@ -84,10 +84,11 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     percentage: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.md,
-        fontWeight: '800',
     },
     skipInfo: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         marginTop: 2,

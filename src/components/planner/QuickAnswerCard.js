@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutAnimation } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { getDayRecommendation } from '../../utils/planner.js';
+import { shortSubjectName } from '../../utils/subjectName';
 
 const QuickAnswerCard = ({ dayStatus, compact = false }) => {
     const [expanded, setExpanded] = useState(false);
@@ -120,8 +121,9 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                     <View style={styles.classBreakdown}>
                         {classes.map((cls) => (
                             <View key={cls.subjectId} style={styles.classRow}>
-                                <View style={[styles.classDot, { backgroundColor: cls.safe ? COLORS.success : cls.newPercentage >= 73 ? COLORS.warning : COLORS.danger }]} />
-                                <Text style={styles.className}>{cls.subjectName}</Text>
+                                <Text style={styles.className} numberOfLines={1} accessibilityLabel={cls.subjectName}>
+                                    {shortSubjectName(cls.subjectName)}
+                                </Text>
                                 <Text style={styles.classTime}>
                                     {cls.startTime}–{cls.endTime}
                                 </Text>
@@ -170,14 +172,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     compactLabel: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
     },
     compactAnswer: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
     },
     tapHint: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         marginTop: 4,
@@ -191,8 +194,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     question: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         marginBottom: SPACING.sm,
     },
@@ -200,10 +203,11 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.xs,
     },
     answerTitle: {
-        fontSize: FONT_SIZES.lg,
         fontWeight: '700',
+        fontSize: FONT_SIZES.lg,
     },
     answerSubtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         marginBottom: SPACING.md,
     },
@@ -217,26 +221,21 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: 'rgba(0,0,0,0.06)',
     },
-    classDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginRight: SPACING.sm,
-    },
     className: {
         flex: 1,
-        fontSize: FONT_SIZES.sm,
         fontWeight: '500',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textPrimary,
     },
     classTime: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         marginRight: SPACING.sm,
     },
     classImpact: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
+        fontSize: FONT_SIZES.xs,
     },
     recommendationBox: {
         marginTop: SPACING.md,
@@ -247,12 +246,13 @@ const styles = StyleSheet.create({
         borderColor: COLORS.border,
     },
     recommendationLabel: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.textPrimary,
         marginBottom: 4,
     },
     recommendationText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
     },
@@ -263,9 +263,9 @@ const styles = StyleSheet.create({
         marginTop: SPACING.md,
     },
     collapseText: {
+        fontWeight: '500',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textMuted,
-        fontWeight: '500',
     },
 });
 

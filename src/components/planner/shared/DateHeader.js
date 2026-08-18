@@ -24,8 +24,8 @@ export default function DateHeader({ date }) {
 
 const getStyles = () => StyleSheet.create({
     date: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '500',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textSecondary,
         paddingHorizontal: SPACING.lg,
         marginBottom: SPACING.cardGap,

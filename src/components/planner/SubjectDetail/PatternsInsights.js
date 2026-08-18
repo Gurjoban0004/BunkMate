@@ -141,8 +141,8 @@ const getStyles = () => StyleSheet.create({
         ...SHADOWS.small,
     },
     title: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         marginBottom: SPACING.md,
     },
@@ -169,8 +169,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     sectionLabel: {
-        fontSize: 10,
         fontWeight: '600',
+        fontSize: 10,
         color: COLORS.textMuted,
         textTransform: 'uppercase',
         marginBottom: SPACING.sm,
@@ -187,6 +187,7 @@ const getStyles = () => StyleSheet.create({
         width: '45%',
     },
     dayName: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
         width: 32,
@@ -203,8 +204,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 3,
     },
     dayPercentage: {
-        fontSize: 11,
         fontWeight: '700',
+        fontSize: 11,
         color: COLORS.textPrimary,
         width: 32,
         textAlign: 'right',
@@ -213,8 +214,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     streakText: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
     },
     last5Section: {
         marginTop: SPACING.sm,
@@ -234,7 +235,7 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     trendText: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
     },
 });
