@@ -28,8 +28,8 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.primary,
     },
     title: {
+        fontWeight: '700',
         fontSize: 16,
-        fontWeight: '800',
         color: COLORS.primary,
         letterSpacing: -0.3,
     },

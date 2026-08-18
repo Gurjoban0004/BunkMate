@@ -6,8 +6,9 @@ import { db } from '../../config/firebase';
 import { useApp } from '../../context/AppContext';
 import { getCurrentSemesterId } from '../../utils/firebaseHelpers';
 import { Typography } from '../common/Typography';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../theme/theme';
+import { SPACING, BORDER_RADIUS } from '../../theme/theme';
 import { logger } from '../../utils/logger';
+import { useBannerSlot, BANNER_PRIORITY } from './BannerSlot';
 
 export default function DeletionWarningBanner() {
   const [warningData, setWarningData] = useState(null);
@@ -40,7 +41,8 @@ export default function DeletionWarningBanner() {
     fetchWarningStatus();
   }, [userId]);
 
-  if (!warningData) return null;
+  const mayRender = useBannerSlot(BANNER_PRIORITY.deletion, !!warningData);
+  if (!mayRender) return null;
 
   return (
     <TouchableOpacity 

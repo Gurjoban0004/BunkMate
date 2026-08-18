@@ -25,12 +25,13 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.md,
     },
     title: {
-        fontSize: FONT_SIZES.xl,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xl,
         color: COLORS.textPrimary,
         marginBottom: SPACING.xs,
     },
     subtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.md,
         color: COLORS.textSecondary,
         textAlign: 'center',

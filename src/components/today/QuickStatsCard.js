@@ -55,6 +55,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textPrimary,
     },
     statLabel: {
+        fontWeight: '400',
         fontSize: 11,
         color: COLORS.textSecondary,
         marginTop: 2,
@@ -68,10 +69,10 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     portalStatus: {
+        fontWeight: '700',
         fontSize: 12,
         lineHeight: 15,
         color: COLORS.textSecondary,
-        fontWeight: '700',
         textAlign: 'center',
     },
 });

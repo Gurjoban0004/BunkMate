@@ -11,7 +11,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY, SHADOWS } from '../../theme/theme';
-import { getSubjectAttendance, getClassesForDay } from '../../utils/attendance';
+import { getSubjectAttendance, getClassesForDay, calculatePercentage, roundPct } from '../../utils/attendance';
 import { getTodayKey } from '../../utils/dateHelpers';
 
 export default function WeekInReviewCard({ state, onViewInsights }) {
@@ -64,7 +64,7 @@ export default function WeekInReviewCard({ state, onViewInsights }) {
             .map(([sid, stats]) => {
                 const sub = subjects.find(s => s.id === sid);
                 const total = stats.present + stats.absent;
-                const pct = total > 0 ? Math.round((stats.present / total) * 1000) / 10 : 0;
+                const pct = roundPct(calculatePercentage(stats.present, total));
                 return { name: sub?.name || 'Unknown', color: sub?.color || COLORS.primary, pct, total };
             })
             .filter(s => s.total >= 1)
@@ -129,11 +129,11 @@ export default function WeekInReviewCard({ state, onViewInsights }) {
                 </View>
                 <View style={styles.statBoxCard}>
                     <Text style={styles.statLabel}>Present</Text>
-                    <Text style={[styles.statNumBig, { color: COLORS.success }]}>{review.totalPresent}</Text>
+                    <Text style={[styles.statNumBig, { color: COLORS.successText }]}>{review.totalPresent}</Text>
                 </View>
                 <View style={styles.statBoxCard}>
                     <Text style={styles.statLabel}>Missed</Text>
-                    <Text style={[styles.statNumBig, { color: COLORS.danger }]}>{review.totalAbsent}</Text>
+                    <Text style={[styles.statNumBig, { color: COLORS.dangerText }]}>{review.totalAbsent}</Text>
                 </View>
             </View>
 
@@ -156,7 +156,7 @@ export default function WeekInReviewCard({ state, onViewInsights }) {
                         }]} />
                         <Text style={styles.highlightLabel}>Weak  </Text>
                         <Text style={[styles.highlightValue,
-                            review.weakest.pct < (state.settings?.dangerThreshold || 75) && { color: COLORS.danger }
+                            review.weakest.pct < (state.settings?.dangerThreshold || 75) && { color: COLORS.dangerText }
                         ]} numberOfLines={1}>
                             {review.weakest.name} — {review.weakest.pct}%
                         </Text>
@@ -214,8 +214,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.full,
     },
     viewAllText: {
-        fontSize: 12,
         fontWeight: '600',
+        fontSize: 12,
         color: COLORS.primary,
     },
     statsGrid: {
@@ -232,8 +232,8 @@ const getStyles = () => StyleSheet.create({
         justifyContent: 'center',
     },
     statNumBig: {
+        fontWeight: '700',
         fontSize: 24,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
         marginTop: 4,
@@ -265,6 +265,7 @@ const getStyles = () => StyleSheet.create({
         width: 36,
     },
     highlightValue: {
+        fontWeight: '400',
         fontSize: 13,
         color: COLORS.textSecondary,
         flex: 1,
@@ -276,8 +277,8 @@ const getStyles = () => StyleSheet.create({
         borderTopColor: COLORS.borderSubtle,
     },
     mondayTitle: {
-        fontSize: 13,
         fontWeight: '600',
+        fontSize: 13,
         color: COLORS.textPrimary,
         marginBottom: 2,
     },

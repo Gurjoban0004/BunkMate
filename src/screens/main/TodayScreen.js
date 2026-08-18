@@ -10,7 +10,7 @@ import {
     TouchableOpacity,
     Platform,
 } from 'react-native';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
 import { getTodayClasses, getCurrentClassIndex } from '../../utils/attendance';
@@ -18,7 +18,6 @@ import { calculateFreshness } from '../../utils/erpFreshness';
 import { getUnmarkedCount } from '../../utils/backlog';
 import { getTodayKey, getTodayDayName } from '../../utils/dateHelpers';
 import { getDayStatus } from '../../utils/planner.js';
-import { generateWeeklyReport } from '../../utils/insights';
 
 // Components
 import TodayScheduleBar from '../../components/today/TodayScheduleBar';
@@ -27,12 +26,11 @@ import ClassCard from '../../components/today/ClassCard';
 import BacklogBanner from '../../components/today/BacklogBanner';
 import EmptyDay from '../../components/today/EmptyDay';
 import HolidayCard from '../../components/today/HolidayCard';
-import AddExtraClassButton from '../../components/today/AddExtraClassButton';
 import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
 import AnnouncementBanner from '../../components/today/AnnouncementBanner';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
-import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
+import { BannerHost } from '../../components/today/BannerSlot';
 import ProfileAvatar from '../../components/common/ProfileAvatar';
 import {
     DisplayMedium,
@@ -99,12 +97,6 @@ const TodayScreen = ({ navigation }) => {
     const todayDayName = getTodayDayName(state.devDate);
     const dangerThreshold = state.settings?.dangerThreshold || 75;
     const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, dangerThreshold), [state, todayDayName, dangerThreshold]);
-
-    // Weekly Report — show Fri through Mon
-    const weeklyReport = useMemo(() => generateWeeklyReport(state), [state.subjects, state.attendanceRecords, state.holidays, state.devDate]);
-    const [showWeeklyReport, setShowWeeklyReport] = useState(true);
-    const dayOfWeek = today.getDay();
-    const showWeeklyReportToday = showWeeklyReport && (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0 || dayOfWeek === 1);
 
     const nextClassInfo = useMemo(() => {
         if (!todayClasses || todayClasses.length === 0) return null;
@@ -288,17 +280,22 @@ const TodayScreen = ({ navigation }) => {
                     </View>
                 </View>
 
-                {/* Deletion Warning Banner */}
-                <DeletionWarningBanner />
-
-                {/* Global Admin Announcements */}
-                <AnnouncementBanner />
-
-                {/* ERP Welcome Card — shown once after first sync */}
-                <ErpWelcomeCard
-                    state={state}
-                    onDismiss={handleDismissWelcomeCard}
-                />
+                {/* At most one of these renders at a time — see BannerSlot.
+                   Backlog sits inside the host too, further down. */}
+                <BannerHost>
+                    <DeletionWarningBanner />
+                    <AnnouncementBanner />
+                    <ErpWelcomeCard
+                        state={state}
+                        onDismiss={handleDismissWelcomeCard}
+                    />
+                    {unmarkedCount > 0 && (
+                        <BacklogBanner
+                            count={unmarkedCount}
+                            onPress={handleBacklogPress}
+                        />
+                    )}
+                </BannerHost>
 
                 {/* Today's Schedule Bar */}
                 <TodayScheduleBar
@@ -317,21 +314,11 @@ const TodayScreen = ({ navigation }) => {
                     />
                 )}
 
-                {/* Weekly Report */}
-                {showWeeklyReportToday && (
-                    <WeeklyReportCard
-                        report={weeklyReport}
-                        onDismiss={() => setShowWeeklyReport(false)}
-                    />
-                )}
-
-                {/* Backlog — shown below insights, not leading the screen */}
-                {unmarkedCount > 0 && (
-                    <BacklogBanner
-                        count={unmarkedCount}
-                        onPress={handleBacklogPress}
-                    />
-                )}
+                {/* The weekly report lives in Insights now. It was a full-height
+                   retrospective interrupting the one screen you open to find out
+                   what's happening in the next hour — and it only appeared
+                   Fri-Mon, so Today had two different layouts depending on the
+                   day. Insights is a whole tab that was doing less work. */}
 
                 {/* Holiday State */}
                 {isHoliday ? (
@@ -373,12 +360,15 @@ const TodayScreen = ({ navigation }) => {
                     </>
                 ) : (
                     <>
-                        {/* Classes Section */}
+                        {/* Classes Section — occasional actions live in the
+                           overflow menu, including Add Extra Class, which used
+                           to be an orphaned button at the end of the scroll. */}
                         <SectionHeader
                             title="Today's Classes"
                             classCount={classCount}
                             onHolidayPress={handleHolidayPress}
                             onCancelClassPress={handleCancelClassPress}
+                            onAddExtraPress={handleExtraClass}
                         />
 
                         {/* Empty State */}
@@ -440,10 +430,6 @@ const TodayScreen = ({ navigation }) => {
                             </>
                         )}
 
-                        {/* Add Extra Class */}
-                        <AddExtraClassButton
-                            onPress={handleExtraClass}
-                        />
                     </>
                 )}
 
@@ -565,26 +551,24 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.success,
     },
     setupDayTitle: {
+        fontWeight: '700',
         fontSize: 14,
-        fontWeight: '800',
         color: COLORS.successDark,
         marginBottom: SPACING.xs,
     },
     setupDayText: {
         fontSize: 12,
-        fontWeight: '500',
         color: COLORS.textSecondary,
         lineHeight: 18,
     },
     greeting: {
+        fontWeight: '700',
         fontSize: 22,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
     },
     date: {
         fontSize: 12,
-        fontWeight: '500',
         color: COLORS.textSecondary,
         marginTop: 4,
         letterSpacing: 0.1,
@@ -593,8 +577,8 @@ const getStyles = () => StyleSheet.create({
         marginTop: SPACING.sm,
     },
     sectionLabel: {
-        fontSize: 9,
         fontWeight: '700',
+        fontSize: 9,
         color: COLORS.textMuted,
         letterSpacing: 0.5,
         textTransform: 'uppercase',
@@ -611,8 +595,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     nowBadgeText: {
-        fontSize: 9,
         fontWeight: '700',
+        fontSize: 9,
         color: COLORS.textOnPrimary,
         letterSpacing: 0.5,
         textTransform: 'uppercase',
@@ -628,8 +612,8 @@ const getStyles = () => StyleSheet.create({
         gap: SPACING.sm,
     },
     settingsFooterText: {
-        fontSize: 12,
         fontWeight: '600',
+        fontSize: 12,
         color: COLORS.textMuted,
         letterSpacing: 0.5,
     },
@@ -651,8 +635,8 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.border,
     },
     modalTitle: {
+        fontWeight: '700',
         fontSize: 16,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         textAlign: 'center',
         letterSpacing: -0.3,
@@ -683,9 +667,9 @@ const getStyles = () => StyleSheet.create({
         marginRight: SPACING.sm,
     },
     modalItemText: {
+        fontWeight: '500',
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
-        fontWeight: '500',
     },
     modalCancel: {
         marginTop: SPACING.md,
@@ -693,9 +677,9 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     modalCancelText: {
+        fontWeight: '600',
         fontSize: FONT_SIZES.md,
         color: COLORS.textSecondary,
-        fontWeight: '600',
     },
 });
 

@@ -2,30 +2,50 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { parseTimeToMinutes } from '../../utils/dateHelpers';
+import { shortSubjectName } from '../../utils/subjectName';
+
+// A block on a 4-class day is ~80px wide at micro size, which fits about this
+// many uppercase characters. Anything longer abbreviates rather than ellipses.
+const BLOCK_NAME_BUDGET = 8;
+
+/**
+ * Where "now" sits on the track, as a 0–100 percentage — or null when the day
+ * hasn't started or is over.
+ *
+ * Blocks are evenly spaced rather than time-scaled, so the marker is placed in
+ * that same even space: which class we're in and how far through it, not what
+ * fraction of the clock day has elapsed. A break parks the marker on the
+ * boundary between the classes it separates.
+ */
+export const markerPercent = (classes, now) => {
+    const n = classes?.length || 0;
+    if (n === 0) return null;
+
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    if (nowMinutes < parseTimeToMinutes(classes[0].startTime)) return null;
+    if (nowMinutes > parseTimeToMinutes(classes[n - 1].endTime)) return null;
+
+    for (let i = 0; i < n; i++) {
+        const start = parseTimeToMinutes(classes[i].startTime);
+        const end = parseTimeToMinutes(classes[i].endTime);
+        if (nowMinutes < start) return (i / n) * 100;   // in the break before class i
+        if (nowMinutes <= end) {
+            const within = end > start ? (nowMinutes - start) / (end - start) : 0;
+            return ((i + within) / n) * 100;
+        }
+    }
+    return null;
+};
 
 const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTime, nextClassInfo }) => {
     const styles = getStyles();
 
-    const timeMarkerPosition = useMemo(() => {
-        if (!todayClasses || todayClasses.length === 0) return null;
-
-        const firstStart = parseTimeToMinutes(todayClasses[0].startTime);
-        const lastEnd = parseTimeToMinutes(todayClasses[todayClasses.length - 1].endTime);
-        const totalSpan = lastEnd - firstStart;
-        if (totalSpan <= 0) return null;
-
-        const now = currentTime || new Date();
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-        if (nowMinutes < firstStart || nowMinutes > lastEnd) return null;
-        return ((nowMinutes - firstStart) / totalSpan) * 100;
-    }, [todayClasses, currentTime]);
+    const timeMarkerPosition = useMemo(
+        () => markerPercent(todayClasses, currentTime || new Date()),
+        [todayClasses, currentTime],
+    );
 
     if (!todayClasses || todayClasses.length === 0) return null;
-
-    const firstStart = parseTimeToMinutes(todayClasses[0].startTime);
-    const lastEnd = parseTimeToMinutes(todayClasses[todayClasses.length - 1].endTime);
-    const totalSpan = lastEnd - firstStart;
 
     return (
         <View style={styles.container}>
@@ -37,12 +57,10 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
             </View>
 
             <View style={styles.track}>
+                {/* Even blocks, not time-scaled. Scaling by duration left a dead
+                    slot wherever the timetable has a break, which read as a
+                    rendering gap rather than as free time. */}
                 {todayClasses.map((c, idx) => {
-                    const startMin = parseTimeToMinutes(c.startTime);
-                    const endMin = parseTimeToMinutes(c.endTime);
-                    const leftPct = totalSpan > 0 ? ((startMin - firstStart) / totalSpan) * 100 : (idx / todayClasses.length) * 100;
-                    const widthPct = totalSpan > 0 ? ((endMin - startMin) / totalSpan) * 100 : 100 / todayClasses.length;
-
                     const dayRecords = attendanceRecords?.[todayKey] || {};
                     const record = dayRecords[c.subjectId];
                     const status = record?.status;
@@ -53,19 +71,12 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
                             ? COLORS.dangerLight
                             : COLORS.inputBackground;
 
-                    // Use the first meaningful two words where space allows. The track is
-                    // positioned by time, so gaps remain visible instead of crushing every
-                    // class against the left edge.
-                    const shortName = c.subjectName.split(' ').slice(0, 2).join(' ');
-
                     return (
                         <View
                             key={`${c.subjectId}-${idx}`}
                             style={[
                                 styles.classBlock,
                                 {
-                                    left: `${leftPct}%`,
-                                    width: `${widthPct}%`,
                                     backgroundColor: blockBg,
                                     borderTopColor: c.color || COLORS.textMuted,
                                 },
@@ -78,7 +89,7 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
                                 ]}
                                 numberOfLines={1}
                             >
-                                {shortName}
+                                {shortSubjectName(c.subjectName, BLOCK_NAME_BUDGET)}
                             </Text>
                         </View>
                     );
@@ -120,18 +131,16 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textSecondary,
     },
     track: {
+        flexDirection: 'row',
         height: 36,
         width: '100%',
-        backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
         overflow: 'hidden',
         position: 'relative',
+        gap: 2,
     },
     classBlock: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        height: '100%',
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         borderTopWidth: 3,

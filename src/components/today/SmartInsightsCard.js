@@ -73,8 +73,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     title: {
-        fontSize: 14,
         fontWeight: '700',
+        fontSize: 14,
         color: COLORS.textPrimary,
     },
     viewAllBtn: {
@@ -84,8 +84,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.full,
     },
     viewAllText: {
-        fontSize: 11,
         fontWeight: '600',
+        fontSize: 11,
         color: COLORS.primary,
     },
     insightRowNew: {
@@ -106,8 +106,8 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     insightTextNew: {
-        fontSize: 13,
         fontWeight: '600',
+        fontSize: 13,
         lineHeight: 18,
     },
 });

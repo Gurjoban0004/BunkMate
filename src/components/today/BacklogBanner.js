@@ -1,9 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { useBannerSlot, BANNER_PRIORITY } from './BannerSlot';
 
 const BacklogBanner = ({ count, onPress }) => {
     const styles = getStyles();
+    const mayRender = useBannerSlot(BANNER_PRIORITY.backlog, count > 0);
+    if (!mayRender) return null;
+
     return (
         <TouchableOpacity style={styles.container} onPress={onPress}>
             <View style={styles.content}>
@@ -51,13 +55,14 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     title: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '600',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.warningDark,
     },
     subtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
-        color: COLORS.warning,
+        color: COLORS.warningText,
         marginTop: 2,
     },
     button: {
@@ -67,8 +72,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.sm,
     },
     buttonText: {
-        fontSize: FONT_SIZES.xs,
         fontWeight: '600',
+        fontSize: FONT_SIZES.xs,
         color: COLORS.textOnPrimary,
     },
 });

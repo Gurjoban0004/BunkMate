@@ -12,6 +12,7 @@ import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../../theme/theme';
 import { getSubjectAttendance } from '../../utils/attendance';
+import { useBannerSlot, BANNER_PRIORITY } from './BannerSlot';
 
 export default function ErpWelcomeCard({ state, onDismiss }) {
     const styles = getStyles();
@@ -69,8 +70,10 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
         return () => clearTimeout(timer);
     }, [shouldShow, onDismiss]);
 
-    // Don't render if not applicable
-    if (!shouldShow) return null;
+    // Lowest-priority banner: a one-time welcome can always wait behind a
+    // deletion warning, an admin notice, or unmarked classes.
+    const mayRender = useBannerSlot(BANNER_PRIORITY.erpWelcome, shouldShow);
+    if (!mayRender) return null;
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
@@ -112,7 +115,7 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
                     <>
                         <View style={styles.statDivider} />
                         <View style={styles.statBox}>
-                            <Text style={[styles.statNum, { color: COLORS.danger }]}>{insights.atRisk.length}</Text>
+                            <Text style={[styles.statNum, { color: COLORS.dangerText }]}>{insights.atRisk.length}</Text>
                             <Text style={styles.statLabel}>At risk</Text>
                         </View>
                     </>
@@ -136,7 +139,7 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
                             backgroundColor: insights.weakest.percentage < (state.settings?.dangerThreshold || 75)
                                 ? COLORS.danger : insights.weakest.color
                         }]} />
-                        <Text style={[styles.insightText, insights.weakest.percentage < (state.settings?.dangerThreshold || 75) && { color: COLORS.danger }]}>
+                        <Text style={[styles.insightText, insights.weakest.percentage < (state.settings?.dangerThreshold || 75) && { color: COLORS.dangerText }]}>
                             <Text style={styles.insightLabel}>Needs attention  </Text>
                             {insights.weakest.name} — {insights.weakest.percentage.toFixed(1)}%
                         </Text>
@@ -184,8 +187,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.full,
     },
     dismissText: {
-        fontSize: 12,
         fontWeight: '600',
+        fontSize: 12,
         color: COLORS.textSecondary,
     },
     statsRow: {
@@ -201,8 +204,8 @@ const getStyles = () => StyleSheet.create({
         alignItems: 'center',
     },
     statNum: {
+        fontWeight: '700',
         fontSize: 22,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         letterSpacing: -0.5,
     },
@@ -232,13 +235,13 @@ const getStyles = () => StyleSheet.create({
         flexShrink: 0,
     },
     insightText: {
+        fontWeight: '400',
         fontSize: 13,
         color: COLORS.textSecondary,
         flex: 1,
     },
     insightLabel: {
         color: COLORS.textMuted,
-        fontWeight: '600',
     },
     footnote: {
         ...TYPOGRAPHY.captionMedium,

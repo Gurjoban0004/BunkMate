@@ -10,6 +10,7 @@ import {
 import { triggerHaptic } from '../../utils/haptics';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, TYPOGRAPHY } from '../../theme/theme';
 import { getSubjectAttendance } from '../../utils/attendance';
+import { shortSubjectName } from '../../utils/subjectName';
 import { getTodayKey, formatTimeRange } from '../../utils/dateHelpers';
 
 const ClassCard = ({
@@ -22,9 +23,6 @@ const ClassCard = ({
 }) => {
     const styles = getStyles();
     const { subjectId, subjectName, startTime, endTime, units } = classInfo;
-
-    const subject = state.subjects.find(s => s.id === subjectId);
-    const color = subject?.color || COLORS.primary;
 
     const stats = getSubjectAttendance(subjectId, state);
     const percentage = stats?.percentage || 0;
@@ -101,11 +99,10 @@ const ClassCard = ({
     if (isPreCounted) {
         return (
             <View style={[styles.container, { backgroundColor: COLORS.cardBackground, opacity: 0.7 }]}>
-                <View style={[styles.colorDot, { backgroundColor: COLORS.border }]} />
                 <View style={styles.content}>
                     <View style={styles.headerRow}>
                         <View style={styles.subjectInfo}>
-                            <Text style={[styles.subjectName, { color: COLORS.textMuted }]}>{subjectName}</Text>
+                            <Text style={[styles.subjectName, { color: COLORS.textMuted }]} accessibilityLabel={subjectName}>{shortSubjectName(subjectName)}</Text>
                             <View style={styles.timeRow}>
                                 <Text style={[styles.time, { color: COLORS.textMuted }]}>
                                     {formatTimeRange(startTime, endTime)}
@@ -133,12 +130,13 @@ const ClassCard = ({
                 isCurrentClass && styles.currentClassBorder,
             ]}
         >
-            <View style={[styles.colorDot, { backgroundColor: color }]} />
-
             <View style={styles.content}>
                 <View style={styles.headerRow}>
                     <View style={styles.subjectInfo}>
-                        <Text style={styles.subjectName} numberOfLines={1}>{subjectName}</Text>
+                        {/* Abbreviated for the eye, full name for screen readers. */}
+                        <Text style={styles.subjectName} numberOfLines={1} accessibilityLabel={subjectName}>
+                            {shortSubjectName(subjectName)}
+                        </Text>
                         <View style={styles.timeRow}>
                             <Text style={styles.time}>
                                 {formatTimeRange(startTime, endTime)}
@@ -290,18 +288,9 @@ const getStyles = () => StyleSheet.create({
     currentClassBorder: {
         borderWidth: 2,
     },
-    colorDot: {
-        position: 'absolute',
-        left: 16,
-        top: 20,
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
     content: {
         flex: 1,
         padding: 16,
-        paddingLeft: 36,
     },
     headerRow: {
         flexDirection: 'row',
