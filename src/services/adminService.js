@@ -1,7 +1,7 @@
 import { db } from '../config/firebase';
 import {
     doc, getDoc, getDocs, collection,
-    query, where, orderBy, limit, Timestamp,
+    query, where, Timestamp,
 } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { buildApiUrl } from './apiConfig';
@@ -32,11 +32,14 @@ async function adminApiCall(endpoint, body) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...body, token }),
     });
+    const payload = await res.json().catch(() => null);
     if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Request failed' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
+        throw new Error((payload && payload.error) || `Request failed (HTTP ${res.status})`);
     }
-    return res.json();
+    if (!payload) {
+        throw new Error('Server returned a non-JSON response — is the API deployed?');
+    }
+    return payload;
 }
 
 // ─── CONFIG (reads stay client-side, writes go through API) ─────
@@ -55,6 +58,19 @@ export const updateAdminConfig = async (rollNumber, updates) => {
     });
 };
 
+/**
+ * Remote feature flags, for the app (not the admin screen) to gate behaviour on.
+ * Falls back to enabled so a failed config read never silently disables sync.
+ */
+export const getFeatureFlags = async () => {
+    try {
+        const config = await getAdminConfig();
+        return { ...getDefaultConfig().featureFlags, ...(config.featureFlags || {}) };
+    } catch {
+        return getDefaultConfig().featureFlags;
+    }
+};
+
 const getDefaultConfig = () => ({
     maintenanceMode: false,
     maintenanceMessage: 'Scheduled upgrades in progress.',
@@ -63,24 +79,29 @@ const getDefaultConfig = () => ({
     featureFlags: {
         autoSync: true,
         calendarSync: true,
-        gradeEstimates: true,
     },
 });
 
 // ─── ANNOUNCEMENTS (reads stay client-side, writes go through API)
 
 export const getActiveAnnouncements = async () => {
+    // Deliberately no orderBy: combining it with the active filter needs a
+    // composite index that was never created, so this query failed in production
+    // and no announcement ever reached a user. Announcements are few — sort them
+    // here instead of depending on console setup that can silently go missing.
     const now = Timestamp.now();
-    const q = query(
+    const snap = await getDocs(query(
         collection(db, 'admin', 'announcements', 'items'),
         where('active', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(10)
-    );
-    const snap = await getDocs(q);
+    ));
+
+    const millis = (value) => (value && typeof value.toMillis === 'function') ? value.toMillis() : 0;
+
     return snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter(a => !a.expiry || a.expiry.toMillis() > now.toMillis());
+        .filter(a => !a.expiry || millis(a.expiry) > now.toMillis())
+        .sort((a, b) => millis(b.createdAt) - millis(a.createdAt))
+        .slice(0, 10);
 };
 
 export const publishAnnouncement = async (rollNumber, { title, message, type, expiryHours }) => {
@@ -173,19 +194,10 @@ export const fetchUserRoster = (rollNumber, forceRefresh) =>
 export const fetchBatchDistribution = (forceRefresh) =>
     fetchAnalyticsMetric(null, 'batchDistribution', forceRefresh);
 
-// ─── DOWNTIME (reads stay client-side, writes go through API) ───
+// ─── DOWNTIME (derived server-side from sync telemetry) ─────────
 
-export const getDowntimeEvents = async () => {
-    const snap = await getDocs(
-        query(collection(db, 'admin', 'downtime', 'events'), orderBy('detectedAt', 'desc'), limit(10))
-    );
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-};
-
-export const resolveDowntime = async (rollNumber, eventId) => {
-    return adminApiCall('/api/admin', {
-        rollNumber,
-        action: 'resolveDowntime',
-        payload: { eventId },
-    });
-};
+// Nothing in the app ever wrote to admin/downtime/events, so the panel that read
+// it could only ever render empty. Outages are inferred from the same telemetry
+// that powers Endpoint Health, and clear themselves when the endpoint recovers.
+export const fetchDowntime = (rollNumber, forceRefresh) =>
+    fetchAnalyticsMetric(rollNumber, 'downtime', forceRefresh);

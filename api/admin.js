@@ -13,7 +13,6 @@
  *   deleteAnnouncement  — deactivate an announcement
  *   revokeUser         — add user to admin/revokedUsers/items
  *   unrevokeUser       — remove user from revoked list
- *   resolveDowntime    — mark a downtime event resolved
  */
 
 const { setCorsHeaders, decodeSessionRollNumber } = require('./_session-utils');
@@ -41,9 +40,43 @@ module.exports = async function handler(req, res) {
     try {
         switch (action) {
             case 'updateConfig': {
-                const configRef = adminDb.doc('admin/config');
-                await configRef.set(payload || {}, { merge: true });
-                return res.json({ success: true });
+                // Whitelist: an unrecognised key would write cleanly and then do
+                // nothing, which reads to the admin as a working control.
+                const ALLOWED = ['maintenanceMode', 'maintenanceMessage', 'minVersion', 'updateUrl', 'featureFlags'];
+                const ALLOWED_FLAGS = ['autoSync', 'calendarSync'];
+                const updates = {};
+
+                for (const [key, value] of Object.entries(payload || {})) {
+                    if (!ALLOWED.includes(key)) {
+                        return res.status(400).json({ error: `Unknown config key: ${key}` });
+                    }
+                    if (key === 'featureFlags') {
+                        const flags = {};
+                        for (const [flag, on] of Object.entries(value || {})) {
+                            if (!ALLOWED_FLAGS.includes(flag)) {
+                                return res.status(400).json({ error: `Unknown feature flag: ${flag}` });
+                            }
+                            flags[flag] = !!on;
+                        }
+                        updates.featureFlags = flags;
+                    } else if (key === 'maintenanceMode') {
+                        updates.maintenanceMode = !!value;
+                    } else if (key === 'minVersion') {
+                        const version = String(value || '').trim();
+                        if (!/^\d+\.\d+\.\d+$/.test(version)) {
+                            return res.status(400).json({ error: 'minVersion must look like 2.1.0' });
+                        }
+                        updates.minVersion = version;
+                    } else {
+                        updates[key] = String(value ?? '');
+                    }
+                }
+
+                if (Object.keys(updates).length === 0) {
+                    return res.status(400).json({ error: 'No config changes supplied' });
+                }
+                await adminDb.doc('admin/config').set(updates, { merge: true });
+                return res.json({ success: true, updated: Object.keys(updates) });
             }
 
             case 'publishAnnouncement': {
@@ -94,16 +127,6 @@ module.exports = async function handler(req, res) {
                 const { targetRollNumber: rn } = payload || {};
                 if (!rn) return res.status(400).json({ error: 'Missing targetRollNumber' });
                 await adminDb.doc(`admin/revokedUsers/items/${rn}`).delete();
-                return res.json({ success: true });
-            }
-
-            case 'resolveDowntime': {
-                const { eventId } = payload || {};
-                if (!eventId) return res.status(400).json({ error: 'Missing eventId' });
-                await adminDb.doc(`admin/downtime/events/${eventId}`).set(
-                    { resolvedAt: FieldValue.serverTimestamp() },
-                    { merge: true }
-                );
                 return res.json({ success: true });
             }
 

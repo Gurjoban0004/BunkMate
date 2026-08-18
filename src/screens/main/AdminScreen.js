@@ -12,12 +12,12 @@ import {
     fetchActiveUserMetrics, fetchSubjectDifficulty,
     fetchBunkCultureIndex, fetchBatchDistribution,
     fetchEndpointHealth, fetchParserFailures,
-    getDowntimeEvents, resolveDowntime,
-    fetchRateLimitData, fetchUserRoster,
+    fetchDowntime, fetchRateLimitData, fetchUserRoster,
     getActiveAnnouncements, publishAnnouncement, deleteAnnouncement,
     getRevokedUsers, revokeUser, unrevokeUser,
+    isAdminRollNumber,
 } from '../../services/adminService';
-import { showAlert } from '../../utils/alert';
+import { showAlert, confirmAction } from '../../utils/alert';
 
 const CATEGORIES = [
     { key: 'analytics', label: 'Analytics' },
@@ -201,34 +201,52 @@ export default function AdminScreen() {
             setMaintMsg(c.maintenanceMessage || '');
         } catch (e) {
             setConfigError(e?.message || 'Failed to load admin config');
-            showAlert('Failed to load admin config', 'error');
+            showAlert('Admin config', 'Could not load the remote config. Pull to retry.');
         } finally {
             setConfigLoading(false);
         }
     };
 
+    // Every loader swallows its own error, so Promise.all can never reject and
+    // the old code reported success even when every panel failed. Report what
+    // actually loaded instead.
+    const refreshAll = useCallback(async (loaders, force) => {
+        const results = await Promise.all(loaders.map(async (load) => {
+            try {
+                await load(force);
+                return true;
+            } catch {
+                return false;
+            }
+        }));
+        return results.filter(Boolean).length;
+    }, []);
+
+    // Pull-to-refresh used to reload only the config, so it looked broken on
+    // every tab but Controls. Refresh what the admin is actually looking at.
     const onRefresh = async () => {
         setRefreshing(true);
-        await loadConfig();
-        setRefreshing(false);
+        try {
+            await Promise.all([loadConfig(), refreshAll(categoryLoaders[category] || [], true)]);
+        } finally {
+            setRefreshing(false);
+        }
     };
 
     const handleForceRefreshAll = async () => {
         setForceRefreshing(true);
+        const loaders = [
+            loadMetrics, loadSubjects, loadBunk, loadBatches,
+            loadRoster, loadRevoked, loadEndpoints, loadFailures,
+            loadDowntime, loadRate, loadAnnouncements,
+        ];
         try {
-            await Promise.all([
-                loadMetrics(true),
-                loadSubjects(true),
-                loadBunk(true),
-                loadBatches(true),
-                loadRoster(true),
-                loadEndpoints(true),
-                loadFailures(true),
-                loadRate(true),
-            ]);
-            showAlert('Analytics cache refreshed from server', 'success');
-        } catch {
-            showAlert('Refresh completed with some errors', 'warning');
+            const ok = await refreshAll(loaders, true);
+            if (ok === loaders.length) {
+                showAlert('Cache refreshed', 'All panels reloaded from the server.');
+            } else {
+                showAlert('Partial refresh', `Refreshed ${ok} of ${loaders.length} panels. The rest show their own error.`);
+            }
         } finally {
             setForceRefreshing(false);
         }
@@ -328,18 +346,18 @@ export default function AdminScreen() {
         }
     }, [failures, failuresLoading, roll]);
 
-    const loadDowntime = useCallback(async () => {
-        if (downtimeEvents || downtimeLoading) return;
+    const loadDowntime = useCallback(async (force = false) => {
+        if ((downtimeEvents && !force) || downtimeLoading) return;
         setDowntimeLoading(true);
         setDowntimeError(null);
         try {
-            setDowntimeEvents(await getDowntimeEvents());
+            setDowntimeEvents(await fetchDowntime(roll, force));
         } catch (e) {
             setDowntimeError(e?.message || 'Failed to fetch downtime events');
         } finally {
             setDowntimeLoading(false);
         }
-    }, [downtimeEvents, downtimeLoading]);
+    }, [downtimeEvents, downtimeLoading, roll]);
 
     const loadRate = useCallback(async (force = false) => {
         if ((rateData && !force) || rateLoading) return;
@@ -354,8 +372,8 @@ export default function AdminScreen() {
         }
     }, [rateData, rateLoading, roll]);
 
-    const loadAnnouncements = useCallback(async () => {
-        if (announcements || announcementsLoading) return;
+    const loadAnnouncements = useCallback(async (force = false) => {
+        if ((announcements && !force) || announcementsLoading) return;
         setAnnouncementsLoading(true);
         setAnnouncementsError(null);
         try {
@@ -367,8 +385,8 @@ export default function AdminScreen() {
         }
     }, [announcements, announcementsLoading]);
 
-    const loadRevoked = useCallback(async () => {
-        if (revoked || revokedLoading) return;
+    const loadRevoked = useCallback(async (force = false) => {
+        if ((revoked && !force) || revokedLoading) return;
         setRevokedLoading(true);
         setRevokedError(null);
         try {
@@ -380,14 +398,30 @@ export default function AdminScreen() {
         }
     }, [revoked, revokedLoading]);
 
+    // The roster marks revoked accounts, so it needs the revocation list too —
+    // without this every user on the Users tab renders as ACTIVE until the admin
+    // happens to visit Controls.
+    const loadUsersTab = useCallback(async (force = false) => {
+        await Promise.all([loadRoster(force), loadRevoked(force)]);
+    }, [loadRoster, loadRevoked]);
+
+    // What each tab is responsible for, so pull-to-refresh reloads exactly the
+    // panels on screen.
+    const categoryLoaders = {
+        analytics: [loadMetrics, loadSubjects, loadBunk, loadBatches],
+        users: [loadRoster, loadRevoked],
+        operations: [loadEndpoints, loadFailures, loadDowntime, loadRate],
+        controls: [loadAnnouncements, loadRevoked],
+    };
+
     // ─── HANDLERS ───────────────────────────────────────────────
     const run = async (mutate, successMessage) => {
         try {
             const result = await mutate();
-            if (successMessage) showAlert(successMessage, 'success');
+            if (successMessage) showAlert(successMessage);
             return result ?? true;
         } catch (e) {
-            showAlert(e?.message || 'Action failed', 'error');
+            showAlert('Action failed', e?.message || 'The server rejected the request.');
             return undefined;
         }
     };
@@ -401,11 +435,29 @@ export default function AdminScreen() {
     };
 
     const handlePublishVersion = async () => {
-        if (!minVersion.trim()) return;
-        await run(() => updateAdminConfig(roll, { minVersion: minVersion.trim() }), 'Version gate updated');
+        const version = minVersion.trim();
+        if (!/^\d+\.\d+\.\d+$/.test(version)) {
+            return showAlert('Invalid version', 'Use three numbers, like 2.1.0.');
+        }
+        // Gating above the running build would lock the admin out too.
+        const confirmed = await confirmAction(
+            'Publish version gate?',
+            `Everyone below v${version} will be blocked until they update.`,
+            'Publish',
+        );
+        if (!confirmed) return;
+        await run(() => updateAdminConfig(roll, { minVersion: version }), 'Version gate updated');
     };
 
     const handleToggleMaintenance = async (val) => {
+        if (val) {
+            const confirmed = await confirmAction(
+                'Enable maintenance mode?',
+                'Every non-admin user will be locked out until you turn this off.',
+                'Enable',
+            );
+            if (!confirmed) return;
+        }
         const previous = maintMode;
         setMaintMode(val);
         const ok = await run(
@@ -420,7 +472,9 @@ export default function AdminScreen() {
     };
 
     const handlePublishAnnouncement = async () => {
-        if (!annTitle.trim() || !annBody.trim()) return;
+        if (!annTitle.trim() || !annBody.trim()) {
+            return showAlert('Incomplete', 'Both a title and a message are required.');
+        }
         const ann = await run(
             () => publishAnnouncement(roll, { title: annTitle, message: annBody, type: annType, expiryHours: 72 }),
             'Announcement published',
@@ -439,10 +493,17 @@ export default function AdminScreen() {
     const handleRevokeUser = async (targetRoll = null, reasonText = null) => {
         const target = (targetRoll || revokeRoll).trim();
         const reason = (reasonText || revokeReason).trim();
-        if (!target) return;
+        if (!target) return showAlert('Nothing to revoke', 'Enter a roll number first.');
         if (target === '2410990296' || isAdminRollNumber(target)) {
-            return showAlert('You cannot revoke access for the primary super admin (2410990296)', 'error');
+            return showAlert('Not allowed', 'The primary super admin (2410990296) cannot be revoked.');
         }
+
+        // Locks the student out of the app on their next launch — worth a beat.
+        const confirmed = await confirmAction(
+            'Revoke access?',
+            `${target} will be locked out of Presence until reinstated.`,
+        );
+        if (!confirmed) return;
 
         if (!await run(() => revokeUser(roll, target, reason), 'User revoked')) return;
         setRevoked(prev => [
@@ -458,11 +519,6 @@ export default function AdminScreen() {
     const handleUnrevokeUser = async (targetRollNumber) => {
         if (!await run(() => unrevokeUser(roll, targetRollNumber), 'User reinstated')) return;
         setRevoked(prev => (prev || []).filter(r => r.rollNumber !== targetRollNumber));
-    };
-
-    const handleResolveDowntime = async (eventId) => {
-        if (!await run(() => resolveDowntime(roll, eventId), 'Downtime resolved')) return;
-        setDowntimeEvents(prev => (prev || []).map(e => e.id === eventId ? { ...e, resolvedAt: new Date() } : e));
     };
 
     // ─── COLOR HELPERS ──────────────────────────────────────────
@@ -530,12 +586,12 @@ export default function AdminScreen() {
                         <KpiCell label="DAU" value={metrics?.dau} loading={metricsLoading} />
                         <KpiCell label="WAU" value={metrics?.wau} loading={metricsLoading} />
                         <KpiCell label="MAU" value={metrics?.mau} loading={metricsLoading} />
-                        <KpiCell label="TOTAL USERS" value={roster ? roster.length : metrics?.wau != null ? metrics.wau : '—'} loading={metricsLoading || rosterLoading} />
+                        <KpiCell label="TOTAL USERS" value={metrics?.total} loading={metricsLoading} />
                     </View>
 
                     {metrics?.sparkline?.length > 1 && (
                         <View style={styles.heroSpark}>
-                            <Text style={styles.heroSparkLabel}>7-DAY ACTIVE USERS TREND</Text>
+                            <Text style={styles.heroSparkLabel}>DAILY ACTIVE USERS — LAST 7 DAYS</Text>
                             <Sparkline data={metrics.sparkline} color={COLORS.primary} width={320} height={44} />
                         </View>
                     )}
@@ -605,7 +661,7 @@ export default function AdminScreen() {
                 {/* ══ USERS & ROSTER (NEW) ═════════════════════════ */}
                 {category === 'users' && (
                     <Panel icon="users" title="User Roster & Information Explorer" accent={COLORS.primary} statusText={`${roster ? roster.length : 0} Accounts`}>
-                        <LazyLoad onVisible={loadRoster} loading={rosterLoading} error={rosterError} onRetry={() => loadRoster(true)}>
+                        <LazyLoad onVisible={loadUsersTab} loading={rosterLoading} error={rosterError} onRetry={() => loadUsersTab(true)}>
                             <View style={styles.searchBar}>
                                 <PanelIcon name="search" color={COLORS.textMuted} size={16} />
                                 <TextInput
@@ -691,26 +747,32 @@ export default function AdminScreen() {
                             </LazyLoad>
                         </Panel>
 
-                        <Panel icon="zap" title="ERP Downtime Manager" accent={COLORS.success} statusText="Status Monitor">
-                            <LazyLoad onVisible={loadDowntime} loading={downtimeLoading} error={downtimeError} onRetry={loadDowntime}>
-                                {downtimeEvents && downtimeEvents.map((ev, i) => (
-                                    <View key={i} style={styles.downtimeRow}>
-                                        <View style={[styles.statusDot, { backgroundColor: ev.resolvedAt ? COLORS.success : COLORS.danger }]} />
+                        <Panel
+                            icon="zap"
+                            title="ERP Outage Monitor"
+                            accent={downtimeEvents?.length ? COLORS.danger : COLORS.success}
+                            statusText={downtimeEvents?.length ? `${downtimeEvents.length} active` : 'All clear'}
+                        >
+                            <LazyLoad onVisible={loadDowntime} loading={downtimeLoading} error={downtimeError} onRetry={() => loadDowntime(true)}>
+                                {downtimeEvents && downtimeEvents.map((ev) => (
+                                    <View key={ev.id} style={styles.downtimeRow}>
+                                        <View style={[styles.statusDot, { backgroundColor: COLORS.danger }]} />
                                         <View style={{ flex: 1 }}>
-                                            <Text style={styles.downtimeType}>{ev.type || 'Service Outage'}</Text>
+                                            <Text style={styles.downtimeType}>{ev.type}</Text>
                                             <Text style={styles.downtimeMeta}>
-                                                {ev.reportsCount || 0} user reports
-                                                {ev.resolvedAt ? ' • Resolved' : ' • ACTIVE OUTAGE'}
+                                                {ev.failures}/{ev.attempts} calls failed • {ev.affectedUsers} user{ev.affectedUsers === 1 ? '' : 's'} hit
+                                                {ev.startedAt ? ` • since ${new Date(ev.startedAt).toLocaleTimeString()}` : ''}
                                             </Text>
+                                            {!!ev.sampleError && (
+                                                <Text style={styles.downtimeMeta} numberOfLines={2}>{ev.sampleError}</Text>
+                                            )}
                                         </View>
-                                        {!ev.resolvedAt && (
-                                            <TouchableOpacity onPress={() => handleResolveDowntime(ev.id)} style={styles.resolveBtn}>
-                                                <Text style={styles.resolveBtnText}>Resolve</Text>
-                                            </TouchableOpacity>
-                                        )}
+                                        <Text style={[styles.endpointRate, { color: COLORS.danger }]}>{ev.failRate.toFixed(0)}%</Text>
                                     </View>
                                 ))}
-                                {downtimeEvents && downtimeEvents.length === 0 && <Text style={styles.emptyText}>No ERP downtime events recorded</Text>}
+                                {downtimeEvents && downtimeEvents.length === 0 && (
+                                    <Text style={styles.emptyText}>No endpoint is failing right now. Outages appear here automatically and clear when the endpoint recovers.</Text>
+                                )}
                             </LazyLoad>
                         </Panel>
 
@@ -776,7 +838,7 @@ export default function AdminScreen() {
                                                     <Text style={styles.announcementBody} numberOfLines={2}>{a.message}</Text>
                                                 </View>
                                                 <TouchableOpacity onPress={() => handleDeleteAnnouncement(a.id)}>
-                                                    <Text style={{ color: COLORS.danger, fontWeight: '700', fontSize: 16, padding: 4 }}>✕</Text>
+                                                    <Text style={{ color: COLORS.dangerText, fontWeight: '700', fontSize: 16, padding: 4 }}>✕</Text>
                                                 </TouchableOpacity>
                                             </View>
                                         ))}
@@ -921,9 +983,10 @@ export default function AdminScreen() {
                             <View style={styles.modalFooter}>
                                 <TouchableOpacity
                                     style={[styles.actionBtn, { backgroundColor: COLORS.danger, flex: 1 }]}
-                                    onPress={() => {
-                                        handleRevokeUser(selectedUser.rollNumber, 'Revoked from User Explorer');
+                                    onPress={async () => {
+                                        const target = selectedUser.rollNumber;
                                         setSelectedUser(null);
+                                        await handleRevokeUser(target, 'Revoked from User Explorer');
                                     }}
                                 >
                                     <Text style={styles.actionBtnText}>Revoke User Access</Text>
@@ -984,19 +1047,9 @@ function KpiCell({ label, value, loading }) {
 function FailureCard({ failure }) {
     const [expanded, setExpanded] = useState(false);
     const styles = getStyles();
-    let ts = 'Unknown';
-    if (failure.timestamp) {
-        if (typeof failure.timestamp.toDate === 'function') {
-            ts = failure.timestamp.toDate().toLocaleString();
-        } else if (typeof failure.timestamp === 'object') {
-            const sec = failure.timestamp._seconds ?? failure.timestamp.seconds;
-            if (typeof sec === 'number') {
-                ts = new Date(sec * 1000).toLocaleString();
-            }
-        } else if (typeof failure.timestamp === 'string') {
-            ts = new Date(failure.timestamp).toLocaleString();
-        }
-    }
+    const ts = Number.isFinite(failure.timestampMs)
+        ? new Date(failure.timestampMs).toLocaleString()
+        : 'Unknown';
 
     return (
         <TouchableOpacity style={styles.failureCard} onPress={() => setExpanded(!expanded)} activeOpacity={0.7}>
@@ -1158,7 +1211,7 @@ const getStyles = () => StyleSheet.create({
     failureUser: { ...TYPOGRAPHY.labelSmall, color: COLORS.textPrimary, fontWeight: '700' },
     failureTime: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
     failureDetail: { marginTop: SPACING.xs, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, paddingTop: 4 },
-    failureComponent: { ...TYPOGRAPHY.micro, color: COLORS.danger, fontWeight: '700' },
+    failureComponent: { ...TYPOGRAPHY.micro, color: COLORS.dangerText, fontWeight: '700' },
     failureError: { ...TYPOGRAPHY.micro, color: COLORS.textSecondary },
 
     // Rate Limit Table
@@ -1186,7 +1239,7 @@ const getStyles = () => StyleSheet.create({
     announcementTitle: { ...TYPOGRAPHY.labelSmall, color: COLORS.textPrimary, fontWeight: '700' },
     announcementBody: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 2 },
     revokedRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.inputBackground, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, marginBottom: SPACING.xs },
-    revokedRoll: { ...TYPOGRAPHY.labelSmall, color: COLORS.danger, fontWeight: '700' },
+    revokedRoll: { ...TYPOGRAPHY.labelSmall, color: COLORS.dangerText, fontWeight: '700' },
     revokedReason: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
 
     // Modal
