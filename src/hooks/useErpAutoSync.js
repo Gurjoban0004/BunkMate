@@ -37,6 +37,7 @@ import { erpFetchAttendance, erpFetchCalendar, erpFetchTimetable, erpKeepAlive }
 import { mapErpToAppState, buildResyncPayload, isNonRegressingErpUpdate, mapCalendarToRecords, mapTimetableToState, normalizeErpSubject, validateErpSubject, buildErpNameMap } from '../utils/erpAttendanceMapper';
 import { logger } from '../utils/logger';
 import { logAttendanceSnapshot, logSync, trackEndpoint } from '../services/telemetry';
+import { getFeatureFlags } from '../services/adminService';
 
 const MIN_SYNC_INTERVAL_MS     = 60 * 1000;   // 60s debounce (successful syncs)
 const FOREGROUND_THROTTLE_MS     = 10 * 1000;   // 10s min gap between foreground syncs
@@ -52,6 +53,16 @@ export function useErpAutoSync(state, dispatch) {
     const keepAliveTimerRef      = useRef(null);
     const stateRef               = useRef(state);
     useEffect(() => { stateRef.current = state; }, [state]);
+
+    // Remote kill switches from the admin panel. Default to on so a failed config
+    // read never disables sync, and refresh in the background rather than blocking
+    // a sync on a config round-trip.
+    const flagsRef = useRef({ autoSync: true, calendarSync: true });
+    useEffect(() => {
+        let cancelled = false;
+        getFeatureFlags().then(flags => { if (!cancelled) flagsRef.current = flags; });
+        return () => { cancelled = true; };
+    }, []);
 
     // ── Local UI state ───────────────────────────────────────────
     const [isSyncing,    setIsSyncing]    = useState(false);
@@ -69,6 +80,13 @@ export function useErpAutoSync(state, dispatch) {
 
         // Pre-flight
         if (!currentState.isAuthenticated || !currentState.settings?.erpConnected) return;
+
+        // Remote kill switch. Manual syncs (force) stay available so switching the
+        // flag off relieves ERP load without locking users out of their own data.
+        if (!force && flagsRef.current.autoSync === false) {
+            logger.info('⏸️', 'ERP auto-sync disabled by remote feature flag');
+            return;
+        }
 
         // Re-auth already pending (OTP prompt is showing) — bail. Every server hit on a
         // dead session runs reloginERP, which sends a fresh OTP email; without this gate the
@@ -266,92 +284,97 @@ export function useErpAutoSync(state, dispatch) {
             }
 
             // ── Step 2: Calendar ──────────────────────────────────
-            setSyncStatus({ calendarSyncStatus: 'loading' });
             let registerUnavailable = false;
-            try {
-                const calData = await trackEndpoint(endpoints, 'calendar',
-                    () => erpFetchCalendar(token, persistentToken));
-                if (calData.token) token = calData.token;
+            if (flagsRef.current.calendarSync === false) {
+                logger.info('⏸️', 'Calendar sync disabled by remote feature flag');
+                setSyncStatus({ calendarSyncStatus: 'idle' });
+            } else {
+                setSyncStatus({ calendarSyncStatus: 'loading' });
+                try {
+                    const calData = await trackEndpoint(endpoints, 'calendar',
+                        () => erpFetchCalendar(token, persistentToken));
+                    if (calData.token) token = calData.token;
 
-                if (calData.sessionExpired) {
-                    logger.warn('⚠️ Calendar sync skipped — session expired');
-                    setSyncStatus({ calendarSyncStatus: 'failed' });
-                } else if (calData.calendar && Object.keys(calData.calendar).length > 0) {
-                    const result = mapCalendarToRecords(calData.calendar, calData.subjects, latestSubjects, step1NameMap);
+                    if (calData.sessionExpired) {
+                        logger.warn('⚠️ Calendar sync skipped — session expired');
+                        setSyncStatus({ calendarSyncStatus: 'failed' });
+                    } else if (calData.calendar && Object.keys(calData.calendar).length > 0) {
+                        const result = mapCalendarToRecords(calData.calendar, calData.subjects, latestSubjects, step1NameMap);
 
-                    if (result.newSubjects.length > 0) {
-                        const withNew = [...latestSubjects, ...result.newSubjects];
-                        dispatch({ type: 'SET_SUBJECTS', payload: withNew });
-                        latestSubjects = withNew;
-                    }
-
-                    // Stamp numeric portal IDs onto matched subjects so future syncs
-                    // use stable ID-based matching instead of fuzzy name matching
-                    if (result.erpSubjectIdStamps && Object.keys(result.erpSubjectIdStamps).length > 0) {
-                        const stamped = latestSubjects.map(s => {
-                            const portalId = result.erpSubjectIdStamps[s.id];
-                            if (portalId && !s.erpSubjectId) {
-                                return { ...s, erpSubjectId: String(portalId) };
-                            }
-                            return s;
-                        });
-                        dispatch({ type: 'SET_SUBJECTS', payload: stamped });
-                        latestSubjects = stamped;
-                    }
-
-                    dispatch({
-                        type: 'ERP_OVERWRITE_CALENDAR',
-                        payload: {
-                            records: result.records,
-                            trackingStartDate: result.earliestDate,
-                            latestErpDate: result.latestDate,
-                            lastSubjectSyncDates: result.lastSubjectSyncDates,
-                            erpSubjectIdStamps: result.erpSubjectIdStamps,
-                        },
-                    });
-                    setSyncStatus({ calendarSyncStatus: 'ok' });
-                    logger.info('✅', `ERP calendar sync: ${result.totalDays} days, ${Object.keys(result.subjectMapping).length} subjects mapped`);
-                } else if (calData.subjects?.length > 0) {
-                    // Calendar is empty but we have subject totals from summary cards.
-
-                    // Match ERP subjects to local subjects by code or name
-                    const updatedSubjects = latestSubjects.map(localSub => {
-                        const erpMatch = calData.subjects.find(erpSub => {
-                            // Match by code first
-                            if (localSub.code && erpSub.code && localSub.code === erpSub.code) return true;
-                            if (localSub.erpSubjectId && erpSub.code && localSub.erpSubjectId === erpSub.code) return true;
-                            // Fuzzy name match
-                            const localName = (localSub.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                            const erpName = (erpSub.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                            return localName && erpName && (localName.includes(erpName) || erpName.includes(localName));
-                        });
-                        if (erpMatch) {
-                            return {
-                                ...localSub,
-                                erpSubjectId: erpMatch.code || localSub.erpSubjectId,
-                                erpDelivered: erpMatch.total,
-                                erpAttended: erpMatch.attended,
-                                erpAbsent: erpMatch.absent,
-                                erpPercentage: erpMatch.percentage,
-                                erpTeacher: erpMatch.teacher,
-                            };
+                        if (result.newSubjects.length > 0) {
+                            const withNew = [...latestSubjects, ...result.newSubjects];
+                            dispatch({ type: 'SET_SUBJECTS', payload: withNew });
+                            latestSubjects = withNew;
                         }
-                        return localSub;
-                    });
 
-                    dispatch({ type: 'SET_SUBJECTS', payload: updatedSubjects });
-                    latestSubjects = updatedSubjects;
-                    setSyncStatus({ calendarSyncStatus: 'ok' });
-                    logger.info('✅', `ERP summary sync: ${calData.subjects.length} subject totals updated (no day-by-day register available)`);
-                } else {
-                    setSyncStatus({ calendarSyncStatus: 'ok' });
+                        // Stamp numeric portal IDs onto matched subjects so future syncs
+                        // use stable ID-based matching instead of fuzzy name matching
+                        if (result.erpSubjectIdStamps && Object.keys(result.erpSubjectIdStamps).length > 0) {
+                            const stamped = latestSubjects.map(s => {
+                                const portalId = result.erpSubjectIdStamps[s.id];
+                                if (portalId && !s.erpSubjectId) {
+                                    return { ...s, erpSubjectId: String(portalId) };
+                                }
+                                return s;
+                            });
+                            dispatch({ type: 'SET_SUBJECTS', payload: stamped });
+                            latestSubjects = stamped;
+                        }
+
+                        dispatch({
+                            type: 'ERP_OVERWRITE_CALENDAR',
+                            payload: {
+                                records: result.records,
+                                trackingStartDate: result.earliestDate,
+                                latestErpDate: result.latestDate,
+                                lastSubjectSyncDates: result.lastSubjectSyncDates,
+                                erpSubjectIdStamps: result.erpSubjectIdStamps,
+                            },
+                        });
+                        setSyncStatus({ calendarSyncStatus: 'ok' });
+                        logger.info('✅', `ERP calendar sync: ${result.totalDays} days, ${Object.keys(result.subjectMapping).length} subjects mapped`);
+                    } else if (calData.subjects?.length > 0) {
+                        // Calendar is empty but we have subject totals from summary cards.
+
+                        // Match ERP subjects to local subjects by code or name
+                        const updatedSubjects = latestSubjects.map(localSub => {
+                            const erpMatch = calData.subjects.find(erpSub => {
+                                // Match by code first
+                                if (localSub.code && erpSub.code && localSub.code === erpSub.code) return true;
+                                if (localSub.erpSubjectId && erpSub.code && localSub.erpSubjectId === erpSub.code) return true;
+                                // Fuzzy name match
+                                const localName = (localSub.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                                const erpName = (erpSub.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                                return localName && erpName && (localName.includes(erpName) || erpName.includes(localName));
+                            });
+                            if (erpMatch) {
+                                return {
+                                    ...localSub,
+                                    erpSubjectId: erpMatch.code || localSub.erpSubjectId,
+                                    erpDelivered: erpMatch.total,
+                                    erpAttended: erpMatch.attended,
+                                    erpAbsent: erpMatch.absent,
+                                    erpPercentage: erpMatch.percentage,
+                                    erpTeacher: erpMatch.teacher,
+                                };
+                            }
+                            return localSub;
+                        });
+
+                        dispatch({ type: 'SET_SUBJECTS', payload: updatedSubjects });
+                        latestSubjects = updatedSubjects;
+                        setSyncStatus({ calendarSyncStatus: 'ok' });
+                        logger.info('✅', `ERP summary sync: ${calData.subjects.length} subject totals updated (no day-by-day register available)`);
+                    } else {
+                        setSyncStatus({ calendarSyncStatus: 'ok' });
+                    }
+                } catch (calErr) {
+                    logger.warn('⚠️ Calendar sync failed (non-critical):', calErr.message);
+                    parserErrors.push({ endpoint: 'calendar', message: String(calErr?.message || calErr).slice(0, 200) });
+                    registerUnavailable = true;
+                    setSyncError('Totals synced, attendance register unavailable.');
+                    setSyncStatus({ calendarSyncStatus: 'failed' });
                 }
-            } catch (calErr) {
-                logger.warn('⚠️ Calendar sync failed (non-critical):', calErr.message);
-                parserErrors.push({ endpoint: 'calendar', message: String(calErr?.message || calErr).slice(0, 200) });
-                registerUnavailable = true;
-                setSyncError('Totals synced, attendance register unavailable.');
-                setSyncStatus({ calendarSyncStatus: 'failed' });
             }
 
             // ── Step 3: Timetable (once per 24h, non-blocking) ────

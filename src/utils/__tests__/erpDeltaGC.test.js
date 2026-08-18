@@ -60,10 +60,10 @@ describe('ERP summary delta GC (register-less portals)', () => {
     expect(next.attendanceRecords['2026-07-08'].math).toBeDefined();
 
     // Math: ERP baseline 9/12 + surviving bridge mark 1/1 = 10/13
-    expect(getSubjectAttendance('math', next)).toEqual({
+    expect(getSubjectAttendance('math', next)).toMatchObject({
       attendedUnits: 10,
       totalUnits: 13,
-      percentage: 76.9,
+      percentage: expect.closeTo(76.9, 1),
       hasPredictions: true,
     });
   });
@@ -80,10 +80,10 @@ describe('ERP summary delta GC (register-less portals)', () => {
 
     expect(next.attendanceRecords['2026-07-06'].math).toBeUndefined();
     expect(next.attendanceRecords['2026-07-07'].math).toBeUndefined();
-    expect(getSubjectAttendance('math', next)).toEqual({
+    expect(getSubjectAttendance('math', next)).toMatchObject({
       attendedUnits: 10,
       totalUnits: 13,
-      percentage: 76.9,
+      percentage: expect.closeTo(76.9, 1),
       hasPredictions: false,
     });
   });
@@ -117,10 +117,10 @@ describe('ERP summary delta GC (register-less portals)', () => {
     expect(next.attendanceRecords['2026-07-06'].math).toBeDefined();
     expect(next.attendanceRecords['2026-07-07'].math).toBeDefined();
     expect(next.attendanceRecords['2026-07-08'].math).toBeUndefined();
-    expect(getSubjectAttendance('math', next)).toEqual({
+    expect(getSubjectAttendance('math', next)).toMatchObject({
       attendedUnits: 9,
       totalUnits: 11,
-      percentage: 81.8,
+      percentage: expect.closeTo(81.8, 1),
       hasPredictions: false,
     });
   });

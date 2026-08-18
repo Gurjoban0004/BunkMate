@@ -183,13 +183,14 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     title: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.xl,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         marginBottom: SPACING.xs,
         textAlign: 'center',
     },
     subtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         textAlign: 'center',
@@ -202,9 +203,9 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.lg,
     },
     inputLabel: {
+        fontWeight: '700',
         fontSize: 10,
         color: COLORS.textMuted,
-        fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 0.8,
         marginBottom: 6,
@@ -214,8 +215,8 @@ const styles = StyleSheet.create({
         borderRadius: RADIUS.md,
         paddingHorizontal: SPACING.md,
         paddingVertical: Platform.OS === 'ios' ? 14 : 12,
-        fontSize: FONT_SIZES.xl,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xl,
         color: COLORS.textPrimary,
         textAlign: 'center',
         letterSpacing: 8,
@@ -227,8 +228,9 @@ const styles = StyleSheet.create({
         borderColor: COLORS.danger,
     },
     errorText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
-        color: COLORS.danger,
+        color: COLORS.dangerText,
         marginTop: SPACING.xs,
         textAlign: 'center',
     },
@@ -245,8 +247,8 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
     },
     primaryBtnText: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: '#FFFFFF',
     },
     skipBtn: {
@@ -254,8 +256,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.lg,
     },
     skipBtnText: {
+        fontWeight: '600',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textMuted,
-        fontWeight: '600',
     },
 });

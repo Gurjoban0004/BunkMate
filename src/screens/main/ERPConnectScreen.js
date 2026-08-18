@@ -648,8 +648,8 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.primary,
     },
     stepNumber: {
-        fontSize: 13,
         fontWeight: '700',
+        fontSize: 13,
         color: COLORS.textMuted,
     },
     stepNumberActive: {
@@ -661,8 +661,8 @@ const getStyles = () => StyleSheet.create({
         color: '#fff',
     },
     stepLabel: {
-        fontSize: 11,
         fontWeight: '600',
+        fontSize: 11,
         color: COLORS.textMuted,
         letterSpacing: 0.3,
     },
@@ -703,12 +703,13 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.primary,
     },
     headerTitle: {
+        fontWeight: '700',
         fontSize: FONT_SIZES.xl,
-        fontWeight: '800',
         color: COLORS.textPrimary,
         marginBottom: SPACING.xs,
     },
     headerSub: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         textAlign: 'center',
@@ -728,9 +729,9 @@ const getStyles = () => StyleSheet.create({
     },
     inputGroup: {},
     inputLabel: {
+        fontWeight: '700',
         fontSize: 10,
         color: COLORS.textMuted,
-        fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 0.8,
         marginBottom: 6,
@@ -740,15 +741,15 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.sm,
         paddingHorizontal: SPACING.md,
         paddingVertical: Platform.OS === 'ios' ? 14 : 12,
-        fontSize: FONT_SIZES.md,
         fontWeight: '500',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         ...Platform.select({ web: { outlineStyle: 'none' } }),
     },
     otpInput: {
         textAlign: 'center',
-        fontSize: FONT_SIZES.xl,
         fontWeight: '700',
+        fontSize: FONT_SIZES.xl,
         letterSpacing: 8,
     },
     passwordRow: {
@@ -781,6 +782,7 @@ const getStyles = () => StyleSheet.create({
         marginTop: 5,
     },
     securityText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         flex: 1,
@@ -789,9 +791,9 @@ const getStyles = () => StyleSheet.create({
 
     // Link
     linkText: {
+        fontWeight: '600',
         fontSize: FONT_SIZES.sm,
         color: COLORS.primary,
-        fontWeight: '600',
         textAlign: 'center',
         marginTop: SPACING.md,
     },
@@ -805,6 +807,7 @@ const getStyles = () => StyleSheet.create({
         paddingHorizontal: SPACING.xs,
     },
     otpHelp: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         textAlign: 'center',
@@ -817,8 +820,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.lg,
     },
     sectionLabel: {
-        fontSize: 11,
         fontWeight: '700',
+        fontSize: 11,
         color: COLORS.textMuted,
         letterSpacing: 0.5,
         marginBottom: SPACING.sm,
@@ -837,20 +840,22 @@ const getStyles = () => StyleSheet.create({
         marginBottom: 4,
     },
     previewName: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '600',
+        fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         flex: 1,
     },
     previewPercentage: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
     },
     previewDetail: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textSecondary,
     },
     previewMatch: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.xs,
         color: COLORS.textMuted,
         fontStyle: 'italic',
@@ -877,12 +882,13 @@ const getStyles = () => StyleSheet.create({
         paddingVertical: SPACING.sm,
     },
     statLabel: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
     },
     statValue: {
-        fontSize: FONT_SIZES.sm,
         fontWeight: '700',
+        fontSize: FONT_SIZES.sm,
         color: COLORS.textPrimary,
     },
 
@@ -894,6 +900,7 @@ const getStyles = () => StyleSheet.create({
         marginTop: SPACING.md,
     },
     errorText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.dangerDark,
         textAlign: 'center',
@@ -908,6 +915,7 @@ const getStyles = () => StyleSheet.create({
         gap: SPACING.sm,
     },
     loadingText: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textMuted,
     },
@@ -934,8 +942,8 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.inputBackground,
     },
     primaryButtonText: {
-        fontSize: FONT_SIZES.md,
         fontWeight: '700',
+        fontSize: FONT_SIZES.md,
         color: '#FFFFFF',
     },
 });

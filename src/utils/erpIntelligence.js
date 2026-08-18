@@ -12,7 +12,7 @@
  *   smartInsights:   array of human-readable sentences to surface in UI
  */
 
-import { getSubjectAttendance } from './attendance';
+import { getSubjectAttendance, recordUnits, recordAttendedUnits, calculatePercentage, roundPct } from './attendance';
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -71,10 +71,11 @@ function computeWeekdayPatterns(records, subjects, holidays) {
             if (sid === '_holiday' || !rec || !rec.status || rec.status === 'cancelled') return;
             if (rec.source !== 'erp') return; // only use ERP data for patterns
 
-            const units = rec.units || 1;
+            const units = recordUnits(rec);
+            const attended = recordAttendedUnits(rec);
             byDay[dayIndex].total += units;
-            if (rec.status === 'present') byDay[dayIndex].present += units;
-            else byDay[dayIndex].absent += units;
+            byDay[dayIndex].present += attended;
+            byDay[dayIndex].absent += units - attended;
         });
     });
 
@@ -82,7 +83,7 @@ function computeWeekdayPatterns(records, subjects, holidays) {
     let worstDayIndex = -1;
     let worstPct = 101;
     Object.entries(byDay).forEach(([day, data]) => {
-        data.percentage = data.total > 0 ? Math.round((data.present / data.total) * 1000) / 10 : null;
+        data.percentage = data.total > 0 ? roundPct(calculatePercentage(data.present, data.total)) : null;
         data.name = WEEKDAY_NAMES[day];
         if (data.total >= 3 && data.percentage !== null && data.percentage < worstPct) {
             worstPct = data.percentage;
@@ -107,7 +108,7 @@ function computeSubjectTrends(records, subjects, holidays) {
             const rec = dayData[sub.id];
             if (!rec || rec.source !== 'erp' || rec.status === 'cancelled') return;
 
-            subHistory.push({ date: dateKey, status: rec.status, units: rec.units || 1 });
+            subHistory.push({ date: dateKey, units: recordUnits(rec), attended: recordAttendedUnits(rec) });
         });
 
         if (subHistory.length < 6) return;
@@ -117,7 +118,7 @@ function computeSubjectTrends(records, subjects, holidays) {
         const secondHalf = subHistory.slice(mid);
 
         const pct = (arr) => {
-            const p = arr.reduce((s, e) => s + (e.status === 'present' ? e.units : 0), 0);
+            const p = arr.reduce((s, e) => s + e.attended, 0);
             const t = arr.reduce((s, e) => s + e.units, 0);
             return t > 0 ? Math.round((p / t) * 1000) / 10 : 0;
         };
@@ -150,7 +151,9 @@ function computeRecentRhythm(records, subjects, holidays) {
         if (!dayData || dayData._holiday || holidays.includes(dateKey)) return;
         Object.entries(dayData).forEach(([sid, rec]) => {
             if (sid === '_holiday' || !rec || rec.source !== 'erp' || rec.status === 'cancelled') return;
-            allEvents.push({ date: dateKey, subjectId: sid, status: rec.status });
+            // All-or-nothing: a part-attended day is not an attended class.
+            const attended = recordAttendedUnits(rec) === recordUnits(rec);
+            allEvents.push({ date: dateKey, subjectId: sid, status: attended ? 'present' : 'absent' });
         });
     });
 
@@ -187,9 +190,11 @@ function computeSemesterSummary(erpDateKeys, records, subjects, holidays) {
         if (!dayData || dayData._holiday || holidays.includes(dk)) return;
         Object.entries(dayData).forEach(([sid, rec]) => {
             if (sid === '_holiday' || !rec || rec.source !== 'erp') return;
-            const units = rec.units || 1;
-            if (rec.status === 'present') totalPresent += units;
-            else if (rec.status === 'absent') totalAbsent += units;
+            if (rec.status === 'cancelled') return;
+            const units = recordUnits(rec);
+            const attended = recordAttendedUnits(rec);
+            totalPresent += attended;
+            totalAbsent += units - attended;
         });
     });
 

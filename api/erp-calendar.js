@@ -163,6 +163,11 @@ function parseRegisterHTML(htmlContent) {
                 if (!latestDateStr || dateStr > latestDateStr) latestDateStr = dateStr;
                 if (!calendar[dateStr]) calendar[dateStr] = {};
 
+                // One entry per subject per day, carrying how many periods were
+                // marked and how many were attended. Those periods are not
+                // always one block (e.g. period 1 and period 5), so collapsing
+                // them to a single present/absent used to drop real attendance
+                // and drift away from the portal's own totals.
                 if (!calendar[dateStr][name]) {
                     calendar[dateStr][name] = {
                         status,
@@ -170,14 +175,16 @@ function parseRegisterHTML(htmlContent) {
                         erpSubjectId,
                         period,
                         units: 1,
-                        _att: status === 'present' ? 1 : 0,
+                        attendedUnits: status === 'present' ? 1 : 0,
                     };
                 } else {
-                    calendar[dateStr][name].units += 1;
-                    if (status === 'present') calendar[dateStr][name]._att += 1;
-                    const totalUnits   = calendar[dateStr][name].units;
-                    const presentUnits = calendar[dateStr][name]._att;
-                    calendar[dateStr][name].status = presentUnits > totalUnits / 2 ? 'present' : 'absent';
+                    const entry = calendar[dateStr][name];
+                    entry.units += 1;
+                    if (status === 'present') entry.attendedUnits += 1;
+                    // status stays as a summary for display only — attendedUnits is the truth
+                    entry.status = entry.attendedUnits === entry.units ? 'present'
+                        : entry.attendedUnits === 0 ? 'absent'
+                        : 'partial';
                 }
             } else if (tdAttrs.toLowerCase().includes('class=') && tdAttrs.toLowerCase().includes('total_')) {
                 const parts = tdVal.split('/');
@@ -192,13 +199,6 @@ function parseRegisterHTML(htmlContent) {
 
         subjects.push({ name, code, erpSubjectId, attended, total, percentage });
     }
-
-    // Clean up internal _att tracker
-    Object.keys(calendar).forEach(date => {
-        Object.keys(calendar[date]).forEach(sub => {
-            delete calendar[date][sub]._att;
-        });
-    });
 
     return { calendar, subjects, latestDate: latestDateStr };
 }
@@ -300,7 +300,8 @@ module.exports = async function handler(req, res) {
                     code: cls.code,
                     erpSubjectId: cls.id,
                     period: cls.period,
-                    units: 1
+                    units: 1,
+                    attendedUnits: status === 'present' ? 1 : 0
                 };
             }
         }

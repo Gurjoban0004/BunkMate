@@ -449,10 +449,16 @@ export function mapCalendarToRecords(calendarData, erpSubjects, existingSubjects
 
             if (!appSubjectId) continue; // skip unmatchable entries
 
+            const units = attendanceInfo.units || 1;
             records[dateKey][appSubjectId] = {
-                status: attendanceInfo.status, // 'present' or 'absent'
+                status: attendanceInfo.status, // 'present' | 'absent' | 'partial'
                 source: 'erp',
-                units: attendanceInfo.units || 1,
+                units,
+                // The register knows exactly how many periods were attended.
+                // Keep that number — a day can mix present and absent periods.
+                attendedUnits: Number.isFinite(Number(attendanceInfo.attendedUnits))
+                    ? Number(attendanceInfo.attendedUnits)
+                    : (attendanceInfo.status === 'present' ? units : 0),
             };
 
             if (!lastSubjectSyncDates[appSubjectId] || dateKey > lastSubjectSyncDates[appSubjectId]) {
