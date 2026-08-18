@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY, MOTION } from '../../theme/theme';
 import BrandMark from '../../components/common/BrandMark';
 
 export default function WelcomeScreen({ navigation }) {
@@ -18,7 +18,7 @@ export default function WelcomeScreen({ navigation }) {
                     <Text style={styles.appName}>Presence</Text>
                     <Text style={styles.tagline}>Attendance, solved.</Text>
                     <Text style={styles.valueProp}>
-                        Import your ERP attendance and know when you can skip.
+                        Know when you can skip, before you decide.
                     </Text>
                 </View>
 
@@ -27,20 +27,22 @@ export default function WelcomeScreen({ navigation }) {
 
                 {/* Actions */}
                 <View style={styles.actions}>
-                    {/* Primary CTA — Login (ERP) */}
                     <TouchableOpacity
                         style={styles.primaryButton}
                         onPress={() => navigation.navigate('ERPSetup')}
-                        activeOpacity={0.85}
+                        activeOpacity={MOTION.pressOpacity}
+                        accessibilityRole="button"
+                        accessibilityLabel="Get started"
                     >
-                        <Text style={styles.primaryButtonText}>Login</Text>
+                        <Text style={styles.primaryButtonText}>Get started</Text>
                     </TouchableOpacity>
                     <Text style={styles.timeEstimate}>Takes about a minute</Text>
 
-                    {/* Tertiary — Already have a code */}
                     <TouchableOpacity
                         style={styles.tertiaryLink}
                         onPress={() => navigation.navigate('Login')}
+                        accessibilityRole="button"
+                        accessibilityLabel="I already have a login code"
                     >
                         <Text style={styles.tertiaryText}>
                             Already have a login code?{' '}
@@ -76,7 +78,7 @@ const getStyles = () => StyleSheet.create({
         ...SHADOWS.medium,
     },
     appName: {
-        ...TYPOGRAPHY.displayLarge,
+        fontWeight: '700',
         fontSize: 36,
         lineHeight: 40,
         color: COLORS.textPrimary,
@@ -100,12 +102,6 @@ const getStyles = () => StyleSheet.create({
     actions: {
         gap: SPACING.sm,
     },
-    timeEstimate: {
-        ...TYPOGRAPHY.captionMedium,
-        color: COLORS.textMuted,
-        textAlign: 'center',
-        marginTop: SPACING.sm,
-    },
     primaryButton: {
         backgroundColor: COLORS.primary,
         paddingVertical: 16,
@@ -114,12 +110,19 @@ const getStyles = () => StyleSheet.create({
         ...SHADOWS.medium,
     },
     primaryButtonText: {
-        color: '#FFFFFF',
         ...TYPOGRAPHY.labelLarge,
+        color: COLORS.textOnPrimary,
     },
-
+    timeEstimate: {
+        ...TYPOGRAPHY.captionMedium,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        marginTop: SPACING.sm,
+    },
     tertiaryLink: {
         alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 44,
         paddingVertical: SPACING.md,
     },
     tertiaryText: {
@@ -128,7 +131,7 @@ const getStyles = () => StyleSheet.create({
         textAlign: 'center',
     },
     tertiaryHighlight: {
-        color: COLORS.primary,
         ...TYPOGRAPHY.labelSmall,
+        color: COLORS.primaryDark,
     },
 });

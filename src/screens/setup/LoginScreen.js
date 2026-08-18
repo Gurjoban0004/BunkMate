@@ -8,13 +8,17 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES, SHADOWS, MOTION } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { loginWithCode } from '../../utils/firebaseHelpers';
 import { loadAppState, clearAppState } from '../../storage/storage';
 import { logger } from '../../utils/logger';
+import { friendlyError } from '../../utils/friendlyError';
+import Notice from '../../components/common/Notice';
+import LoadingDots from '../../components/common/LoadingDots';
+import SetupIllustration from '../../components/setup/SetupIllustration';
 
 // CR-09: lightweight online check using fetch with a short timeout
 async function isOnline() {
@@ -73,7 +77,10 @@ export default function LoginScreen({ navigation }) {
       if (!savedState) {
         const online = await isOnline();
         if (!online) {
-          setError('You appear to be offline. Connect to the internet to restore your data.');
+          setError({
+            title: 'No connection',
+            message: 'Presence needs the internet to restore your data. Reconnect and try again — your code still works.',
+          });
           setIsVerifying(false);
           return;
         }
@@ -98,7 +105,7 @@ export default function LoginScreen({ navigation }) {
       }
     } catch (err) {
       logger.error('Login error:', err);
-      setError(err.message || 'Invalid login code. Please try again.');
+      setError(friendlyError(err, 'code'));
     } finally {
       setIsVerifying(false);
     }
@@ -107,67 +114,85 @@ export default function LoginScreen({ navigation }) {
   const isButtonDisabled = code.length !== 12 || isVerifying;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
-      style={styles.container}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined}
+        style={{ flex: 1 }}
       >
-        <View style={styles.content}>
-          {/* Back button */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              style={styles.topBarBack}
+              onPress={() => navigation.goBack()}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
+              <Text style={styles.topBarBackText}>←</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>
-              Enter your login code to sync your attendance data.
-            </Text>
+            <SetupIllustration name="restore" />
+            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.subtitle}>Enter your login code to sync.</Text>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>LOGIN CODE</Text>
-              <TextInput
-                style={[styles.input, error && styles.inputError]}
-                value={code}
-                onChangeText={handleCodeChange}
-                placeholder="PRES-XXXXXXX"
-                placeholderTextColor={COLORS.textMuted}
-                autoCorrect={false}
-                autoCapitalize="characters"
-                maxLength={12}
-                editable={!isVerifying}
-              />
-              {error && (
-                <Text style={styles.errorText}>
-                  {error}
-                </Text>
-              )}
-            </View>
+            <Text style={styles.label}>LOGIN CODE</Text>
+            <TextInput
+              style={styles.input}
+              value={code}
+              onChangeText={handleCodeChange}
+              placeholder="PRES-XXXXXXX"
+              placeholderTextColor={COLORS.textMuted}
+              autoCorrect={false}
+              autoCapitalize="characters"
+              maxLength={12}
+              editable={!isVerifying}
+              accessibilityLabel="Login code"
+            />
           </View>
 
-          <TouchableOpacity
-            style={[styles.loginButton, isButtonDisabled && styles.loginButtonDisabled]}
-            onPress={handleLogin}
-            disabled={isButtonDisabled}
-          >
-            {isVerifying ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.loginButtonText}>Login</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <Text style={styles.hint}>Find it in Settings on your other device.</Text>
+
+          {error ? (
+            <Notice
+              tone="caution"
+              title={error.title}
+              message={error.message}
+              detail={error.detail}
+              style={styles.notice}
+            />
+          ) : null}
+
+          <View style={{ height: 120 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={[styles.loginButton, isButtonDisabled && !isVerifying && styles.loginButtonDisabled]}
+          onPress={handleLogin}
+          activeOpacity={MOTION.pressOpacity}
+          disabled={isButtonDisabled}
+          accessibilityRole="button"
+          accessibilityLabel="Continue"
+          accessibilityState={{ disabled: isButtonDisabled, busy: isVerifying }}
+        >
+          {isVerifying ? (
+            <LoadingDots color={COLORS.textOnPrimary} />
+          ) : (
+            <Text style={[styles.loginButtonText, isButtonDisabled && styles.loginButtonTextDisabled]}>
+              Continue
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -176,40 +201,37 @@ const getStyles = () => StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  content: {
-    flex: 1,
-    padding: SPACING.xl,
+  scrollContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: 120,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    marginLeft: -SPACING.sm,
+  },
+  topBarBack: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  backButton: {
-    position: 'absolute',
-    top: SPACING.xxl + SPACING.lg,
-    left: SPACING.xl,
-    zIndex: 10,
-    paddingVertical: SPACING.sm,
-    paddingRight: SPACING.md,
-  },
-  backButtonText: {
-    fontSize: FONT_SIZES.md,
-    color: COLORS.primary,
-    fontWeight: '600',
+  topBarBackText: {
+    fontSize: 24,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
   },
   header: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  headerEmoji: {
-    fontSize: 40,
-    marginBottom: SPACING.sm,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   title: {
+    ...TYPOGRAPHY.headingLarge,
     fontSize: FONT_SIZES.xl,
-    fontWeight: '800',
     color: COLORS.textPrimary,
-    marginBottom: SPACING.xs,
+    marginBottom: 4,
   },
   subtitle: {
     ...TYPOGRAPHY.bodyMedium,
@@ -218,18 +240,15 @@ const getStyles = () => StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.cardBackground,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    ...SHADOWS.small,
-    marginBottom: SPACING.xl,
   },
-  inputContainer: {},
   label: {
+    fontWeight: '700',
     fontSize: 10,
     color: COLORS.textMuted,
-    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 6,
@@ -237,28 +256,37 @@ const getStyles = () => StyleSheet.create({
   input: {
     backgroundColor: COLORS.inputBackground,
     borderRadius: BORDER_RADIUS.sm,
-    padding: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
     fontSize: FONT_SIZES.lg,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: 'transparent',
     letterSpacing: 2,
     textAlign: 'center',
     ...Platform.select({ web: { outlineStyle: 'none' } }),
   },
-  inputError: {
-    borderColor: COLORS.danger,
-  },
-  errorText: {
-    ...TYPOGRAPHY.captionMedium,
-    color: COLORS.danger,
-    marginTop: SPACING.sm,
+  hint: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textMuted,
     textAlign: 'center',
+    marginTop: SPACING.md,
+  },
+  notice: {
+    marginTop: SPACING.lg,
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: SPACING.lg,
+    backgroundColor: COLORS.background,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
   loginButton: {
     backgroundColor: COLORS.primary,
-    height: 56,
+    minHeight: 52,
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -266,11 +294,16 @@ const getStyles = () => StyleSheet.create({
   },
   loginButtonDisabled: {
     backgroundColor: COLORS.inputBackground,
-    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   loginButtonText: {
-    ...TYPOGRAPHY.button,
+    ...TYPOGRAPHY.labelLarge,
     color: COLORS.textOnPrimary,
   },
+  loginButtonTextDisabled: {
+    color: COLORS.textMuted,
+  },
 });
-

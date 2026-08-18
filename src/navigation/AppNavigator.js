@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
-import { COLORS } from '../theme/theme';
 import { MaintenanceGate, UpdateGate, RevokedGate } from '../components/common/GateOverlay';
+import BrandLoader from '../components/common/BrandLoader';
 import { getAdminConfig, isAdminRollNumber, isUserRevoked } from '../services/adminService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -80,11 +80,9 @@ export default function AppNavigator() {
     };
 
     if (isLoading || !gateChecked) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-            </View>
-        );
+        // Same mark App.js shows while fonts load, so boot is one continuous
+        // image instead of a brand splash cutting to a bare spinner.
+        return <BrandLoader />;
     }
 
     // Live server verdict wins over the launch-time check — a user revoked while the
@@ -104,12 +102,3 @@ export default function AppNavigator() {
         </NavigationContainer>
     );
 }
-
-const styles = StyleSheet.create({
-    loadingContainer: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-});
