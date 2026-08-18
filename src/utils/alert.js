@@ -35,3 +35,20 @@ export const showAlert = (title, message, buttons, options) => {
         RNAlert.alert(title, message, buttons, options);
     }
 };
+
+/**
+ * Promise-based confirmation, for actions that are hard to take back.
+ * Resolves true only if the user picks the confirm button.
+ */
+export const confirmAction = (title, message, confirmLabel = 'Confirm') =>
+    new Promise((resolve) => {
+        showAlert(
+            title,
+            message,
+            [
+                { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+                { text: confirmLabel, style: 'destructive', onPress: () => resolve(true) },
+            ],
+            { cancelable: true },
+        );
+    });

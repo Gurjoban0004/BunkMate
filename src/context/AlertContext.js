@@ -145,7 +145,7 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.primary,
     },
     destructiveText: {
-        color: COLORS.danger,
+        color: COLORS.dangerText,
     },
     cancelText: {
         fontWeight: '400',

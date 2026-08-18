@@ -460,7 +460,7 @@ const getStyles = () => StyleSheet.create({
     },
     dangerButtonText: {
         ...TYPOGRAPHY.labelMedium,
-        color: COLORS.danger,
+        color: COLORS.dangerText,
         fontWeight: '700',
     },
 });

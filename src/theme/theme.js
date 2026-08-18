@@ -14,7 +14,9 @@ export const PALETTES = {
         description: 'Original blue & sweet pastels',
         swatches: ['#F0F7FF', '#5B9BF2', '#F472B6'],
         light: {
-            background:      '#F0F7FF',
+            // Softened off-white. The old #F0F7FF read as a blue wash behind
+            // every screen; the tint now only whispers.
+            background:      '#FAFBFD',
             cardBackground:  '#FFFFFF',
             inputBackground: '#F1F5F9',
             bgSkip:          '#FEF2F2',
@@ -22,19 +24,22 @@ export const PALETTES = {
             primary:         '#5B9BF2',
             primaryLight:    '#E8F1FF',
             primaryDark:     '#2D6FD4',
-            textOnPrimary:   '#FFFFFF',
+            textOnPrimary:   '#0F172A',
             success:         '#34D399',
             successLight:    '#ECFDF5',
             successDark:     '#059669',
+            successText:     '#1F7D5B',
             danger:          '#F87171',
             dangerLight:     '#FEF2F2',
             dangerDark:      '#DC2626',
+            dangerText:      '#B15151',
             warning:         '#FBBF24',
             warningLight:    '#FFFBEB',
             warningDark:     '#D97706',
+            warningText:     '#8B6914',
             textPrimary:     '#0F172A',
-            textSecondary:   '#64748B',
-            textMuted:       '#94A3B8',
+            textSecondary:   '#495465',
+            textMuted:       '#656F7E',
             border:          '#E2E8F0',
             borderSubtle:    'rgba(91, 155, 242, 0.15)',
             borderLight:     '#F8FAFC',
@@ -54,19 +59,22 @@ export const PALETTES = {
             primary:         '#5B9BF2',
             primaryLight:    '#1E3A5F',
             primaryDark:     '#8EC4FF',
-            textOnPrimary:   '#FFFFFF',
+            textOnPrimary:   '#0B1120',
             success:         '#6EE7B7',
             successLight:    '#14332A',
             successDark:     '#A7F3D0',
+            successText:     '#6EE7B7',
             danger:          '#FCA5A5',
             dangerLight:     '#2D1F1F',
             dangerDark:      '#FECACA',
+            dangerText:      '#FCA5A5',
             warning:         '#FCD34D',
             warningLight:    '#2D2814',
             warningDark:     '#FDE68A',
+            warningText:     '#FCD34D',
             textPrimary:     '#E2E8F0',
             textSecondary:   '#94A3B8',
-            textMuted:       '#64748B',
+            textMuted:       '#8592A4',
             border:          '#2D3A4F',
             borderSubtle:    'rgba(91, 155, 242, 0.12)',
             borderLight:     '#1E293B',
@@ -97,15 +105,18 @@ export const PALETTES = {
             success:         '#609384',
             successLight:    '#E2ECE9',
             successDark:     '#3D6B5E',
+            successText:     '#496F64',
             danger:          '#C85B49',
             dangerLight:     '#F7EBE8',
             dangerDark:      '#A0483A',
+            dangerText:      '#AB4E3F',
             warning:         '#B89647',
             warningLight:    '#FAF4E5',
             warningDark:     '#8F7436',
+            warningText:     '#836A32',
             textPrimary:     '#1C1917',
             textSecondary:   '#57534E',
-            textMuted:       '#A8A29E',
+            textMuted:       '#716D6B',
             border:          '#E6E4E0',
             borderSubtle:    '#F5F4F0',
             borderLight:     '#F5F4F0',
@@ -129,15 +140,18 @@ export const PALETTES = {
             success:         '#82B3A4',
             successLight:    '#172622',
             successDark:     '#A4D4C5',
+            successText:     '#82B3A4',
             danger:          '#E28271',
             dangerLight:     '#321B19',
             dangerDark:      '#F5A898',
+            dangerText:      '#E28271',
             warning:         '#D8B76D',
             warningLight:    '#2D2718',
             warningDark:     '#EAD194',
+            warningText:     '#D8B76D',
             textPrimary:     '#F5F5F4',
             textSecondary:   '#A8A29E',
-            textMuted:       '#57534E',
+            textMuted:       '#908E8A',
             border:          '#2E2A28',
             borderSubtle:    '#23201E',
             borderLight:     '#23201E',
@@ -169,15 +183,18 @@ export const PALETTES = {
             success:         '#2DD4BF',
             successLight:    '#0D2B26',
             successDark:     '#5EEAD4',
+            successText:     '#2DD4BF',
             danger:          '#FB7185',
             dangerLight:     '#32161A',
             dangerDark:      '#FDA4AF',
+            dangerText:      '#FB7185',
             warning:         '#FBBF24',
             warningLight:    '#2C200C',
             warningDark:     '#FDE68A',
+            warningText:     '#FBBF24',
             textPrimary:     '#FAFAFA',
             textSecondary:   '#A1A1AA',
-            textMuted:       '#52525B',
+            textMuted:       '#7F7F85',
             border:          '#1E1E26',
             borderSubtle:    '#111116',
             borderLight:     '#111116',
@@ -201,15 +218,18 @@ export const PALETTES = {
             success:         '#2DD4BF',
             successLight:    '#0D2B26',
             successDark:     '#5EEAD4',
+            successText:     '#2DD4BF',
             danger:          '#FB7185',
             dangerLight:     '#32161A',
             dangerDark:      '#FDA4AF',
+            dangerText:      '#FB7185',
             warning:         '#FBBF24',
             warningLight:    '#2C200C',
             warningDark:     '#FDE68A',
+            warningText:     '#FBBF24',
             textPrimary:     '#FAFAFA',
             textSecondary:   '#A1A1AA',
-            textMuted:       '#52525B',
+            textMuted:       '#7F7F85',
             border:          '#1E1E26',
             borderSubtle:    '#111116',
             borderLight:     '#111116',
@@ -240,15 +260,18 @@ export const PALETTES = {
             success:         '#609966',
             successLight:    '#EDF4EE',
             successDark:     '#3D6B42',
+            successText:     '#466F4A',
             danger:          '#D8604C',
             dangerLight:     '#FBF0ED',
             dangerDark:      '#B0473A',
+            dangerText:      '#A64A3B',
             warning:         '#DCA842',
             warningLight:    '#FBF7EC',
             warningDark:     '#A47E2F',
+            warningText:     '#806126',
             textPrimary:     '#2C3527',
             textSecondary:   '#586450',
-            textMuted:       '#8FA086',
+            textMuted:       '#5E6958',
             border:          '#D2D8CB',
             borderSubtle:    '#ECEFEA',
             borderLight:     '#ECEFEA',
@@ -272,15 +295,18 @@ export const PALETTES = {
             success:         '#7FBD86',
             successLight:    '#1A2E20',
             successDark:     '#A6E3A1',
+            successText:     '#7FBD86',
             danger:          '#ED8B7A',
             dangerLight:     '#321F1C',
             dangerDark:      '#F5B0A2',
+            dangerText:      '#ED8B7A',
             warning:         '#ECD175',
             warningLight:    '#2F2A1C',
             warningDark:     '#F5E5A5',
+            warningText:     '#ECD175',
             textPrimary:     '#EDF3EB',
             textSecondary:   '#90A086',
-            textMuted:       '#586450',
+            textMuted:       '#8E9789',
             border:          '#333C2E',
             borderSubtle:    '#242A20',
             borderLight:     '#242A20',
@@ -301,25 +327,28 @@ export const PALETTES = {
         light: {
             background:      '#EFF1F5',
             cardBackground:  '#FFFFFF',
-            inputBackground: '#CCD0DA',
+            inputBackground: '#E6E9EF',
             bgSkip:          '#FBE6EA',
             bgAttend:        '#EBF5E9',
             primary:         '#7287FD',
             primaryLight:    '#E8EBFC',
             primaryDark:     '#5468D4',
-            textOnPrimary:   '#FFFFFF',
+            textOnPrimary:   '#1E1E2E',
             success:         '#40A02B',
             successLight:    '#EBF5E9',
             successDark:     '#2D7A1E',
+            successText:     '#28641B',
             danger:          '#D20F39',
             dangerLight:     '#FBE6EA',
             dangerDark:      '#A60C2D',
+            dangerText:      '#B00D30',
             warning:         '#DF8E1D',
             warningLight:    '#FDF3E5',
             warningDark:     '#B07016',
+            warningText:     '#7B4E10',
             textPrimary:     '#4C4F69',
-            textSecondary:   '#6C6F85',
-            textMuted:       '#9CA0B0',
+            textSecondary:   '#494C5B',
+            textMuted:       '#656772',
             border:          '#BCC0CC',
             borderSubtle:    '#E6E9EF',
             borderLight:     '#E6E9EF',
@@ -343,15 +372,18 @@ export const PALETTES = {
             success:         '#A6E3A1',
             successLight:    '#20352A',
             successDark:     '#C6F0C3',
+            successText:     '#A6E3A1',
             danger:          '#F38BA8',
             dangerLight:     '#3D2230',
             dangerDark:      '#F7B3C5',
+            dangerText:      '#F38BA8',
             warning:         '#F9E2AF',
             warningLight:    '#3E3B33',
             warningDark:     '#FBF0D3',
+            warningText:     '#F9E2AF',
             textPrimary:     '#CDD6F4',
             textSecondary:   '#A6ADC8',
-            textMuted:       '#6C7086',
+            textMuted:       '#999CAB',
             border:          '#3E4057',
             borderSubtle:    '#2A2B3C',
             borderLight:     '#2A2B3C',
@@ -372,10 +404,10 @@ export const DARK_COLORS = PALETTES.nordic.dark;
 // COLORS is the live token map. Always read from this — never from
 // palette definitions directly in components.
 // Call applyTheme() once on app boot (and on theme toggle) to populate it.
-export const COLORS = { ...PALETTES.nordic.light };
+export const COLORS = { ...PALETTES.chalkpad.light };
 
 export const applyTheme = (themeStr, paletteId) => {
-    const palette = PALETTES[paletteId] || PALETTES.nordic;
+    const palette = PALETTES[paletteId] || PALETTES.chalkpad;
     const mode = palette.oledOnly ? 'dark' : themeStr;
     const source = mode === 'dark' ? palette.dark : palette.light;
     Object.assign(COLORS, source);
@@ -417,6 +449,16 @@ export const SPACING = {
 // Single source of truth — use TYPOGRAPHY everywhere.
 // ─────────────────────────────────────────────────────────────
 
+// One family: Times New Roman. Chosen by the user over the Tinos/Inter pair —
+// real Times, not a metric clone, and no sans for the mechanics.
+//
+// Sizes are the larger redesign scale (they stay); weights live on the tokens
+// again because Times has a real bold and the browser/OS picks it from the
+// weight, not from a separate family name.
+//
+// ponytail: `android: 'serif'` resolves to Noto Serif, not Times — Android
+// won't be pixel-identical to iOS/web. Bundle Tinos as an Android-only face if
+// that ever matters.
 const SERIF_FONT = Platform.select({
     ios: 'Times New Roman',
     android: 'serif',
@@ -424,34 +466,43 @@ const SERIF_FONT = Platform.select({
 });
 
 export const TYPOGRAPHY = {
-    // Hero numbers (attendance %, big stats) — Outfit 22-26px, 800
-    displayLarge:  { fontFamily: SERIF_FONT, fontSize: 26, fontWeight: '800', lineHeight: 29, letterSpacing: -0.5 },
-    displayMedium: { fontFamily: SERIF_FONT, fontSize: 22, fontWeight: '800', lineHeight: 24, letterSpacing: -0.5 },
-    displaySmall:  { fontFamily: SERIF_FONT, fontSize: 18, fontWeight: '800', lineHeight: 20, letterSpacing: -0.3 },
+    // Hero numbers and greetings
+    displayLarge:  { fontFamily: SERIF_FONT, fontWeight: '700', fontSize: 30, lineHeight: 35, letterSpacing: -0.2 },
+    displayMedium: { fontFamily: SERIF_FONT, fontWeight: '700', fontSize: 25, lineHeight: 30, letterSpacing: -0.2 },
+    displaySmall:  { fontFamily: SERIF_FONT, fontWeight: '700', fontSize: 20, lineHeight: 25, letterSpacing: 0 },
 
-    // Section and card headers — Outfit 16-20px, 800
-    headingLarge:  { fontFamily: SERIF_FONT, fontSize: 20, fontWeight: '800', lineHeight: 26, letterSpacing: -0.3 },
-    headingMedium: { fontFamily: SERIF_FONT, fontSize: 16, fontWeight: '800', lineHeight: 22, letterSpacing: -0.3 },
-    headingSmall:  { fontFamily: SERIF_FONT, fontSize: 14, fontWeight: '700', lineHeight: 18 },
+    // Screen titles and empty-state headlines
+    headingLarge:  { fontFamily: SERIF_FONT, fontWeight: '700', fontSize: 22, lineHeight: 28, letterSpacing: 0 },
 
-    // Body copy — Inter 12-14px, 500
-    bodyLarge:     { fontFamily: SERIF_FONT, fontSize: 16, fontWeight: '500', lineHeight: 22 },
-    bodyMedium:    { fontFamily: SERIF_FONT, fontSize: 14, fontWeight: '500', lineHeight: 20 },
-    bodySmall:     { fontFamily: SERIF_FONT, fontSize: 12, fontWeight: '500', lineHeight: 17 },
+    // Card titles and row headings
+    headingMedium: { fontFamily: SERIF_FONT, fontWeight: '700', fontSize: 16, lineHeight: 22, letterSpacing: -0.2 },
+    headingSmall:  { fontFamily: SERIF_FONT, fontWeight: '600', fontSize: 14, lineHeight: 19, letterSpacing: -0.1 },
 
-    // Labels, buttons, chips — Inter 12-14px, 600-700
-    labelLarge:    { fontFamily: SERIF_FONT, fontSize: 14, fontWeight: '700', lineHeight: 18, letterSpacing: 0.1 },
-    labelMedium:   { fontFamily: SERIF_FONT, fontSize: 12, fontWeight: '700', lineHeight: 16, letterSpacing: 0.1 },
-    labelSmall:    { fontFamily: SERIF_FONT, fontSize: 11, fontWeight: '700', lineHeight: 14, letterSpacing: 0.2 },
+    // Body copy
+    bodyLarge:     { fontFamily: SERIF_FONT, fontWeight: '400', fontSize: 16, lineHeight: 24 },
+    bodyMedium:    { fontFamily: SERIF_FONT, fontWeight: '400', fontSize: 14, lineHeight: 21 },
+    bodySmall:     { fontFamily: SERIF_FONT, fontWeight: '400', fontSize: 12, lineHeight: 18 },
+
+    // Labels, buttons, chips
+    labelLarge:    { fontFamily: SERIF_FONT, fontWeight: '600', fontSize: 14, lineHeight: 18, letterSpacing: 0 },
+    labelMedium:   { fontFamily: SERIF_FONT, fontWeight: '600', fontSize: 12, lineHeight: 16, letterSpacing: 0 },
+    labelSmall:    { fontFamily: SERIF_FONT, fontWeight: '600', fontSize: 11, lineHeight: 14, letterSpacing: 0.1 },
 
     // Captions, hints
-    captionLarge:  { fontFamily: SERIF_FONT, fontSize: 12, fontWeight: '500', lineHeight: 16, letterSpacing: 0.1 },
-    captionMedium: { fontFamily: SERIF_FONT, fontSize: 11, fontWeight: '500', lineHeight: 14, letterSpacing: 0.2 },
-    captionSmall:  { fontFamily: SERIF_FONT, fontSize: 10, fontWeight: '500', lineHeight: 13, letterSpacing: 0.3 },
+    captionLarge:  { fontFamily: SERIF_FONT, fontWeight: '400', fontSize: 12, lineHeight: 16 },
+    captionMedium: { fontFamily: SERIF_FONT, fontWeight: '500', fontSize: 11, lineHeight: 14, letterSpacing: 0.1 },
+    captionSmall:  { fontFamily: SERIF_FONT, fontWeight: '500', fontSize: 10, lineHeight: 13, letterSpacing: 0.2 },
 
-    // Micro badges — Inter 9-10px, 700, uppercase
-    micro:         { fontFamily: SERIF_FONT, fontSize: 9, fontWeight: '700', lineHeight: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
+    // Micro badges (SAFE / EDGE / LOW), uppercase
+    micro:         { fontFamily: SERIF_FONT, fontWeight: '700', fontSize: 9, lineHeight: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
 };
+
+// Numerals that don't jitter. The attendance percentage is the hero number and
+// it re-renders every time a class is marked; proportional figures make it
+// shuffle sideways on each change. Spread onto any Text that shows a number.
+export const TABULAR = Platform.OS === 'web'
+    ? { fontVariantNumeric: 'tabular-nums' }
+    : { fontVariant: ['tabular-nums'] };
 
 // Convenience scale — matches the named steps above.
 // Use FONT_SIZES.md, FONT_SIZES.lg etc. in StyleSheet definitions.

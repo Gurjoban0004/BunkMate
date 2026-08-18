@@ -177,8 +177,8 @@ export default function TabNavigator() {
                 tabBarActiveTintColor: COLORS.primary,
                 tabBarInactiveTintColor: COLORS.textMuted,
                 tabBarLabelStyle: {
-                    fontSize: 10,
                     fontWeight: '700',
+                    fontSize: 10,
                     marginTop: 2,
                     letterSpacing: 0.3,
                 },

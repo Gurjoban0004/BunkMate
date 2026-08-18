@@ -60,6 +60,7 @@ export default function Input({
                         borderRadius: BORDER_RADIUS.sm,
                         border: `1px solid ${COLORS.border}`,
                         // Must be >= 16px to prevent iOS Safari viewport zoom on focus
+                        fontWeight: '400',
                         fontSize: 16,
                         outline: 'none',
                         boxSizing: 'border-box',

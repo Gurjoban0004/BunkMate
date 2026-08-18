@@ -56,7 +56,7 @@ const initialState = {
         smartAlertsEnabled: true,
         erpConnected: false,
         lastErpSync: null,
-        uiPalette: 'nordic',
+        uiPalette: 'chalkpad',
     },
 
     // Track which warning notifications have been sent (avoid spam)

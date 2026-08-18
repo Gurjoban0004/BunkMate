@@ -43,7 +43,7 @@ export default class ErrorBoundary extends React.Component {
         return (
             <View style={styles.container}>
                 <View style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 3, borderColor: COLORS.danger, alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.md }}>
-                    <Text style={{ fontSize: 30, fontWeight: '800', color: COLORS.danger }}>!</Text>
+                    <Text style={{ fontSize: 30, fontWeight: '800', color: COLORS.dangerText }}>!</Text>
                 </View>
                 <Text style={styles.title}>
                     {screen
@@ -82,6 +82,7 @@ const rootStyles = StyleSheet.create({
         textAlign: 'center',
     },
     subtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.md,
         color: COLORS.textSecondary,
         textAlign: 'center',
@@ -114,13 +115,14 @@ const screenStyles = StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     title: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.lg,
-        fontWeight: '700',
         color: COLORS.textPrimary,
         marginBottom: SPACING.xs,
         textAlign: 'center',
     },
     subtitle: {
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
         color: COLORS.textSecondary,
         textAlign: 'center',
@@ -135,7 +137,7 @@ const screenStyles = StyleSheet.create({
     },
     buttonText: {
         color: COLORS.textOnPrimary,
+        fontWeight: '400',
         fontSize: FONT_SIZES.sm,
-        fontWeight: '700',
     },
 });
