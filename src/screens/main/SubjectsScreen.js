@@ -70,13 +70,23 @@ const SubjectsScreen = ({ navigation }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state.subjects, state.attendanceRecords, state.holidays, state.trackingStartDate, dangerThreshold]);
 
+    // Shorten the list: hide "empty" subjects — 0 tracked classes and no ERP totals.
+    // These are timetable/elective stubs and stale prior-term rows with nothing to
+    // show. Guard: if EVERY subject is still 0/0 (a fresh term before any class is
+    // marked), show them all rather than an empty screen.
+    const visibleSubjects = useMemo(() => {
+        const hasReal = (s) => (s.totalUnits > 0) || (Number(s.erpDelivered) > 0);
+        const anyReal = subjectsWithStats.some(hasReal);
+        return anyReal ? subjectsWithStats.filter(hasReal) : subjectsWithStats;
+    }, [subjectsWithStats]);
+
     // Categorize subjects
     const categorizedSubjects = useMemo(() => {
         const danger = [];
         const edge = [];
         const safe = [];
 
-        subjectsWithStats.forEach(subject => {
+        visibleSubjects.forEach(subject => {
             const target = subject.resolvedTarget;
             const edgeThresholdForSubject = target + 3;
 
@@ -100,7 +110,7 @@ const SubjectsScreen = ({ navigation }) => {
         safe.sort((a, b) => slack(b) - slack(a) || b.percentage - a.percentage);
 
         return { danger, edge, safe };
-    }, [subjectsWithStats]);
+    }, [visibleSubjects]);
 
     // Calculate overall stats
     const overallStats = useMemo(() => {

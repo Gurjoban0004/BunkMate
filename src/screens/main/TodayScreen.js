@@ -280,6 +280,16 @@ const TodayScreen = ({ navigation }) => {
                     </View>
                 </View>
 
+                {/* Today's Schedule Bar — kept topmost: the one thing you open
+                   this screen to see is what's on today and what's next. */}
+                <TodayScheduleBar
+                    todayClasses={todayClasses}
+                    attendanceRecords={state.attendanceRecords}
+                    todayKey={todayKey}
+                    currentTime={currentTime}
+                    nextClassInfo={nextClassInfo}
+                />
+
                 {/* At most one of these renders at a time — see BannerSlot.
                    Backlog sits inside the host too, further down. */}
                 <BannerHost>
@@ -296,15 +306,6 @@ const TodayScreen = ({ navigation }) => {
                         />
                     )}
                 </BannerHost>
-
-                {/* Today's Schedule Bar */}
-                <TodayScheduleBar
-                    todayClasses={todayClasses}
-                    attendanceRecords={state.attendanceRecords}
-                    todayKey={todayKey}
-                    currentTime={currentTime}
-                    nextClassInfo={nextClassInfo}
-                />
 
                 {/* Quick Answer Card */}
                 {!isHoliday && todayClasses.length > 0 && (
