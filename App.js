@@ -1,37 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
-import { COLORS, applyTheme } from './src/theme/theme';
+import { applyTheme } from './src/theme/theme';
 import { DEV_MODE, SKIP_SETUP, MOCK_SCENARIO } from './src/dev/config';
-import DevModePanel from './src/dev/DevModePanel';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import BrandLoader from './src/components/common/BrandLoader';
 import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { setGlobalWebAlert } from './src/utils/alert';
-import ErpReauthModal from './src/components/erp/ErpReauthModal';
+import ReconnectSheet from './src/components/erp/ReconnectSheet';
 import ResearchPrompt from './src/components/research/ResearchPrompt';
-import { scheduleDailyReminder, cancelAllReminders } from './src/utils/notifications';
-// No webfont loading: the app is Times New Roman (system serif on Android),
-// so there is nothing to download and no font gate to wait on at boot.
+import { syncDailyPlanNotifications, cancelAllReminders, checkSmartAlerts } from './src/utils/notifications';
+import { getSubjectAttendance } from './src/utils/attendance';
 
-// ─── Web: Disable react-native-screens on web ─────────────────────────────────
-// react-native-screens injects ScreenContainer divs that leave ghost overlay
-// divs in the DOM during/after navigation transitions. These overlays have no
-// pointer-events style set, so they sit invisibly on top of your current screen
-// and swallow every tap and click — including on text inputs.
-//
-// Calling enableScreens(false) before any navigation renders forces
-// @react-navigation/stack to use plain View-based rendering on web,
-// completely bypassing the broken ScreenContainer behavior.
+// Dev tooling (time travel, mock scenarios, date-fns) is only compiled into
+// development builds. A production export drops the whole branch.
+const DevModePanel = __DEV__ ? require('./src/dev/DevModePanel').default : null;
+
+// ─── Web: disable react-native-screens ───────────────────────────────────────
+// react-native-screens leaves ghost overlay divs in the DOM during navigation
+// transitions that swallow taps. Plain Views on web avoid it entirely.
 if (Platform.OS === 'web') {
-    // Dynamically import so it doesn't affect native bundles at all
     const { enableScreens } = require('react-native-screens');
     enableScreens(false);
 
-    // Register service worker for PWA offline support
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js').catch((err) => {
@@ -40,58 +34,37 @@ if (Platform.OS === 'web') {
         });
     }
 
-    // Inject manifest link if not already present
     if (!document.querySelector('link[rel="manifest"]')) {
         const link = document.createElement('link');
         link.rel = 'manifest';
         link.href = '/manifest.json';
         document.head.appendChild(link);
     }
-}
 
-if (Platform.OS === 'web') {
     const style = document.createElement('style');
     style.textContent = `
         /* Global font. The blanket star selector + !important is deliberate:
            RN Web emits its own font-family class on every Text, TextInput and
            nav label, and this is the one rule that outranks all of them.
-           Icons are SVG, so nothing here breaks glyphs.
-           NOTE: no backticks in this block — it is a template literal, and a
-           stray one silently turns the whole stylesheet into NaN. */
+           Icons are SVG, so nothing here breaks glyphs. */
         * {
             font-family: 'Times New Roman', Times, serif !important;
         }
-
-        /* ── Core input fix ───────────────────────────────────────────────
-           React Native Web sets user-select:none globally. Safari uses this
-           as a signal to reject focus on tapped elements. We override just
-           for inputs so they behave like normal web text fields.           */
         html, body {
             overscroll-behavior-y: none;
             touch-action: pan-y;
         }
-           
+        /* RN Web sets user-select:none globally; Safari treats that as
+           "do not focus". Inputs must behave like normal web fields. */
         input, textarea, [contenteditable] {
             -webkit-user-select: text !important;
             user-select: text !important;
             pointer-events: auto !important;
-            /* Prevent iOS Safari from zooming on focus (font-size < 16px) */
             font-size: max(16px, 1em) !important;
         }
-
-        /* ── Safari Hit-Testing Fix ───────────────────────────────────────
-           iOS Safari can sometimes miscalculate the touch targets of elements
-           nested inside flex-grow containers that are themselves inside
-           absolute-positioned navigation cards. We force the main app
-           container to be hit-testable and ensure no invisible overlays
-           are created by the bundler/runtime. */
         #root, #root > div {
             pointer-events: auto !important;
         }
-
-        /* ── Focus outline ────────────────────────────────────────────────
-           Remove only from inputs, NOT from everything (*) — blanket
-           outline:none on * can confuse WebKit's internal focus routing   */
         input:focus, textarea:focus {
             outline: none;
         }
@@ -100,10 +73,9 @@ if (Platform.OS === 'web') {
 }
 
 function AppContent() {
-    const { state, dispatch, isLoading, runAutopilotCheck } = useApp();
+    const { state, dispatch, isLoading, erpLastSynced } = useApp();
     const [devReady, setDevReady] = useState(!DEV_MODE || !SKIP_SETUP);
 
-    // Process theme dynamically on every render
     const currentTheme = state?.settings?.theme || 'light';
     const currentPalette = state?.settings?.uiPalette || 'chalkpad';
     applyTheme(currentTheme, currentPalette);
@@ -121,27 +93,39 @@ function AppContent() {
         }
     }, [isLoading, state.setupComplete, devReady]); // DEV_MODE, SKIP_SETUP are constants; dispatch is stable
 
-    // Run Autopilot Check once the app is loaded and ready
-    useEffect(() => {
-        if (!isLoading && devReady && state.setupComplete && runAutopilotCheck) {
-            // Using a short timeout ensures the navigation state is settled
-            // before presenting any alerts or review cards.
-            const timer = setTimeout(() => {
-                runAutopilotCheck();
-            }, 500);
-            return () => clearTimeout(timer);
-        }
-    }, [isLoading, devReady, state.setupComplete, runAutopilotCheck]);
-
-    // Android daily reminder: a local scheduled notification, (re)armed whenever
-    // the setting changes. Cancelling first keeps it idempotent across launches.
+    // ── Android: the morning plan, as real notifications ──────────────
+    // One per day for the next week, each written from the timetable and the
+    // college's current numbers. Re-planned whenever those change or the app
+    // comes to the foreground, so the text is never stale.
     const reminderOn = !!state?.settings?.notificationEnabled;
-    const reminderTime = state?.settings?.notificationTime || '18:00';
+    const reminderTime = state?.settings?.notificationTime || '07:30';
+    const stateRef = useRef(state);
+    useEffect(() => { stateRef.current = state; }, [state]);
+    const planTimerRef = useRef(null);
+    const replan = () => {
+        if (Platform.OS !== 'android') return;
+        clearTimeout(planTimerRef.current);
+        planTimerRef.current = setTimeout(() => {
+            const s = stateRef.current;
+            if (!s.setupComplete) return;
+            (s.settings?.notificationEnabled ? syncDailyPlanNotifications(s) : cancelAllReminders())
+                .catch(() => { /* notifications are non-critical */ });
+        }, 1500);
+    };
     useEffect(() => {
-        if (Platform.OS !== 'android' || isLoading || !state.setupComplete) return;
-        (reminderOn ? scheduleDailyReminder(reminderTime) : cancelAllReminders())
-            .catch(() => { /* notifications are non-critical */ });
-    }, [isLoading, state.setupComplete, reminderOn, reminderTime]);
+        if (Platform.OS !== 'android' || isLoading) return undefined;
+        replan();
+        const sub = AppState.addEventListener('change', (next) => { if (next === 'active') replan(); });
+        return () => { sub.remove(); clearTimeout(planTimerRef.current); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isLoading, state.setupComplete, reminderOn, reminderTime, erpLastSynced, state.timetableMeta?.fetchedAt]);
+
+    // ── Android: warn the moment a subject crosses the line ───────────
+    useEffect(() => {
+        if (Platform.OS !== 'android' || !erpLastSynced || !state.settings?.smartAlertsEnabled) return;
+        checkSmartAlerts(stateRef.current, dispatch, getSubjectAttendance).catch(() => {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [erpLastSynced]);
 
     if (isLoading || !devReady) {
         return <BrandLoader />;
@@ -151,9 +135,9 @@ function AppContent() {
         <>
             <StatusBar style={currentTheme === 'dark' ? 'light' : 'dark'} />
             <AppNavigator key={currentTheme} />
-            <ErpReauthModal />
+            <ReconnectSheet />
             <ResearchPrompt />
-            <DevModePanel />
+            {DevModePanel ? <DevModePanel /> : null}
         </>
     );
 }
@@ -181,12 +165,3 @@ export default function App() {
         </SafeAreaProvider>
     );
 }
-
-const styles = StyleSheet.create({
-    loading: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: COLORS.background,
-    },
-});

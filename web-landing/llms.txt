@@ -1,0 +1,20 @@
+# Presence
+
+> Presence is an attendance app for college students. It signs in to the student's own college account, keeps their attendance numbers identical to what the college records, and tells them exactly how many classes they can skip or must attend to stay above their goal.
+
+## What it does
+
+- Syncs subjects, per-subject attendance totals, the day-by-day register and the weekly timetable from the college.
+- Shows, for every class, whether skipping it is safe under the student's goal (default 75%).
+- Explains recovery: how many consecutive classes to attend to get back above goal.
+- Works as an installable web app (iPhone and Android via the browser) and as an Android APK.
+
+## What it deliberately does not do
+
+- It never lets the student edit attendance numbers. The college is the only source.
+- It never stores the college password in plain text; sign-in goes straight to the college and a one-time code is only ever requested when the student asks for it.
+
+## Pages
+
+- https://presence-blue.vercel.app/ — landing page and install instructions
+- https://presence-blue.vercel.app/app — the app itself (requires a college account; not for indexing)

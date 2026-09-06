@@ -8,7 +8,7 @@ import { COLORS, SHADOWS } from '../theme/theme';
 
 export default function DevModePanel() {
     const styles = getStyles();
-    const { state, dispatch, runAutopilotCheck } = useApp();
+    const { state, dispatch } = useApp();
     const [isOpen, setIsOpen] = useState(false);
 
     if (!DEV_MODE || !DEV_MODE_CONFIG.showDevPanel) {
@@ -16,10 +16,6 @@ export default function DevModePanel() {
     }
 
     const handleLoadScenario = (scenarioData) => {
-        if (scenarioData._triggerAutopilot) {
-            runAutopilotCheck();
-            return;
-        }
         dispatch({ type: 'LOAD_STATE', payload: scenarioData });
     };
 
@@ -64,7 +60,6 @@ export default function DevModePanel() {
                 isVisible={isOpen}
                 onClose={() => setIsOpen(false)}
                 scenarios={MOCK_SCENARIOS}
-                runAutopilotCheck={runAutopilotCheck}
             />
         </>
     );

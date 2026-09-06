@@ -7,9 +7,8 @@
  *   persistent token  — the credentials + device id used for silent re-login
  *   OTP ticket        — authUserId + username + password + device id, bound at login
  *
- * Every blob carries `iat`. Sessions go stale after SESSION_MAX_AGE_MS (the data
- * handlers then re-login instead of using it), persistent tokens die after
- * PERSISTENT_MAX_AGE_MS (the student signs in again), OTP tickets after 15 min.
+ * Every blob carries `iat`. Sessions and persistent tokens die after a year
+ * (the student signs in again, once), OTP tickets after 15 min.
  */
 
 const crypto = require('crypto');
@@ -33,8 +32,13 @@ const SESSION_KEY    = crypto.scryptSync(SECRET, SESSION_SALT,    32);
 const PERSISTENT_KEY = crypto.scryptSync(SECRET, PERSISTENT_SALT, 32);
 const OTP_TICKET_KEY = crypto.scryptSync(SECRET, OTP_TICKET_SALT, 32);
 
-const SESSION_MAX_AGE_MS    = 30  * 24 * 60 * 60 * 1000;   // M3: a leaked session token stops working
-const PERSISTENT_MAX_AGE_MS = 180 * 24 * 60 * 60 * 1000;   // one semester of "remember me"
+// A student signs in once and is not asked again for a year. The session token
+// used to expire after 30 days, which forced a re-login — and on this college's
+// ERP every re-login is an OTP email — so the app itself was the reason people
+// kept getting "session expired". Both blobs still expire: a leaked pair stops
+// working after a year, and the student can revoke sooner by disconnecting.
+const SESSION_MAX_AGE_MS    = 365 * 24 * 60 * 60 * 1000;
+const PERSISTENT_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 const OTP_TICKET_MAX_AGE_MS = 15  * 60 * 1000;             // OTPs die long before this
 
 const MOBILE_HEADERS = {
@@ -281,7 +285,11 @@ function isSessionDead(responseData, htmlBody = '') {
  * Authoritative session-liveness probe — the exact call the official mobile app uses.
  * Returns true (alive) | false (confirmed dead) | null (ambiguous / network error).
  *
- * Callers MUST NOT trigger reloginERP (which emails an OTP) unless this returns exactly false.
+ * `false` is the only answer that can make the app ask the student to sign in
+ * again, so it is reserved for the college explicitly saying so in JSON. An
+ * HTML page (maintenance, Cloudflare, a login form served during an outage)
+ * that happens to contain the word "login" is NOT a dead session — it is an
+ * outage, and outages must never cost a student an OTP.
  */
 async function checkSessionAlive(session) {
     if (!ERP_BASE || !session?.userId) return null;
@@ -296,9 +304,14 @@ async function checkSessionAlive(session) {
                 deviceIdUUID:  session.deviceIdUUID || '',
             }),
         });
-        const body = (await res.text()).replace(/\s/g, '');
+        const raw = await res.text();
+        const body = raw.replace(/\s/g, '');
         if (body === '1') return true;
-        if (/session|login|expired|logout|unauthor/i.test(body)) return false;
+        if (!body.startsWith('{') && !body.startsWith('[')) return null;
+        let payload;
+        try { payload = JSON.parse(raw); } catch { return null; }
+        const text = JSON.stringify(payload).toLowerCase();
+        if (/session|login|expired|logout|unauthor/.test(text)) return false;
         return null;
     } catch {
         return null;

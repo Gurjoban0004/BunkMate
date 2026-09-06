@@ -1,3 +1,5 @@
+> **2026-09-06, round 2:** attendance is now the college's totals only (no manual/auto marks), sign-in is once (the server never re-logs-in; OTP only on tap), startup paints from local storage, Today has a rest-day view, and the admin panel counts real students only. Ledger: `ROUND2-2026-09-06.md`. UX plan: `UX-IMPROVEMENT-PLAN.md`.
+
 # Presence — Session Handoff
 
 > **2026-09-06 — read `docs/HARDENING-2026-09-06.md` first.** That round rewrote the

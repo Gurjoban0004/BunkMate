@@ -1,14 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
-const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
+const formatDay = (dateKey) => {
+    if (!dateKey) return '';
+    const [y, m, d] = dateKey.split('-').map(Number);
+    return new Date(y, m - 1, d, 12).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+const OverallStatsCard = ({ stats, threshold, updatedThrough }) => {
     const styles = getStyles();
     const { attended, total, percentage, dangerCount, edgeCount, safeCount } = stats;
     const numericPercentage = parseFloat(percentage);
     const isAboveThreshold = numericPercentage >= threshold;
-
-    const showStaleness = staleness?.isProjected && staleness?.staleCount > 0;
 
     // One column, four stacked lines. The old two-column layout with a divider
     // and three dotted health rows was the tallest thing on the screen and the
@@ -32,7 +36,7 @@ const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
             </View>
 
             <Text style={styles.metaText}>
-                {attended} / {total} classes  ·  Goal {threshold}%
+                {attended} of {total} hours  ·  Goal {threshold}%
             </Text>
 
             <View style={styles.progressBar}>
@@ -51,19 +55,8 @@ const OverallStatsCard = ({ stats, threshold, staleness, onBannerPress }) => {
                 <Text style={styles.countsText}>{counts.join('  ·  ')}</Text>
             )}
 
-            {showStaleness && (
-                <TouchableOpacity 
-                    style={styles.stalenessBanner} 
-                    onPress={onBannerPress}
-                    activeOpacity={onBannerPress ? 0.7 : 1}
-                >
-                    <Text style={styles.stalenessText}>
-                        Waiting for portal. Temporary marks are covering {staleness.staleCount} subject{staleness.staleCount !== 1 ? 's' : ''}.
-                    </Text>
-                    {onBannerPress && (
-                        <Text style={styles.stalenessAction}>View math</Text>
-                    )}
-                </TouchableOpacity>
+            {updatedThrough && (
+                <Text style={styles.updatedText}>Your college has updated through {formatDay(updatedThrough)}.</Text>
             )}
         </View>
     );
@@ -138,31 +131,11 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textSecondary,
         marginTop: SPACING.sm,
     },
-    stalenessBanner: {
-        marginTop: SPACING.md,
-        width: '100%',
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: 6,
-        backgroundColor: COLORS.warningLight,
-        borderRadius: BORDER_RADIUS.sm,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: COLORS.warning,
-    },
-    stalenessText: {
-        fontWeight: '600',
-        fontSize: 11,
-        color: COLORS.warningDark,
-        textAlign: 'center',
-        marginBottom: 2,
-    },
-    stalenessAction: {
-        fontWeight: '700',
-        fontSize: 10,
-        color: COLORS.warningDark || '#856404',
-        textAlign: 'center',
-        textTransform: 'uppercase',
-        letterSpacing: 0.4,
+    updatedText: {
+        fontWeight: '500',
+        fontSize: FONT_SIZES.xs,
+        color: COLORS.textMuted,
+        marginTop: SPACING.sm,
     },
 });
 

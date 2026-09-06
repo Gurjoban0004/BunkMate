@@ -53,8 +53,17 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = '/app';
     });
 
-    // ===== Android — download the APK =====
+    // ===== Android — download the APK, or say honestly that it is not up yet =====
+    // A dead download button is worse than none. Check the file exists first.
+    fetch(APK_URL, { method: 'HEAD' })
+        .then((r) => { if (!r.ok) throw new Error('no apk'); })
+        .catch(() => {
+            btnAndroid.disabled = true;
+            btnAndroid.textContent = 'Android build coming soon';
+            note.textContent = 'Until then, Android works the same way as iPhone: open this page in Chrome and add Presence to your home screen.';
+        });
     btnAndroid.addEventListener('click', () => {
+        if (btnAndroid.disabled) return;
         const link = document.createElement('a');
         link.href = APK_URL;
         link.download = 'presence.apk';

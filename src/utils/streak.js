@@ -1,180 +1,65 @@
-import { getDateKey } from './dateHelpers';
-import { getClassesForDay, recordUnits, recordAttendedUnits } from './attendance';
+import { recordUnits, recordAttendedUnits } from './attendance';
 
 /**
- * Streak Calculations for Presence
+ * Streaks, counted from the college register only.
  *
- * Overall streak: consecutive classes attended across ALL subjects
- * Per-subject streak: consecutive classes attended for ONE subject
+ * Walking backwards from the most recent recorded day: a fully attended day
+ * adds its periods, any absence ends the streak, holidays and days the
+ * college has not recorded are simply skipped — an unrecorded day means "not
+ * uploaded yet", never "missed".
  */
 
-/**
- * Calculate overall streak across all subjects.
- * Counts backward from most recent record.
- * Holidays/cancelled do NOT break streak.
- * ANY absent mark breaks the streak.
- * @returns {number} streak count in units (hours)
- */
+const MAX_LOOKBACK = 180;
+
+function recordedDays(state) {
+    const records = state.attendanceRecords || {};
+    const holidays = new Set(state.holidays || []);
+    return Object.keys(records)
+        .filter((d) => records[d] && !records[d]._holiday && !holidays.has(d))
+        .sort()
+        .reverse()
+        .slice(0, MAX_LOOKBACK);
+}
+
+/** Consecutive fully attended periods across all subjects, newest first. */
 export function calculateOverallStreak(state) {
     const records = state.attendanceRecords || {};
-    const holidays = state.holidays || [];
-    const trackingStartDate = state.trackingStartDate;
-
-    // Find the latest date that has any record
-    const sortedDates = Object.keys(records).sort();
-    if (sortedDates.length === 0) return 0;
-
     let streak = 0;
-    let currentDate = new Date(sortedDates[sortedDates.length - 1] + 'T12:00:00');
-    const startDate = trackingStartDate ? new Date(trackingStartDate + 'T12:00:00') : null;
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const MAX_LOOKBACK_DAYS = 180;
-    let daysChecked = 0;
-    const todayKey = getDateKey(new Date());
-
-    while ((!startDate || currentDate >= startDate) && daysChecked < MAX_LOOKBACK_DAYS) {
-        daysChecked++;
-        const dateKey = getDateKey(currentDate);
-
-        // Skip today and future dates — they may not be fully marked yet
-        if (dateKey >= todayKey) {
-            currentDate.setDate(currentDate.getDate() - 1);
-            continue;
+    for (const dateKey of recordedDays(state)) {
+        let dayUnits = 0;
+        let broken = false;
+        for (const [subjectId, rec] of Object.entries(records[dateKey])) {
+            if (subjectId === '_holiday' || !rec || rec.source !== 'erp' || rec.status === 'cancelled') continue;
+            const units = recordUnits(rec);
+            if (recordAttendedUnits(rec) < units) { broken = true; break; }
+            dayUnits += units;
         }
-
-        const dayRecords = records[dateKey];
-        const dayName = dayNames[currentDate.getDay()];
-
-        // Check if it's a holiday
-        const isHoliday = (dayRecords && dayRecords._holiday) || holidays.includes(dateKey);
-
-        if (isHoliday) {
-            // Holidays don't break streak, just skip
-        } else {
-            const scheduledClasses = getClassesForDay(state, dayName);
-            const hasScheduled = scheduledClasses.length > 0;
-
-            if (dayRecords) {
-                // If we have records for this day
-                let allPresent = true;
-                let hasMarkedClasses = false;
-                let dayUnits = 0;
-
-                // Check all marked classes
-                for (const subjectId in dayRecords) {
-                    if (subjectId.startsWith('_')) continue;
-                    const record = dayRecords[subjectId];
-                    if (record.status === 'cancelled') continue;
-
-                    hasMarkedClasses = true;
-                    // A part-attended day is not a fully attended day — under
-                    // college rules there is no credit for half a class.
-                    const units = recordUnits(record);
-                    if (recordAttendedUnits(record) < units) {
-                        allPresent = false;
-                        break;
-                    }
-                    dayUnits += units;
-                }
-
-                if (hasMarkedClasses && allPresent) {
-                    streak += dayUnits;
-                } else if (hasMarkedClasses && !allPresent) {
-                    break; // Streak broken by absence
-                } else if (hasScheduled) {
-                    // Has scheduled classes but none marked?
-                    // This case should ideally not happen if user is diligent,
-                    // but if it does, it breaks the streak.
-                    break;
-                }
-            } else if (hasScheduled) {
-                // No records but had scheduled classes? Streak broken.
-                break;
-            }
-            // If no records and no scheduled classes (weekend), just continue
-        }
-
-        // Move to previous day
-        currentDate.setDate(currentDate.getDate() - 1);
+        if (broken) break;
+        streak += dayUnits;
     }
-
     return streak;
 }
 
-/**
- * Calculate streak for a specific subject.
- * @param {string} subjectId
- * @param {object} state
- * @returns {number} streak count in units
- */
+/** Consecutive fully attended periods for one subject, newest first. */
 export function calculateSubjectStreak(subjectId, state) {
     const records = state.attendanceRecords || {};
-    const holidays = state.holidays || [];
-    const trackingStartDate = state.trackingStartDate;
-
-    const sortedDates = Object.keys(records).sort();
-    if (sortedDates.length === 0) return 0;
-
     let streak = 0;
-    let currentDate = new Date(sortedDates[sortedDates.length - 1] + 'T12:00:00');
-    const startDate = trackingStartDate ? new Date(trackingStartDate + 'T12:00:00') : null;
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const MAX_LOOKBACK_DAYS = 180;
-    let daysChecked = 0;
-    const todayKeySubject = getDateKey(new Date());
-
-    while ((!startDate || currentDate >= startDate) && daysChecked < MAX_LOOKBACK_DAYS) {
-        daysChecked++;
-        const dateKey = getDateKey(currentDate);
-
-        // Skip today and future dates
-        if (dateKey >= todayKeySubject) {
-            currentDate.setDate(currentDate.getDate() - 1);
-            continue;
-        }
-
-        const dayRecords = records[dateKey];
-        const dayName = dayNames[currentDate.getDay()];
-
-        const isHoliday = (dayRecords && dayRecords._holiday) || holidays.includes(dateKey);
-
-        if (!isHoliday) {
-            const scheduledClasses = getClassesForDay(state, dayName);
-            const isScheduled = scheduledClasses.some(c => c.subjectId === subjectId);
-
-            const record = dayRecords ? dayRecords[subjectId] : null;
-
-            if (record) {
-                if (record.status === 'cancelled') {
-                    // skip
-                } else if (recordAttendedUnits(record) === recordUnits(record)) {
-                    streak += recordUnits(record);
-                } else {
-                    break; // absent or part-attended = broken
-                }
-            } else if (isScheduled) {
-                // Scheduled but not marked = broken
-                break;
-            }
-        }
-
-        currentDate.setDate(currentDate.getDate() - 1);
+    for (const dateKey of recordedDays(state)) {
+        const rec = records[dateKey][subjectId];
+        if (!rec || rec.source !== 'erp' || rec.status === 'cancelled') continue;
+        const units = recordUnits(rec);
+        if (recordAttendedUnits(rec) < units) break;
+        streak += units;
     }
-
     return streak;
 }
 
-/**
- * Get the streak milestone message.
- * @param {number} streak
- * @returns {string|null} message or null if below minimum
- */
 export function getStreakMessage(streak) {
     if (streak < 3) return null;
-    if (streak >= 100) return 'Perfect attendance!';
-    if (streak >= 50) return 'Legendary streak!';
-    if (streak >= 25) return 'Unstoppable!';
-    if (streak >= 10) return 'On fire!';
-    if (streak >= 5) return 'Nice streak!';
-    return 'Keep it going!';
+    if (streak >= 100) return 'Perfect attendance';
+    if (streak >= 50) return 'Legendary streak';
+    if (streak >= 25) return 'Unstoppable';
+    if (streak >= 10) return 'On fire';
+    if (streak >= 5) return 'Nice streak';
+    return 'Keep it going';
 }

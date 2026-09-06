@@ -52,7 +52,7 @@ export function friendlyError(err, context = 'signin') {
     if (code === 'TIMEOUT') {
         return withDetail({
             title: 'This is taking too long',
-            message: 'Your university servers are slow right now. Nothing was lost — try again in a moment.',
+            message: 'Your college’s servers are slow right now. Nothing was lost — try again in a moment.',
         });
     }
 
@@ -73,13 +73,13 @@ export function friendlyError(err, context = 'signin') {
         }
         return withDetail({
             title: 'Those details did not match',
-            message: 'Double-check your university ID and password, then try again.',
+            message: 'Double-check your college ID and password, then try again.',
         });
     }
 
     if (status >= 500 || code === 'NON_JSON_RESPONSE') {
         return withDetail({
-            title: 'Your university portal is not responding',
+            title: 'Your college is not responding',
             message: 'This is on their side, not yours. It usually clears within a few minutes.',
         });
     }

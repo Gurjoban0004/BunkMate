@@ -1,126 +1,71 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useCallback, useState, useMemo } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    RefreshControl,
-    Modal,
-    TouchableOpacity,
-    Platform,
-} from 'react-native';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme/theme';
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
 import { getTodayClasses, getCurrentClassIndex } from '../../utils/attendance';
-import { calculateFreshness } from '../../utils/erpFreshness';
-import { getUnmarkedCount } from '../../utils/backlog';
-import { getTodayKey, getTodayDayName } from '../../utils/dateHelpers';
+import { getTodayKey, getTodayDayName, parseTimeToMinutes } from '../../utils/dateHelpers';
 import { getDayStatus } from '../../utils/planner.js';
+import { shortSubjectName } from '../../utils/subjectName';
 
-// Components
 import TodayScheduleBar from '../../components/today/TodayScheduleBar';
 import SectionHeader from '../../components/today/SectionHeader';
 import ClassCard from '../../components/today/ClassCard';
-import BacklogBanner from '../../components/today/BacklogBanner';
-import EmptyDay from '../../components/today/EmptyDay';
+import RestDayView from '../../components/today/RestDayView';
 import HolidayCard from '../../components/today/HolidayCard';
 import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
 import AnnouncementBanner from '../../components/today/AnnouncementBanner';
+import ReconnectCard from '../../components/today/ReconnectCard';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
 import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
 import { BannerHost } from '../../components/today/BannerSlot';
 import ProfileAvatar from '../../components/common/ProfileAvatar';
-import {
-    DisplayMedium,
-    BodyMedium,
-    BodySmall,
-} from '../../components/common/Typography';
+import { DisplayMedium, BodyMedium, BodySmall } from '../../components/common/Typography';
 import { showAlert } from '../../utils/alert';
 
 const TodayScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
     const [refreshing, setRefreshing] = useState(false);
-    const [showExtraModal, setShowExtraModal] = useState(false);
-    const [showCancelModal, setShowCancelModal] = useState(false);
-    const [selectedExtraSubject, setSelectedExtraSubject] = useState(null);
-    const [currentTime, setCurrentTime] = useState(new Date());
+    const [currentTime, setCurrentTime] = useState(() => (state.devDate ? new Date(state.devDate) : new Date()));
 
-    // Get devDate logic if active
-    React.useEffect(() => {
+    useEffect(() => {
         setCurrentTime(state.devDate ? new Date(state.devDate) : new Date());
-        const timer = setInterval(() => {
-            setCurrentTime(state.devDate ? new Date(state.devDate) : new Date());
-        }, 60000); // UI updates every minute
+        const timer = setInterval(() => setCurrentTime(state.devDate ? new Date(state.devDate) : new Date()), 60000);
         return () => clearInterval(timer);
     }, [state.devDate]);
 
-
-
-    // Get greeting
     const greeting = getGreeting(state.userName || 'there', state.devDate);
-
-    // Get today's data
     const today = state.devDate ? new Date(state.devDate) : new Date();
-    const dateString = today.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-    });
-
-    // Get today key for records
+    const dateString = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     const todayKey = getTodayKey(state.devDate);
-
-    // Get classes
-    const todayClasses = getTodayClasses(state, state.devDate);
-    const currentClassIndex = getCurrentClassIndex(todayClasses, state.devDate);
-
-    // Compute ERP Freshness
-    const freshnessMap = useMemo(() => calculateFreshness(state, todayClasses), [state, todayClasses]);
-
-    // Calculate stats
-    const classCount = todayClasses.length;
-
-    // Check if today is holiday
-    const isHoliday = (state.holidays || []).includes(todayKey) ||
-        state.attendanceRecords[todayKey]?._holiday;
-
-    // Check if this is a setup day (today < trackingStartDate)
-    const isSetupDay = state.trackingStartDate && todayKey < state.trackingStartDate;
-
-    // Check for unmarked backlog
-    const unmarkedCount = useMemo(() => getUnmarkedCount(state), [state]);
-
-    // Quick Answer: can I skip today?
     const todayDayName = getTodayDayName(state.devDate);
+
+    const todayClasses = useMemo(() => getTodayClasses(state, state.devDate), [state]);
+    const currentClassIndex = getCurrentClassIndex(todayClasses, state.devDate);
+    const isHoliday = (state.holidays || []).includes(todayKey) || !!state.attendanceRecords[todayKey]?._holiday;
+
     const dangerThreshold = state.settings?.dangerThreshold || 75;
     const todaySkipStatus = useMemo(() => getDayStatus(state, todayDayName, dangerThreshold), [state, todayDayName, dangerThreshold]);
 
     const nextClassInfo = useMemo(() => {
-        if (!todayClasses || todayClasses.length === 0) return null;
         const nowMins = currentTime.getHours() * 60 + currentTime.getMinutes();
         for (const c of todayClasses) {
-            const [h, m] = c.startTime.split(':').map(Number);
-            const startMins = h * 60 + m;
+            const startMins = parseTimeToMinutes(c.startTime);
             if (startMins > nowMins) {
+                const [h, m] = c.startTime.split(':').map(Number);
                 const hour12 = h % 12 || 12;
-                const ampm = h >= 12 ? 'PM' : 'AM';
                 const mins = m > 0 ? `:${String(m).padStart(2, '0')}` : '';
-                return `${c.subjectName.split(' ')[0]} begins at ${hour12}${mins} ${ampm}`;
+                return `${shortSubjectName(c.subjectName)} at ${hour12}${mins} ${h >= 12 ? 'PM' : 'AM'}`;
             }
         }
         return null;
     }, [todayClasses, currentTime]);
 
-
-    // Pull to refresh — also triggers ERP sync if connected
     const onRefresh = useCallback(() => {
         setRefreshing(true);
-        if (state.settings?.erpConnected && triggerErpSync) {
-            triggerErpSync(true); // force = true, bypass 15-min cooldown
-        }
+        if (state.settings?.erpConnected && triggerErpSync) triggerErpSync(true);
         setTimeout(() => setRefreshing(false), 800);
     }, [state.settings?.erpConnected, triggerErpSync]);
 
@@ -128,123 +73,40 @@ const TodayScreen = ({ navigation }) => {
         dispatch({ type: 'UPDATE_SETTINGS', payload: { erpWelcomeCardDismissed: true } });
     }, [dispatch]);
 
-    // Handlers
-    const handleMarkAttendance = (subjectId, status, units) => {
-        if (status === null) {
-            dispatch({
-                type: 'REMOVE_ATTENDANCE',
-                payload: { date: todayKey, subjectId },
-            });
-        } else {
-            dispatch({
-                type: 'MARK_ATTENDANCE',
-                payload: { date: todayKey, subjectId, status, units },
-            });
-        }
-    };
-
     const handleHolidayPress = () => {
         showAlert(
-            'Mark as Holiday',
-            'Mark today as a holiday? No classes will be counted.',
+            'Holiday today?',
+            'Today’s classes will not be expected in your plans. Your attendance is unchanged.',
             [
                 { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Mark Holiday',
-                    onPress: () => dispatch({ type: 'MARK_HOLIDAY', payload: todayKey }),
-                },
+                { text: 'Mark holiday', onPress: () => dispatch({ type: 'MARK_HOLIDAY', payload: todayKey }) },
             ]
         );
     };
 
-    const handleBacklogPress = () => {
-        navigation.navigate('PastAttendance');
-    };
-
-    const handleExtraClass = () => {
-        setShowExtraModal(true);
-    };
-
-    const handleCancelClassPress = () => {
-        setShowCancelModal(true);
-    };
-
-    const handleCancelClassConfirm = (subjectId, units) => {
-        dispatch({
-            type: 'MARK_ATTENDANCE',
-            payload: {
-                date: todayKey,
-                subjectId,
-                status: 'cancelled',
-                units,
-            },
-        });
-        setShowCancelModal(false);
-    };
-
-    const handleAddExtraSubject = (subjectId) => {
-        const subject = state.subjects.find(s => s.id === subjectId);
-        if (subject) {
-            dispatch({
-                type: 'MARK_ATTENDANCE',
-                payload: {
-                    date: todayKey,
-                    subjectId: subjectId,
-                    status: 'present',
-                    units: 1,
-                    isExtra: true,
-                },
-            });
-            setShowExtraModal(false);
-        }
-    };
-
-    // Categorize classes
-    const categorizeClasses = () => {
-        const now = currentTime;
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-        if (todayClasses.length === 0) {
-            return { now: null, upcoming: [], done: [] };
-        }
-
+    // Now / upcoming / earlier, by the clock.
+    const { now, upcoming, done } = useMemo(() => {
+        if (todayClasses.length === 0) return { now: null, upcoming: [], done: [] };
         if (currentClassIndex !== -1) {
-            // A class is actively in progress right now
             return {
                 now: todayClasses[currentClassIndex],
                 upcoming: todayClasses.slice(currentClassIndex + 1),
                 done: todayClasses.slice(0, currentClassIndex),
             };
         }
-
-        // No class in progress — partition by time
-        // A class is "done" if its end time has passed
-        // A class is "upcoming" if its start time hasn't been reached yet
-        // A class is "now" if it started but getCurrentClassIndex missed it (edge case guard)
-        const done = [];
-        const upcoming = [];
-        let inProgress = null;
-
-        todayClasses.forEach(c => {
-            const startMins = c.startTime.split(':').map(Number).reduce((h, m) => h * 60 + m);
-            const endMins = c.endTime.split(':').map(Number).reduce((h, m) => h * 60 + m);
-
-            if (currentMinutes >= endMins) {
-                done.push(c);
-            } else if (currentMinutes >= startMins && currentMinutes < endMins) {
-                // In progress but not caught by getCurrentClassIndex — treat as "now"
-                inProgress = c;
-            } else {
-                upcoming.push(c);
-            }
+        const nowMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+        const doneList = [];
+        const upcomingList = [];
+        todayClasses.forEach((c) => {
+            if (nowMins >= parseTimeToMinutes(c.endTime)) doneList.push(c);
+            else upcomingList.push(c);
         });
+        return { now: null, upcoming: upcomingList, done: doneList };
+    }, [todayClasses, currentClassIndex, currentTime]);
 
-        return { now: inProgress, upcoming, done };
-    };
-
-    const { now, upcoming, done } = categorizeClasses();
-
-
+    const statusLine = isErpSyncing
+        ? 'Syncing with your college…'
+        : state.isOnline === false ? 'Offline — showing what you had' : null;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -252,36 +114,16 @@ const TodayScreen = ({ navigation }) => {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        tintColor={COLORS.primary}
-                    />
-                }
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
             >
-                {/* Header */}
                 <View style={styles.header}>
                     <View style={{ flex: 1 }}>
-                        <DisplayMedium style={styles.greeting}>
-                            {greeting.text}
-                        </DisplayMedium>
+                        <DisplayMedium style={styles.greeting}>{greeting.text}</DisplayMedium>
                         <BodyMedium color="textSecondary" style={styles.date}>{dateString}</BodyMedium>
-                        {isErpSyncing && (
-                            <BodySmall color="textMuted" style={{ marginTop: 4 }}>
-                                Syncing from portal...
-                            </BodySmall>
-                        )}
-                        {!isErpSyncing && state.isOnline === false && (
-                            <BodySmall color="textMuted" style={{ marginTop: 4 }}>
-                                Offline — showing your saved data
-                            </BodySmall>
-                        )}
+                        {statusLine && <BodySmall color="textMuted" style={{ marginTop: 4 }}>{statusLine}</BodySmall>}
                     </View>
                 </View>
 
-                {/* Today's Schedule Bar — kept topmost: the one thing you open
-                   this screen to see is what's on today and what's next. */}
                 <TodayScheduleBar
                     todayClasses={todayClasses}
                     attendanceRecords={state.attendanceRecords}
@@ -290,398 +132,82 @@ const TodayScreen = ({ navigation }) => {
                     nextClassInfo={nextClassInfo}
                 />
 
-                {/* At most one of these renders at a time — see BannerSlot.
-                   Backlog sits inside the host too, further down. */}
+                {/* One banner at a time — see BannerSlot. */}
                 <BannerHost>
                     <DeletionWarningBanner />
+                    <ReconnectCard />
                     <AnnouncementBanner />
-                    <ErpWelcomeCard
-                        state={state}
-                        onDismiss={handleDismissWelcomeCard}
-                    />
-                    {unmarkedCount > 0 && (
-                        <BacklogBanner
-                            count={unmarkedCount}
-                            onPress={handleBacklogPress}
-                        />
-                    )}
+                    <ErpWelcomeCard state={state} onDismiss={handleDismissWelcomeCard} />
                 </BannerHost>
 
-                {/* Quick Answer Card */}
-                {!isHoliday && todayClasses.length > 0 && (
-                    <QuickAnswerCard
-                        dayStatus={todaySkipStatus}
-                        compact={true}
-                    />
-                )}
-
-                {/* The weekly report lives in Insights now. It was a full-height
-                   retrospective interrupting the one screen you open to find out
-                   what's happening in the next hour — and it only appeared
-                   Fri-Mon, so Today had two different layouts depending on the
-                   day. Insights is a whole tab that was doing less work. */}
-
-                {/* Holiday State */}
                 {isHoliday ? (
                     <HolidayCard onUndo={() => dispatch({ type: 'REMOVE_HOLIDAY', payload: todayKey })} />
-                ) : isSetupDay ? (
+                ) : todayClasses.length === 0 ? (
+                    <RestDayView state={state} dayName={todayDayName} navigation={navigation} />
+                ) : (
                     <>
-                        <View style={styles.setupDayCard}>
-                            <Text style={styles.setupDayTitle}>Setup complete</Text>
-                            <Text style={styles.setupDayText}>
-                                Today's classes are already counted in your starting numbers.{'\n'}
-                                Daily tracking begins tomorrow.
-                            </Text>
-                        </View>
+                        <QuickAnswerCard dayStatus={todaySkipStatus} compact={true} />
 
-                        <SectionHeader
-                            title="Today's Classes (Already Counted)"
-                            classCount={classCount}
-                            hideHolidayButton={true}
-                        />
+                        <SectionHeader title="Today" classCount={todayClasses.length} onHolidayPress={handleHolidayPress} />
 
-                        {/* Empty State */}
-                        {classCount === 0 ? (
-                            <EmptyDay />
-                        ) : (
+                        {now && (
                             <View style={styles.sectionContainer}>
-                                {todayClasses.map((classInfo, index) => (
-                                    <ClassCard
-                                        key={`setup-${classInfo.subjectId}-${index}`}
-                                        classInfo={classInfo}
-                                        state={state}
-                                        onMark={() => { }}
-                                        isCurrentClass={false}
-                                        isPreCounted={true}
-                                        freshnessData={freshnessMap[classInfo.subjectId]}
-                                    />
-                                ))}
+                                <View style={styles.nowBadge}><Text style={styles.nowBadgeText}>NOW</Text></View>
+                                <ClassCard classInfo={now} state={state} isCurrentClass />
+                            </View>
+                        )}
+                        {upcoming.length > 0 && (
+                            <View style={styles.sectionContainer}>
+                                {(now || done.length > 0) && <Text style={styles.sectionLabel}>UPCOMING</Text>}
+                                {upcoming.map((c, i) => <ClassCard key={`${c.subjectId}-${i}`} classInfo={c} state={state} />)}
+                            </View>
+                        )}
+                        {done.length > 0 && (
+                            <View style={styles.sectionContainer}>
+                                <Text style={styles.sectionLabel}>EARLIER TODAY</Text>
+                                {done.map((c, i) => <ClassCard key={`${c.subjectId}-done-${i}`} classInfo={c} state={state} />)}
                             </View>
                         )}
                     </>
-                ) : (
-                    <>
-                        {/* Classes Section — occasional actions live in the
-                           overflow menu, including Add Extra Class, which used
-                           to be an orphaned button at the end of the scroll. */}
-                        <SectionHeader
-                            title="Today's Classes"
-                            classCount={classCount}
-                            onHolidayPress={handleHolidayPress}
-                            onCancelClassPress={handleCancelClassPress}
-                            onAddExtraPress={handleExtraClass}
-                        />
-
-                        {/* Empty State */}
-                        {classCount === 0 ? (
-                            <EmptyDay />
-                        ) : (
-                            <>
-                                {/* Current Class */}
-                                {now && (
-                                    <View style={styles.sectionContainer}>
-                                        <View style={styles.nowBadge}>
-                                            <Text style={styles.nowBadgeText}>NOW</Text>
-                                        </View>
-                                        <ClassCard
-                                            classInfo={now}
-                                            state={state}
-                                            onMark={handleMarkAttendance}
-                                            isCurrentClass={true}
-                                            freshnessData={freshnessMap[now.subjectId]}
-                                        />
-                                    </View>
-                                )}
-
-                                {/* Upcoming Classes */}
-                                {upcoming.length > 0 && (
-                                    <View style={styles.sectionContainer}>
-                                        {currentClassIndex !== -1 && (
-                                            <Text style={styles.sectionLabel}>UPCOMING</Text>
-                                        )}
-                                        {upcoming.map((classInfo, index) => (
-                                            <ClassCard
-                                                key={`${classInfo.subjectId}-${index}`}
-                                                classInfo={classInfo}
-                                                state={state}
-                                                onMark={handleMarkAttendance}
-                                                isCurrentClass={false}
-                                                freshnessData={freshnessMap[classInfo.subjectId]}
-                                            />
-                                        ))}
-                                    </View>
-                                )}
-
-                                {/* Done Classes (if any) */}
-                                {done.length > 0 && (
-                                    <View style={styles.sectionContainer}>
-                                        <Text style={styles.sectionLabel}>EARLIER TODAY</Text>
-                                        {done.map((classInfo, index) => (
-                                            <ClassCard
-                                                key={`${classInfo.subjectId}-done-${index}`}
-                                                classInfo={classInfo}
-                                                state={state}
-                                                onMark={handleMarkAttendance}
-                                                isCurrentClass={false}
-                                                freshnessData={freshnessMap[classInfo.subjectId]}
-                                            />
-                                        ))}
-                                    </View>
-                                )}
-                            </>
-                        )}
-
-                    </>
                 )}
 
-
-                {/* Settings Footer */}
                 <TouchableOpacity
                     style={styles.settingsFooter}
                     onPress={() => navigation.navigate('Settings')}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open settings"
                 >
                     <ProfileAvatar name={state.userName} size={24} onPress={() => navigation.navigate('Settings')} />
                     <Text style={styles.settingsFooterText}>Settings</Text>
                 </TouchableOpacity>
 
-                {/* Bottom Padding */}
                 <View style={styles.bottomPadding} />
             </ScrollView>
-
-            {/* Extra Class Modal */}
-            <Modal
-                visible={showExtraModal}
-                transparent={true}
-                animationType={Platform.OS === 'web' ? 'fade' : 'slide'}
-                onRequestClose={() => setShowExtraModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Add Extra Class</Text>
-                        <Text style={styles.modalSubtitle}>Select a subject</Text>
-                        <ScrollView style={styles.modalScroll}>
-                            {state.subjects.map((subject) => (
-                                <TouchableOpacity
-                                    key={subject.id}
-                                    style={styles.modalItem}
-                                    onPress={() => handleAddExtraSubject(subject.id)}
-                                >
-                                    <View style={[styles.modalDot, { backgroundColor: subject.color }]} />
-                                    <Text style={styles.modalItemText}>{subject.name}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                        <TouchableOpacity
-                            style={styles.modalCancel}
-                            onPress={() => setShowExtraModal(false)}
-                        >
-                            <Text style={styles.modalCancelText}>Cancel</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Cancel Class Modal */}
-            <Modal
-                visible={showCancelModal}
-                transparent={true}
-                animationType={Platform.OS === 'web' ? 'fade' : 'slide'}
-                onRequestClose={() => setShowCancelModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Cancel Class</Text>
-                        <Text style={styles.modalSubtitle}>Select a class from today</Text>
-                        <ScrollView style={styles.modalScroll}>
-                            {todayClasses.map((c, index) => (
-                                <TouchableOpacity
-                                    key={`cancel-${c.subjectId}-${index}`}
-                                    style={styles.modalItem}
-                                    onPress={() => handleCancelClassConfirm(c.subjectId, c.units)}
-                                >
-                                    <View style={[styles.modalDot, { backgroundColor: c.color }]} />
-                                    <View>
-                                        <Text style={styles.modalItemText}>{c.subjectName}</Text>
-                                        <Text style={{fontSize: 12, color: COLORS.textSecondary}}>{c.startTime} - {c.endTime}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                            {todayClasses.length === 0 && (
-                                <Text style={styles.modalSubtitle}>No classes scheduled today.</Text>
-                            )}
-                        </ScrollView>
-                        <TouchableOpacity
-                            style={styles.modalCancel}
-                            onPress={() => setShowCancelModal(false)}
-                        >
-                            <Text style={styles.modalCancelText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 };
 
 const getStyles = () => StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background,
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingTop: SPACING.lg,
-        paddingBottom: SPACING.xxl,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: SPACING.screenPadding,
-        paddingBottom: 40,
-    },
-    setupDayCard: {
-        marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md,
-        padding: SPACING.lg,
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        borderWidth: 1,
-        borderColor: COLORS.success,
-    },
-    setupDayTitle: {
-        fontWeight: '700',
-        fontSize: 14,
-        color: COLORS.successDark,
-        marginBottom: SPACING.xs,
-    },
-    setupDayText: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-        lineHeight: 18,
-    },
-    greeting: {
-        fontWeight: '700',
-        fontSize: 22,
-        color: COLORS.textPrimary,
-        letterSpacing: -0.5,
-    },
-    date: {
-        fontSize: 12,
-        color: COLORS.textSecondary,
-        marginTop: 4,
-        letterSpacing: 0.1,
-    },
-    sectionContainer: {
-        marginTop: SPACING.sm,
-    },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    scrollView: { flex: 1 },
+    scrollContent: { paddingTop: SPACING.lg, paddingBottom: SPACING.xxl },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.screenPadding, paddingBottom: 40 },
+    greeting: { fontWeight: '700', fontSize: 22, color: COLORS.textPrimary, letterSpacing: -0.5 },
+    date: { fontSize: 12, color: COLORS.textSecondary, marginTop: 4, letterSpacing: 0.1 },
+    sectionContainer: { marginTop: SPACING.sm },
     sectionLabel: {
-        fontWeight: '700',
-        fontSize: 9,
-        color: COLORS.textMuted,
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
-        paddingHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.sm,
+        ...TYPOGRAPHY.micro, color: COLORS.textMuted,
+        paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm,
     },
     nowBadge: {
-        alignSelf: 'flex-start',
-        backgroundColor: COLORS.primary,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: 3,
-        borderRadius: BORDER_RADIUS.sm,
-        marginLeft: SPACING.screenPadding,
-        marginBottom: SPACING.sm,
+        alignSelf: 'flex-start', backgroundColor: COLORS.primary, paddingHorizontal: SPACING.sm, paddingVertical: 3,
+        borderRadius: BORDER_RADIUS.sm, marginLeft: SPACING.screenPadding, marginBottom: SPACING.sm,
     },
-    nowBadgeText: {
-        fontWeight: '700',
-        fontSize: 9,
-        color: COLORS.textOnPrimary,
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
-    },
-    bottomPadding: {
-        height: 100,
-    },
-    settingsFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: SPACING.xl,
-        gap: SPACING.sm,
-    },
-    settingsFooterText: {
-        fontWeight: '600',
-        fontSize: 12,
-        color: COLORS.textMuted,
-        letterSpacing: 0.5,
-    },
-    // Modal styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: COLORS.overlay,
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: COLORS.cardBackground,
-        borderTopLeftRadius: BORDER_RADIUS.lg,
-        borderTopRightRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
-        maxHeight: '60%',
-        borderTopWidth: 1,
-        borderLeftWidth: 1,
-        borderRightWidth: 1,
-        borderColor: COLORS.border,
-    },
-    modalTitle: {
-        fontWeight: '700',
-        fontSize: 16,
-        color: COLORS.textPrimary,
-        textAlign: 'center',
-        letterSpacing: -0.3,
-    },
-    modalSubtitle: {
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-        marginTop: SPACING.xs,
-        marginBottom: SPACING.md,
-    },
-    modalScroll: {
-        maxHeight: 300,
-    },
-    modalItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: SPACING.sm,
-        paddingHorizontal: SPACING.md,
-        borderRadius: BORDER_RADIUS.md,
-        marginBottom: SPACING.xs,
-        backgroundColor: COLORS.inputBackground,
-    },
-    modalDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        marginRight: SPACING.sm,
-    },
-    modalItemText: {
-        fontWeight: '500',
-        fontSize: FONT_SIZES.md,
-        color: COLORS.textPrimary,
-    },
-    modalCancel: {
-        marginTop: SPACING.md,
-        paddingVertical: SPACING.sm,
-        alignItems: 'center',
-    },
-    modalCancelText: {
-        fontWeight: '600',
-        fontSize: FONT_SIZES.md,
-        color: COLORS.textSecondary,
-    },
+    nowBadgeText: { ...TYPOGRAPHY.micro, color: COLORS.textOnPrimary },
+    bottomPadding: { height: 100 },
+    settingsFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: SPACING.xl, gap: SPACING.sm },
+    settingsFooterText: { ...TYPOGRAPHY.labelSmall, color: COLORS.textMuted, letterSpacing: 0.5 },
 });
 
 export default TodayScreen;

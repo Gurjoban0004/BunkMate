@@ -86,7 +86,7 @@ export default function ERPSetupScreen({ navigation }) {
             setError({
                 title: 'No attendance yet',
                 message: attendanceResult.warning
-                    || 'Your university has not published any attendance for this term. Try again once your first classes are marked.',
+                    || 'Your college has not recorded any attendance for this term yet. Try again once your first classes are marked.',
             });
             return;
         }
@@ -98,7 +98,7 @@ export default function ERPSetupScreen({ navigation }) {
 
     const handleLogin = useCallback(async () => {
         if (!username.trim() || !password.trim()) {
-            setError({ title: 'Two fields to go', message: 'Enter your university ID and password to continue.' });
+            setError({ title: 'Two fields to go', message: 'Enter your college ID and password to continue.' });
             return;
         }
         setLoading(true);
@@ -145,7 +145,7 @@ export default function ERPSetupScreen({ navigation }) {
     // ─── STEP 2: VERIFY ────────────────────────────────────────────
     const handleVerifyOtp = useCallback(async () => {
         if (!otp.trim() || otp.trim().length < 4) {
-            setError({ title: 'Code looks short', message: 'Enter all four digits from the message.' });
+            setError({ title: 'Code looks short', message: 'Enter the whole code from the message.' });
             return;
         }
         setLoading(true);
@@ -213,11 +213,7 @@ export default function ERPSetupScreen({ navigation }) {
             const todayStr = getTodayKey(state.devDate);
             dispatch({
                 type: 'SET_TRACKING_CONFIG',
-                payload: {
-                    setupDate: todayStr,
-                    trackingStartDate: todayStr,
-                    todayIncludedInSetup: false,
-                },
+                payload: { setupDate: todayStr, trackingStartDate: todayStr },
             });
 
             await settle();
@@ -298,7 +294,7 @@ export default function ERPSetupScreen({ navigation }) {
             <View style={styles.sectionHeader}>
                 <SetupIllustration name="signin" />
                 <Text style={styles.sectionTitle}>Sign in</Text>
-                <Text style={styles.sectionSub}>Use your university login.</Text>
+                <Text style={styles.sectionSub}>Use your college ID and password.</Text>
             </View>
 
             <View style={styles.card}>
@@ -308,13 +304,13 @@ export default function ERPSetupScreen({ navigation }) {
                         style={styles.input}
                         value={username}
                         onChangeText={(t) => { setUsername(t); setError(null); }}
-                        placeholder="Your university ID"
+                        placeholder="Your college ID"
                         placeholderTextColor={COLORS.textMuted}
                         autoCapitalize="none"
                         autoCorrect={false}
                         autoComplete="username"
                         editable={!loading}
-                        accessibilityLabel="University ID"
+                        accessibilityLabel="College ID"
                     />
                 </View>
 
@@ -376,10 +372,10 @@ export default function ERPSetupScreen({ navigation }) {
                         keyboardType="number-pad"
                         textContentType="oneTimeCode"
                         autoComplete="sms-otp"
-                        maxLength={4}
+                        maxLength={6}
                         autoFocus
                         editable={!loading}
-                        accessibilityLabel="Four digit verification code"
+                        accessibilityLabel="Verification code"
                     />
                 </View>
             </View>

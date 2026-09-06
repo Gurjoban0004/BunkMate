@@ -6,74 +6,66 @@ import { logger } from '../utils/logger';
 
 const STORAGE_KEY = '@bunkmate_state';
 const STATE_VERSION = 1;
-const SYNC_TIMEOUT = 5000; // 5 seconds timeout for cloud operations
+const SYNC_TIMEOUT = 5000;
 
-/**
- * Compare local and cloud data to determine which is newer
- * @param {Object} localState - Local state from AsyncStorage
- * @param {Object} cloudState - Cloud state from Firestore
- * @returns {boolean} True if cloud data should be used
- */
+// Live UI state that must never be written anywhere: a server verdict, a
+// sheet being open, network reachability, the sync spinner.
+const TRANSIENT_KEYS = ['erpSync', 'accessRevoked', 'erpReconnectOpen', 'erpSessionExpired', 'isOnline', 'devDate'];
+
+function stripTransient(state) {
+    const out = { ...state };
+    TRANSIENT_KEYS.forEach((k) => delete out[k]);
+    return out;
+}
+
+const withTimeout = (promise, ms, message) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+]);
+
+/** Whether the cloud copy is newer than the local one. */
 export function shouldUseCloudData(localState, cloudState) {
     if (!cloudState) return false;
     if (!localState) return true;
-
     const localTime = localState._lastModified ? new Date(localState._lastModified).getTime() : 0;
     const cloudTime = cloudState._lastModified ? new Date(cloudState._lastModified).getTime() : 0;
-
     return cloudTime > localTime;
 }
 
 /**
- * Save app state to both local storage and Firestore (if online).
- * Strips transient ERP sync metadata before persisting — it's UI-only state
- * that resets on every load anyway, and saving it causes unnecessary writes.
- * @param {Object} state - Current application state
+ * Save to local storage, then (if signed in and online) to Firestore.
+ * Local is the fast path and always wins for the running app; the cloud copy
+ * exists so a second device or a reinstall can pick up where this one left off.
  */
 export async function saveAppState(state) {
-    const timestamp = new Date().toISOString();
-
-    // Strip transient fields that should never be persisted
-    // accessRevoked is a live server verdict, never a cached one — persisting it would
-    // keep a reinstated user gated until the next successful sync.
-    // eslint-disable-next-line no-unused-vars
-    const { erpSync, accessRevoked, ...persistableState } = state;
-
     const stateWithTimestamp = {
-        ...persistableState,
+        ...stripTransient(state),
         _version: STATE_VERSION,
-        _lastModified: timestamp
+        _lastModified: new Date().toISOString(),
     };
 
     try {
-        // 1. Always save to AsyncStorage first (synchronous-like, always succeeds)
-        const jsonValue = JSON.stringify(stateWithTimestamp);
-        await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
-        logger.info('✅', 'State saved to local storage');
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stateWithTimestamp));
 
-        // 2. If online AND signed in, save to Firestore for current semester.
-        // ensureAuthenticated fails-open: no session → cloud write is skipped, local is kept.
         if (checkOnlineStatus() && state.userId && await ensureAuthenticated(state.userId)) {
             const semesterId = getCurrentSemesterId();
             const semesterRef = doc(db, 'users', state.userId, 'semesters', semesterId);
 
-            // Save to cloud with _cloudTimestamp
-            // Use setDoc with merge to preserve other fields if any
-            setDoc(semesterRef, {
-                ...stateWithTimestamp,
-                _cloudTimestamp: serverTimestamp()
-            }, { merge: true })
-            .then(() => logger.info('✅', `State synced to cloud (${semesterId})`))
-            .catch(err => logger.warn('⚠️ Cloud sync failed (will retry later):', err));
+            setDoc(semesterRef, { ...stateWithTimestamp, _cloudTimestamp: serverTimestamp() }, { merge: true })
+                .then(() => logger.info('✅', `State synced to cloud (${semesterId})`))
+                .catch((err) => logger.warn('⚠️ Cloud sync failed (will retry later):', err));
 
-            // Update root user profile with roll number and batch group for admin analytics
+            // The root user profile is what the admin roster reads. Only a
+            // student who has connected their college account gets one — an
+            // abandoned sign-up never becomes a "user" in the admin panel.
             if (state.erpRollNumber) {
-                const yearPrefix = state.erpRollNumber.substring(0, 2);
+                const yearPrefix = String(state.erpRollNumber).substring(0, 2);
                 const fullYear = parseInt(yearPrefix, 10) >= 50 ? `19${yearPrefix}` : `20${yearPrefix}`;
-                const userRef = doc(db, 'users', state.userId);
-                setDoc(userRef, {
+                setDoc(doc(db, 'users', state.userId), {
                     erpRollNumber: state.erpRollNumber,
                     batchGroup: `Batch ${fullYear}`,
+                    studentName: state.userName || '',
+                    setupComplete: !!state.setupComplete,
                     lastActive: serverTimestamp(),
                 }, { merge: true }).catch(() => {});
             }
@@ -84,59 +76,53 @@ export async function saveAppState(state) {
 }
 
 /**
- * Load app state from local storage and optionally sync with cloud
- * @returns {Promise<Object|null>} Loaded state or null
+ * The local copy only. No network, so it is what the app paints from.
+ * Returns null when there is nothing saved or it belongs to another user.
+ */
+export async function loadLocalState() {
+    const currentUserId = await AsyncStorage.getItem('userId');
+    const localValue = await AsyncStorage.getItem(STORAGE_KEY);
+    let localState = localValue ? JSON.parse(localValue) : null;
+
+    if (localState && localState._version !== STATE_VERSION) localState._version = STATE_VERSION;
+
+    if (localState && localState.userId && currentUserId && localState.userId !== currentUserId) {
+        logger.info('🔄', 'Local state belongs to a different user, discarding.');
+        localState = null;
+    }
+    return localState;
+}
+
+/**
+ * The cloud copy for this user's current semester, or null. Signs in first
+ * (fail-open: no session → null). Bounded so it can never hang a caller.
+ */
+export async function loadCloudState(userId) {
+    if (!userId || !checkOnlineStatus()) return null;
+    if (!(await ensureAuthenticated(userId))) return null;
+    const semesterRef = doc(db, 'users', userId, 'semesters', getCurrentSemesterId());
+    const snap = await withTimeout(getDoc(semesterRef), SYNC_TIMEOUT, 'Cloud fetch timeout');
+    return snap && snap.exists() ? snap.data() : null;
+}
+
+/**
+ * Local + cloud, newest wins, local storage updated to match. Used by the
+ * "log in with a code" flow, which genuinely has to wait for the cloud.
  */
 export async function loadAppState() {
     try {
-        // Read userId once upfront to avoid race conditions between two separate reads
         const currentUserId = await AsyncStorage.getItem('userId');
-
-        // 1. Load from AsyncStorage first (fast, reliable)
-        const localValue = await AsyncStorage.getItem(STORAGE_KEY);
-        let localState = localValue ? JSON.parse(localValue) : null;
-
-        // Simple migration logic if state version differs
-        if (localState && localState._version !== STATE_VERSION) {
-            localState._version = STATE_VERSION;
-        }
-
-        // Security / Bug Fix: Never load a local state belonging to a different user
-        if (localState && localState.userId && currentUserId && localState.userId !== currentUserId) {
-            logger.info('🔄', 'Local state belongs to a different user, discarding.');
-            localState = null;
-        }
-
-        // 2. If online AND signed in, try to load from Firestore and compare
-        if (checkOnlineStatus() && currentUserId && await ensureAuthenticated(currentUserId)) {
-            try {
-                const semesterId = getCurrentSemesterId();
-                const semesterRef = doc(db, 'users', currentUserId, 'semesters', semesterId);
-                
-                // Implement timeout for cloud fetch
-                const cloudFetchPromise = getDoc(semesterRef);
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Cloud fetch timeout')), SYNC_TIMEOUT)
-                );
-
-                const cloudDoc = await Promise.race([cloudFetchPromise, timeoutPromise]);
-                
-                if (cloudDoc && cloudDoc.exists()) {
-                    const cloudState = cloudDoc.data();
-                    
-                    if (shouldUseCloudData(localState, cloudState)) {
-                        logger.info('🔄', 'Cloud data is newer, updating local storage');
-                        localState = cloudState;
-                        // Update local storage in background
-                        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(localState));
-                    }
-                }
-            } catch (cloudError) {
-                logger.warn('⚠️ Could not fetch cloud data, using local:', cloudError.message);
-                // Fallback to localState already handled
+        let localState = await loadLocalState();
+        try {
+            const cloudState = await loadCloudState(currentUserId);
+            if (shouldUseCloudData(localState, cloudState)) {
+                logger.info('🔄', 'Cloud data is newer, updating local storage');
+                localState = cloudState;
+                await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(localState));
             }
+        } catch (cloudError) {
+            logger.warn('⚠️ Could not fetch cloud data, using local:', cloudError.message);
         }
-
         return localState;
     } catch (e) {
         logger.error('❌ Failed to load state:', e);
@@ -144,87 +130,46 @@ export async function loadAppState() {
     }
 }
 
-/**
- * Migrate local data to Firestore if not already done
- * @param {Object} state - Current loaded state
- */
+/** One-time upload of a pre-cloud install. Safe to call every launch. */
 export async function migrateToFirestore(state) {
     if (!state || state._migrated) return;
 
     try {
         const userId = await AsyncStorage.getItem('userId');
         if (!userId || !checkOnlineStatus()) return;
-        if (!(await ensureAuthenticated(userId))) return; // no session → retry next launch
+        if (!(await ensureAuthenticated(userId))) return;
 
-        const semesterId = getCurrentSemesterId();
-        const semesterRef = doc(db, 'users', userId, 'semesters', semesterId);
+        const semesterRef = doc(db, 'users', userId, 'semesters', getCurrentSemesterId());
+        const cloudDoc = await withTimeout(getDoc(semesterRef), SYNC_TIMEOUT, 'Migration timeout');
 
-        const mkTimeout = () => new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Migration timeout')), SYNC_TIMEOUT)
-        );
-
-        // Check if cloud data already exists to avoid overwriting newer data
-        const cloudDoc = await Promise.race([getDoc(semesterRef), mkTimeout()]);
-        
         if (!cloudDoc.exists()) {
-            logger.info('🚀', 'Migrating local data to Firestore...');
             const migratedState = {
-                ...state,
+                ...stripTransient(state),
                 _migrated: true,
                 _lastModified: new Date().toISOString(),
-                _cloudTimestamp: serverTimestamp()
+                _cloudTimestamp: serverTimestamp(),
             };
-
-            await Promise.race([setDoc(semesterRef, migratedState), mkTimeout()]);
-            
-            // Update local state with migrated flag only after successful cloud write
+            await withTimeout(setDoc(semesterRef, migratedState), SYNC_TIMEOUT, 'Migration timeout');
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migratedState));
             logger.info('✅', 'Migration complete');
         } else {
-            // Already exists in cloud, just mark as migrated locally
-            const migratedState = { ...state, _migrated: true };
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(migratedState));
-            logger.info('ℹ️', 'Cloud data already exists, marked local as migrated');
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...stripTransient(state), _migrated: true }));
         }
     } catch (error) {
         logger.error('❌ Migration failed:', error);
-        // Do NOT set _migrated: true on failure — allow retry on next launch
-        // Only set a failure flag to avoid spamming logs, but keep retrying
-        try {
-            const failedState = { ...state, _migrationAttempted: true };
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(failedState));
-        } catch (sErr) { /* ignore */ }
     }
 }
 
-/**
- * Delete user account and local data
- */
+/** Soft-delete in the cloud, hard-delete locally. */
 export async function deleteUserAccount() {
-    try {
-        const userId = await AsyncStorage.getItem('userId');
-        
-        if (userId && checkOnlineStatus() && await ensureAuthenticated(userId)) {
-            const semesterId = getCurrentSemesterId();
-            const semesterRef = doc(db, 'users', userId, 'semesters', semesterId);
-
-            // Mark as deleted in cloud instead of hard delete
-            // Cloud functions will handle actual cleanup if needed
-            await setDoc(semesterRef, {
-                _deleted: true,
-                _deletedAt: serverTimestamp()
-            }, { merge: true });
-        }
-
-        // Clear local storage
-        await AsyncStorage.removeItem(STORAGE_KEY);
-        await AsyncStorage.removeItem('userId');
-        
-        logger.info('✅', 'Account and data deleted successfully');
-    } catch (error) {
-        logger.error('❌ Error deleting account:', error);
-        throw error;
+    const userId = await AsyncStorage.getItem('userId');
+    if (userId && checkOnlineStatus() && await ensureAuthenticated(userId)) {
+        const semesterRef = doc(db, 'users', userId, 'semesters', getCurrentSemesterId());
+        await setDoc(semesterRef, { _deleted: true, _deletedAt: serverTimestamp() }, { merge: true });
     }
+    await AsyncStorage.removeItem(STORAGE_KEY);
+    await AsyncStorage.removeItem('userId');
+    logger.info('✅', 'Account and data deleted successfully');
 }
 
 export async function clearAppState() {

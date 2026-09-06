@@ -3,7 +3,7 @@
  * Provides offline support and install capability.
  */
 
-const CACHE_NAME = 'presence-v3';
+const CACHE_NAME = 'presence-v4';
 const STATIC_ASSETS = ['/', '/index.html', '/app'];
 
 // Install: cache static shell

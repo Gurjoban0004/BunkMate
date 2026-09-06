@@ -41,7 +41,7 @@ export default function SubjectSummaryCard({ subjectData }) {
                 </View>
                 <View style={styles.heroRight}>
                     <Text style={styles.marks}>{attended} / {total}</Text>
-                    <Text style={styles.heroLabel}>classes</Text>
+                    <Text style={styles.heroLabel}>hours</Text>
                 </View>
             </View>
 

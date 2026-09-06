@@ -109,6 +109,16 @@ export const deleteAnnouncement = async (rollNumber, id) => {
 
 // ─── REVOKED USERS (server-side only — the list is no longer world-readable)
 
+export const listAuditLog = async () => {
+    const result = await adminApiCall('/api/admin', { action: 'listAuditLog' });
+    return result.entries || [];
+};
+
+/** Deletes login codes that never connected a college account. Returns { deleted, remaining }. */
+export const purgeUnfinishedSignups = async (olderThanDays = 7) => {
+    return adminApiCall('/api/admin', { action: 'purgeUnfinishedSignups', payload: { olderThanDays } });
+};
+
 export const getRevokedUsers = async () => {
     const result = await adminApiCall('/api/admin', { action: 'listRevokedUsers' });
     return result.users || [];
@@ -129,8 +139,11 @@ async function fetchAnalyticsMetric(rollNumber, metric, forceRefresh = false) {
     return result.data;
 }
 
-export const fetchActiveUserMetrics = (forceRefresh) =>
-    fetchAnalyticsMetric(null, 'activeUsers', forceRefresh);
+export const fetchOverview = (forceRefresh) =>
+    fetchAnalyticsMetric(null, 'overview', forceRefresh);
+
+export const fetchSessionEvents = (forceRefresh) =>
+    fetchAnalyticsMetric(null, 'sessionEvents', forceRefresh);
 
 export const fetchSubjectDifficulty = (rollNumber, forceRefresh) =>
     fetchAnalyticsMetric(rollNumber, 'subjectDifficulty', forceRefresh);
@@ -147,6 +160,7 @@ export const fetchParserFailures = (rollNumber, forceRefresh) =>
 export const fetchRateLimitData = (rollNumber, forceRefresh) =>
     fetchAnalyticsMetric(rollNumber, 'rateLimit', forceRefresh);
 
+/** { users: [real students], unfinished: { count, olderThan7d } } */
 export const fetchUserRoster = (rollNumber, forceRefresh) =>
     fetchAnalyticsMetric(rollNumber, 'userRoster', forceRefresh);
 

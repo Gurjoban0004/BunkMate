@@ -36,6 +36,19 @@ jest.mock('expo-crypto', () => ({
   }),
 }));
 
+// expo-notifications touches native modules at import time.
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn(async () => {}),
+  getPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  scheduleNotificationAsync: jest.fn(async () => 'id'),
+  cancelAllScheduledNotificationsAsync: jest.fn(async () => {}),
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  AndroidImportance: { DEFAULT: 3 },
+  SchedulableTriggerInputTypes: { DATE: 'date' },
+}));
+
 // Mock console methods to reduce noise in tests
 global.console = {
   ...console,

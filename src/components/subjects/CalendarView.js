@@ -54,15 +54,12 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
             let status = 'none';
             let units = 1;
             let subjectDetails = [];
-            let pending = false; // marked by the user, not yet confirmed by the portal
-
             if (isHoliday) {
                 status = 'holiday';
             } else if (subjectId && dayRecord?.[subjectId]) {
                 const record = dayRecord[subjectId];
                 status = record.status === 'cancelled' ? 'cancelled' : record.status;
                 units = record.units || 1;
-                pending = record.source !== 'erp';
             } else if (!subjectId && dayRecord) {
                 // Global heatmap: collect all subject records for the day
                 const entries = Object.entries(dayRecord)
@@ -77,7 +74,6 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                 else if (cancelledCount > 0) status = 'cancelled';
 
                 units = entries.reduce((sum, [, r]) => sum + (r.units || 1), 0);
-                pending = entries.some(([, r]) => r.source !== 'erp');
 
                 // Build subject details for tap overlay
                 subjectDetails = entries.map(([sid, r]) => {
@@ -86,7 +82,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                 });
             }
 
-            data.push({ day: d, dateKey, status, units, subjectDetails, pending });
+            data.push({ day: d, dateKey, status, units, subjectDetails });
         }
 
         return {
@@ -109,6 +105,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
         switch (status) {
             case 'present':  return { bg: COLORS.successLight, text: COLORS.successDark };
             case 'absent':   return { bg: COLORS.dangerLight,  text: COLORS.dangerDark  };
+            case 'partial':  return { bg: COLORS.warningLight, text: COLORS.warningDark };
             case 'holiday':  return { bg: COLORS.primaryLight,  text: COLORS.primary    };
             case 'cancelled': return { bg: COLORS.inputBackground, text: COLORS.textMuted };
             default:         return { bg: 'transparent', text: COLORS.textSecondary };
@@ -180,15 +177,9 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                                 ]}>
                                     {cell.day}
                                 </Text>
-                                {/* Dot indicator: solid = portal-confirmed, hollow = marked by you */}
                                 {cell.status !== 'none' && cell.status !== 'holiday' && (
                                     <View style={styles.dotsRow}>
-                                        <View style={[
-                                            styles.dot,
-                                            cell.pending
-                                                ? { borderWidth: 1, borderColor: cs.text, backgroundColor: 'transparent' }
-                                                : { backgroundColor: cs.text },
-                                        ]} />
+                                        <View style={[styles.dot, { backgroundColor: cs.text }]} />
                                     </View>
                                 )}
                                 {cell.status === 'holiday' && (
@@ -204,17 +195,12 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
             <View style={styles.legend}>
                 {[
                     { label: 'Present', color: COLORS.successText },
+                    { label: 'Partly',  color: COLORS.warningText },
                     { label: 'Absent',  color: COLORS.dangerText },
                     { label: 'Holiday', color: COLORS.primary },
-                    { label: 'By you', hollow: true },
-                ].map(({ label, color, hollow }) => (
+                ].map(({ label, color }) => (
                     <View key={label} style={styles.legendItem}>
-                        <View style={[
-                            styles.legendDot,
-                            hollow
-                                ? { borderWidth: 1.5, borderColor: COLORS.textMuted, backgroundColor: 'transparent' }
-                                : { backgroundColor: color },
-                        ]} />
+                        <View style={[styles.legendDot, { backgroundColor: color }]} />
                         <Text style={styles.legendText}>{label}</Text>
                     </View>
                 ))}
@@ -251,21 +237,19 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                                 // Subject-specific detail
                                 <View style={styles.dayDetailRow}>
                                     <View style={[styles.statusPill, {
-                                        backgroundColor: selectedDay.status === 'present' ? COLORS.successLight : COLORS.dangerLight,
+                                        backgroundColor: selectedDay.status === 'present' ? COLORS.successLight : selectedDay.status === 'partial' ? COLORS.warningLight : COLORS.dangerLight,
                                     }]}>
                                         <Text style={[styles.statusPillText, {
-                                            color: selectedDay.status === 'present' ? COLORS.successDark : COLORS.dangerDark,
+                                            color: selectedDay.status === 'present' ? COLORS.successDark : selectedDay.status === 'partial' ? COLORS.warningDark : COLORS.dangerDark,
                                         }]}>
-                                            {selectedDay.status === 'present' ? 'Present' : 'Absent'}
+                                            {selectedDay.status === 'present' ? 'Present' : selectedDay.status === 'partial' ? 'Partly attended' : 'Absent'}
                                         </Text>
                                     </View>
                                     {selectedDay.units >= 2 && (
-                                        <Text style={styles.dayDetailUnits}>{selectedDay.units} periods</Text>
+                                        <Text style={styles.dayDetailUnits}>{selectedDay.units} hours</Text>
                                     )}
                                     <View style={[styles.sourcePill]}>
-                                        <Text style={styles.sourcePillText}>
-                                            {state.attendanceRecords[selectedDay.dateKey]?.[subjectId]?.source === 'erp' ? 'Confirmed by portal' : 'Marked by you'}
-                                        </Text>
+                                        <Text style={styles.sourcePillText}>Recorded by your college</Text>
                                     </View>
                                 </View>
                             ) : (
@@ -284,7 +268,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                                                         fontWeight: '400',
                                                         fontSize: 11,
                                                     }]}>
-                                                        {sd.status === 'present' ? 'Present' : sd.status === 'absent' ? 'Absent' : 'Cancelled'}
+                                                        {sd.status === 'present' ? 'Present' : sd.status === 'absent' ? 'Absent' : sd.status === 'partial' ? 'Partly' : 'Cancelled'}
                                                     </Text>
                                                 </View>
                                                 {sd.units >= 2 && (

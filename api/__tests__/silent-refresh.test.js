@@ -1,8 +1,9 @@
 /** @jest-environment node */
 
-// Silent refresh: when a stored session dies but the device is trusted (ERP
-// status 1 login, no OTP), the data handler re-logs-in, retries the fetch,
-// and returns fresh data plus a new session token — no OTP round-trip.
+// reloginERP is the one call that can log a student in again. It is only ever
+// reached from /api/erp-login (onboarding) and /api/erp-session requestOtp
+// (the student tapped "Sign in again") — never from a data endpoint on its own.
+// See reconnect-flow.test.js for that rule; this file pins the two ERP shapes.
 
 process.env.ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || '0123456789abcdef0123456789abcdef';
 process.env.ERP_BASE_URL = process.env.ERP_BASE_URL || 'https://cuiet.codebrigade.in';
@@ -69,47 +70,5 @@ describe('silent session refresh (trusted device, no OTP)', () => {
         const result = await reloginERP('2410990001', 'pw');
 
         expect(result).toEqual({ needsOtp: true, authUserId: '24635', deviceId: expect.stringMatching(/^[0-9A-F-]{36}$/) });
-    });
-
-    test('erp-attendance retries with fresh session and returns data + new token', async () => {
-        const { encryptSession, encryptPersistent, decryptSession } = require('../_session-utils');
-        const deadToken = encryptSession({
-            rollNumber: '2410990001', userId: '24635', sessionId: '19', roleId: '4',
-            apiKey: 'EXPIRED', studentId: '9508',
-        });
-        const persistentToken = encryptPersistent({ username: '2410990001', password: 'pw', studentName: 'Student' });
-
-        // Data endpoints report a dead session until appLoginAuthV2 is called
-        let loggedIn = false;
-        global.fetch = jest.fn(async (url) => {
-            if (String(url).includes('appLoginAuthV2')) {
-                loggedIn = true;
-                return jsonResponse({
-                    status: '1',
-                    token: 'fresh-sec-token',
-                    data: [{ userId: '24635', sessionId: '19', roleId: '4', apiKey: 'FRESH20260717', studentId: '9508', name: 'Student' }],
-                });
-            }
-            if (!loggedIn) {
-                return jsonResponse({ status: '0', message: 'Session invalid, please login again' });
-            }
-            return jsonResponse({ content: ATTENDANCE_HTML });
-        });
-
-        const handler = require('../erp-attendance');
-        const res = makeRes();
-        await handler(makeReq({ token: deadToken, persistentToken }), res);
-
-        expect(res.statusCode).toBe(200);
-        expect(res.body.success).toBe(true);
-        expect(res.body.needsOtp).toBeUndefined();
-        expect(res.body.subjects.length).toBeGreaterThan(0);
-        // New token must decrypt to the fresh session, with rollNumber preserved for admin auth
-        expect(res.body.token).toEqual(expect.any(String));
-        expect(decryptSession(res.body.token)).toEqual(expect.objectContaining({
-            apiKey: 'FRESH20260717',
-            securityToken: 'fresh-sec-token',
-            rollNumber: '2410990001',
-        }));
     });
 });

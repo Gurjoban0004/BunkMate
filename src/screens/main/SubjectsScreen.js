@@ -13,14 +13,11 @@ import {
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
-import { calculateGlobalStaleness } from '../../utils/erpFreshness';
 
 // Components
 import OverallStatsCard from '../../components/subjects/OverallStatsCard';
 import SubjectRow from '../../components/subjects/SubjectRow';
 import CalendarView from '../../components/subjects/CalendarView';
-import ProjectionTransparencyModal from '../../components/insights/ProjectionTransparencyModal';
-import { calculateProjectionBreakdown } from '../../utils/transparency';
 
 const SubjectsScreen = ({ navigation }) => {
     const styles = getStyles();
@@ -31,7 +28,6 @@ const SubjectsScreen = ({ navigation }) => {
         setViewMode(mode);
     }, []);
     const [refreshing, setRefreshing] = useState(false);
-    const [transparencyVisible, setTransparencyVisible] = useState(false);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -61,7 +57,6 @@ const SubjectsScreen = ({ navigation }) => {
                 attendedUnits,
                 totalUnits,
                 percentage,
-                hasPredictions: stats?.hasPredictions ?? false,
                 skipInfo: physicalSkipInfo,
                 resolvedTarget: target,
             };
@@ -128,11 +123,7 @@ const SubjectsScreen = ({ navigation }) => {
         };
     }, [subjectsWithStats, categorizedSubjects]);
 
-    // Calculate global staleness for the stats card
-    const staleness = useMemo(() => {
-        if (!state.settings?.erpConnected) return null;
-        return calculateGlobalStaleness(state);
-    }, [state.settings?.lastSubjectSyncDates, state.subjects, state.attendanceRecords, state.settings?.erpConnected, state.devDate]);
+    const updatedThrough = state.latestErpDate || state.settings?.latestErpDate || null;
 
     const handleSubjectPress = (subject) => {
         navigation.navigate('SubjectDetail', { subjectId: subject.id });
@@ -182,8 +173,7 @@ const SubjectsScreen = ({ navigation }) => {
                 <OverallStatsCard
                     stats={overallStats}
                     threshold={dangerThreshold}
-                    staleness={staleness}
-                    onBannerPress={() => setTransparencyVisible(true)}
+                    updatedThrough={updatedThrough}
                 />
 
                 {viewMode === 'list' ? (
@@ -259,7 +249,7 @@ const SubjectsScreen = ({ navigation }) => {
                         <View style={styles.sectionHeader}>
                             <View style={[styles.sectionRule, styles.sectionRuleSafe]} />
                             <Text style={styles.sectionTitle}>
-                                Daily History Heatmap
+                                Day by day
                             </Text>
                         </View>
                         <CalendarView state={state} />
@@ -270,12 +260,6 @@ const SubjectsScreen = ({ navigation }) => {
                 <View style={styles.bottomPadding} />
             </ScrollView>
 
-            {/* Transparency Modal */}
-            <ProjectionTransparencyModal
-                visible={transparencyVisible}
-                onClose={() => setTransparencyVisible(false)}
-                breakdown={calculateProjectionBreakdown(state)}
-            />
         </SafeAreaView>
     );
 };

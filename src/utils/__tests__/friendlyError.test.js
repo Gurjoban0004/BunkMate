@@ -32,7 +32,7 @@ describe('friendlyError', () => {
         expect(friendlyError(err('Invalid credentials', { status: 401 }), 'signin').title)
             .toBe('Those details did not match');
         expect(friendlyError(err('boom', { status: 503 }), 'signin').title)
-            .toBe('Your university portal is not responding');
+            .toBe('Your college is not responding');
     });
 
     it('varies the auth message by which step failed', () => {

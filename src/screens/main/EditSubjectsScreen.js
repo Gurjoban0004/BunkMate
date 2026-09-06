@@ -1,252 +1,144 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    TextInput,
-    Modal,
-} from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, TYPOGRAPHY, TABULAR } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
-import { getSubjectAttendance } from '../../utils/attendance';
+import { getSubjectAttendance, roundPct } from '../../utils/attendance';
 import Button from '../../components/common/Button';
 import { showAlert } from '../../utils/alert';
 import ScreenHeader from '../../components/common/ScreenHeader';
 
-// Import theme palette directly
-const THEME_COLORS = [...COLORS.subjectPalette];
-
-const EditSubjectsScreen = ({ navigation }) => {
+/**
+ * Subjects come from the college and so do their numbers. What a student can
+ * change here is how a subject looks and what goal it has — never the count.
+ */
+const EditSubjectsScreen = () => {
     const styles = getStyles();
     const { state, dispatch } = useApp();
-    const [modalVisible, setModalVisible] = useState(false);
-    const [editingSubject, setEditingSubject] = useState(null);
-
-    // Form state
+    const [editing, setEditing] = useState(null);
     const [name, setName] = useState('');
-    const [selectedColor, setSelectedColor] = useState(THEME_COLORS[0]);
-    const [attended, setAttended] = useState('0');
-    const [total, setTotal] = useState('0');
+    const [color, setColor] = useState(COLORS.subjectPalette[0]);
+    const [target, setTarget] = useState('');
 
-    const openModal = (subject = null) => {
-        if (subject) {
-            setEditingSubject(subject);
-            setName(subject.name);
-            setSelectedColor(subject.color || THEME_COLORS[0]);
+    const globalGoal = state.settings?.dangerThreshold || 75;
+    const isFromCollege = (s) => !!(s.erpSubjectId || s.code || s.source === 'erp');
 
-            // For editing, show current attendance so they can override if needed
-            // If they change it, we update initialAttended and initialTotal
-            setAttended(subject.initialAttended?.toString() || '0');
-            setTotal(subject.initialTotal?.toString() || '0');
-        } else {
-            setEditingSubject(null);
-            setName('');
-            // Pick an unused color if possible
-            const usedColors = state.subjects.map(s => s.color);
-            const unusedColor = THEME_COLORS.find(c => !usedColors.includes(c)) || THEME_COLORS[0];
-            setSelectedColor(unusedColor);
-            setAttended('0');
-            setTotal('0');
-        }
-        setModalVisible(true);
+    const openEditor = (subject) => {
+        setEditing(subject);
+        setName(subject.name);
+        setColor(subject.color || COLORS.subjectPalette[0]);
+        setTarget(subject.target ? String(subject.target) : '');
     };
 
     const handleSave = () => {
-        if (!name.trim()) {
-            showAlert('Error', 'Subject name is required');
-            return;
-        }
-
-        const attendedNum = parseInt(attended) || 0;
-        const totalNum = parseInt(total) || 0;
-
-        if (attendedNum > totalNum) {
-            showAlert('Error', 'Attended classes cannot be greater than total classes');
-            return;
-        }
-
-        if (editingSubject) {
-            dispatch({
-                type: 'UPDATE_SUBJECT',
-                payload: {
-                    id: editingSubject.id,
-                    name: name.trim(),
-                    color: selectedColor,
-                    initialAttended: attendedNum,
-                    initialTotal: totalNum,
-                },
-            });
-        } else {
-            dispatch({
-                type: 'ADD_SUBJECT',
-                payload: {
-                    id: Date.now().toString(),
-                    name: name.trim(),
-                    color: selectedColor,
-                    initialAttended: attendedNum,
-                    initialTotal: totalNum,
-                },
-            });
-        }
-
-        setModalVisible(false);
+        if (!name.trim()) { showAlert('Name needed', 'Give the subject a name.'); return; }
+        const goal = target.trim() === '' ? null : Math.min(100, Math.max(1, parseInt(target, 10) || globalGoal));
+        dispatch({ type: 'UPDATE_SUBJECT', payload: { id: editing.id, name: name.trim(), color, target: goal } });
+        setEditing(null);
     };
 
     const handleDelete = (subject) => {
         showAlert(
-            'Delete Subject?',
-            `Are you sure you want to delete ${subject.name}?\n\nThis will remove it from your timetable and delete all attendance records. This cannot be undone!`,
+            'Remove this subject?',
+            'It disappears from your timetable and calendar. It was not sent by your college, so it will not come back on sync.',
             [
                 { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                        dispatch({ type: 'DELETE_SUBJECT', payload: subject.id });
-                    },
-                },
+                { text: 'Remove', style: 'destructive', onPress: () => dispatch({ type: 'DELETE_SUBJECT', payload: subject.id }) },
             ]
         );
     };
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <ScreenHeader title="Edit Subjects" />
-            <ScrollView style={styles.list}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                <View style={styles.header}>
-                    <Text style={styles.headerSubtitle}>Your Subjects ({state.subjects.length})</Text>
-                </View>
+            <ScreenHeader title="Subjects" />
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <Text style={styles.intro}>
+                    Your subjects and their numbers come from your college. Rename them, pick a colour, or set a goal for one that needs a different target.
+                </Text>
 
                 {state.subjects.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyEmoji}></Text>
-                        <Text style={styles.emptyText}>No subjects added yet</Text>
+                        <Text style={styles.emptyTitle}>No subjects yet</Text>
+                        <Text style={styles.emptyText}>They appear after your first sync.</Text>
                     </View>
                 ) : (
                     state.subjects.map((subject) => {
                         const stats = getSubjectAttendance(subject.id, state);
                         return (
-                            <View key={subject.id} style={styles.subjectCard}>
-                                <View style={styles.subjectInfo}>
-                                    <View style={styles.subjectHeader}>
-                                        <View style={[styles.colorDot, { backgroundColor: subject.color }]} />
-                                        <Text style={styles.subjectName} numberOfLines={1}>
-                                            {subject.name}
-                                        </Text>
-                                    </View>
-                                    <Text style={styles.statsText}>
-                                        {stats.percentage.toFixed(1)}% • {stats.attendedUnits}/{stats.totalUnits} marks
+                            <TouchableOpacity key={subject.id} style={styles.card} onPress={() => openEditor(subject)} activeOpacity={0.8}>
+                                <View style={[styles.colorDot, { backgroundColor: subject.color }]} />
+                                <View style={styles.info}>
+                                    <Text style={styles.name} numberOfLines={1}>{subject.name}</Text>
+                                    <Text style={styles.meta}>
+                                        <Text style={TABULAR}>{roundPct(stats?.percentage || 0).toFixed(1)}%</Text>
+                                        {'  ·  '}{stats?.attendedUnits ?? 0} of {stats?.totalUnits ?? 0} hours
+                                        {'  ·  goal '}{subject.target || globalGoal}%
                                     </Text>
                                 </View>
-
-                                <View style={styles.actions}>
-                                    <TouchableOpacity
-                                        style={styles.actionButton}
-                                        onPress={() => openModal(subject)}
-                                    >
-                                        <Text style={styles.actionIcon}>Edit</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.actionButton, { backgroundColor: COLORS.dangerLight }]}
-                                        onPress={() => handleDelete(subject)}
-                                    >
-                                        <Text style={[styles.actionIcon, { color: COLORS.dangerText }]}>Delete</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
+                                <Text style={styles.chevron}>›</Text>
+                            </TouchableOpacity>
                         );
                     })
                 )}
-
-                <TouchableOpacity style={styles.addButton} onPress={() => openModal()}>
-                    <Text style={styles.addButtonText}>+ Add New Subject</Text>
-                </TouchableOpacity>
-
                 <View style={{ height: 100 }} />
             </ScrollView>
 
-            {/* Edit/Add Modal */}
-            <Modal
-                visible={modalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setModalVisible(false)}
-            >
+            <Modal visible={!!editing} animationType="slide" transparent onRequestClose={() => setEditing(null)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>
-                                {editingSubject ? 'Edit Subject' : 'Add New Subject'}
-                            </Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                            <Text style={styles.modalTitle}>Edit subject</Text>
+                            <TouchableOpacity onPress={() => setEditing(null)} accessibilityRole="button" accessibilityLabel="Close">
                                 <Text style={styles.closeModalText}>✕</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.inputLabel}>Subject Name *</Text>
+                        <Text style={styles.inputLabel}>NAME</Text>
                         <TextInput
                             style={styles.input}
                             value={name}
                             onChangeText={setName}
-                            placeholder="e.g., Data Structures"
+                            placeholder="Subject name"
                             placeholderTextColor={COLORS.textMuted}
+                            accessibilityLabel="Subject name"
                         />
 
-                        <Text style={styles.inputLabel}>Color</Text>
-                        <View style={styles.colorPalette}>
-                            {THEME_COLORS.map(color => (
+                        <Text style={styles.inputLabel}>COLOUR</Text>
+                        <View style={styles.palette}>
+                            {COLORS.subjectPalette.map((c) => (
                                 <TouchableOpacity
-                                    key={color}
-                                    style={[
-                                        styles.colorOption,
-                                        { backgroundColor: color },
-                                        selectedColor === color && styles.colorOptionSelected
-                                    ]}
-                                    onPress={() => setSelectedColor(color)}
+                                    key={c}
+                                    style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]}
+                                    onPress={() => setColor(c)}
+                                    accessibilityRole="radio"
+                                    accessibilityState={{ selected: color === c }}
+                                    accessibilityLabel={`Colour ${c}`}
                                 />
                             ))}
                         </View>
 
-                        <Text style={styles.inputLabel}>Initial Attendance</Text>
-                        <View style={styles.attendanceRow}>
-                            <View style={styles.attendanceInputContainer}>
-                                <Text style={styles.attendanceLabel}>Attended:</Text>
-                                <TextInput
-                                    style={styles.attendanceInput}
-                                    value={attended}
-                                    onChangeText={setAttended}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                            <View style={styles.attendanceInputContainer}>
-                                <Text style={styles.attendanceLabel}>Total:</Text>
-                                <TextInput
-                                    style={styles.attendanceInput}
-                                    value={total}
-                                    onChangeText={setTotal}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                        </View>
+                        <Text style={styles.inputLabel}>GOAL</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={target}
+                            onChangeText={(t) => setTarget(t.replace(/[^0-9]/g, '').slice(0, 3))}
+                            placeholder={`Leave empty to use ${globalGoal}%`}
+                            placeholderTextColor={COLORS.textMuted}
+                            keyboardType="number-pad"
+                            accessibilityLabel="Attendance goal percent"
+                        />
+
+                        {editing && isFromCollege(editing) ? (
+                            <Text style={styles.hint}>Attendance numbers for this subject come from your college and cannot be edited.</Text>
+                        ) : editing ? (
+                            <TouchableOpacity style={styles.removeLink} onPress={() => { const s = editing; setEditing(null); handleDelete(s); }}>
+                                <Text style={styles.removeLinkText}>Remove this subject</Text>
+                            </TouchableOpacity>
+                        ) : null}
 
                         <View style={styles.modalActions}>
-                            <Button
-                                title="Cancel"
-                                variant="outline"
-                                onPress={() => setModalVisible(false)}
-                                style={styles.modalButton}
-                            />
-                            <Button
-                                title={editingSubject ? 'Save' : 'Add'}
-                                onPress={handleSave}
-                                style={styles.modalButton}
-                            />
+                            <Button title="Cancel" variant="outline" onPress={() => setEditing(null)} style={styles.modalButton} />
+                            <Button title="Save" onPress={handleSave} style={styles.modalButton} />
                         </View>
                     </View>
                 </View>
@@ -256,203 +148,43 @@ const EditSubjectsScreen = ({ navigation }) => {
 };
 
 const getStyles = () => StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background,
+    container: { flex: 1, backgroundColor: COLORS.background },
+    scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xxl },
+    intro: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, paddingHorizontal: SPACING.lg, marginBottom: SPACING.md },
+    card: {
+        flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
+        backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, marginBottom: SPACING.sm,
+        padding: SPACING.md, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.border,
     },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingTop: SPACING.md,
-        paddingBottom: SPACING.xxl,
-    },
-    header: {
-        paddingHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
-    },
-    headerSubtitle: {
-        fontWeight: '600',
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textSecondary,
-    },
-    subjectCard: {
-        backgroundColor: COLORS.cardBackground,
-        marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.md,
-        padding: SPACING.md,
-        borderRadius: BORDER_RADIUS.lg,
-
-
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        ...SHADOWS.small,
-    },
-    subjectInfo: {
-        flex: 1,
-    },
-    subjectHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    colorDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        marginRight: SPACING.sm,
-    },
-    subjectName: {
-        fontWeight: '700',
-        fontSize: FONT_SIZES.md,
-        color: COLORS.textPrimary,
-        flex: 1,
-    },
-    statsText: {
-        fontWeight: '400',
-        fontSize: FONT_SIZES.xs,
-        color: COLORS.textMuted,
-        marginLeft: SPACING.md + 4,
-    },
-    actions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    actionButton: {
-        padding: SPACING.sm,
-        marginLeft: SPACING.sm,
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.sm,
-    },
-    actionIcon: {
-        fontSize: 16,
-    },
-    addButton: {
-        marginHorizontal: SPACING.lg,
-        marginTop: SPACING.sm,
-        padding: SPACING.md,
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        alignItems: 'center',
-
-
-        borderStyle: 'dashed',
-    },
-    addButtonText: {
-        fontWeight: '600',
-        fontSize: FONT_SIZES.md,
-        color: COLORS.primary,
-    },
-    emptyState: {
-        alignItems: 'center',
-        padding: SPACING.xxl,
-    },
-    emptyEmoji: {
-        fontSize: 48,
-        marginBottom: SPACING.md,
-    },
-    emptyText: {
-        fontWeight: '400',
-        fontSize: FONT_SIZES.md,
-        color: COLORS.textSecondary,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: COLORS.overlay,
-        justifyContent: 'flex-end',
-    },
+    colorDot: { width: 12, height: 12, borderRadius: 6 },
+    info: { flex: 1 },
+    name: { ...TYPOGRAPHY.headingSmall, color: COLORS.textPrimary },
+    meta: { ...TYPOGRAPHY.captionMedium, color: COLORS.textMuted, marginTop: 2 },
+    chevron: { fontSize: 20, color: COLORS.textMuted },
+    emptyState: { alignItems: 'center', padding: SPACING.xxl },
+    emptyTitle: { ...TYPOGRAPHY.headingSmall, color: COLORS.textPrimary },
+    emptyText: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: 4 },
+    modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
     modalContent: {
-        backgroundColor: COLORS.cardBackground,
-        borderTopLeftRadius: BORDER_RADIUS.xl,
-        borderTopRightRadius: BORDER_RADIUS.xl,
-        padding: SPACING.xl,
-        paddingBottom: 40,
+        backgroundColor: COLORS.cardBackground, borderTopLeftRadius: BORDER_RADIUS.xl, borderTopRightRadius: BORDER_RADIUS.xl,
+        padding: SPACING.xl, paddingBottom: 40,
     },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: SPACING.lg,
-    },
-    modalTitle: {
-        fontWeight: '700',
-        fontSize: FONT_SIZES.lg,
-        color: COLORS.textPrimary,
-    },
-    closeModalText: {
-        fontSize: 24,
-        color: COLORS.textMuted,
-        padding: SPACING.xs,
-    },
-    inputLabel: {
-        fontWeight: '600',
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textSecondary,
-        marginBottom: SPACING.xs,
-        marginTop: SPACING.md,
-    },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.sm },
+    modalTitle: { ...TYPOGRAPHY.headingLarge, fontSize: FONT_SIZES.lg, color: COLORS.textPrimary },
+    closeModalText: { fontSize: 22, color: COLORS.textMuted, padding: SPACING.xs },
+    inputLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginBottom: 6, marginTop: SPACING.md },
     input: {
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
-        fontWeight: '400',
-        fontSize: FONT_SIZES.md,
-        color: COLORS.textPrimary,
-
-
+        backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.sm, paddingHorizontal: SPACING.md, paddingVertical: 12,
+        ...TYPOGRAPHY.bodyMedium, color: COLORS.textPrimary,
     },
-    colorPalette: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: SPACING.sm,
-        marginTop: SPACING.xs,
-    },
-    colorOption: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-
-        borderColor: 'transparent',
-    },
-    colorOptionSelected: {
-
-    },
-    attendanceRow: {
-        flexDirection: 'row',
-        gap: SPACING.md,
-    },
-    attendanceInputContainer: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        paddingHorizontal: SPACING.md,
-
-
-    },
-    attendanceLabel: {
-        fontWeight: '400',
-        fontSize: FONT_SIZES.sm,
-        color: COLORS.textSecondary,
-        marginRight: SPACING.sm,
-    },
-    attendanceInput: {
-        flex: 1,
-        paddingVertical: SPACING.md,
-        fontWeight: '400',
-        fontSize: FONT_SIZES.md,
-        color: COLORS.textPrimary,
-    },
-    modalActions: {
-        flexDirection: 'row',
-        gap: SPACING.md,
-        marginTop: SPACING.xl,
-    },
-    modalButton: {
-        flex: 1,
-    },
+    palette: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+    swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 2, borderColor: 'transparent' },
+    swatchSelected: { borderColor: COLORS.textPrimary },
+    hint: { ...TYPOGRAPHY.captionMedium, color: COLORS.textMuted, marginTop: SPACING.md },
+    removeLink: { marginTop: SPACING.md, minHeight: 36, justifyContent: 'center' },
+    removeLinkText: { ...TYPOGRAPHY.labelMedium, color: COLORS.dangerText },
+    modalActions: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.lg },
+    modalButton: { flex: 1 },
 });
 
 export default EditSubjectsScreen;

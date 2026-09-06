@@ -23,8 +23,9 @@ import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { enableWebPush, disableWebPush, isWebPushSupported } from '../../utils/webPush';
-import { scheduleDailyReminder, cancelAllReminders } from '../../utils/notifications';
+import { syncDailyPlanNotifications, cancelAllReminders } from '../../utils/notifications';
 import { formatRelativeTime, formatTime } from '../../utils/dateHelpers';
+import { APP_VERSION } from '../../config/version';
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
@@ -76,7 +77,7 @@ const SettingsScreen = ({ navigation }) => {
         dangerThreshold = 75,
         notificationEnabled = true,
         smartAlertsEnabled = true,
-        weeklySummaryEnabled = true,
+        notificationTime = '07:30',
         theme = 'light',
         uiPalette = 'chalkpad',
         semesterEndDate = null,
@@ -102,7 +103,7 @@ const SettingsScreen = ({ navigation }) => {
         const loginCode = state.userId || 'unknown';
         showAlert(
             'Logout',
-            `Your login code is:\n\n${loginCode}\n\nSave this code to log back in later. Your cloud data will remain safe.`,
+            `Your login code is:\n\n${loginCode}\n\nKeep it — it is how you get back in on any device.`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -121,11 +122,11 @@ const SettingsScreen = ({ navigation }) => {
     const handleDeleteAccount = () => {
         showAlert(
             'Delete Account',
-            'THIS CANNOT BE UNDONE\n\nThis will permanently delete:\n• All your cloud data\n• All local data\n\nAre you absolutely sure?',
+            'This cannot be undone. Everything saved to your login code, on this device and in the cloud, is deleted.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'DELETE EVERYTHING',
+                    text: 'Delete everything',
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -142,12 +143,13 @@ const SettingsScreen = ({ navigation }) => {
 
 
 
-    // Android daily reminder — a local scheduled notification at 18:00. Turning it
-    // on asks for permission; a refusal leaves the switch off rather than lying.
+    // Android morning plan — local notifications written from the timetable and
+    // the college's numbers. Turning it on asks for permission; a refusal leaves
+    // the switch off rather than lying.
     const handleAndroidReminderToggle = async (value) => {
         if (value) {
-            const id = await scheduleDailyReminder(state.settings?.notificationTime || '18:00').catch(() => null);
-            if (!id) {
+            const count = await syncDailyPlanNotifications({ ...state, settings: { ...state.settings, notificationEnabled: true } }).catch(() => null);
+            if (count === null) {
                 showAlert(
                     "Couldn't enable reminders",
                     'Notifications are blocked for Presence. Turn them on in Android settings, then try again.'
@@ -205,31 +207,33 @@ const SettingsScreen = ({ navigation }) => {
         setThresholdModalVisible(false);
     };
 
-    const formatPortalDate = (dateKey) => {
-        if (!dateKey) return 'Never';
+    const formatCollegeDate = (dateKey) => {
+        if (!dateKey) return 'nothing yet';
         const date = new Date(dateKey + 'T12:00:00');
         return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
-    const portalCoverageDate = state.latestErpDate || state.settings?.latestErpDate || null;
-    const portalLabel = formatPortalDate(portalCoverageDate);
+    const collegeCoverageDate = state.latestErpDate || state.settings?.latestErpDate || null;
+    const collegeLabel = formatCollegeDate(collegeCoverageDate);
+    const needsSignIn = !!state.erpSessionExpired && !!state.settings?.erpConnected;
 
     return (
         <SafeAreaView style={styles.container}>
             <ScreenHeader title="Settings" />
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-                {/* Portal Section */}
+                {/* College account */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>PORTAL</Text>
+                    <Text style={styles.sectionTitle}>COLLEGE ACCOUNT</Text>
                     <View style={styles.cardGroup}>
                         <View style={[styles.settingRow, styles.groupItem, styles.primarySettingRow]}>
                             <View style={styles.settingInfo}>
                                 <Text style={styles.cardTitle}>
-                                    {state.settings?.erpConnected ? 'Connected' : 'Not connected'}
+                                    {!state.settings?.erpConnected ? 'Not connected' : needsSignIn ? 'Signed out by your college' : 'Connected'}
                                 </Text>
                                 <Text style={styles.cardDescription}>
-                                    Portal updated till {portalLabel}
+                                    {state.erpRollNumber ? `${state.erpRollNumber}  ·  ` : ''}
+                                    Updated through {collegeLabel}
                                     {state.erpSync?.lastGlobalSyncAt
                                         ? `  ·  Synced ${formatRelativeTime(state.erpSync.lastGlobalSyncAt)}`
                                         : ''}
@@ -246,6 +250,36 @@ const SettingsScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         </View>
 
+                        {needsSignIn && (
+                            <>
+                                <View style={styles.divider} />
+                                <TouchableOpacity
+                                    style={styles.groupItem}
+                                    onPress={() => dispatch({ type: 'ERP_RECONNECT_OPEN' })}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Sign in again"
+                                >
+                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Sign in again</Text>
+                                    <Text style={styles.chevron}>›</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+
+                        {!state.settings?.erpConnected && (
+                            <>
+                                <View style={styles.divider} />
+                                <TouchableOpacity
+                                    style={styles.groupItem}
+                                    onPress={() => navigation.navigate('ERPConnect')}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Connect your college account"
+                                >
+                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Connect your college account</Text>
+                                    <Text style={styles.chevron}>›</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+
                         {state.settings?.erpConnected && (
                             <>
                                 <View style={styles.divider} />
@@ -253,8 +287,8 @@ const SettingsScreen = ({ navigation }) => {
                                     style={styles.groupItem}
                                     onPress={() => {
                                         showAlert(
-                                            'Refresh Calendar',
-                                            'This re-matches your portal subjects and pulls the full calendar again. Use it if calendar data looks wrong.',
+                                            'Re-match subjects',
+                                            'Pulls your subjects and the full day-by-day record again from scratch. Use it if something looks mismatched.',
                                             [
                                                 { text: 'Cancel', style: 'cancel' },
                                                 {
@@ -270,7 +304,7 @@ const SettingsScreen = ({ navigation }) => {
                                     }}
                                     disabled={isErpSyncing}
                                 >
-                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Refresh calendar</Text>
+                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Re-match subjects</Text>
                                     <Text style={styles.chevron}>›</Text>
                                 </TouchableOpacity>
                                 <View style={styles.divider} />
@@ -278,8 +312,8 @@ const SettingsScreen = ({ navigation }) => {
                                     style={styles.groupItem}
                                     onPress={() => {
                                         showAlert(
-                                            'Disconnect Portal',
-                                            'Are you sure you want to disconnect your college portal? Your current attendance data will remain, but automatic syncs will stop.',
+                                            'Disconnect your college account?',
+                                            'Your numbers stay as they are, but they will stop updating until you connect again.',
                                             [
                                                 { text: 'Cancel', style: 'cancel' },
                                                 {
@@ -291,7 +325,8 @@ const SettingsScreen = ({ navigation }) => {
                                                             type: 'UPDATE_SETTINGS',
                                                             payload: { erpConnected: false }
                                                         });
-                                                        showAlert('Disconnected', 'College portal disconnected successfully.');
+                                                        dispatch({ type: 'ERP_SESSION_RESTORED' });
+                                                        showAlert('Disconnected', 'Connect again any time from here.');
                                                     }
                                                 }
                                             ]
@@ -299,7 +334,7 @@ const SettingsScreen = ({ navigation }) => {
                                     }}
                                     disabled={isErpSyncing}
                                 >
-                                    <Text style={[styles.linkText, { color: COLORS.dangerText }]}>Disconnect portal</Text>
+                                    <Text style={[styles.linkText, { color: COLORS.dangerText }]}>Disconnect</Text>
                                     <Text style={styles.chevron}>›</Text>
                                 </TouchableOpacity>
                             </>
@@ -326,12 +361,12 @@ const SettingsScreen = ({ navigation }) => {
 
                         <View style={styles.divider} />
                         <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditTimetable')}>
-                            <Text style={styles.linkText}>Edit Timetable</Text>
+                            <Text style={styles.linkText}>Timetable</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                         <View style={styles.divider} />
                         <TouchableOpacity style={styles.groupItem} onPress={() => navigation.navigate('EditSubjects')}>
-                            <Text style={styles.linkText}>Manage Subjects</Text>
+                            <Text style={styles.linkText}>Subjects</Text>
                             <Text style={styles.chevron}>›</Text>
                         </TouchableOpacity>
                         <View style={styles.divider} />
@@ -417,37 +452,29 @@ const SettingsScreen = ({ navigation }) => {
                                 <View style={styles.divider} />
                                 <View style={[styles.settingRow, styles.groupItem]}>
                                     <View style={styles.settingInfo}>
-                                        <Text style={styles.cardTitle}>Daily reminder</Text>
+                                        <Text style={styles.cardTitle}>Morning plan</Text>
+                                        <Text style={styles.cardDescription}>At {formatTime(notificationTime)} on class days: what's on and what you can skip.</Text>
                                     </View>
                                     <Switch
                                         value={notificationEnabled}
                                         onValueChange={handleAndroidReminderToggle}
                                         trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
                                         thumbColor={notificationEnabled ? COLORS.primary : COLORS.textMuted}
+                                        accessibilityLabel="Morning plan notification"
                                     />
                                 </View>
                                 <View style={styles.divider} />
                                 <View style={[styles.settingRow, styles.groupItem]}>
                                     <View style={styles.settingInfo}>
-                                        <Text style={styles.cardTitle}>Smart alerts</Text>
+                                        <Text style={styles.cardTitle}>Goal alerts</Text>
+                                        <Text style={styles.cardDescription}>A heads-up when a subject drops below its goal.</Text>
                                     </View>
                                     <Switch
                                         value={smartAlertsEnabled}
                                         onValueChange={(value) => updateSetting('smartAlertsEnabled', value)}
                                         trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
                                         thumbColor={smartAlertsEnabled ? COLORS.primary : COLORS.textMuted}
-                                    />
-                                </View>
-                                <View style={styles.divider} />
-                                <View style={[styles.settingRow, styles.groupItem]}>
-                                    <View style={styles.settingInfo}>
-                                        <Text style={styles.cardTitle}>Weekly summary</Text>
-                                    </View>
-                                    <Switch
-                                        value={weeklySummaryEnabled}
-                                        onValueChange={(value) => updateSetting('weeklySummaryEnabled', value)}
-                                        trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-                                        thumbColor={weeklySummaryEnabled ? COLORS.primary : COLORS.textMuted}
+                                        accessibilityLabel="Goal alerts"
                                     />
                                 </View>
                             </>
@@ -458,8 +485,8 @@ const SettingsScreen = ({ navigation }) => {
                                 <View style={styles.divider} />
                                 <View style={[styles.settingRow, styles.groupItem]}>
                                     <View style={styles.settingInfo}>
-                                        <Text style={styles.cardTitle}>Daily reminder</Text>
-                                        <Text style={styles.cardDescription}>A nudge to mark your attendance.</Text>
+                                        <Text style={styles.cardTitle}>Daily summary</Text>
+                                        <Text style={styles.cardDescription}>Where you stand, every evening.</Text>
                                     </View>
                                     <Switch
                                         value={notificationEnabled}
@@ -527,8 +554,8 @@ const SettingsScreen = ({ navigation }) => {
                         <View style={styles.divider} />
                         <TouchableOpacity style={[styles.loginButtonCard]} onPress={() => {
                             showAlert(
-                                'Switch Account',
-                                'Are you sure you want to switch accounts?\nThis will clear your local app data so you can log in fresh.',
+                                'Switch account?',
+                                'This device forgets the current account so you can enter another code. Nothing in the cloud is touched.',
                                 [
                                     { text: 'Cancel', style: 'cancel' },
                                     { text: 'Switch', style: 'default', onPress: async () => {
@@ -540,16 +567,16 @@ const SettingsScreen = ({ navigation }) => {
                             );
                         }}>
                             <View>
-                                <Text style={styles.loginButtonCardTitle}>Login with Different Code</Text>
-                                <Text style={styles.loginButtonCardDesc}>Switch to another account or sync from a different device</Text>
+                                <Text style={styles.loginButtonCardTitle}>Use a different login code</Text>
+                                <Text style={styles.loginButtonCardDesc}>Switch accounts, or pick up where another device left off</Text>
                             </View>
                         </TouchableOpacity>
                         <View style={styles.divider} />
                         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                             <View style={styles.accountButtonContent}>
                                 <View style={styles.accountButtonTextContainer}>
-                                    <Text style={styles.accountButtonTitle}>Logout</Text>
-                                    <Text style={styles.accountButtonSubtitle}>Cloud data stays safe</Text>
+                                    <Text style={styles.accountButtonTitle}>Log out</Text>
+                                    <Text style={styles.accountButtonSubtitle}>Your data stays saved to your code</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
@@ -557,8 +584,8 @@ const SettingsScreen = ({ navigation }) => {
                         <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
                             <View style={styles.accountButtonContent}>
                                 <View style={styles.accountButtonTextContainer}>
-                                    <Text style={styles.accountButtonTitle}>Delete Account & Data</Text>
-                                    <Text style={styles.accountButtonSubtitle}>Permanent deletion</Text>
+                                    <Text style={styles.accountButtonTitle}>Delete account and data</Text>
+                                    <Text style={styles.accountButtonSubtitle}>Permanent</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
@@ -570,7 +597,7 @@ const SettingsScreen = ({ navigation }) => {
                 {/* About Section */}
                 <View style={styles.aboutContainer}>
                     <Text style={styles.appName}>Presence</Text>
-                    <Text style={styles.version}>v2.0.0</Text>
+                    <Text style={styles.version}>v{APP_VERSION}</Text>
                 </View>
 
                 <View style={styles.bottomPadding} />

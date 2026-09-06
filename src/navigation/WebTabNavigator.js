@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Platform, Animated } from 'react-native';
 import useRouteTransition from '../hooks/useRouteTransition';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,18 +11,17 @@ import SubjectPlannerScreen from '../screens/main/SubjectPlannerScreen';
 import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
-import PastAttendanceScreen from '../screens/main/PastAttendanceScreen';
-
-import WeeklySummaryScreen from '../screens/main/WeeklySummaryScreen';
-import SyncFromPortalScreen from '../screens/main/SyncFromPortalScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import InsightsScreen from '../screens/main/InsightsScreen';
-import AdminScreen from '../screens/main/AdminScreen';
+import BrandLoader from '../components/common/BrandLoader';
 import TabIcon from './TabIcon';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { isAdminUser } from '../services/adminService';
+
+// The admin dashboard is only ever loaded for an admin.
+const AdminScreen = React.lazy(() => import('../screens/main/AdminScreen'));
 
 export default function WebTabNavigator() {
     const styles = getStyles();
@@ -174,19 +173,15 @@ export default function WebTabNavigator() {
         let screen;
         switch (currentRoute.name) {
             case 'TodayMain': screen = <TodayScreen {...props} />; break;
-            case 'PastAttendance': screen = <PastAttendanceScreen {...props} />; break;
-            case 'WeeklySummary': screen = <WeeklySummaryScreen {...props} />; break;
             case 'SubjectsList': screen = <SubjectsScreen {...props} />; break;
             case 'SubjectDetail': screen = <SubjectDetailScreen {...props} />; break;
             case 'SubjectPlanner': screen = <SubjectPlannerScreen {...props} />; break;
             case 'Settings': screen = <SettingsScreen {...props} />; break;
             case 'EditTimetable': screen = <EditTimetableScreen {...props} />; break;
             case 'EditSubjects': screen = <EditSubjectsScreen {...props} />; break;
-
-            case 'SyncFromPortal': screen = <SyncFromPortalScreen {...props} />; break;
             case 'ERPConnect': screen = <ERPConnectScreen {...props} />; break;
             case 'InsightsMain': screen = <InsightsScreen {...props} />; break;
-            case 'AdminMain': screen = <AdminScreen {...props} />; break;
+            case 'AdminMain': screen = <Suspense fallback={<BrandLoader />}><AdminScreen {...props} /></Suspense>; break;
             default: screen = <TodayScreen {...props} />; break;
         }
 

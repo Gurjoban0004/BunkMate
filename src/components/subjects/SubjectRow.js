@@ -43,7 +43,7 @@ const SubjectRow = ({ subject, status, threshold, onPress }) => {
                 <View style={styles.content}>
                     <View style={styles.topRow}>
                         <Text style={styles.name} numberOfLines={1}>{name}</Text>
-                        <Text style={styles.marksText}>{attendedUnits} / {totalUnits}</Text>
+                        <Text style={styles.countText}>{attendedUnits} / {totalUnits}</Text>
                     </View>
                     <Text style={[styles.verdict, { color: verdictColor }]} numberOfLines={1}>
                         {skipInfo ? skipVerdict(status, skipInfo.count) : '…'}
@@ -65,7 +65,7 @@ const getStyles = () => StyleSheet.create({
     content: { flex: 1 },
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: SPACING.sm },
     name: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.textPrimary, flex: 1 },
-    marksText: { fontSize: FONT_SIZES.sm, color: COLORS.textMuted, fontWeight: '500' },
+    countText: { fontSize: FONT_SIZES.sm, color: COLORS.textMuted, fontWeight: '500' },
     verdict: { fontSize: FONT_SIZES.sm, fontWeight: '600', marginTop: SPACING.xs + 2 },
 });
 

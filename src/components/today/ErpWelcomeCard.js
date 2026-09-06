@@ -1,5 +1,5 @@
 /**
- * ErpWelcomeCard — shown once after the first successful ERP calendar sync.
+ * ErpWelcomeCard — shown once after the first successful register sync.
  *
  * Displays a personalized summary of what the app imported:
  *   "We imported 388 records across 6 subjects.
@@ -86,7 +86,7 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
             {/* Header row */}
             <View style={styles.headerRow}>
                 <View>
-                    <Text style={styles.title}>Portal Synced</Text>
+                    <Text style={styles.title}>Synced with your college</Text>
                     <Text style={styles.subtitle}>
                         {formatDate(insights.earliest)} — {formatDate(insights.latest)}
                     </Text>
@@ -148,7 +148,7 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
             </View>
 
             <Text style={styles.footnote}>
-                Your calendar and insights are now populated from the portal.
+                Your calendar and insights now come straight from your college.
             </Text>
         </View>
     );

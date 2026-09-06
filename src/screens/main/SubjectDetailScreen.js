@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, LayoutAnimation } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { getSubjectAttendance, getErpCoverageDateForSubject, shouldCountLocalRecord } from '../../utils/attendance';
+import { getSubjectAttendance, getErpCoverageDateForSubject } from '../../utils/attendance';
 import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
 import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
@@ -17,28 +16,15 @@ import { simulateAttendance } from '../../utils/planner/attendanceCalculations';
 export default function SubjectDetailScreen({ route }) {
     const styles = getStyles();
     const { subjectId } = route.params;
-    const { state, dispatch } = useApp();
-    const [editModal, setEditModal] = useState(null); // { date, record }
+    const { state } = useApp();
     const [showAllHistory, setShowAllHistory] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
 
     const subject = state.subjects.find((s) => s.id === subjectId);
     const stats = useMemo(() => getSubjectAttendance(subjectId, state), [subjectId, state]);
 
-    // Portal sync note: coverage date + how many of the user's own marks are
-    // still bridging the gap until the portal catches up.
-    const syncInfo = useMemo(() => {
-        const coverageDate = getErpCoverageDateForSubject(subjectId, state);
-        let pendingMarks = 0;
-        Object.entries(state.attendanceRecords || {}).forEach(([dateKey, dayRecord]) => {
-            if (dayRecord._holiday || (state.holidays || []).includes(dateKey)) return;
-            const rec = dayRecord[subjectId];
-            if (rec && rec.status !== 'cancelled' && shouldCountLocalRecord(dateKey, subjectId, rec, state)) {
-                pendingMarks++;
-            }
-        });
-        return { coverageDate, pendingMarks };
-    }, [subjectId, state]);
+    // How far the college has updated this subject.
+    const coverageDate = useMemo(() => getErpCoverageDateForSubject(subjectId, state), [subjectId, state]);
 
     if (!subject || !stats) {
         return (
@@ -48,23 +34,15 @@ export default function SubjectDetailScreen({ route }) {
         );
     }
 
-    // Recent records with edit support (last 2 weeks)
+    // The last 14 recorded days for this subject, newest first.
     const recentRecords = useMemo(() => {
         const records = [];
         const sortedDates = Object.keys(state.attendanceRecords).sort().reverse();
-        const twoWeeksAgo = new Date();
-        twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-
         for (const dateKey of sortedDates) {
             const dayRecord = state.attendanceRecords[dateKey];
-            if (dayRecord._holiday) continue;
-
+            if (!dayRecord || dayRecord._holiday) continue;
             const record = dayRecord[subjectId];
-            if (record) {
-                const recordDate = new Date(dateKey);
-                const canEdit = recordDate >= twoWeeksAgo;
-                records.push({ date: dateKey, ...record, canEdit });
-            }
+            if (record) records.push({ date: dateKey, ...record });
             if (records.length >= 14) break;
         }
         return records;
@@ -79,18 +57,6 @@ export default function SubjectDetailScreen({ route }) {
         const sim = simulateAttendance(plannerData.attended, plannerData.total, simulationOffset, plannerData.unitsPerClass);
         return { ...plannerData, attended: sim.attended, total: sim.total, percentage: sim.percentage };
     }, [plannerData, simulationOffset]);
-
-    const handleEdit = (rec) => {
-        setEditModal(rec);
-    };
-
-    const handleSaveEdit = (newStatus) => {
-        dispatch({
-            type: 'EDIT_ATTENDANCE',
-            payload: { date: editModal.date, subjectId, newStatus },
-        });
-        setEditModal(null);
-    };
 
     // Format date nicely — use parseDate to avoid timezone shift on Android/Safari
     const formatRecordDate = (dateStr) => {
@@ -124,16 +90,11 @@ export default function SubjectDetailScreen({ route }) {
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>
                     <Text style={styles.sectionTitle}>Calendar</Text>
-                    {(syncInfo.coverageDate || syncInfo.pendingMarks > 0) && (
-                        <Text style={styles.syncNote}>
-                            {syncInfo.coverageDate
-                                ? `Portal data through ${formatRecordDate(syncInfo.coverageDate)}`
-                                : 'Waiting for portal data'}
-                            {syncInfo.pendingMarks > 0
-                                ? ` · ${syncInfo.pendingMarks} mark${syncInfo.pendingMarks === 1 ? '' : 's'} by you`
-                                : ''}
-                        </Text>
-                    )}
+                    <Text style={styles.syncNote}>
+                        {coverageDate
+                            ? `Your college has updated through ${formatRecordDate(coverageDate)}`
+                            : 'Waiting for your college to record the first class'}
+                    </Text>
                     <CalendarView subjectId={subjectId} state={state} flat={true} />
                 </Card>
 
@@ -150,7 +111,7 @@ export default function SubjectDetailScreen({ route }) {
                             }}
                             activeOpacity={0.7}
                         >
-                            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Recent Attendance</Text>
+                            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Recent classes</Text>
                             <Text style={styles.toggleChevron}>{showHistory ? '▲' : '▼'}</Text>
                         </TouchableOpacity>
 
@@ -161,21 +122,15 @@ export default function SubjectDetailScreen({ route }) {
                                         <View>
                                             <Text style={styles.historyDate}>{formatRecordDate(rec.date)}</Text>
                                             <Text style={styles.historyUnits}>
-                                                {rec.units} {rec.units === 1 ? 'hr' : 'hrs'}
-                                                {rec.isExtra ? ' · Extra' : ''}
-                                                {rec.source !== 'erp' ? ' · by you' : ''}
+                                                {rec.units} {rec.units === 1 ? 'hour' : 'hours'}
+                                                {rec.status === 'partial' ? ` · ${rec.attendedUnits} attended` : ''}
                                             </Text>
                                         </View>
                                         <View style={styles.historyRight}>
-                                            <View style={[styles.statusDot, { backgroundColor: rec.status === 'present' ? COLORS.success : rec.status === 'cancelled' ? COLORS.textMuted : COLORS.danger }]} />
-                                            <Text style={[styles.historyStatus, { color: rec.status === 'present' ? COLORS.successDark : rec.status === 'cancelled' ? COLORS.textMuted : COLORS.danger }]}>
-                                                {rec.status === 'present' ? 'P' : rec.status === 'cancelled' ? 'C' : 'A'}
+                                            <View style={[styles.statusDot, { backgroundColor: rec.status === 'present' ? COLORS.success : rec.status === 'partial' ? COLORS.warning : COLORS.danger }]} />
+                                            <Text style={[styles.historyStatus, { color: rec.status === 'present' ? COLORS.successDark : rec.status === 'partial' ? COLORS.warningText : COLORS.danger }]}>
+                                                {rec.status === 'present' ? 'Present' : rec.status === 'partial' ? 'Partly' : 'Absent'}
                                             </Text>
-                                            {rec.canEdit && (
-                                                <TouchableOpacity onPress={() => handleEdit(rec)} style={styles.editBtn}>
-                                                    <Text style={styles.editBtnText}>Edit</Text>
-                                                </TouchableOpacity>
-                                            )}
                                         </View>
                                     </View>
                                 ))}
@@ -195,47 +150,6 @@ export default function SubjectDetailScreen({ route }) {
                 )}
             </ScrollView>
 
-            {/* Edit Modal */}
-            <Modal visible={!!editModal} transparent animationType="fade" onRequestClose={() => setEditModal(null)}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Edit Attendance</Text>
-                        {editModal && (
-                            <>
-                                <Text style={styles.modalSubtitle}>{subject.name} · {formatRecordDate(editModal.date)}</Text>
-                                <Text style={styles.modalCurrent}>
-                                    Current: {editModal.status === 'present' ? 'Present' : editModal.status === 'cancelled' ? 'Cancelled' : 'Absent'}
-                                </Text>
-                                <Text style={styles.editHint}>Only recent marks can be edited.</Text>
-
-                                <Text style={styles.modalLabel}>Change to:</Text>
-                                <View style={styles.modalActions}>
-                                    <TouchableOpacity
-                                        style={[styles.modalOption, styles.presentOption]}
-                                        onPress={() => handleSaveEdit('present')}
-                                    >
-                                        <Text style={styles.modalOptionText}>Present</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.modalOption, styles.absentOption]}
-                                        onPress={() => handleSaveEdit('absent')}
-                                    >
-                                        <Text style={styles.modalOptionText}>Absent</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.modalOption, styles.cancelledOption]}
-                                        onPress={() => handleSaveEdit('cancelled')}
-                                    >
-                                        <Text style={styles.modalOptionText}>Cancel</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                <Button title="Dismiss" variant="secondary" onPress={() => setEditModal(null)} style={{ marginTop: SPACING.md }} />
-                            </>
-                        )}
-                    </View>
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 }
@@ -318,22 +232,6 @@ const getStyles = () => StyleSheet.create({
         fontWeight: '700',
         fontSize: 12,
     },
-    editBtn: {
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.xs,
-    },
-    editBtnText: {
-        fontWeight: '600',
-        fontSize: 12,
-        color: COLORS.primary,
-    },
-    editHint: {
-        ...TYPOGRAPHY.captionMedium,
-        color: COLORS.textMuted,
-        marginTop: SPACING.xs,
-        marginBottom: SPACING.md,
-        textAlign: 'center',
-    },
     showMoreButton: {
         alignSelf: 'center',
         paddingHorizontal: SPACING.md,
@@ -344,65 +242,5 @@ const getStyles = () => StyleSheet.create({
         ...TYPOGRAPHY.captionMedium,
         color: COLORS.primary,
         fontWeight: '700',
-    },
-    // Edit Modal
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: COLORS.overlay,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.screenPadding,
-        width: '85%',
-        maxWidth: 360,
-    },
-    modalTitle: {
-        ...TYPOGRAPHY.headingSmall,
-        color: COLORS.textPrimary,
-        marginBottom: SPACING.xs,
-    },
-    modalSubtitle: {
-        ...TYPOGRAPHY.bodySmall,
-        color: COLORS.textSecondary,
-        marginBottom: SPACING.md,
-    },
-    modalCurrent: {
-        ...TYPOGRAPHY.bodyMedium,
-        color: COLORS.textPrimary,
-        marginBottom: SPACING.md,
-    },
-    modalLabel: {
-        ...TYPOGRAPHY.captionMedium,
-        color: COLORS.textSecondary,
-        marginBottom: SPACING.sm,
-    },
-    modalActions: {
-        flexDirection: 'row',
-        gap: SPACING.sm,
-    },
-    modalOption: {
-        flex: 1,
-        paddingVertical: SPACING.sm + 2,
-        borderRadius: BORDER_RADIUS.sm,
-        alignItems: 'center',
-
-    },
-    presentOption: {
-        backgroundColor: COLORS.successLight,
-    },
-    absentOption: {
-        backgroundColor: COLORS.dangerLight,
-    },
-    cancelledOption: {
-
-        backgroundColor: COLORS.inputBackground,
-    },
-    modalOptionText: {
-        ...TYPOGRAPHY.captionMedium,
-        fontWeight: '600',
-        color: COLORS.textPrimary,
     },
 });

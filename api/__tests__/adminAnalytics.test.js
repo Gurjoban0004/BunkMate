@@ -191,8 +191,9 @@ describe('parserFailures', () => {
 
 describe('userRoster', () => {
     it('aggregates every semester without a read per user', async () => {
-        const ur = await dataOf('userRoster');
+        const { users: ur, unfinished } = await dataOf('userRoster');
         expect(ur).toHaveLength(3);
+        expect(unfinished).toEqual({ count: 0, olderThan7d: 0 });
         const a = ur.find(u => u.userId === 'userA');
         expect(a.totalSubjects).toBe(2);
         expect(a.totalClasses).toBe(100);
@@ -200,12 +201,12 @@ describe('userRoster', () => {
     });
 
     it('keeps users who have no semesters yet', async () => {
-        const ur = await dataOf('userRoster');
+        const { users: ur } = await dataOf('userRoster');
         expect(ur.find(u => u.userId === 'userC').totalSubjects).toBe(0);
     });
 
     it('sorts by most recently active', async () => {
-        expect((await dataOf('userRoster'))[0].userId).toBe('userA');
+        expect((await dataOf('userRoster')).users[0].userId).toBe('userA');
     });
 });
 

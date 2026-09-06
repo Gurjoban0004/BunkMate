@@ -12,7 +12,6 @@ import {
     recordUnits,
     recordAttendedUnits,
 } from '../attendance';
-import { generateWeeklySummary } from '../summary';
 import { canSkipClass, getEndGameStats } from '../planner';
 import { getRiskLevel } from '../endgame';
 
@@ -241,16 +240,4 @@ describe('records keep their attended periods', () => {
         expect(recordAttendedUnits({ status: 'present', units: 1, attendedUnits: 5 })).toBe(1);
     });
 
-    it('carries a part-attended day into the weekly summary', () => {
-        const monday = '2026-08-17'; // a Monday
-        const state = makeState({
-            records: { [monday]: { math: { status: 'partial', units: 2, attendedUnits: 1, source: 'erp' } } },
-        });
-        jest.useFakeTimers().setSystemTime(new Date(`${monday}T18:00:00`));
-        const summary = generateWeeklySummary(state);
-        jest.useRealTimers();
-
-        expect(summary.totalClasses).toBe(2);
-        expect(summary.attendedClasses).toBe(1);
-    });
 });

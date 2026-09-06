@@ -1,28 +1,70 @@
 /**
  * The one session lifecycle every data endpoint shares:
  *
- *   open token → revoked? → (stale? skip straight to re-login)
- *   → fetch → dead? → confirm with the ERP's own liveness probe
- *   → silent re-login on the sealed device id → retry once
- *   → still needs OTP? hand the client a sealed ticket for /api/erp-session refresh
+ *   open token → revoked? → fetch → looks dead? → confirm with the college's
+ *   own liveness probe, twice → tell the app to reconnect
  *
- * erp-attendance, erp-calendar and erp-timetable used to carry three diverging
- * copies of this. One copy means one place to get the OTP-spam guards right:
- * a re-login on this ERP emails an OTP, so it only ever runs after the liveness
- * probe returns exactly `false` (or the token is past its 30-day age).
+ * What it deliberately does NOT do: log in again on its own. On this college's
+ * ERP every login sends the student an OTP — there is no silent trusted-device
+ * refresh — so an automatic re-login is an unsolicited OTP email. Instead the
+ * app shows a quiet "Sign in again" card, and only a tap on it asks
+ * /api/erp-session `requestOtp` to send the code. Nothing here ever emails.
+ *
+ * The answer shapes the app understands:
+ *   { sessionExpired: true, needsOtp: true, reason }   → show the card
+ *   { sessionExpired: true, needsLogin: true }         → forget tokens, reconnect from Settings
+ *   401 { sessionExpired: true }                       → no stored sign-in at all; same as needsLogin
  */
 
 const {
     decryptSession,
     decryptPersistent,
     isSessionStale,
-    reloginERP,
-    mintSessionToken,
-    sealOtpTicket,
     checkSessionAlive,
     cleanString,
+    ticketFingerprint,
 } = require('./_session-utils');
 const { blockIfRevoked } = require('./_revocation');
+const { tooManyAttempts } = require('./_rate-limit');
+
+// A phone syncs three endpoints every three minutes plus a few manual pulls;
+// 150 per ten minutes is far above any real use and stops a leaked token from
+// hammering the college through us.
+const SESSION_POLICY = { max: 150, windowMs: 10 * 60 * 1000 };
+
+const RECONFIRM_DELAY_MS = 1500;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function needsReconnect(res, reason) {
+    res.status(200).json({ sessionExpired: true, needsOtp: true, reason });
+    return null;
+}
+
+/**
+ * Whether the stored sign-in (persistent token) is still usable.
+ * @returns {'ok' | 'expired' | 'invalid' | 'missing'}
+ */
+function persistentState(persistentToken) {
+    if (!persistentToken) return 'missing';
+    try {
+        decryptPersistent(persistentToken);
+        return 'ok';
+    } catch (err) {
+        return err.code === 'PERSISTENT_EXPIRED' ? 'expired' : 'invalid';
+    }
+}
+
+/** Answer for a session that cannot be used, based on what the app still holds. */
+function answerForDeadSession(res, persistentToken, reason) {
+    const state = persistentState(persistentToken);
+    if (state === 'ok') return needsReconnect(res, reason);
+    if (state === 'expired') {
+        res.status(200).json({ sessionExpired: true, needsLogin: true });
+        return null;
+    }
+    res.status(401).json({ error: 'Session expired', sessionExpired: true });
+    return null;
+}
 
 /**
  * Open and authorize the request's session token.
@@ -41,79 +83,39 @@ async function openSession(req, res) {
     try {
         session = decryptSession(token);
     } catch {
-        res.status(401).json({ error: 'Invalid session', sessionExpired: true });
-        return null;
+        // A token this server cannot open (rotated secret, older format). The
+        // stored sign-in decides what the app does next — never a bare 401
+        // that leaves the student stuck with a permanent sync error.
+        return answerForDeadSession(res, persistentToken, 'invalid_token');
     }
 
-    // Revoked users are cut off here, not in the UI — this is the gate that actually works.
     if (await blockIfRevoked(res, session.rollNumber)) return null;
+    if (await tooManyAttempts(res, 'data-session', ticketFingerprint(token), SESSION_POLICY)) return null;
 
     return { session, persistentToken };
 }
 
 /**
- * Run `fetchData(session)` against a live session, transparently re-logging-in
- * when the session is stale or the ERP says it is dead.
+ * Run `fetchData(session)` against a live session.
  *
- * @param {object} res
- * @param {object} session           decrypted session
- * @param {string|null} persistentToken
- * @param {(session) => Promise<any>} fetchData
- * @param {(result) => boolean} isDead   whether the fetch result means "dead session"
- * @returns {{ session, result, refreshedToken } | { transient: true } | null}
+ * @returns {{ session, result, refreshedToken: null } | { transient: true } | null}
  *          null → a response was already sent
  */
 async function fetchWithLiveSession(res, session, persistentToken, fetchData, isDead) {
-    let result = null;
+    if (isSessionStale(session)) return answerForDeadSession(res, persistentToken, 'stale');
 
-    if (!isSessionStale(session)) {
-        result = await fetchData(session);
-        if (!isDead(result)) return { session, result, refreshedToken: null };
+    const result = await fetchData(session);
+    if (!isDead(result)) return { session, result, refreshedToken: null };
 
-        // Our heuristics false-positive on transient/partial responses. Only a
-        // confirmed death may trigger a re-login (→ OTP email).
-        const liveness = await checkSessionAlive(session);
-        if (liveness !== false) return { transient: true };
-    }
+    // The dead-session heuristics false-positive on partial pages. Only the
+    // college's own probe, saying "dead" twice in a row, counts.
+    const first = await checkSessionAlive(session);
+    if (first !== false) return { transient: true };
+    await sleep(RECONFIRM_DELAY_MS);
+    const second = await checkSessionAlive(session);
+    if (second !== false) return { transient: true };
 
-    if (!persistentToken) {
-        res.status(401).json({ error: 'Session expired', sessionExpired: true });
-        return null;
-    }
-
-    let creds;
-    try {
-        creds = decryptPersistent(persistentToken);
-    } catch (err) {
-        if (err.code === 'PERSISTENT_EXPIRED') {
-            // "Remember me" ran out: the app clears its tokens and asks for a sign-in.
-            res.status(200).json({ sessionExpired: true, needsLogin: true });
-        } else {
-            res.status(401).json({ error: 'Invalid persistent token', sessionExpired: true });
-        }
-        return null;
-    }
-
-    const relogin = await reloginERP(creds.username, creds.password, null, creds.deviceId);
-
-    if (relogin.session) {
-        const fresh = relogin.session;
-        result = await fetchData(fresh);
-        if (!isDead(result)) {
-            return { session: fresh, result, refreshedToken: mintSessionToken(fresh, creds) };
-        }
-    }
-
-    res.status(200).json({
-        sessionExpired: true,
-        needsOtp:       true,
-        authUserId:     sealOtpTicket(relogin.authUserId, creds.username, {
-            password: creds.password,
-            deviceId: relogin.deviceId,
-        }),
-        studentName:    creds.studentName || '',
-    });
-    return null;
+    return answerForDeadSession(res, persistentToken, 'dead');
 }
 
-module.exports = { openSession, fetchWithLiveSession };
+module.exports = { openSession, fetchWithLiveSession, persistentState };

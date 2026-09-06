@@ -1,15 +1,15 @@
 /**
- * ERP Service — client-side API layer.
+ * College API — client side. Talks ONLY to our own /api/* proxy; the app never
+ * contacts the college directly.
  *
- * Talks ONLY to our own /api/* proxy endpoints; the client never communicates
- * with the ERP directly.
- *
- * Session refresh flow:
- *   1. Every data call includes both token + persistentToken.
- *   2. If the server answers { sessionExpired: true, needsOtp: true, authUserId }
- *      → the caller shows the OTP prompt, then calls erpRefreshSession().
- *   3. If it answers { sessionExpired: true, needsLogin: true } the stored
- *      "remember me" has run out → the caller clears the ERP connection.
+ * Session lifecycle, as the app sees it:
+ *   1. Every data call sends token + persistentToken.
+ *   2. { sessionExpired: true, needsOtp: true, reason }  → the college signed us
+ *      out. The app shows a "Sign in again" card and does NOTHING else — no
+ *      code is sent until the student taps it (erpRequestOtp).
+ *   3. { sessionExpired: true, needsLogin: true }        → the saved sign-in is
+ *      gone (a year old, or the password changed). Forget tokens; reconnect
+ *      from Settings with the password.
  *   4. A silently refreshed session comes back as `token`; dataCall persists it.
  */
 
@@ -19,7 +19,7 @@ import { updateErpToken, getDeviceId } from '../storage/erpTokenStorage';
 import { getResearchId, getConsentedAt } from '../storage/researchStorage';
 
 // The functions cap at 30s (vercel.json); the client must outlive the server so a
-// slow ERP surfaces as the server's JSON error, not as a client-side abort.
+// slow college surfaces as the server's JSON error, not as a client-side abort.
 const API_TIMEOUT = 35000;
 
 async function apiCall(endpoint, body) {
@@ -72,44 +72,47 @@ async function apiCall(endpoint, body) {
     }
 }
 
-// ─── AUTH ─────────────────────────────────────────────────────────────
+// ─── SIGN IN ──────────────────────────────────────────────────────────
 
 /**
- * Sign in. Sends this install's device id so a phone that has done OTP once is
- * trusted next time. Returns either { trusted, token, persistentToken, isAdmin }
- * or { needsOtp, authUserId } where authUserId is an opaque sealed ticket.
+ * Sign in with the college ID and password. Sends this install's device id so
+ * a phone that has done OTP once may be trusted next time.
+ * Returns { trusted, token, persistentToken, isAdmin } or { needsOtp, authUserId }
+ * where authUserId is an opaque sealed ticket.
  */
 export async function erpLogin(username, password) {
     return apiCall('/api/erp-login', { username, password, deviceId: await getDeviceId() });
 }
 
-/**
- * Verify the OTP for a ticket from erpLogin. The ticket already carries the
- * username, password and device id, so nothing else is sent.
- * Returns { token, persistentToken, studentName, studentPhoto, isAdmin }.
- */
+/** Verify the OTP for a ticket from erpLogin. Returns { token, persistentToken, studentName, isAdmin }. */
 export async function erpVerifyOtp(ticket, otp) {
     return apiCall('/api/erp-verify-otp', { authUserId: ticket, otp });
 }
 
-// ─── SESSION MANAGEMENT ───────────────────────────────────────────────
+// ─── SESSION ──────────────────────────────────────────────────────────
 
-/**
- * Check the stored session token on app start. Never contacts the ERP.
- * Returns { valid, reason, isAdmin?, revoked? }.
- */
+/** App start. Opens the stored token locally; never contacts the college. */
 export async function erpCheckSession(token) {
     return apiCall('/api/erp-session', { action: 'check', token });
 }
 
-/** Complete a session refresh after OTP re-entry. Returns { token, persistentToken, studentName, isAdmin }. */
+/**
+ * The student tapped "Sign in again". This is the one call after onboarding
+ * that can make the college send a code.
+ * Returns { trusted, token, persistentToken } or { needsOtp, authUserId }.
+ */
+export async function erpRequestOtp(persistentToken) {
+    return apiCall('/api/erp-session', { action: 'requestOtp', persistentToken, deviceId: await getDeviceId() });
+}
+
+/** Finish signing in again with the code. Returns { token, persistentToken, studentName, isAdmin }. */
 export async function erpRefreshSession(persistentToken, ticket, otp) {
     return apiCall('/api/erp-session', {
         action: 'refresh', persistentToken, authUserId: ticket, otp, deviceId: await getDeviceId(),
     });
 }
 
-// ─── DATA FETCHING ────────────────────────────────────────────────────
+// ─── DATA ─────────────────────────────────────────────────────────────
 
 // The two endpoints that hold the raw register/timetable HTML server-side. Tagging
 // the request with the participant UUID lets the server file the dataset row
@@ -150,16 +153,4 @@ export async function researchLogReason(researchId, { d, s, p, r }) {
 /** Delete the student's research row. Errors surface — withdrawal must be confirmable. */
 export async function researchWithdraw(researchId) {
     return apiCall('/api/research', { researchId, action: 'withdraw' });
-}
-
-/**
- * Keep-alive: one liveness probe against the ERP, no parsing. Failures are
- * silently ignored — this is best-effort only.
- */
-export async function erpKeepAlive(token, persistentToken = null) {
-    try {
-        return await dataCall('/api/erp-attendance', { token, persistentToken, keepAlive: true });
-    } catch {
-        return null;
-    }
 }

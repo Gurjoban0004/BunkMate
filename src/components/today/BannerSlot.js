@@ -3,8 +3,8 @@ import React, { createContext, useContext, useEffect, useState, useMemo } from '
 /**
  * One banner at a time.
  *
- * Today can produce four interruptions at once — account-deletion warning, admin
- * announcement, unmarked backlog, ERP welcome — and each one decides for itself
+ * Today can produce four interruptions at once — account-deletion warning, a
+ * sign-in card, admin announcement, first-sync welcome — and each one decides for itself
  * whether it has something to say (two of them behind async fetches). Stacked,
  * they push today's actual classes several screens down.
  *
@@ -17,8 +17,8 @@ const BannerSlotContext = createContext(null);
 
 export const BANNER_PRIORITY = {
     deletion:     0,   // account is going away — outranks everything
-    announcement: 1,   // admin broadcast
-    backlog:      2,   // user's own unmarked classes; actionable
+    reconnect:    1,   // the college signed us out; syncing is paused until tapped
+    announcement: 2,   // admin broadcast
     erpWelcome:   3,   // one-time onboarding; can always wait
 };
 

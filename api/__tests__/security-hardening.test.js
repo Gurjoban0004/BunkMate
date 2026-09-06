@@ -5,9 +5,9 @@
  *   C1  device identity is per install (random), never derived from the roll number
  *   C2  an OTP ticket dies after five wrong guesses
  *   C3  /api/push-send fails closed without CRON_SECRET
- *   M3  session and persistent tokens expire
+ *   M3  session and persistent tokens expire (after a year — see reconnect-flow.test.js
+ *       for why not sooner)
  *   CORS is same-origin unless ALLOWED_ORIGIN says otherwise
- *   the data-endpoint session lifecycle hands back a ticket bound to the device
  */
 
 process.env.ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || '0123456789abcdef0123456789abcdef';
@@ -220,10 +220,10 @@ describe('M3 — token expiry', () => {
     const realNow = Date.now;
     afterEach(() => { Date.now = realNow; });
 
-    test('a session token stops authorizing admin actions after 30 days', () => {
+    test('a session token stops authorizing admin actions after a year', () => {
         const token = encryptSession({ rollNumber: '2410990296' });
         expect(decodeSessionRollNumber(token)).toBe('2410990296');
-        Date.now = () => realNow() + 31 * DAY;
+        Date.now = () => realNow() + 366 * DAY;
         expect(decodeSessionRollNumber(token)).toBeNull();
         expect(isSessionStale(decryptSession(token))).toBe(true);
     });
@@ -232,10 +232,10 @@ describe('M3 — token expiry', () => {
         expect(isSessionStale({ rollNumber: 'x' })).toBe(true);
     });
 
-    test('a persistent token dies after 180 days with a distinguishable code', () => {
+    test('a persistent token dies after a year with a distinguishable code', () => {
         const token = encryptPersistent({ username: 'u', password: 'p' });
         expect(decryptPersistent(token).username).toBe('u');
-        Date.now = () => realNow() + 181 * DAY;
+        Date.now = () => realNow() + 366 * DAY;
         expect(() => decryptPersistent(token)).toThrow(expect.objectContaining({ code: 'PERSISTENT_EXPIRED' }));
     });
 });
@@ -300,62 +300,5 @@ describe('CORS', () => {
     test('"*" is honoured for local development', () => {
         process.env.ALLOWED_ORIGIN = '*';
         expect(run('http://localhost:8081')).toBe('http://localhost:8081');
-    });
-});
-
-describe('_data-session — the shared session lifecycle', () => {
-    beforeEach(() => jest.resetModules());
-
-    test('an OTP demand hands back a ticket sealed to the stored credentials and the device presented', async () => {
-        jest.doMock('../_revocation', () => ({ blockIfRevoked: async () => false }));
-        global.fetch = jest.fn(async (url) => {
-            if (String(url).includes('appLoginAuthV2')) return jsonResponse({ status: '4', authUserId: '24635', data: [{ userId: '24635', roleId: '4' }] });
-            if (String(url).includes('checkUserStatusMobileApp')) return { ok: true, text: async () => '{"message":"session expired"}' };
-            return jsonResponse({ status: '0', message: 'Session invalid, please login again' });
-        });
-        const { encryptSession, encryptPersistent, openOtpTicket } = require('../_session-utils');
-        const { fetchWithLiveSession } = require('../_data-session');
-        const session = { rollNumber: '2410990001', userId: '24635', sessionId: '19', roleId: '4', apiKey: 'DEAD', studentId: '9508', iat: Date.now() };
-        const persistentToken = encryptPersistent({ username: '2410990001', password: 'pw', deviceId: '3F2A9C14-8B7D-4E6A-9C21-7D5E0F1A2B3C' });
-
-        const res = makeRes();
-        const out = await fetchWithLiveSession(res, session, persistentToken,
-            async () => ({ dead: true }), (r) => r.dead);
-        expect(out).toBeNull();
-        expect(res.body.needsOtp).toBe(true);
-        expect(openOtpTicket(res.body.authUserId)).toEqual({
-            authUserId: '24635', username: '2410990001', password: 'pw', deviceId: '3F2A9C14-8B7D-4E6A-9C21-7D5E0F1A2B3C',
-        });
-        void encryptSession;
-    });
-
-    test('a stale session skips the data call and re-logs-in directly', async () => {
-        jest.doMock('../_revocation', () => ({ blockIfRevoked: async () => false }));
-        global.fetch = jest.fn(async () => jsonResponse({ status: '1', token: 'sec', data: [{ userId: '24635', sessionId: '19', roleId: '4', apiKey: 'FRESH', studentId: '9508' }] }));
-        const { encryptPersistent, decryptSession } = require('../_session-utils');
-        const { fetchWithLiveSession } = require('../_data-session');
-        const stale = { rollNumber: '2410990001', userId: '24635', sessionId: '19', roleId: '4', apiKey: 'OLD', studentId: '9508' }; // no iat
-        const calls = [];
-        const out = await fetchWithLiveSession(makeRes(), stale, encryptPersistent({ username: '2410990001', password: 'pw' }),
-            async (s) => { calls.push(s.apiKey); return { ok: true }; }, () => false);
-        expect(calls).toEqual(['FRESH']);                  // never fetched with the stale key
-        expect(decryptSession(out.refreshedToken).apiKey).toBe('FRESH');
-    });
-
-    test('an expired persistent token asks for a fresh sign-in instead of a 401', async () => {
-        jest.doMock('../_revocation', () => ({ blockIfRevoked: async () => false }));
-        const { encryptPersistent } = require('../_session-utils');
-        const { fetchWithLiveSession } = require('../_data-session');
-        const realNow = Date.now;
-        const persistentToken = encryptPersistent({ username: 'u', password: 'p' });
-        Date.now = () => realNow() + 200 * 86400000;
-        try {
-            const res = makeRes();
-            const out = await fetchWithLiveSession(res, { userId: 'x' }, persistentToken, async () => ({}), () => false);
-            expect(out).toBeNull();
-            expect(res.body).toEqual({ sessionExpired: true, needsLogin: true });
-        } finally {
-            Date.now = realNow;
-        }
     });
 });

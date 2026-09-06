@@ -105,7 +105,7 @@ export default function InsightsScreen() {
                 {!intel.hasData ? (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>No insights yet</Text>
-                        <Text style={styles.emptyText}>Insights appear after your first portal sync.{'\n'}Pull to refresh on the Today screen to sync.</Text>
+                        <Text style={styles.emptyText}>Insights appear once your college has recorded a few days of classes.{'\n'}Pull down on Today to sync now.</Text>
                     </View>
                 ) : (
                     <>
@@ -193,7 +193,7 @@ export default function InsightsScreen() {
                         {semesterSummary.totalDays >= 60 && Object.values(subjectTrends).filter(t => t.direction !== 'stable' || Math.abs(t.delta) > 2).length > 1 && (
                             <View style={styles.section}>
                                 <Text style={styles.sectionTitle}>Subject trends</Text>
-                                <Text style={styles.sectionSubtitle}>First half vs second half of semester</Text>
+                                <Text style={styles.sectionSubtitle}>First half vs second half of the term</Text>
                                 {Object.values(subjectTrends)
                                     .filter(t => t.direction !== 'stable' || Math.abs(t.delta) > 2)
                                     .sort((a, b) => a.delta - b.delta)

@@ -30,16 +30,11 @@ export default function AppDevTools({
     isVisible,
     onClose,
     scenarios,
-    runAutopilotCheck,
 }) {
     const styles = getStyles();
 
     const loadScenario = (scenarioName) => {
         onLoadScenario(scenarios[scenarioName]);
-        // Trigger autopilot after state load
-        if (runAutopilotCheck) {
-            setTimeout(() => runAutopilotCheck(), 500);
-        }
     };
 
     const changeDate = (days) => {
@@ -50,11 +45,6 @@ export default function AppDevTools({
                 ? addDays(currentDate, Math.abs(days))
                 : subDays(currentDate, Math.abs(days));
             onChangeDate(newDate);
-        }
-        
-        // Trigger autopilot after time travel
-        if (runAutopilotCheck) {
-            setTimeout(() => runAutopilotCheck(), 500);
         }
     };
 
@@ -183,23 +173,7 @@ export default function AppDevTools({
                                 </View>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[styles.wideButton, { marginTop: SPACING.sm }]}
-                                onPress={() => {
-                                    if (runAutopilotCheck) {
-                                        runAutopilotCheck();
-                                        Alert.alert('🤖 Autopilot', 'Check triggered successfully.');
-                                    }
-                                }}
-                            >
-                                <View style={styles.wideButtonContent}>
-                                    <Text style={styles.wideButtonEmoji}>🤖</Text>
-                                    <View>
-                                        <Text style={styles.wideButtonTitle}>Trigger Autopilot</Text>
-                                        <Text style={styles.wideButtonDesc}>Manually run unmarked class check</Text>
-                                    </View>
-                                </View>
-                            </TouchableOpacity>
+
                         </View>
 
                         {/* 4: Console Loggers */}

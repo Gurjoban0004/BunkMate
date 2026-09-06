@@ -15,6 +15,9 @@
  *   revokeUser          — write admin/revokedUsers/items/{roll}
  *   unrevokeUser        — delete it
  *   listRevokedUsers    — read the list (clients can no longer read it from Firestore)
+ *   listAuditLog        — the last 60 admin actions
+ *   purgeUnfinishedSignups — delete user docs that never connected a college
+ *                         account and have been idle for N days (default 7)
  */
 
 const { setCorsHeaders, decodeSessionRollNumber, cleanString, getClientIp } = require('./_session-utils');
@@ -30,6 +33,8 @@ const ANN_TYPES = ['info', 'warning', 'danger'];
 const HTTPS_RE = /^https:\/\/[^\s]{1,500}$/;
 
 const ALLOWED_CONFIG = ['maintenanceMode', 'maintenanceMessage', 'minVersion', 'updateUrl', 'apiBaseUrl', 'featureFlags'];
+const REAL_ROLL = /^\d{6,}$/;
+const PURGE_BATCH = 300;   // per call; the panel shows what is left and can be pressed again
 const ALLOWED_FLAGS = ['autoSync', 'calendarSync'];
 
 /** Validate a config patch. Returns { updates } or { error }. */
@@ -161,6 +166,55 @@ module.exports = async function handler(req, res) {
                 await adminDb.doc(`admin/revokedUsers/items/${target}`).delete();
                 await audit(rollNumber, ip, act, { target });
                 return res.json({ success: true });
+            }
+
+            case 'listAuditLog': {
+                const snap = await adminDb.collection('admin/auditLog/entries').orderBy('at', 'desc').limit(60).get();
+                const entries = [];
+                snap.forEach(d => {
+                    const data = d.data() || {};
+                    entries.push({
+                        id: d.id, actor: data.actor || null, action: data.action || null,
+                        detail: data.detail || null, at: data.at?.toMillis ? data.at.toMillis() : null,
+                    });
+                });
+                return res.json({ success: true, entries });
+            }
+
+            // A login code that never connected a college account has nothing in
+            // it worth keeping: no roll number, no attendance. Old ones are the
+            // "hundreds of users I have never seen" in the roster. Deleting them
+            // is safe — the code is unusable without a college connection anyway,
+            // and a real student re-creates one in the same onboarding tap.
+            case 'purgeUnfinishedSignups': {
+                const days = Math.min(365, Math.max(1, Number(payload?.olderThanDays) || 7));
+                const cutoff = Date.now() - days * 86400000;
+                const usersSnap = await adminDb.collection('users').limit(5000).get();
+                const victims = [];
+                let remaining = 0;
+                usersSnap.forEach(d => {
+                    const data = d.data() || {};
+                    if (REAL_ROLL.test(String(data.erpRollNumber || '').trim())) return;
+                    const last = data.lastActive?.toMillis ? data.lastActive.toMillis()
+                        : (data.createdAt?.toMillis ? data.createdAt.toMillis() : 0);
+                    if (last && last > cutoff) { remaining++; return; }
+                    if (victims.length < PURGE_BATCH) victims.push(d.ref); else remaining++;
+                });
+
+                let deleted = 0;
+                for (const ref of victims) {
+                    // Sub-collections are not deleted with the parent; sweep the two the app writes.
+                    for (const sub of ['semesters', 'push']) {
+                        const subs = await ref.collection(sub).limit(50).get();
+                        const batch = adminDb.batch();
+                        subs.forEach(s => batch.delete(s.ref));
+                        if (subs.size) await batch.commit();
+                    }
+                    await ref.delete();
+                    deleted++;
+                }
+                await audit(rollNumber, ip, act, { olderThanDays: days, deleted, remaining });
+                return res.json({ success: true, deleted, remaining });
             }
 
             case 'listRevokedUsers': {

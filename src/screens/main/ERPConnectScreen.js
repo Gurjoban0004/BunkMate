@@ -9,6 +9,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme
 import { useApp } from '../../context/AppContext';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { showAlert } from '../../utils/alert';
+import { friendlyError } from '../../utils/friendlyError';
 import { erpLogin, erpVerifyOtp, erpFetchAttendance, erpFetchCalendar } from '../../services/erpService';
 import { saveErpToken, clearErpToken } from '../../storage/erpTokenStorage';
 import { mapErpToAppState, buildResyncPayload, mapCalendarToRecords } from '../../utils/erpAttendanceMapper';
@@ -64,7 +65,7 @@ export default function ERPConnectScreen({ navigation }) {
 
         const attendanceResult = await erpFetchAttendance(sessionResult.token);
         if (!attendanceResult.subjects || attendanceResult.subjects.length === 0) {
-            setError(attendanceResult.warning || 'No attendance data found. The portal format may have changed.');
+            setError(attendanceResult.warning || 'No attendance found. Your college may not have recorded any classes yet.');
             return;
         }
         setErpSubjects(attendanceResult.subjects);
@@ -76,7 +77,7 @@ export default function ERPConnectScreen({ navigation }) {
     // ─── STEP 1: LOGIN ─────────────────────────────────────────────
     const handleLogin = useCallback(async () => {
         if (!username.trim() || !password.trim()) {
-            setError('Please enter your User ID and Password');
+            setError('Enter your college ID and password.');
             return;
         }
 
@@ -93,7 +94,7 @@ export default function ERPConnectScreen({ navigation }) {
             setAuthUserId(result.authUserId);
             setStep(STEP_OTP);
         } catch (err) {
-            setError(err.message || 'Login failed. Please check your credentials.');
+            setError(friendlyError(err, 'signin').message);
         } finally {
             setLoading(false);
         }
@@ -114,14 +115,14 @@ export default function ERPConnectScreen({ navigation }) {
             setAuthUserId(result.authUserId);
             setResendCooldown(30);
         } catch (err) {
-            setError(err.message || 'Could not resend OTP. Please try again.');
+            setError(friendlyError(err, 'signin').message);
         }
     }, [username, password, resendCooldown, loading]);
 
     // ─── STEP 2: OTP ───────────────────────────────────────────────
     const handleVerifyOtp = useCallback(async () => {
         if (!otp.trim() || otp.trim().length < 4) {
-            setError('Please enter a valid OTP');
+            setError('Enter the whole code.');
             return;
         }
 
@@ -133,7 +134,7 @@ export default function ERPConnectScreen({ navigation }) {
             const otpResult = await erpVerifyOtp(authUserId, otp.trim());
             await finishWithSession(otpResult);
         } catch (err) {
-            setError(err.message || 'OTP verification failed. Please try again.');
+            setError(friendlyError(err, 'otp').message);
         } finally {
             setLoading(false);
         }
@@ -234,7 +235,7 @@ export default function ERPConnectScreen({ navigation }) {
             const result = await erpFetchAttendance(token);
 
             if (!result.subjects || result.subjects.length === 0) {
-                setError('No attendance data found.');
+                setError('No attendance found yet.');
                 setLoading(false);
                 return;
             }
@@ -244,7 +245,7 @@ export default function ERPConnectScreen({ navigation }) {
             setMappingResult(mapping);
             setStep(STEP_PREVIEW);
         } catch (err) {
-            setError(err.message || 'Sync failed. Please try again.');
+            setError(friendlyError(err, 'import').message);
         } finally {
             setLoading(false);
         }
@@ -255,9 +256,9 @@ export default function ERPConnectScreen({ navigation }) {
         <View style={styles.stepContainer}>
             <View style={styles.header}>
                 <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
-                <Text style={styles.headerTitle}>Connect Portal</Text>
+                <Text style={styles.headerTitle}>Connect your college account</Text>
                 <Text style={styles.headerSub}>
-                    Enter your college portal credentials to automatically fetch your attendance data.
+                    Sign in with your college ID and password. Your attendance then stays up to date on its own.
                 </Text>
             </View>
 
@@ -268,7 +269,7 @@ export default function ERPConnectScreen({ navigation }) {
                         style={styles.input}
                         value={username}
                         onChangeText={(t) => { setUsername(t); setError(''); }}
-                        placeholder="Enter your portal User ID"
+                        placeholder="Your college ID"
                         placeholderTextColor={COLORS.textMuted}
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -283,7 +284,7 @@ export default function ERPConnectScreen({ navigation }) {
                             style={[styles.input, { flex: 1 }]}
                             value={password}
                             onChangeText={(t) => { setPassword(t); setError(''); }}
-                            placeholder="Enter your password"
+                            placeholder="Your password"
                             placeholderTextColor={COLORS.textMuted}
                             secureTextEntry={!showPassword}
                             autoCapitalize="none"
@@ -303,7 +304,7 @@ export default function ERPConnectScreen({ navigation }) {
             <View style={styles.securityNote}>
                 <View style={styles.securityDot} />
                 <Text style={styles.securityText}>
-                    Your credentials are sent directly to the college portal. We never store your password.
+                    Your password goes straight to your college. Presence never stores it.
                 </Text>
             </View>
         </View>
@@ -314,9 +315,9 @@ export default function ERPConnectScreen({ navigation }) {
         <View style={styles.stepContainer}>
             <View style={styles.header}>
                 <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
-                <Text style={styles.headerTitle}>Enter OTP</Text>
+                <Text style={styles.headerTitle}>Enter the code</Text>
                 <Text style={styles.headerSub}>
-                    We've sent an OTP to your registered mobile number. Enter it below.
+                    Your college has sent a code to your registered number.
                 </Text>
             </View>
 
@@ -327,7 +328,7 @@ export default function ERPConnectScreen({ navigation }) {
                         style={[styles.input, styles.otpInput]}
                         value={otp}
                         onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '')); setError(''); }}
-                        placeholder="Enter OTP"
+                        placeholder="• • • •"
                         placeholderTextColor={COLORS.textMuted}
                         keyboardType="number-pad"
                         maxLength={6}
@@ -339,15 +340,15 @@ export default function ERPConnectScreen({ navigation }) {
 
             <View style={styles.otpActionsRow}>
                 <TouchableOpacity onPress={() => { setStep(STEP_LOGIN); setOtp(''); setError(''); }}>
-                    <Text style={styles.linkText}>← Back to login</Text>
+                    <Text style={styles.linkText}>← Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleResendOtp} disabled={resendCooldown > 0 || loading}>
                     <Text style={[styles.linkText, (resendCooldown > 0 || loading) && styles.linkTextDisabled]}>
-                        {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+                        {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Send a new code'}
                     </Text>
                 </TouchableOpacity>
             </View>
-            <Text style={styles.otpHelp}>Didn't get it? Wait a moment, check your SMS, then resend.</Text>
+            <Text style={styles.otpHelp}>Didn't get it? Give it a moment, check your messages, then send a new one.</Text>
         </View>
     );
 
@@ -361,9 +362,9 @@ export default function ERPConnectScreen({ navigation }) {
             <View style={styles.stepContainer}>
                 <View style={styles.header}>
                     <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
-                    <Text style={styles.headerTitle}>Attendance Preview</Text>
+                    <Text style={styles.headerTitle}>Here's what we found</Text>
                     <Text style={styles.headerSub}>
-                        Found {erpSubjects.length} subjects from the portal. Review before importing.
+                        {erpSubjects.length} subjects with attendance. Have a look, then bring them in.
                     </Text>
                 </View>
 
@@ -386,11 +387,11 @@ export default function ERPConnectScreen({ navigation }) {
                                     </Text>
                                 </View>
                                 <Text style={styles.previewDetail}>
-                                    {u.newAttended}/{u.newTotal} lectures attended
+                                    {u.newAttended} of {u.newTotal} hours attended
                                 </Text>
                                 {u.erpName !== u.subjectName && (
                                     <Text style={styles.previewMatch}>
-                                        Portal name: {u.erpName}
+                                        Listed by your college as: {u.erpName}
                                     </Text>
                                 )}
                             </View>
@@ -413,7 +414,7 @@ export default function ERPConnectScreen({ navigation }) {
                                     </Text>
                                 </View>
                                 <Text style={styles.previewDetail}>
-                                    {sub.initialAttended}/{sub.initialTotal} lectures
+                                    {sub.initialAttended} of {sub.initialTotal} hours
                                     {sub.teacher ? ` • ${sub.teacher}` : ''}
                                 </Text>
                             </View>
@@ -429,9 +430,9 @@ export default function ERPConnectScreen({ navigation }) {
         <View style={styles.stepContainer}>
             <View style={[styles.header, { marginTop: SPACING.xxl }]}>
                 <View style={[styles.headerMark, { width: 56, height: 56, borderRadius: 28 }]}><View style={styles.headerMarkDot} /></View>
-                <Text style={styles.headerTitle}>All Synced</Text>
+                <Text style={styles.headerTitle}>All synced</Text>
                 <Text style={styles.headerSub}>
-                    Your attendance has been imported from the portal.
+                    Your attendance now matches your college.
                     {studentName ? `\n\nWelcome, ${studentName}!` : ''}
                 </Text>
             </View>
@@ -457,13 +458,13 @@ export default function ERPConnectScreen({ navigation }) {
                 {/* Calendar sync status */}
                 {calendarSyncing && (
                     <View style={styles.statRow}>
-                        <Text style={styles.statLabel}>Syncing calendar...</Text>
+                        <Text style={styles.statLabel}>Syncing the day-by-day record…</Text>
                         <ActivityIndicator size="small" color={COLORS.primary} />
                     </View>
                 )}
                 {calendarResult && (
                     <View style={styles.statRow}>
-                        <Text style={styles.statLabel}>Calendar days imported</Text>
+                        <Text style={styles.statLabel}>Days of history</Text>
                         <Text style={styles.statValue}>{calendarResult.totalDays}</Text>
                     </View>
                 )}
@@ -484,19 +485,19 @@ export default function ERPConnectScreen({ navigation }) {
         switch (step) {
             case STEP_LOGIN:
                 return {
-                    text: loading ? 'Connecting...' : 'Login',
+                    text: loading ? 'Connecting…' : 'Continue',
                     onPress: handleLogin,
                     disabled: loading || !username.trim() || !password.trim(),
                 };
             case STEP_OTP:
                 return {
-                    text: loading ? 'Verifying...' : 'Verify OTP',
+                    text: loading ? 'Verifying…' : 'Verify',
                     onPress: handleVerifyOtp,
                     disabled: loading || otp.trim().length < 4,
                 };
             case STEP_PREVIEW:
                 return {
-                    text: `Import ${(mappingResult?.matchedUpdates.length || 0) + (mappingResult?.newSubjects.length || 0)} Subjects`,
+                    text: `Bring in ${(mappingResult?.matchedUpdates.length || 0) + (mappingResult?.newSubjects.length || 0)} subjects`,
                     onPress: handleImport,
                     disabled: false,
                 };
@@ -510,7 +511,7 @@ export default function ERPConnectScreen({ navigation }) {
     // ─── MAIN RENDER ────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <ScreenHeader title="Connect Portal" />
+            <ScreenHeader title="College account" />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -528,7 +529,7 @@ export default function ERPConnectScreen({ navigation }) {
                                 const stepIdx = i;
                                 const isActive = stepIdx <= currentIdx;
                                 const isCompleted = stepIdx < currentIdx;
-                                const labels = ['Login', 'Verify', 'Review'];
+                                const labels = ['Sign in', 'Code', 'Review'];
                                 return (
                                     <View key={s} style={styles.stepDotRow}>
                                         <View style={styles.stepDotContainer}>
@@ -579,7 +580,7 @@ export default function ERPConnectScreen({ navigation }) {
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="small" color={COLORS.primary} />
                             <Text style={styles.loadingText}>
-                                {step === STEP_LOGIN ? 'Connecting to portal...' : 'Fetching attendance...'}
+                                {step === STEP_LOGIN ? 'Connecting to your college…' : 'Fetching attendance…'}
                             </Text>
                         </View>
                     )}

@@ -1,29 +1,40 @@
 import { getTodayDayName, parseTimeToMinutes } from './dateHelpers';
 
 /**
- * ── UNITS vs CLASSES ────────────────────────────────────────────────
- * A *unit* is one period on the ERP register (one hour). A *class* is one
- * physical session, which is all-or-nothing per college rules: a 2-hour class
- * is 2 units, and you either get both or neither.
+ * ── THE ONE RULE ─────────────────────────────────────────────────────
+ * Attendance numbers come from the college and nowhere else.
  *
- * All percentage math runs in units, because that is exactly what the ERP
- * counts. Anything shown to a student as "classes" must be converted through
- * the subject's session size — see unitsToSkippableClasses / unitsToNeededClasses.
+ * `subject.initialAttended` / `subject.initialTotal` ARE the college's own
+ * per-subject totals (the field names are historical). Nothing the student
+ * does in the app changes them; only a sync does. Day-by-day records
+ * (`state.attendanceRecords`) are the college register and exist for history,
+ * calendars and insights — they are never summed into the totals, because the
+ * totals already include them.
+ *
+ * This replaced a model where the app auto-marked every past class as present
+ * and let students mark classes the teacher had not uploaded yet, then tried
+ * to garbage-collect those marks once the college caught up. The result was
+ * numbers higher than the college's, which is the one thing an attendance
+ * app must never show.
+ *
+ * ── UNITS vs CLASSES ─────────────────────────────────────────────────
+ * A *unit* is one period on the register (one hour). A *class* is one
+ * physical session, all-or-nothing under college rules: a 2-hour class is 2
+ * units and you get both or neither. All percentage maths runs in units,
+ * because that is exactly what the college counts. Anything shown to a
+ * student as "classes" is converted through the subject's session size.
  */
 
 /**
- * Exact attendance percentage — NOT rounded.
- * Rounding here used to leak into decisions: 74.96% rounded to 75.0 and the app
- * called it safe. Round at the point of display instead (roundPct).
- * Returns 0 if total is 0 (avoids division by zero).
+ * Exact attendance percentage, NOT rounded. Round only at the point of
+ * display (roundPct); a rounded 74.96 → 75.0 once got called "safe".
  */
 export function calculatePercentage(attended, total) {
     const safeTotal = Number(total);
     const safeAttended = Number(attended);
     if (!Number.isFinite(safeTotal) || safeTotal <= 0 || !Number.isFinite(safeAttended)) return 0;
-    // Multiply before dividing. (a / t) * 100 rounds twice, so an exact result
-    // can land just under: 87/150*100 gives 57.99999999999999, which read as
-    // below a 58% target even though 100*87 === 58*150 exactly.
+    // Multiply before dividing: (a / t) * 100 rounds twice and 87/150*100
+    // lands on 57.99999999999999 even though 100*87 === 58*150 exactly.
     return (Math.min(Math.max(safeAttended, 0), safeTotal) * 100) / safeTotal;
 }
 
@@ -35,9 +46,8 @@ export function roundPct(percentage) {
 
 /**
  * Max units that can be added to total (without attending) and still hold target.
- * Closed form: A/(T+S) >= p  →  S <= 100A/p - T
- * The floor is then corrected against the predicate itself, so float error in
- * the division can never produce an off-by-one in either direction.
+ * Closed form: A/(T+S) >= p  →  S <= 100A/p - T, then corrected against the
+ * predicate itself so float error can never produce an off-by-one.
  */
 export function maxSkippableUnits(attended, total, targetPercent) {
     const A = attendanceNumber(attended);
@@ -101,95 +111,45 @@ function attendanceNumber(value) {
     return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
-function maxDateKey(a, b) {
-    if (!a) return b || null;
-    if (!b) return a;
-    return a > b ? a : b;
-}
-
+/**
+ * The most recent date the college register covers for a subject — i.e. how
+ * far the college has updated. Display only; it never changes a number.
+ */
 export function getErpCoverageDateForSubject(subjectId, state) {
     const subjectSyncDate = state.settings?.lastSubjectSyncDates?.[subjectId] || null;
     const globalSyncDate = state.latestErpDate || state.settings?.latestErpDate || null;
-    return maxDateKey(subjectSyncDate, globalSyncDate);
-}
-
-export function shouldCountLocalRecord(dateKey, subjectId, record, state) {
-    if (!record || record.source === 'erp') return false;
-
-    const coverageDate = getErpCoverageDateForSubject(subjectId, state);
-    if (coverageDate && dateKey <= coverageDate) {
-        return false;
-    }
-
-    return true;
+    if (!subjectSyncDate) return globalSyncDate;
+    if (!globalSyncDate) return subjectSyncDate;
+    return subjectSyncDate > globalSyncDate ? subjectSyncDate : globalSyncDate;
 }
 
 /**
- * Get full attendance stats for a single subject.
- * Combines initial values with all recorded attendance marks.
- * Skips holidays and cancelled classes.
+ * Attendance for one subject: the college's totals, exactly.
  */
 export function getSubjectAttendance(subjectId, state) {
-    const subject = state.subjects.find((s) => s.id === subjectId);
+    const subject = (state.subjects || []).find((s) => s.id === subjectId);
     if (!subject) return null;
 
-    let recordedTotal = 0;
-    let recordedAttended = 0;
-    let hasPredictions = false;
-
-    const records = state.attendanceRecords || {};
-    const holidays = state.holidays || [];
-    // ERP summary totals are the source of truth. ERP calendar data is for
-    // history; local records are temporary bridges until ERP catches up.
-    Object.entries(records).forEach(([dateKey, dayRecord]) => {
-        // Skip holidays
-        if (dayRecord._holiday) return;
-        if (holidays.includes(dateKey)) return;
-
-        const record = dayRecord[subjectId];
-        if (record) {
-            // Skip cancelled individual classes
-            if (record.status === 'cancelled') return;
-
-            // ERP totals are the baseline. Local records only count while they are
-            // newer than the latest ERP coverage date for this subject.
-            if (!shouldCountLocalRecord(dateKey, subjectId, record, state)) return;
-
-            hasPredictions = true;
-            recordedTotal += recordUnits(record);
-            recordedAttended += recordAttendedUnits(record);
-        }
-    });
-
-    const initialTotal = attendanceNumber(subject.initialTotal);
-    const initialAttended = Math.min(attendanceNumber(subject.initialAttended), initialTotal);
-    const totalUnits = initialTotal + recordedTotal;
-    const attendedUnits = initialAttended + recordedAttended;
-    const percentage = calculatePercentage(attendedUnits, totalUnits);
+    const totalUnits = attendanceNumber(subject.initialTotal);
+    const attendedUnits = Math.min(attendanceNumber(subject.initialAttended), totalUnits);
 
     return {
         totalUnits,
         attendedUnits,
-        percentage,
-        hasPredictions,
+        percentage: calculatePercentage(attendedUnits, totalUnits),
         sessionUnits: getSubjectSessionUnits(subjectId, state),
     };
 }
 
-/**
- * Units covered by one attendance record.
- */
+/** Units covered by one register record. */
 export function recordUnits(record) {
     return attendanceNumber(record?.units) || 1;
 }
 
 /**
- * Units actually attended in one record.
- *
- * A record can cover several periods of the same subject on one day, and those
- * periods are not always one block — e.g. period 1 and period 5. The ERP
- * register knows how many of them were attended, so trust `attendedUnits` when
- * it is present instead of assuming a single status covers every period.
+ * Units actually attended in one register record. A record can cover several
+ * periods of the same subject on one day (not always adjacent), and the
+ * register knows how many were attended, so trust `attendedUnits`.
  */
 export function recordAttendedUnits(record) {
     if (!record) return 0;
@@ -222,8 +182,8 @@ export function getSubjectSessionUnits(subjectId, state) {
 
 /**
  * The one call a screen should make to answer "can I skip this subject?".
- * Percentages are exact; counts come back in both units (ERP periods) and
- * whole classes (what a student actually attends or misses).
+ * Percentages are exact; counts come back in both units (register periods)
+ * and whole classes (what a student actually attends or misses).
  */
 export function getSubjectSkipBudget(subjectId, state, targetPercent) {
     const stats = getSubjectAttendance(subjectId, state);
@@ -250,8 +210,8 @@ export function getSubjectSkipBudget(subjectId, state, targetPercent) {
 }
 
 /**
- * Get classes for a specific day name (e.g., 'Monday'), grouped by subject.
- * This handles multiple sessions of the same subject in one day by summing their units.
+ * Classes for a day name (e.g. 'Monday'), consecutive periods of one subject
+ * merged into a single class with `units` = number of periods.
  */
 export function getClassesForDay(state, dayName) {
     const timetable = state.timetable || {};
@@ -262,7 +222,6 @@ export function getClassesForDay(state, dayName) {
     const groupedClasses = [];
     let lastClass = null;
 
-    // Sort schedule by time slot start time
     const timeSlots = state.timeSlots || [];
     const subjects = state.subjects || [];
 
@@ -277,7 +236,6 @@ export function getClassesForDay(state, dayName) {
         const timeSlot = timeSlots.find((ts) => ts.id === slot.slotId);
         const subject = subjects.find((s) => s.id === slot.subjectId);
 
-        // Need either a matching timeSlot OR custom times on the slot itself
         if ((!timeSlot && !slot.customStart) || !subject) return;
 
         const startTime = slot.customStart || timeSlot.start;
@@ -287,15 +245,13 @@ export function getClassesForDay(state, dayName) {
         const lastEndMins = lastClass ? parseTimeToMinutes(lastClass.endTime) : 0;
 
         // Consecutive periods of the same subject are ONE class under college
-        // rules — all-or-nothing, no attendance for attending just one hour.
-        // Allow up to a 30-minute break, and any overlap (negative gap), which
-        // is how the portal encodes a 2-hour class across two period slots.
+        // rules. Allow up to a 30-minute break, and any overlap, which is how
+        // the register encodes a 2-hour class across two period slots.
         if (
             lastClass &&
             lastClass.subjectId === slot.subjectId &&
             (currentStartMins - lastEndMins) <= 30
         ) {
-            // Extend end time only if this slot ends later
             if (parseTimeToMinutes(endTime) > parseTimeToMinutes(lastClass.endTime)) {
                 lastClass.endTime = endTime;
             }
@@ -306,8 +262,8 @@ export function getClassesForDay(state, dayName) {
                 subjectName: subject.name,
                 teacher: subject.teacher,
                 color: subject.color,
-                startTime: startTime,
-                endTime: endTime,
+                startTime,
+                endTime,
                 units: 1,
             };
             groupedClasses.push(newClass);
@@ -318,20 +274,17 @@ export function getClassesForDay(state, dayName) {
     return groupedClasses;
 }
 
-/**
- * Get today's classes from the timetable based on current day name.
- */
+/** Today's classes from the timetable. */
 export function getTodayClasses(state, devDate = null) {
-    const dayName = getTodayDayName(devDate);
-    return getClassesForDay(state, dayName);
+    return getClassesForDay(state, getTodayDayName(devDate));
 }
 
 /**
  * Skip / recovery verdict for a subject.
  *
- * `count` is in UNITS (ERP periods). Pass `sessionUnits` to also get
- * `classes`, the count in whole physical classes — that is the number to
- * show a student, since a 2-hour class cannot be half-skipped.
+ * `count` is in UNITS (register periods). Pass `sessionUnits` to also get
+ * `classes`, the count in whole physical classes — the number to show a
+ * student, since a 2-hour class cannot be half-skipped.
  */
 export function calculateSkips(attended, total, targetPercent, sessionUnits = 1) {
     if (!(Number(total) > 0)) {
@@ -376,10 +329,7 @@ export function calculateSkips(attended, total, targetPercent, sessionUnits = 1)
     };
 }
 
-/**
- * Find index of the class currently happening.
- * Returns -1 if no class is happening now.
- */
+/** Index of the class happening right now, or -1. */
 export function getCurrentClassIndex(todayClasses, devDate = null) {
     const now = devDate ? new Date(devDate) : new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -391,9 +341,7 @@ export function getCurrentClassIndex(todayClasses, devDate = null) {
     });
 }
 
-/**
- * Calculate overall attendance percentage across all subjects.
- */
+/** Overall attendance across all subjects, in units, exactly as the college sums it. */
 export function calculateOverallPercentage(state) {
     if (!state.subjects || state.subjects.length === 0) return 0;
 

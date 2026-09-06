@@ -1,434 +1,136 @@
-import React, { useState, useRef } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    Animated,
-    Easing,
-} from 'react-native';
-import { triggerHaptic } from '../../utils/haptics';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, TYPOGRAPHY } from '../../theme/theme';
-import { getSubjectAttendance } from '../../utils/attendance';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY, TABULAR } from '../../theme/theme';
+import { getSubjectSkipBudget } from '../../utils/attendance';
 import { shortSubjectName } from '../../utils/subjectName';
 import { getTodayKey, formatTimeRange } from '../../utils/dateHelpers';
 
-const ClassCard = ({
-    classInfo,
-    state,
-    onMark,
-    isCurrentClass = false,
-    isPreCounted = false,
-    freshnessData = null,
-}) => {
+/**
+ * One class on Today. Reads only what the college says — the subject's
+ * current numbers and, once the teacher has uploaded it, today's mark — and
+ * turns them into the one sentence the student needs.
+ */
+const ClassCard = ({ classInfo, state, isCurrentClass = false }) => {
     const styles = getStyles();
     const { subjectId, subjectName, startTime, endTime, units } = classInfo;
 
-    const stats = getSubjectAttendance(subjectId, state);
-    const percentage = stats?.percentage || 0;
-    const attendedUnits = stats?.attendedUnits || 0;
-    const totalUnits = stats?.totalUnits || 0;
+    const budget = getSubjectSkipBudget(subjectId, state);
+    const percentage = budget?.percentage || 0;
+    const target = budget?.target || state.settings?.dangerThreshold || 75;
 
-    const todayKey = getTodayKey(state.devDate);
-    const todayRecord = state.attendanceRecords[todayKey]?.[subjectId];
-    const markedStatus = todayRecord?.status;
-    const isSyncedFromErp = todayRecord?.source === 'erp';
+    const todayRecord = state.attendanceRecords?.[getTodayKey(state.devDate)]?.[subjectId];
+    const recorded = todayRecord && todayRecord.source === 'erp' && todayRecord.status !== 'cancelled' ? todayRecord : null;
 
-    const isPredicted = freshnessData ? freshnessData.hasPrediction : (todayRecord?.source === 'prediction');
+    const isDanger = percentage < target;
+    const isEdge = !isDanger && percentage < target + 3;
 
-    const dangerThreshold = state.settings?.dangerThreshold || 75;
-    const isDanger = percentage < dangerThreshold;
-    const isEdge = percentage >= dangerThreshold && percentage < dangerThreshold + 3;
-
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const attendScale = useRef(new Animated.Value(1)).current;
-    const bunkScale = useRef(new Animated.Value(1)).current;
-
-    const makeButtonHandlers = (btnScale) => ({
-        onPressIn: () => Animated.timing(btnScale, { toValue: 0.95, duration: 80, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(),
-        onPressOut: () => Animated.timing(btnScale, { toValue: 1, duration: 150, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start(),
-    });
-
-    const [previousPercentage, setPreviousPercentage] = useState(percentage);
-    const [showChange, setShowChange] = useState(false);
-    const percentageChange = percentage - previousPercentage;
-
-    const handleMark = (status) => {
-        triggerHaptic('medium');
-
-        Animated.sequence([
-            Animated.timing(scaleAnim, {
-                toValue: 0.97,
-                duration: 80,
-                useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-                toValue: 1,
-                duration: 80,
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-        setPreviousPercentage(percentage);
-        setShowChange(true);
-        setTimeout(() => setShowChange(false), 3000);
-        onMark(subjectId, status, units);
-    };
-
-    const handleUndo = () => {
-        setPreviousPercentage(percentage);
-        setShowChange(false);
-        onMark(subjectId, null, units);
-    };
-
-    const classesNeeded = calculateClassesNeeded(attendedUnits, totalUnits, dangerThreshold, units);
-
-    const getCardBorderColor = () => {
-        if (markedStatus === 'present') return COLORS.success;
-        if (markedStatus === 'absent') return COLORS.danger;
-        if (isCurrentClass) return COLORS.primary;
-        return COLORS.border;
-    };
-
-    const getCardBg = () => {
-        if (markedStatus === 'present') return COLORS.successLight;
-        if (markedStatus === 'absent') return COLORS.dangerLight;
-        return COLORS.cardBackground;
-    };
-
-    if (isPreCounted) {
-        return (
-            <View style={[styles.container, { backgroundColor: COLORS.cardBackground, opacity: 0.7 }]}>
-                <View style={styles.content}>
-                    <View style={styles.headerRow}>
-                        <View style={styles.subjectInfo}>
-                            <Text style={[styles.subjectName, { color: COLORS.textMuted }]} accessibilityLabel={subjectName}>{shortSubjectName(subjectName)}</Text>
-                            <View style={styles.timeRow}>
-                                <Text style={[styles.time, { color: COLORS.textMuted }]}>
-                                    {formatTimeRange(startTime, endTime)}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
-                    <View style={styles.preCountedBadge}>
-                        <Text style={styles.preCountedText}>INCLUDED IN SETUP</Text>
-                    </View>
-                </View>
-            </View>
-        );
+    // Verdict copy: past tense once the college has recorded today, otherwise
+    // the decision for a class that has not happened yet.
+    let verdict;
+    let verdictTone = 'neutral';
+    if (recorded) {
+        const attendedUnits = Number(todayRecord.attendedUnits ?? (todayRecord.status === 'present' ? todayRecord.units : 0));
+        const total = Number(todayRecord.units || 1);
+        if (attendedUnits >= total) { verdict = 'Marked present by your college'; verdictTone = 'good'; }
+        else if (attendedUnits === 0) { verdict = 'Marked absent by your college'; verdictTone = 'bad'; }
+        else { verdict = `Partly attended · ${attendedUnits} of ${total} hours`; verdictTone = 'warn'; }
+    } else if (!budget || budget.totalUnits === 0) {
+        verdict = 'No attendance recorded yet';
+    } else if (!budget.onTrack) {
+        verdict = Number.isFinite(budget.needClasses)
+            ? `Attend · ${budget.needClasses} more to reach ${target}%`
+            : `Attend · ${target}% is out of reach this term`;
+        verdictTone = 'bad';
+    } else if (budget.skipUnits >= units) {
+        const spare = budget.skipClasses;
+        verdict = spare === 1 ? 'Safe to skip · last one to spare' : `Safe to skip · ${spare} to spare`;
+        verdictTone = spare <= 1 ? 'warn' : 'good';
+    } else {
+        verdict = 'Attend · skipping this drops you below goal';
+        verdictTone = 'warn';
     }
 
+    const toneColor = verdictTone === 'good' ? COLORS.successText
+        : verdictTone === 'bad' ? COLORS.dangerText
+            : verdictTone === 'warn' ? COLORS.warningText
+                : COLORS.textSecondary;
+
+    const barColor = isDanger ? COLORS.danger : isEdge ? COLORS.warning : COLORS.success;
+    const borderColor = recorded
+        ? (verdictTone === 'good' ? COLORS.success : verdictTone === 'bad' ? COLORS.danger : COLORS.warning)
+        : isCurrentClass ? COLORS.primary : COLORS.border;
+
     return (
-        <Animated.View
-            style={[
-                styles.container,
-                {
-                    transform: [{ scale: scaleAnim }],
-                    backgroundColor: getCardBg(),
-                    borderColor: getCardBorderColor(),
-                },
-                isCurrentClass && styles.currentClassBorder,
-            ]}
-        >
-            <View style={styles.content}>
-                <View style={styles.headerRow}>
-                    <View style={styles.subjectInfo}>
-                        {/* Abbreviated for the eye, full name for screen readers. */}
-                        <Text style={styles.subjectName} numberOfLines={1} accessibilityLabel={subjectName}>
-                            {shortSubjectName(subjectName)}
-                        </Text>
-                        <View style={styles.timeRow}>
-                            <Text style={styles.time}>
-                                {formatTimeRange(startTime, endTime)}
-                            </Text>
-                            {units > 1 && (
-                                <View style={styles.durationBadge}>
-                                    <Text style={styles.durationBadgeText}>{units} HR</Text>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-
-                    {/* Status tags — text only, no emojis */}
-                    {!markedStatus && !isDanger && !isEdge && percentage >= (dangerThreshold + 10) && (
-                        <View style={[styles.statusTag, { backgroundColor: COLORS.successLight, borderColor: COLORS.success }]}>
-                            <Text style={[styles.statusTagText, { color: COLORS.success }]}>SAFE</Text>
-                        </View>
-                    )}
-                    {!markedStatus && isDanger && (
-                        <View style={[styles.statusTag, { backgroundColor: COLORS.dangerLight, borderColor: COLORS.danger }]}>
-                            <Text style={[styles.statusTagText, { color: COLORS.danger }]}>LOW</Text>
-                        </View>
-                    )}
-                    {!markedStatus && isEdge && (
-                        <View style={[styles.statusTag, { backgroundColor: COLORS.warningLight, borderColor: COLORS.warning }]}>
-                            <Text style={[styles.statusTagText, { color: COLORS.warning }]}>EDGE</Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Progress Row */}
-                <View style={styles.progressRow}>
-                    <View style={styles.progressBarTrack}>
-                        <View
-                            style={[
-                                styles.progressBarFill,
-                                {
-                                    width: `${Math.min(percentage, 100)}%`,
-                                    backgroundColor: isDanger ? COLORS.danger :
-                                        isEdge ? COLORS.warning : COLORS.success,
-                                },
-                            ]}
-                        />
-                    </View>
-
-                    <View style={styles.percentageContainer}>
-                        <Text style={[styles.percentage, isDanger && { color: COLORS.danger }]}>
-                            {percentage.toFixed(1)}%
-                        </Text>
-
-                        {showChange && percentageChange !== 0 && (
-                            <View style={[
-                                styles.changeBadge,
-                                { backgroundColor: percentageChange > 0 ? COLORS.successLight : COLORS.dangerLight },
-                            ]}>
-                                <Text style={[
-                                    styles.changeText,
-                                    { color: percentageChange > 0 ? COLORS.successDark : COLORS.dangerDark },
-                                ]}>
-                                    {percentageChange > 0 ? '+' : ''}{percentageChange.toFixed(1)}%
-                                </Text>
+        <View style={[styles.container, { borderColor }, isCurrentClass && styles.currentClassBorder]}>
+            <View style={styles.headerRow}>
+                <View style={styles.subjectInfo}>
+                    <Text style={styles.subjectName} numberOfLines={1} accessibilityLabel={subjectName}>
+                        {shortSubjectName(subjectName)}
+                    </Text>
+                    <View style={styles.timeRow}>
+                        <Text style={styles.time}>{formatTimeRange(startTime, endTime)}</Text>
+                        {units > 1 && (
+                            <View style={styles.durationBadge}>
+                                <Text style={styles.durationBadgeText}>{units} HR</Text>
                             </View>
                         )}
                     </View>
                 </View>
 
-                {/* Danger Warning */}
-                {isDanger && !markedStatus && (
-                    <View style={styles.warningRow}>
-                        <Text style={styles.warningText}>
-                            Attend {classesNeeded} more to reach {dangerThreshold}%
-                        </Text>
+                {!recorded && isDanger && (
+                    <View style={[styles.statusTag, { backgroundColor: COLORS.dangerLight, borderColor: COLORS.danger }]}>
+                        <Text style={[styles.statusTagText, { color: COLORS.dangerText }]}>LOW</Text>
                     </View>
                 )}
-
-                {/* Action Buttons — clean text tags, no emojis */}
-                {markedStatus ? (
-                    <View style={styles.buttonRow}>
-                        <View style={[
-                            styles.actionButton,
-                            markedStatus === 'present' ? styles.presentButton : styles.absentButton,
-                            { flex: 1 },
-                        ]}>
-                            <Text style={markedStatus === 'present' ? styles.presentButtonText : styles.absentButtonText}>
-                                {markedStatus === 'present' ? 'PRESENT' : 'ABSENT'}
-                                {isSyncedFromErp ? '  ·  Portal' : ''}
-                                {isPredicted && !isSyncedFromErp ? '  ·  Predicted' : ''}
-                            </Text>
-                        </View>
-
-                        {!isSyncedFromErp && (
-                            <TouchableOpacity
-                                style={[styles.actionButton, styles.undoButton]}
-                                onPress={handleUndo}
-                            >
-                                <Text style={styles.undoButtonText}>Undo</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                ) : (
-                    <View style={styles.buttonRow}>
-                        <TouchableOpacity
-                            onPress={() => handleMark('present')}
-                            activeOpacity={0.95}
-                            style={{ flex: 1 }}
-                            {...makeButtonHandlers(attendScale)}
-                        >
-                            <Animated.View style={[styles.actionButton, styles.presentButton, { transform: [{ scale: attendScale }] }]}>
-                                <Text style={styles.presentButtonText}>Attend</Text>
-                            </Animated.View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => handleMark('absent')}
-                            activeOpacity={0.95}
-                            style={{ flex: 1 }}
-                            {...makeButtonHandlers(bunkScale)}
-                        >
-                            <Animated.View style={[styles.actionButton, styles.absentButton, { transform: [{ scale: bunkScale }] }]}>
-                                <Text style={styles.absentButtonText}>Bunk</Text>
-                            </Animated.View>
-                        </TouchableOpacity>
+                {!recorded && isEdge && (
+                    <View style={[styles.statusTag, { backgroundColor: COLORS.warningLight, borderColor: COLORS.warning }]}>
+                        <Text style={[styles.statusTagText, { color: COLORS.warningText }]}>EDGE</Text>
                     </View>
                 )}
             </View>
-        </Animated.View>
-    );
-};
 
-const calculateClassesNeeded = (attended, total, target, units = 1) => {
-    const targetDecimal = target / 100;
-    if (targetDecimal >= 1) return Infinity;
-    const divisor = 1 - targetDecimal;
-    const neededUnits = Math.ceil((targetDecimal * total - attended) / divisor);
-    return Math.max(0, Math.ceil(Math.max(0, neededUnits) / units));
+            <View style={styles.progressRow}>
+                <View style={styles.progressBarTrack}>
+                    <View style={[styles.progressBarFill, { width: `${Math.min(percentage, 100)}%`, backgroundColor: barColor }]} />
+                </View>
+                <Text style={[styles.percentage, TABULAR, isDanger && { color: COLORS.dangerText }]}>
+                    {percentage.toFixed(1)}%
+                </Text>
+            </View>
+
+            <Text style={[styles.verdict, { color: toneColor }]} numberOfLines={2}>{verdict}</Text>
+        </View>
+    );
 };
 
 const getStyles = () => StyleSheet.create({
     container: {
-        flexDirection: 'row',
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.sm,
         borderRadius: BORDER_RADIUS.md,
-        overflow: 'hidden',
+        padding: SPACING.md,
         borderWidth: 1,
         borderColor: COLORS.border,
     },
-    currentClassBorder: {
-        borderWidth: 2,
-    },
-    content: {
-        flex: 1,
-        padding: 16,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    subjectInfo: {
-        flex: 1,
-    },
-    subjectName: {
-        ...TYPOGRAPHY.headingSmall,
-        color: COLORS.textPrimary,
-    },
-    timeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-    },
-    time: {
-        ...TYPOGRAPHY.bodySmall,
-        color: COLORS.textSecondary,
-    },
+    currentClassBorder: { borderWidth: 2 },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    subjectInfo: { flex: 1 },
+    subjectName: { ...TYPOGRAPHY.headingSmall, color: COLORS.textPrimary },
+    timeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+    time: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary },
     durationBadge: {
-        backgroundColor: COLORS.inputBackground,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 3,
-        marginLeft: SPACING.sm,
+        backgroundColor: COLORS.inputBackground, paddingHorizontal: 6, paddingVertical: 2,
+        borderRadius: 3, marginLeft: SPACING.sm,
     },
-    durationBadgeText: {
-        ...TYPOGRAPHY.micro,
-        color: COLORS.textSecondary,
-    },
-    statusTag: {
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: BORDER_RADIUS.sm,
-        borderWidth: 1,
-        marginLeft: SPACING.sm,
-    },
-    statusTagText: {
-        ...TYPOGRAPHY.micro,
-    },
-    progressRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 14,
-    },
-    progressBarTrack: {
-        flex: 1,
-        height: 6,
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: 3,
-        marginRight: 10,
-        overflow: 'hidden',
-    },
-    progressBarFill: {
-        height: '100%',
-        borderRadius: 3,
-    },
-    percentageContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    percentage: {
-        ...TYPOGRAPHY.displaySmall,
-        color: COLORS.textPrimary,
-        minWidth: 44,
-        textAlign: 'right',
-    },
-    changeBadge: {
-        marginLeft: 4,
-        paddingHorizontal: 5,
-        paddingVertical: 1,
-        borderRadius: 4,
-    },
-    changeText: {
-        ...TYPOGRAPHY.micro,
-    },
-    warningRow: {
-        marginTop: 8,
-        backgroundColor: COLORS.warningLight,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: BORDER_RADIUS.sm,
-        borderWidth: 1,
-        borderColor: COLORS.warning,
-    },
-    warningText: {
-        ...TYPOGRAPHY.labelSmall,
-        color: COLORS.warningDark,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        marginTop: 14,
-        gap: SPACING.sm,
-    },
-    actionButton: {
-        flex: 1,
-        paddingVertical: 12,
-        borderRadius: BORDER_RADIUS.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    presentButton: {
-        backgroundColor: COLORS.successLight,
-        borderWidth: 1,
-        borderColor: COLORS.success,
-    },
-    presentButtonText: {
-        ...TYPOGRAPHY.labelMedium,
-        color: COLORS.successDark,
-    },
-    absentButton: {
-        backgroundColor: COLORS.dangerLight,
-        borderWidth: 1,
-        borderColor: COLORS.danger,
-    },
-    absentButtonText: {
-        ...TYPOGRAPHY.labelMedium,
-        color: COLORS.dangerDark,
-    },
-    undoButton: {
-        backgroundColor: COLORS.inputBackground,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-    },
-    undoButtonText: {
-        ...TYPOGRAPHY.labelMedium,
-        color: COLORS.textSecondary,
-    },
-    preCountedBadge: {
-        marginTop: 8,
-    },
-    preCountedText: {
-        ...TYPOGRAPHY.micro,
-        color: COLORS.success,
-    },
+    durationBadgeText: { ...TYPOGRAPHY.micro, color: COLORS.textSecondary },
+    statusTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: BORDER_RADIUS.sm, borderWidth: 1, marginLeft: SPACING.sm },
+    statusTagText: { ...TYPOGRAPHY.micro },
+    progressRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
+    progressBarTrack: { flex: 1, height: 6, backgroundColor: COLORS.inputBackground, borderRadius: 3, marginRight: 10, overflow: 'hidden' },
+    progressBarFill: { height: '100%', borderRadius: 3 },
+    percentage: { ...TYPOGRAPHY.displaySmall, color: COLORS.textPrimary, minWidth: 52, textAlign: 'right' },
+    verdict: { ...TYPOGRAPHY.labelMedium, marginTop: 10 },
 });
 
 export default ClassCard;

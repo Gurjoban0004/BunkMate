@@ -9,7 +9,7 @@
  * either is remembered so it is not asked again. If the student never consents, this
  * component renders nothing and the app is exactly what it was.
  *
- * Mounted once at the app root next to ErpReauthModal.
+ * Mounted once at the app root next to ReconnectSheet.
  */
 
 import React, { useEffect, useState, useCallback } from 'react';

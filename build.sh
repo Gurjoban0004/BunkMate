@@ -6,12 +6,21 @@ npx expo export -p web
 # Rename app shell
 mv dist/index.html dist/app.html
 
-# Inject PWA manifest + iOS meta tags into app shell
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' 's|<link rel="icon" href="/favicon.ico" /></head>|<link rel="icon" href="/favicon.ico" /><link rel="manifest" href="/manifest.json" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" /><meta name="apple-mobile-web-app-capable" content="yes" /><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /><meta name="apple-mobile-web-app-title" content="Presence" /></head>|' dist/app.html
-else
-  sed -i 's|<link rel="icon" href="/favicon.ico" /></head>|<link rel="icon" href="/favicon.ico" /><link rel="manifest" href="/manifest.json" /><link rel="apple-touch-icon" href="/apple-touch-icon.png" /><meta name="apple-mobile-web-app-capable" content="yes" /><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /><meta name="apple-mobile-web-app-title" content="Presence" /></head>|' dist/app.html
-fi
+# App shell head: PWA manifest + iOS meta tags, a real description, and noindex
+# (the app needs an account; the landing page is what search engines should see).
+node -e "
+const fs = require('fs');
+const f = 'dist/app.html';
+let html = fs.readFileSync(f, 'utf8');
+html = html.replace(/<meta name=\"description\" content=\"[^\"]*\">/, '<meta name=\"description\" content=\"Presence — your attendance, exactly as your college records it, and what it lets you skip.\">');
+html = html.replace('<link rel=\"icon\" href=\"/favicon.ico\" /></head>',
+  '<link rel=\"icon\" href=\"/favicon.ico\" /><link rel=\"manifest\" href=\"/manifest.json\" /><link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" /><link rel=\"canonical\" href=\"https://presence-blue.vercel.app/app\" /><meta name=\"robots\" content=\"noindex\" /><meta name=\"apple-mobile-web-app-capable\" content=\"yes\" /><meta name=\"mobile-web-app-capable\" content=\"yes\" /><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\" /><meta name=\"apple-mobile-web-app-title\" content=\"Presence\" /></head>');
+fs.writeFileSync(f, html);
+console.log('App shell head updated');
+"
+
+# Social share image: the app icon (square) until a 1200x630 card is designed.
+cp assets/icon.png dist/og-image.png
 
 # Copy landing page over dist
 cp -r web-landing/* dist/

@@ -20,9 +20,10 @@ const SYNC_LOG_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
  * @param {Object} sync
  * @param {Array}  sync.endpoints    [{ name, status: 'ok'|'fail', durationMs, error? }]
  * @param {Array}  sync.parserErrors [{ endpoint, message }]
- * @param {string} sync.rollNumber   ERP roll number, for the admin failure list
+ * @param {Object} sync.sessionEvent { type: 'needsOtp'|'needsLogin', reason } when the college signed us out
+ * @param {string} sync.rollNumber   roll number, for the admin failure list
  */
-export async function logSync(userId, { endpoints = [], parserErrors = [], rollNumber = null }) {
+export async function logSync(userId, { endpoints = [], parserErrors = [], sessionEvent = null, rollNumber = null }) {
     if (!userId || endpoints.length === 0) return;
     try {
         if (!(await ensureAuthenticated(userId))) return;
@@ -34,6 +35,7 @@ export async function logSync(userId, { endpoints = [], parserErrors = [], rollN
             expiresAt: new Date(Date.now() + SYNC_LOG_RETENTION_MS),
             endpoints,
             parserErrors,
+            ...(sessionEvent ? { sessionEvent } : {}),
             rollNumber,
         });
     } catch (err) {

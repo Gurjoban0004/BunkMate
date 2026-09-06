@@ -1,26 +1,29 @@
 /**
- * Vercel Serverless Function: Admin Analytics Computation
+ * Vercel Serverless Function: Admin Analytics
  *
  * POST /api/admin-analytics
- * Body: { rollNumber, metric }
+ * Body: { token, metric, forceRefresh? }
  *
- * Computes heavy analytics server-side and caches each result to its own doc at
- * admin/analyticsCache/metrics/{metric}. Uses collectionGroup queries and
- * server-side aggregation so the client never reads the users collection.
+ * Every number here is computed from Firestore on request (cached briefly) and
+ * every read is bounded. A failing metric returns 500 with the reason — it
+ * never invents figures.
  *
- * A failing metric returns 500 with the reason. It must never invent numbers —
- * a dashboard that quietly shows made-up figures is worse than one that errors.
+ * "Student" means a user document with a real roll number, i.e. someone who
+ * connected their college account. Abandoned sign-ups (a login code that
+ * never got past onboarding), test accounts and mock logins do not have one
+ * and are reported separately as `unfinishedSignups`, never mixed in.
  *
  * Metrics:
- *   subjectDifficulty — aggregates attendance across all users' semesters
- *   bunkCulture       — day-of-week bunk rates from attendance records
- *   endpointHealth    — 24h endpoint success/fail rates from telemetry
- *   parserFailures    — recent parser errors from telemetry
- *   rateLimit         — per-user sync frequency from telemetry
- *   activeUsers       — DAU/WAU/MAU, total users, real 7-day active trend
- *   downtime          — live ERP outages derived from sync telemetry
+ *   overview          — the hero: students, activity, sync health, sign-in events, attendance
+ *   userRoster        — { users: [real students], unfinished: { count, olderThan7d } }
+ *   sessionEvents     — who was asked to sign in again in the last 7 days, and why
+ *   subjectDifficulty — aggregate attendance per subject across students
+ *   bunkCulture       — day-of-week miss rates from the register
  *   batchDistribution — cohort breakdown
- *   userRoster        — detailed user directory
+ *   endpointHealth    — 24h endpoint success/fail rates
+ *   parserFailures    — recent parser errors
+ *   rateLimit         — per-student sync frequency
+ *   downtime          — live college outages inferred from sync telemetry
  */
 
 const { setCorsHeaders, decodeSessionRollNumber, getClientIp } = require('./_session-utils');
@@ -28,28 +31,36 @@ const { tooManyAttempts } = require('./_rate-limit');
 const { adminDb, isAdminRoll } = require('./_firebase-admin');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const IP_POLICY = { max: 120, windowMs: 10 * 60 * 1000 };
 
-// Every read is bounded (audit H3). These are ceilings well above the user base,
-// not targets: a metric that hits one is reporting on a sample rather than
-// scanning a collection forever against the function's time limit.
+// Ceilings, not targets (audit H3).
 const MAX_USERS     = 5000;
 const MAX_SEMESTERS = 10000;
 const MAX_SYNCS     = 20000;
 
-// Presence is a single-college app (CUIET): every genuine user signs in with a
-// long numeric ERP roll number (e.g. 2410990296). Mock/dev and abandoned-onboarding
-// docs have no such roll, and the dev mock login seeds sample subjects (CS201,
-// "Web Development", …) that are NOT real uni subjects. Gating aggregation on a real
-// roll keeps foreign/junk data out of the admin view and makes the user count honest.
+// Live panels refresh often; the heavy aggregates less so.
+const TTL_MS = {
+    overview: 2 * 60 * 1000,
+    userRoster: 2 * 60 * 1000,
+    sessionEvents: 2 * 60 * 1000,
+    endpointHealth: 5 * 60 * 1000,
+    downtime: 2 * 60 * 1000,
+    parserFailures: 5 * 60 * 1000,
+    rateLimit: 5 * 60 * 1000,
+    subjectDifficulty: 30 * 60 * 1000,
+    bunkCulture: 30 * 60 * 1000,
+    batchDistribution: 30 * 60 * 1000,
+};
+
+const DAY = 86400000;
 const REAL_ROLL = /^\d{6,}$/;
 const isRealRoll = (roll) => !!roll && REAL_ROLL.test(String(roll).trim());
 
-// One document per metric. A single shared doc used to hold every metric at
-// once, which put the whole user roster and every other result in one payload —
-// that both blows past Firestore's 1MB document limit as the user base grows and
-// makes every metric read drag the others along with it.
+const millis = (v) => (v && typeof v.toMillis === 'function') ? v.toMillis()
+    : (typeof v === 'string' || typeof v === 'number') ? new Date(v).getTime() : 0;
+const finiteMillis = (v) => { const m = millis(v); return Number.isFinite(m) && m > 0 ? m : null; };
+
+// ── Cache: one doc per metric ────────────────────────────────────────
 const cacheRef = (metric) => adminDb.doc(`admin/analyticsCache/metrics/${metric}`);
 
 async function getCached(metric) {
@@ -58,9 +69,9 @@ async function getCached(metric) {
         if (!snap.exists) return null;
         const entry = snap.data();
         if (!entry || !entry.cachedAt) return null;
-        const age = Date.now() - (entry.cachedAt.toMillis ? entry.cachedAt.toMillis() : 0);
-        if (age > CACHE_TTL_MS) return null;
-        return { data: entry.data, cachedAt: entry.cachedAt.toMillis() };
+        const age = Date.now() - millis(entry.cachedAt);
+        if (age > (TTL_MS[metric] || 5 * 60 * 1000)) return null;
+        return { data: entry.data, cachedAt: millis(entry.cachedAt) };
     } catch {
         return null;
     }
@@ -69,23 +80,15 @@ async function getCached(metric) {
 async function setCache(metric, data) {
     try {
         await cacheRef(metric).set({ data, cachedAt: FieldValue.serverTimestamp() });
-        return true;
     } catch (e) {
-        // A metric too large to cache still gets served; it just recomputes every
-        // time. Surface it in the logs rather than failing silently forever.
         console.warn(`Cache write failed for ${metric}:`, e.message);
-        return false;
     }
 }
 
+// ── Bounded reads ────────────────────────────────────────────────────
 const allUsers     = () => adminDb.collection('users').limit(MAX_USERS).get();
 const allSemesters = () => adminDb.collectionGroup('semesters').limit(MAX_SEMESTERS).get();
 
-/**
- * Recent sync telemetry, server-side filtered on `timestamp` (the COLLECTION_GROUP
- * index is declared in firestore.indexes.json). If that index is missing the
- * fallback is a *bounded* scan, never the whole history.
- */
 async function recentSyncs(sinceMs) {
     const since = Timestamp.fromMillis(sinceMs);
     try {
@@ -96,80 +99,253 @@ async function recentSyncs(sinceMs) {
     }
 }
 
-const syncMillis = (data) => (data && data.timestamp && data.timestamp.toMillis)
-    ? data.timestamp.toMillis()
-    : 0;
+const syncMillis = (data) => millis(data && data.timestamp);
+const ownerOf = (docSnap) => docSnap.ref.path.split('/')[1] || null;
 
-// ── Metric Computations ──────────────────────────────────────────────
-
-async function computeSubjectDifficulty() {
+/**
+ * Users split into real students and unfinished sign-ups, plus each student's
+ * current-semester summary. One users read + one semesters read, joined here.
+ */
+async function loadPeople() {
     const [usersSnap, semestersSnap] = await Promise.all([allUsers(), allSemesters()]);
 
-    // Only aggregate semesters owned by a real (roll-bearing) user, so mock/test
-    // accounts' sample subjects never enter the heatmap.
-    const realUserIds = new Set(
-        usersSnap.docs.filter(d => isRealRoll(d.data()?.erpRollNumber)).map(d => d.id)
-    );
+    const students = new Map();   // userId → { doc data }
+    const unfinished = [];
+    usersSnap.forEach((d) => {
+        const data = d.data() || {};
+        if (isRealRoll(data.erpRollNumber)) students.set(d.id, { id: d.id, ...data });
+        else unfinished.push({ id: d.id, lastActive: finiteMillis(data.lastActive) || finiteMillis(data.createdAt) });
+    });
 
+    // Newest semester doc per student (by _lastModified), plus a count.
+    const semesters = new Map(); // userId → { count, latest }
+    semestersSnap.forEach((semDoc) => {
+        const userId = semDoc.ref.parent.parent?.id;
+        if (!userId || !students.has(userId)) return;
+        const data = semDoc.data() || {};
+        if (data._deleted) return;
+        const entry = semesters.get(userId) || { count: 0, latest: null, latestAt: 0 };
+        entry.count++;
+        const at = finiteMillis(data._lastModified) || 0;
+        if (!entry.latest || at >= entry.latestAt) { entry.latest = data; entry.latestAt = at; }
+        semesters.set(userId, entry);
+    });
+
+    return { students, unfinished, semesters };
+}
+
+/** Per-student attendance summary from their latest semester document. */
+function summarise(semester) {
+    const subjects = Array.isArray(semester?.subjects) ? semester.subjects : [];
+    const goal = Number(semester?.settings?.dangerThreshold) || 75;
+    let attended = 0, total = 0, below = 0;
+    const rows = [];
+    for (const s of subjects) {
+        const t = Number(s.initialTotal) || 0;
+        const a = Math.min(Number(s.initialAttended) || 0, t);
+        if (t <= 0) continue;
+        const target = Number(s.target) || goal;
+        attended += a;
+        total += t;
+        if (100 * a < target * t) below++;
+        rows.push({ name: s.name || s.id || 'Unknown', code: s.code || '', attended: a, total: t, target, pct: (a * 100) / t });
+    }
+    return {
+        subjects: rows,
+        totalAttended: attended,
+        totalClasses: total,
+        belowGoal: below,
+        overallAttendancePct: total > 0 ? Math.round((attended * 1000) / total) / 10 : null,
+        goal,
+        setupComplete: !!semester?.setupComplete,
+        erpConnected: !!semester?.settings?.erpConnected,
+        userName: semester?.userName || '',
+        latestErpDate: semester?.latestErpDate || semester?.settings?.latestErpDate || null,
+        lastErpSync: semester?.settings?.lastErpSync || null,
+    };
+}
+
+// ── Metrics ──────────────────────────────────────────────────────────
+
+async function computeOverview() {
+    const now = Date.now();
+    const { students, unfinished, semesters } = await loadPeople();
+
+    let dau = 0, wau = 0, mau = 0;
+    let withNumbers = 0, pctSum = 0, belowGoalStudents = 0, connected = 0;
+    students.forEach((u, id) => {
+        const last = finiteMillis(u.lastActive);
+        if (last) {
+            const diff = now - last;
+            if (diff <= DAY) dau++;
+            if (diff <= 7 * DAY) wau++;
+            if (diff <= 30 * DAY) mau++;
+        }
+        const sem = semesters.get(id);
+        if (!sem) return;
+        const s = summarise(sem.latest);
+        if (s.erpConnected) connected++;
+        if (s.overallAttendancePct != null) {
+            withNumbers++;
+            pctSum += s.overallAttendancePct;
+            if (s.belowGoal > 0) belowGoalStudents++;
+        }
+    });
+
+    // Last 7 days of sync telemetry: activity per day, success rate, sign-in events.
+    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+    const windowStart = startOfToday.getTime() - 6 * DAY;
+    const syncsSnap = await recentSyncs(windowStart);
+    const perDay = Array.from({ length: 7 }, () => new Set());
+    let syncs24h = 0, ok24h = 0, attempts24h = 0, otp7d = 0, login7d = 0, syncs7d = 0;
+    syncsSnap.forEach((d) => {
+        const data = d.data();
+        const ts = syncMillis(data);
+        if (ts < windowStart) return;
+        const userId = ownerOf(d);
+        if (!userId || !students.has(userId)) return;
+        syncs7d++;
+        perDay[Math.min(6, Math.max(0, Math.floor((ts - windowStart) / DAY)))].add(userId);
+        if (now - ts <= DAY) {
+            syncs24h++;
+            (data.endpoints || []).forEach((ep) => { if (!ep) return; attempts24h++; if (ep.status === 'ok') ok24h++; });
+        }
+        if (data.sessionEvent?.type === 'needsOtp') otp7d++;
+        if (data.sessionEvent?.type === 'needsLogin') login7d++;
+    });
+
+    const sevenDaysAgo = now - 7 * DAY;
+    return {
+        students: students.size,
+        connected,
+        unfinishedSignups: unfinished.length,
+        unfinishedOlderThan7d: unfinished.filter((u) => !u.lastActive || u.lastActive < sevenDaysAgo).length,
+        dau, wau, mau,
+        syncs24h,
+        syncs7d,
+        successRate24h: attempts24h > 0 ? (ok24h * 100) / attempts24h : null,
+        signInPrompts7d: otp7d,
+        signInLost7d: login7d,
+        avgAttendancePct: withNumbers > 0 ? Math.round((pctSum / withNumbers) * 10) / 10 : null,
+        belowGoalStudents,
+        studentsWithNumbers: withNumbers,
+        sparkline: perDay.map((s) => s.size),
+        sparklineStart: windowStart,
+    };
+}
+
+async function computeUserRoster() {
+    const { students, unfinished, semesters } = await loadPeople();
+    const now = Date.now();
+    const users = [];
+    students.forEach((u, id) => {
+        const sem = semesters.get(id);
+        const s = summarise(sem?.latest);
+        users.push({
+            userId: id,
+            rollNumber: u.erpRollNumber,
+            studentName: u.studentName || s.userName || 'Student',
+            batchGroup: u.batchGroup || null,
+            lastActive: finiteMillis(u.lastActive),
+            version: u.version || null,
+            setupComplete: !!u.setupComplete || s.setupComplete,
+            erpConnected: s.erpConnected,
+            semesterCount: sem?.count || 0,
+            totalSubjects: s.subjects.length,
+            totalClasses: s.totalClasses,
+            totalAttended: s.totalAttended,
+            belowGoal: s.belowGoal,
+            goal: s.goal,
+            overallAttendancePct: s.overallAttendancePct,
+            latestErpDate: s.latestErpDate,
+            lastErpSync: s.lastErpSync,
+            subjects: s.subjects,
+        });
+    });
+    users.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
+    return {
+        users,
+        unfinished: {
+            count: unfinished.length,
+            olderThan7d: unfinished.filter((u) => !u.lastActive || u.lastActive < now - 7 * DAY).length,
+        },
+    };
+}
+
+async function computeSessionEvents() {
+    const cutoff = Date.now() - 7 * DAY;
+    const [{ students }, syncsSnap] = await Promise.all([loadPeople(), recentSyncs(cutoff)]);
+    const byReason = {};
+    const byType = { needsOtp: 0, needsLogin: 0 };
+    const recent = [];
+    const affected = new Set();
+    syncsSnap.forEach((d) => {
+        const data = d.data();
+        const ev = data?.sessionEvent;
+        if (!ev || !ev.type) return;
+        const ts = syncMillis(data);
+        if (ts < cutoff) return;
+        const userId = ownerOf(d);
+        byType[ev.type] = (byType[ev.type] || 0) + 1;
+        byReason[ev.reason || 'unknown'] = (byReason[ev.reason || 'unknown'] || 0) + 1;
+        affected.add(userId);
+        recent.push({
+            userId,
+            rollNumber: data.rollNumber || students.get(userId)?.erpRollNumber || null,
+            type: ev.type,
+            reason: ev.reason || 'unknown',
+            at: ts,
+        });
+    });
+    recent.sort((a, b) => b.at - a.at);
+    return { total: recent.length, affectedStudents: affected.size, byType, byReason, recent: recent.slice(0, 40) };
+}
+
+async function computeSubjectDifficulty() {
+    const { students, semesters } = await loadPeople();
     const subjectMap = {};
-    semestersSnap.forEach(semDoc => {
-        const ownerId = semDoc.ref.parent.parent?.id;
-        if (!ownerId || !realUserIds.has(ownerId)) return;
-        const subjects = semDoc.data()?.subjects;
+    semesters.forEach((sem, userId) => {
+        if (!students.has(userId)) return;
+        const subjects = sem.latest?.subjects;
         if (!Array.isArray(subjects)) return;
-        subjects.forEach(sub => {
-            // Normalize the name so casing/whitespace variants collapse into one row
-            // instead of padding the list with near-duplicates.
+        subjects.forEach((sub) => {
             const key = String(sub.name || sub.id || '').trim().replace(/\s+/g, ' ');
             if (!key) return;
+            const t = Number(sub.initialTotal) || 0;
+            if (t <= 0) return;
+            const a = Math.min(Number(sub.initialAttended) || 0, t);
             const norm = key.toLowerCase();
-            if (!subjectMap[norm]) subjectMap[norm] = { name: key, totalPresent: 0, totalAbsent: 0, students: 0 };
-            subjectMap[norm].totalPresent += Number(sub.initialAttended) || 0;
-            subjectMap[norm].totalAbsent += Math.max(0, (Number(sub.initialTotal) || 0) - (Number(sub.initialAttended) || 0));
+            if (!subjectMap[norm]) subjectMap[norm] = { name: key, code: sub.code || '', totalPresent: 0, totalAbsent: 0, students: 0 };
+            subjectMap[norm].totalPresent += a;
+            subjectMap[norm].totalAbsent += t - a;
             subjectMap[norm].students++;
         });
     });
-
     return Object.values(subjectMap)
-        // A "difficulty" signal needs a cohort; a subject only one account tracks is
-        // noise (and where stray/test entries live). Require at least 2 students.
-        .filter(s => s.students >= 2)
-        .map(s => {
+        .filter((s) => s.students >= 2)
+        .map((s) => {
             const total = s.totalPresent + s.totalAbsent;
-            return {
-                ...s,
-                bunkRate: total > 0 ? (s.totalAbsent / total) * 100 : 0,
-                attendanceRate: total > 0 ? (s.totalPresent / total) * 100 : 0,
-            };
+            return { ...s, bunkRate: total > 0 ? (s.totalAbsent / total) * 100 : 0, attendanceRate: total > 0 ? (s.totalPresent / total) * 100 : 0 };
         })
         .sort((a, b) => b.bunkRate - a.bunkRate);
 }
 
 async function computeBunkCulture() {
-    const semestersSnap = await allSemesters();
-    const dayStats = {
-        Monday: { present: 0, absent: 0 },
-        Tuesday: { present: 0, absent: 0 },
-        Wednesday: { present: 0, absent: 0 },
-        Thursday: { present: 0, absent: 0 },
-        Friday: { present: 0, absent: 0 },
-        Saturday: { present: 0, absent: 0 },
-    };
+    const { students, semesters } = await loadPeople();
     const DAY_MAP = { 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+    const dayStats = Object.fromEntries(Object.values(DAY_MAP).map((d) => [d, { present: 0, absent: 0 }]));
 
-    semestersSnap.forEach(semDoc => {
-        const records = semDoc.data()?.attendanceRecords || {};
+    semesters.forEach((sem, userId) => {
+        if (!students.has(userId)) return;
+        const records = sem.latest?.attendanceRecords || {};
         Object.entries(records).forEach(([dateStr, dayData]) => {
-            if (!dayData || dateStr.startsWith('_') || dayData._holiday) return;
+            if (!dayData || dayData._holiday) return;
             const [y, m, d] = dateStr.split('-').map(Number);
             if (!y || !m || !d) return;
             const dayName = DAY_MAP[new Date(y, m - 1, d, 12).getDay()];
             if (!dayName) return;
-
             Object.entries(dayData).forEach(([key, rec]) => {
-                if (key.startsWith('_') || typeof rec !== 'object' || rec === null) return;
-                // A day can be part attended, so count periods rather than
-                // treating one status as covering all of them.
+                if (key.startsWith('_') || !rec || typeof rec !== 'object' || rec.source !== 'erp') return;
                 if (!rec.status || rec.status === 'cancelled') return;
                 const units = Number(rec.units) > 0 ? Number(rec.units) : 1;
                 const attended = Number.isFinite(Number(rec.attendedUnits))
@@ -181,69 +357,63 @@ async function computeBunkCulture() {
         });
     });
 
-    return Object.entries(dayStats).map(([day, stats]) => {
-        const total = stats.present + stats.absent;
-        return { day, bunkRate: total > 0 ? (stats.absent / total) * 100 : 0, total };
+    return Object.entries(dayStats).map(([day, s]) => {
+        const total = s.present + s.absent;
+        return { day, bunkRate: total > 0 ? (s.absent / total) * 100 : 0, total };
     });
+}
+
+async function computeBatchDistribution() {
+    const { students } = await loadPeople();
+    const batches = {};
+    students.forEach((u) => {
+        const rn = String(u.erpRollNumber);
+        const yearPrefix = rn.substring(0, 2);
+        const fullYear = parseInt(yearPrefix, 10) >= 50 ? `19${yearPrefix}` : `20${yearPrefix}`;
+        batches[`Batch ${fullYear}`] = (batches[`Batch ${fullYear}`] || 0) + 1;
+    });
+    const total = Object.values(batches).reduce((a, b) => a + b, 0);
+    return Object.entries(batches)
+        .map(([batch, count]) => ({ batch, count, percentage: total > 0 ? (count / total) * 100 : 0 }))
+        .sort((a, b) => b.count - a.count);
 }
 
 async function computeEndpointHealth() {
-    const cutoff = Date.now() - 86400000;
+    const cutoff = Date.now() - DAY;
     const syncsSnap = await recentSyncs(cutoff);
-    const endpointStats = {};
-
-    syncsSnap.forEach(syncDoc => {
-        const data = syncDoc.data();
+    const stats = {};
+    syncsSnap.forEach((d) => {
+        const data = d.data();
         if (!data || syncMillis(data) < cutoff) return;
-        (data.endpoints || []).forEach(ep => {
+        (data.endpoints || []).forEach((ep) => {
             if (!ep || !ep.name) return;
-            if (!endpointStats[ep.name]) endpointStats[ep.name] = { name: ep.name, success: 0, fail: 0, totalMs: 0, count: 0 };
-            const stat = endpointStats[ep.name];
-            if (ep.status === 'ok') stat.success++;
-            else stat.fail++;
-            stat.totalMs += ep.durationMs || 0;
-            stat.count++;
+            if (!stats[ep.name]) stats[ep.name] = { name: ep.name, success: 0, fail: 0, totalMs: 0, count: 0 };
+            const s = stats[ep.name];
+            if (ep.status === 'ok') s.success++; else s.fail++;
+            s.totalMs += ep.durationMs || 0;
+            s.count++;
         });
     });
-
-    return Object.values(endpointStats)
-        .map(s => ({
-            ...s,
-            successRate: s.count > 0 ? (s.success / s.count) * 100 : 0,
-            avgDuration: s.count > 0 ? Math.round(s.totalMs / s.count) : 0,
-        }))
+    return Object.values(stats)
+        .map((s) => ({ ...s, successRate: s.count > 0 ? (s.success / s.count) * 100 : 0, avgDuration: s.count > 0 ? Math.round(s.totalMs / s.count) : 0 }))
         .sort((a, b) => a.successRate - b.successRate);
 }
 
-/**
- * Active ERP outages, derived from the same telemetry the health card uses.
- *
- * There is no writer anywhere in the app for the admin/downtime/events
- * collection this panel used to read, so it could only ever render empty. An
- * outage is instead inferred live: an endpoint is down when it has a meaningful
- * number of recent attempts and most of them failed. It clears itself when the
- * endpoint recovers, so there is nothing to resolve by hand.
- */
 async function computeDowntime() {
     const WINDOW_MS = 60 * 60 * 1000;
-    const MIN_ATTEMPTS = 3;      // one user retrying is not an outage
+    const MIN_ATTEMPTS = 3;
     const FAIL_RATE = 0.5;
     const cutoff = Date.now() - WINDOW_MS;
-
     const syncsSnap = await recentSyncs(cutoff);
     const stats = {};
-
-    syncsSnap.forEach(syncDoc => {
-        const data = syncDoc.data();
+    syncsSnap.forEach((d) => {
+        const data = d.data();
         const ts = syncMillis(data);
         if (!data || ts < cutoff) return;
-        const userId = syncDoc.ref.path.split('/')[1] || 'unknown';
-
-        (data.endpoints || []).forEach(ep => {
+        const userId = ownerOf(d) || 'unknown';
+        (data.endpoints || []).forEach((ep) => {
             if (!ep || !ep.name) return;
-            if (!stats[ep.name]) {
-                stats[ep.name] = { name: ep.name, attempts: 0, failures: 0, users: new Set(), firstFailAt: null, lastFailAt: null, sampleError: null };
-            }
+            if (!stats[ep.name]) stats[ep.name] = { name: ep.name, attempts: 0, failures: 0, users: new Set(), firstFailAt: null, lastFailAt: null, sampleError: null };
             const s = stats[ep.name];
             s.attempts++;
             if (ep.status !== 'ok') {
@@ -255,19 +425,12 @@ async function computeDowntime() {
             }
         });
     });
-
     return Object.values(stats)
-        .filter(s => s.attempts >= MIN_ATTEMPTS && s.failures / s.attempts >= FAIL_RATE)
-        .map(s => ({
-            id: s.name,
-            type: `${s.name} endpoint failing`,
-            failures: s.failures,
-            attempts: s.attempts,
-            failRate: (s.failures / s.attempts) * 100,
-            affectedUsers: s.users.size,
-            startedAt: s.firstFailAt,
-            lastSeenAt: s.lastFailAt,
-            sampleError: s.sampleError,
+        .filter((s) => s.attempts >= MIN_ATTEMPTS && s.failures / s.attempts >= FAIL_RATE)
+        .map((s) => ({
+            id: s.name, type: `${s.name} endpoint failing`, failures: s.failures, attempts: s.attempts,
+            failRate: (s.failures / s.attempts) * 100, affectedUsers: s.users.size,
+            startedAt: s.firstFailAt, lastSeenAt: s.lastFailAt, sampleError: s.sampleError,
         }))
         .sort((a, b) => b.failRate - a.failRate);
 }
@@ -277,206 +440,58 @@ async function computeParserFailures() {
     try {
         syncsSnap = await adminDb.collectionGroup('syncs').orderBy('timestamp', 'desc').limit(200).get();
     } catch {
-        // Missing composite index — fall back to the last week rather than all time.
-        syncsSnap = await recentSyncs(Date.now() - 7 * 86400000);
+        syncsSnap = await recentSyncs(Date.now() - 7 * DAY);
     }
-
     const failures = [];
-    syncsSnap.forEach(syncDoc => {
-        const data = syncDoc.data();
+    syncsSnap.forEach((d) => {
+        const data = d.data();
         if (!data || !data.parserErrors || data.parserErrors.length === 0) return;
-        const pathParts = syncDoc.ref.path.split('/');
-        failures.push({
-            userId: pathParts.length >= 2 ? pathParts[1] : 'unknown',
-            timestampMs: syncMillis(data) || null,
-            errors: data.parserErrors,
-            rollNumber: data.rollNumber || 'Unknown',
-        });
+        failures.push({ userId: ownerOf(d) || 'unknown', timestampMs: syncMillis(data) || null, errors: data.parserErrors, rollNumber: data.rollNumber || 'Unknown' });
     });
-
     return failures.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0)).slice(0, 20);
 }
 
 async function computeRateLimit() {
     const hourAgo = Date.now() - 3600000;
-    const dayAgo = Date.now() - 86400000;
-
-    const usersSnap = await allUsers();
-    const userRolls = {};
-    usersSnap.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data && data.erpRollNumber) userRolls[docSnap.id] = data.erpRollNumber;
-    });
-
-    const syncsSnap = await recentSyncs(dayAgo);
+    const dayAgo = Date.now() - DAY;
+    const [{ students }, syncsSnap] = await Promise.all([loadPeople(), recentSyncs(dayAgo)]);
     const userSyncs = {};
-
-    syncsSnap.forEach(syncDoc => {
-        const userId = syncDoc.ref.path.split('/')[1];
+    syncsSnap.forEach((d) => {
+        const userId = ownerOf(d);
         if (!userId) return;
-        const ts = syncMillis(syncDoc.data());
+        const ts = syncMillis(d.data());
         if (ts < dayAgo) return;
         if (!userSyncs[userId]) userSyncs[userId] = { hourly: 0, daily: 0 };
         if (ts > hourAgo) userSyncs[userId].hourly++;
         userSyncs[userId].daily++;
     });
-
     return Object.entries(userSyncs)
         .map(([userId, s]) => ({
-            // A sync with no matching user doc is still real traffic worth showing.
-            rollNumber: userRolls[userId] || `(unknown: ${userId.slice(0, 8)})`,
-            userId,
-            hourly: s.hourly,
-            daily: s.daily,
+            rollNumber: students.get(userId)?.erpRollNumber || `(unknown: ${userId.slice(0, 8)})`,
+            userId, hourly: s.hourly, daily: s.daily,
             status: s.hourly >= 15 ? 'restricted' : s.hourly >= 10 ? 'warning' : 'normal',
         }))
         .sort((a, b) => b.hourly - a.hourly || b.daily - a.daily);
 }
 
-async function computeActiveUsers() {
-    const usersSnap = await allUsers();
-    const now = Date.now();
-    const DAY = 86400000;
-    let dau = 0, wau = 0, mau = 0;
-    // Count only real, onboarded users — placeholder/mock docs shouldn't inflate the total.
-    let realTotal = 0;
-
-    usersSnap.forEach(docSnap => {
-        const data = docSnap.data();
-        if (isRealRoll(data?.erpRollNumber)) realTotal++;
-        if (!data || !data.lastActive) return;
-        const lastActive = data.lastActive.toMillis
-            ? data.lastActive.toMillis()
-            : new Date(data.lastActive).getTime();
-        if (!Number.isFinite(lastActive)) return;
-        const diff = now - lastActive;
-        if (diff <= DAY) dau++;
-        if (diff <= 7 * DAY) wau++;
-        if (diff <= 30 * DAY) mau++;
-    });
-
-    // The sparkline used to bucket each user by their last-seen day, so a user
-    // active all week appeared on exactly one day and the "trend" was really a
-    // last-seen histogram that could never sum to DAU. Count distinct users with
-    // real activity on each of the last 7 days instead.
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const windowStart = startOfToday.getTime() - 6 * DAY;
-    const perDay = Array.from({ length: 7 }, () => new Set());
-
-    const syncsSnap = await recentSyncs(windowStart);
-    syncsSnap.forEach(syncDoc => {
-        const ts = syncMillis(syncDoc.data());
-        if (ts < windowStart) return;
-        const dayIndex = Math.floor((ts - windowStart) / DAY);
-        if (dayIndex < 0 || dayIndex > 6) return;
-        const userId = syncDoc.ref.path.split('/')[1];
-        if (userId) perDay[dayIndex].add(userId);
-    });
-
-    return {
-        dau,
-        wau,
-        mau,
-        total: realTotal,
-        sparkline: perDay.map(s => s.size),
-        sparklineStart: windowStart,
-    };
-}
-
-async function computeBatchDistribution() {
-    const usersSnap = await allUsers();
-    const batches = {};
-
-    usersSnap.forEach(docSnap => {
-        const rn = docSnap.data()?.erpRollNumber;
-        if (!rn || String(rn).length < 4) return;
-        const yearPrefix = String(rn).substring(0, 2);
-        const fullYear = parseInt(yearPrefix, 10) >= 50 ? `19${yearPrefix}` : `20${yearPrefix}`;
-        batches[`Batch ${fullYear}`] = (batches[`Batch ${fullYear}`] || 0) + 1;
-    });
-
-    const total = Object.values(batches).reduce((a, b) => a + b, 0);
-    return Object.entries(batches)
-        .map(([batch, count]) => ({ batch, count, percentage: total > 0 ? (count / total) * 100 : 0 }))
-        .sort((a, b) => b.count - a.count);
-}
-
-async function computeUserRoster() {
-    // Previously this ran one semesters subcollection read per user, in series —
-    // an N+1 that got linearly slower with every signup and eventually times the
-    // function out. Read every semester once and group by owner instead.
-    const [usersSnap, semestersSnap] = await Promise.all([allUsers(), allSemesters()]);
-
-    const byUser = {}; // userId → { semesterCount, subjects[] }
-    semestersSnap.forEach(semDoc => {
-        const userId = semDoc.ref.parent.parent?.id;
-        if (!userId) return;
-        if (!byUser[userId]) byUser[userId] = { semesterCount: 0, subjects: [] };
-        byUser[userId].semesterCount++;
-
-        const subjects = semDoc.data()?.subjects;
-        if (!Array.isArray(subjects)) return;
-        subjects.forEach(sub => {
-            const attended = Number(sub.initialAttended) || 0;
-            const total = Number(sub.initialTotal) || 0;
-            byUser[userId].subjects.push({
-                name: sub.name || sub.id || 'Unknown',
-                attended,
-                total,
-                target: sub.target || 75,
-                pct: total > 0 ? (attended / total) * 100 : 0,
-            });
-        });
-    });
-
-    const roster = usersSnap.docs.map(docSnap => {
-        const data = docSnap.data() || {};
-        const agg = byUser[docSnap.id] || { semesterCount: 0, subjects: [] };
-        const totalAttended = agg.subjects.reduce((sum, s) => sum + s.attended, 0);
-        const totalClasses = agg.subjects.reduce((sum, s) => sum + s.total, 0);
-
-        let lastActiveTs = null;
-        if (data.lastActive) {
-            const ms = typeof data.lastActive.toMillis === 'function'
-                ? data.lastActive.toMillis()
-                : new Date(data.lastActive).getTime();
-            if (Number.isFinite(ms)) lastActiveTs = ms;
-        }
-
-        return {
-            userId: docSnap.id,
-            rollNumber: data.erpRollNumber || 'Unknown',
-            studentName: data.studentName || 'Student',
-            lastActive: lastActiveTs,
-            setupComplete: !!data.setupComplete,
-            version: data.version || '1.0.0',
-            semesterCount: agg.semesterCount,
-            totalSubjects: agg.subjects.length,
-            totalClasses,
-            totalAttended,
-            overallAttendancePct: totalClasses > 0
-                ? Math.round((totalAttended / totalClasses) * 1000) / 10
-                : null,
-            subjects: agg.subjects,
-        };
-    });
-
-    return roster.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
-}
-
-// ── Handler ─────────────────────────────────────────────────────────
+// ── Handler ──────────────────────────────────────────────────────────
 
 const METRIC_HANDLERS = {
+    overview: computeOverview,
+    userRoster: computeUserRoster,
+    sessionEvents: computeSessionEvents,
     subjectDifficulty: computeSubjectDifficulty,
     bunkCulture: computeBunkCulture,
+    batchDistribution: computeBatchDistribution,
     endpointHealth: computeEndpointHealth,
     parserFailures: computeParserFailures,
     rateLimit: computeRateLimit,
-    activeUsers: computeActiveUsers,
-    batchDistribution: computeBatchDistribution,
-    userRoster: computeUserRoster,
     downtime: computeDowntime,
+    // Kept for older clients; the overview supersedes it.
+    activeUsers: async () => {
+        const o = await computeOverview();
+        return { dau: o.dau, wau: o.wau, mau: o.mau, total: o.students, sparkline: o.sparkline, sparklineStart: o.sparklineStart };
+    },
 };
 
 module.exports = async function handler(req, res) {
@@ -487,9 +502,7 @@ module.exports = async function handler(req, res) {
     const { token, metric, forceRefresh } = req.body || {};
 
     const rollNumber = decodeSessionRollNumber(token);
-    if (!rollNumber || !isAdminRoll(rollNumber)) {
-        return res.status(403).json({ error: 'Unauthorized' });
-    }
+    if (!rollNumber || !isAdminRoll(rollNumber)) return res.status(403).json({ error: 'Unauthorized' });
 
     if (await tooManyAttempts(res, 'admin-analytics-ip', getClientIp(req), IP_POLICY)) return;
 
@@ -502,16 +515,14 @@ module.exports = async function handler(req, res) {
             const cached = await getCached(metric);
             if (cached) return res.json({ data: cached.data, cached: true, cachedAt: cached.cachedAt });
         }
-
         const data = await METRIC_HANDLERS[metric]();
         await setCache(metric, data);
         return res.json({ data, cached: false, cachedAt: Date.now() });
     } catch (err) {
-        // A dashboard that invents numbers when the query fails is worse than one
-        // that says it failed. This used to answer 200 with { dau: 1, wau: 1 }.
         console.error(`Analytics computation failed for ${metric}:`, err);
-        // The reason is deliberately surfaced: this response only ever reaches an
-        // authenticated admin, and "why" is what makes the dashboard honest.
+        // The reason is deliberately surfaced: only an admin ever sees it.
         return res.status(500).json({ error: `Failed to compute ${metric}: ${err.message}` });
     }
 };
+
+module.exports.isRealRoll = isRealRoll;
