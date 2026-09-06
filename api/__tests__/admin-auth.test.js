@@ -59,8 +59,8 @@ describe('admin token authorization', () => {
  */
 describe('OTP ticket binds authUserId to its username', () => {
     test('a sealed ticket round-trips the pair issued at login', () => {
-        const bound = openOtpTicket(sealOtpTicket('auth-123', '2410990297'));
-        expect(bound).toEqual({ authUserId: 'auth-123', username: '2410990297' });
+        const bound = openOtpTicket(sealOtpTicket('auth-123', '2410990297', { password: 'pw', deviceId: 'DEV-1' }));
+        expect(bound).toEqual({ authUserId: 'auth-123', username: '2410990297', password: 'pw', deviceId: 'DEV-1' });
     });
 
     test('the admin roll cannot be claimed by a caller (the escalation path)', () => {

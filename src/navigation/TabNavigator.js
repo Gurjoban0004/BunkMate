@@ -19,7 +19,7 @@ import TabIcon from './TabIcon';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { COLORS } from '../theme/theme';
 import { useApp } from '../context/AppContext';
-import { isAdminRollNumber } from '../services/adminService';
+import { isAdminUser } from '../services/adminService';
 
 const Tab = createBottomTabNavigator();
 const TodayStack = createStackNavigator();
@@ -155,7 +155,7 @@ function AnimatedTabButton({ children, style, onPress, onLongPress, ...rest }) {
 
 export default function TabNavigator() {
     const { state } = useApp();
-    const isAdmin = isAdminRollNumber(state.erpRollNumber);
+    const isAdmin = isAdminUser(state);
 
     return (
         <Tab.Navigator

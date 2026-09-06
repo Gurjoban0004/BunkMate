@@ -23,6 +23,7 @@ import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { enableWebPush, disableWebPush, isWebPushSupported } from '../../utils/webPush';
+import { scheduleDailyReminder, cancelAllReminders } from '../../utils/notifications';
 import { formatRelativeTime, formatTime } from '../../utils/dateHelpers';
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
@@ -141,10 +142,28 @@ const SettingsScreen = ({ navigation }) => {
 
 
 
+    // Android daily reminder — a local scheduled notification at 18:00. Turning it
+    // on asks for permission; a refusal leaves the switch off rather than lying.
+    const handleAndroidReminderToggle = async (value) => {
+        if (value) {
+            const id = await scheduleDailyReminder(state.settings?.notificationTime || '18:00').catch(() => null);
+            if (!id) {
+                showAlert(
+                    "Couldn't enable reminders",
+                    'Notifications are blocked for Presence. Turn them on in Android settings, then try again.'
+                );
+                return;
+            }
+        } else {
+            await cancelAllReminders().catch(() => {});
+        }
+        updateSetting('notificationEnabled', value);
+    };
+
     // Web/PWA daily reminder — subscribes this browser to server-sent push.
     const handleWebReminderToggle = async (value) => {
         if (value) {
-            const result = await enableWebPush(state.userId, state.settings?.notificationTime || '18:00');
+            const result = await enableWebPush(state.userId);
             if (!result.ok) {
                 showAlert(
                     "Couldn't enable reminders",
@@ -402,22 +421,11 @@ const SettingsScreen = ({ navigation }) => {
                                     </View>
                                     <Switch
                                         value={notificationEnabled}
-                                        onValueChange={(value) => updateSetting('notificationEnabled', value)}
+                                        onValueChange={handleAndroidReminderToggle}
                                         trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
                                         thumbColor={notificationEnabled ? COLORS.primary : COLORS.textMuted}
                                     />
                                 </View>
-                                {notificationEnabled && (
-                                    <>
-                                        <View style={styles.divider} />
-                                        <TouchableOpacity style={styles.groupItem}>
-                                            <Text style={styles.linkText}>Reminder time</Text>
-                                            <View style={styles.timeBadge}>
-                                                <Text style={styles.timeText}>{formatTime(state.settings?.notificationTime || '18:00')}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    </>
-                                )}
                                 <View style={styles.divider} />
                                 <View style={[styles.settingRow, styles.groupItem]}>
                                     <View style={styles.settingInfo}>

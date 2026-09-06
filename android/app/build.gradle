@@ -92,8 +92,8 @@ android {
         applicationId 'com.presence.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "2.0.0"
+        versionCode 7
+        versionName "2.1.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -104,15 +104,31 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Release is signed with a real upload key, never the public debug key
+        // (anyone holds that key, so a debug-signed APK can be replaced by a
+        // malicious "update" that inherits the app's stored tokens).
+        //
+        //   EAS Build   → injects its own release signing config (credentialsSource: remote).
+        //   Local build → provide PRESENCE_UPLOAD_STORE_FILE / _STORE_PASSWORD /
+        //                 _KEY_ALIAS / _KEY_PASSWORD in ~/.gradle/gradle.properties
+        //                 or the environment. Without them the release build FAILS
+        //                 instead of quietly shipping a debug-signed APK.
+        release {
+            def prop = { String name -> project.hasProperty(name) ? project.property(name) : System.getenv(name) }
+            if (prop('PRESENCE_UPLOAD_STORE_FILE')) {
+                storeFile file(prop('PRESENCE_UPLOAD_STORE_FILE'))
+                storePassword prop('PRESENCE_UPLOAD_STORE_PASSWORD')
+                keyAlias prop('PRESENCE_UPLOAD_KEY_ALIAS')
+                keyPassword prop('PRESENCE_UPLOAD_KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

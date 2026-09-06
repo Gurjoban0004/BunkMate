@@ -68,7 +68,7 @@ describe('silent session refresh (trusted device, no OTP)', () => {
         const { reloginERP } = require('../_session-utils');
         const result = await reloginERP('2410990001', 'pw');
 
-        expect(result).toEqual({ needsOtp: true, authUserId: '24635' });
+        expect(result).toEqual({ needsOtp: true, authUserId: '24635', deviceId: expect.stringMatching(/^[0-9A-F-]{36}$/) });
     });
 
     test('erp-attendance retries with fresh session and returns data + new token', async () => {

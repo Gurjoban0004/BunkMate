@@ -26,7 +26,7 @@ import {
 } from 'react-native';
 import { useApp } from '../../context/AppContext';
 import { erpRefreshSession } from '../../services/erpService';
-import { updateErpToken } from '../../storage/erpTokenStorage';
+import { updateErpToken, clearErpToken } from '../../storage/erpTokenStorage';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../../theme/theme';
 import { logger } from '../../utils/logger';
 
@@ -82,8 +82,19 @@ export default function ErpReauthModal() {
 
             logger.info('✅', 'ERP session refreshed via re-auth modal');
         } catch (err) {
-            if (err.status === 401) {
-                setError('Incorrect OTP. Please try again.');
+            if (err.data?.needsLogin) {
+                // The stored sign-in (180 days) ran out: forget the tokens and send the
+                // student to reconnect from Settings rather than loop on a dead OTP.
+                await clearErpToken();
+                dispatch({ type: 'UPDATE_SETTINGS', payload: { erpConnected: false } });
+                dispatch({ type: 'ERP_SESSION_RESTORED' });
+                setOtp('');
+            } else if (err.status === 429) {
+                setError('Too many attempts. Wait a few minutes, then try again.');
+            } else if (err.status === 401) {
+                // Server copy is student-facing here: "OTP incorrect or expired" or
+                // "Please try syncing again to get a new code."
+                setError(err.message || 'Incorrect OTP. Please try again.');
             } else {
                 setError(err.message || 'Verification failed. Please try again.');
             }
@@ -124,9 +135,11 @@ export default function ErpReauthModal() {
                             style={[styles.input, error ? styles.inputError : null]}
                             value={otp}
                             onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '')); setError(''); }}
-                            placeholder="• • • • • •"
+                            placeholder="• • • •"
                             placeholderTextColor={COLORS.textMuted}
                             keyboardType="number-pad"
+                            textContentType="oneTimeCode"
+                            autoComplete="sms-otp"
                             maxLength={6}
                             autoFocus
                             editable={!loading}

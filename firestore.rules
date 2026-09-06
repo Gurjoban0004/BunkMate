@@ -4,11 +4,12 @@ service cloud.firestore {
 
     // ── DEPLOY ORDER ──────────────────────────────────────────────────────
     // These rules require the app's custom-token auth (api/auth-token.js +
-    // ensureAuthenticated) to be LIVE and verified first. Deploying them before
-    // the auth endpoint works will break cloud sync for every user (writes/reads
-    // will be denied). Ship the app build → confirm sign-in works → then deploy.
-    // Prereqs: Firebase Authentication enabled; the service account has the
-    // "Service Account Token Creator" role.
+    // ensureAuthenticated) to be LIVE. Ship the app build → confirm sign-in works
+    // → then deploy. Prereq: Firebase Authentication enabled on the project.
+    //
+    // Everything not matched below is denied. Collections written only by the
+    // Admin SDK (which bypasses rules) are listed explicitly as denied anyway, so
+    // the intent survives the next person adding a rule above them.
     // ──────────────────────────────────────────────────────────────────────
 
     // User data — a client may only touch its own document tree. The uid is the
@@ -19,57 +20,56 @@ service cloud.firestore {
       match /semesters/{semId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // Push subscriptions are written by api/push-subscribe (Admin SDK) after
+      // it verifies the caller's ID token. No client path.
+      match /push/{subId} {
+        allow read, write: if false;
+      }
     }
 
-    // Rate-limit counters — written only by the server (Admin SDK bypasses rules).
-    // No client may read or write them.
-    match /rateLimits/{ipHash} {
+    // Rate-limit counters — server only.
+    match /rateLimits/{counterId} {
       allow read, write: if false;
     }
 
-    // Telemetry and aggregate-only attendance research snapshots — clients write
-    // only; reads and teacher-facing aggregation happen server-side via Admin SDK.
+    // Telemetry — clients append their own; reads happen server-side only.
     match /telemetry/{userId}/{document=**} {
       allow read: if false;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Research dataset (AI/ML class project) — written and read only by the Admin
-    // SDK, which bypasses rules. No client may touch it, including the device that
-    // consented: the app writes through api/erp-calendar, api/erp-timetable and
-    // api/research, never directly.
+    // Research dataset (AI/ML class project) — Admin SDK only. The consenting
+    // device writes through api/erp-calendar, api/erp-timetable and api/research.
     match /research/{document=**} {
       allow read, write: if false;
     }
 
-    // Admin config — anyone can read (gates need this), only server can write
+    // Admin config — anyone can read (gates and the API base override need it),
+    // only the server writes.
     match /admin/config {
       allow read: if true;
       allow write: if false;
     }
 
-    // Admin analytics cache — only server can write, admin reads via server
-    match /admin/analytics {
-      allow read: if false;
-      allow write: if false;
-    }
-
-    // Announcements — anyone can read active ones, only server can write
+    // Announcements — anyone can read, only the server writes.
     match /admin/announcements/items/{annId} {
       allow read: if true;
       allow write: if false;
     }
 
-    // Revoked users — anyone can read (gates check this), only server can write
+    // Revoked users — server only. Revocation is enforced on every API call and
+    // reported to the app by api/erp-session; the list itself is not public.
     match /admin/revokedUsers/items/{rollNumber} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
     }
 
-    // Downtime events — admin reads client-side, only server can write
-    match /admin/downtime/events/{eventId} {
-      allow read: if true;
-      allow write: if false;
+    // Admin audit trail and analytics cache — server only.
+    match /admin/auditLog/{document=**} {
+      allow read, write: if false;
+    }
+    match /admin/analyticsCache/{document=**} {
+      allow read, write: if false;
     }
   }
 }

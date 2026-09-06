@@ -77,7 +77,8 @@ export default function ERPSetupScreen({ navigation }) {
         setToken(sessionResult.token);
         tokenRef.current = sessionResult.token;
         setStudentName(sessionResult.studentName || '');
-        // Save session token + persistent token (no expiry — refreshed on failure)
+        // The server decided whether this roll is an admin; the app just remembers it.
+        dispatch({ type: 'UPDATE_SETTINGS', payload: { isAdmin: !!sessionResult.isAdmin } });
         await saveErpToken(sessionResult.token, sessionResult.studentName || '', sessionResult.persistentToken);
 
         const attendanceResult = await erpFetchAttendance(sessionResult.token);
@@ -93,7 +94,7 @@ export default function ERPSetupScreen({ navigation }) {
         const mapping = mapErpToAppState(attendanceResult.subjects, []);
         setMappingResult(mapping);
         setStep(STEP_THEME);
-    }, []);
+    }, [dispatch]);
 
     const handleLogin = useCallback(async () => {
         if (!username.trim() || !password.trim()) {
@@ -150,8 +151,8 @@ export default function ERPSetupScreen({ navigation }) {
         setLoading(true);
         setError(null);
         try {
-            // Pass username + password so server builds the persistent token
-            const otpResult = await erpVerifyOtp(authUserId, otp.trim(), username.trim(), password);
+            // The ticket already carries username, password and device id.
+            const otpResult = await erpVerifyOtp(authUserId, otp.trim());
             await finishWithSession(otpResult);
         } catch (err) {
             logger.warn('Verification failed:', err.message);
@@ -159,7 +160,7 @@ export default function ERPSetupScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
-    }, [otp, authUserId, username, password, finishWithSession]);
+    }, [otp, authUserId, finishWithSession]);
 
     // ─── STEP 3: IMPORT & COMPLETE SETUP ────────────────────────────
     const handleImport = useCallback(async () => {

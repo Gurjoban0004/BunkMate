@@ -4,7 +4,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { MaintenanceGate, UpdateGate, RevokedGate } from '../components/common/GateOverlay';
 import BrandLoader from '../components/common/BrandLoader';
-import { getAdminConfig, isAdminRollNumber, isUserRevoked } from '../services/adminService';
+import { getAdminConfig, isAdminUser } from '../services/adminService';
+import { APP_VERSION } from '../config/version';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Native Navigators
@@ -15,11 +16,9 @@ import TabNavigator from './TabNavigator';
 import WebNavigator from './WebNavigator';
 import WebTabNavigator from './WebTabNavigator';
 
-const APP_VERSION = '2.0.0';
-
 function compareVersions(a, b) {
-    const pa = a.split('.').map(Number);
-    const pb = b.split('.').map(Number);
+    const pa = String(a).split('.').map(Number);
+    const pb = String(b).split('.').map(Number);
     for (let i = 0; i < 3; i++) {
         if ((pa[i] || 0) < (pb[i] || 0)) return -1;
         if ((pa[i] || 0) > (pb[i] || 0)) return 1;
@@ -38,10 +37,13 @@ export default function AppNavigator() {
         } else if (!isLoading) {
             setGateChecked(true);
         }
-    }, [isLoading, state.isAuthenticated, state.erpRollNumber]);
+    }, [isLoading, state.isAuthenticated, state.settings?.isAdmin]);
 
+    // Maintenance and version gates are client-side conveniences. Revocation is
+    // NOT decided here: the server checks it on every sync and on the startup
+    // session check, and AppContext turns that verdict into state.accessRevoked.
     const checkGates = async () => {
-        const isAdmin = isAdminRollNumber(state.erpRollNumber);
+        const isAdmin = isAdminUser(state);
 
         try {
             let config;
@@ -64,15 +66,6 @@ export default function AppNavigator() {
                 setGateChecked(true);
                 return;
             }
-
-            if (state.erpRollNumber && !isAdmin) {
-                const revocation = await isUserRevoked(state.erpRollNumber);
-                if (revocation) {
-                    setGate(<RevokedGate reason={revocation.reason} />);
-                    setGateChecked(true);
-                    return;
-                }
-            }
         } catch (e) { /* ignore */ }
 
         setGate(null);
@@ -80,12 +73,10 @@ export default function AppNavigator() {
     };
 
     if (isLoading || !gateChecked) {
-        // Same mark App.js shows while fonts load, so boot is one continuous
-        // image instead of a brand splash cutting to a bare spinner.
         return <BrandLoader />;
     }
 
-    // Live server verdict wins over the launch-time check — a user revoked while the
+    // The server's verdict wins over anything cached: a user revoked while the
     // app is open is gated on their next sync, not on their next relaunch.
     if (state.accessRevoked) return <RevokedGate reason={state.accessRevoked.reason} />;
 

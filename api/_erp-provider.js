@@ -1,3 +1,18 @@
+/**
+ * ERP provider — every HTTP round-trip to the university portal lives here.
+ *
+ * Only paths verified live against this ERP remain (2026-07-17 → 2026-07-20 captures):
+ *   /mobilev2/appLoginAuthV2                       login (status 1 trusted, 4 = OTP sent)
+ *   /mobilev2/verifyOtp                            OTP verify → session + securityToken
+ *   /mobilev2/showAttendance                       warm-up that binds the server session (cookies)
+ *   /chalkpadpro/studentDetails/getAttendanceRegister   the day-wise register (primary data source)
+ *   /mobilev2/commonPage 28 / 99                   attendance summary cards / weekly timetable grid
+ *
+ * The old /mobile/* (no securityToken) and speculative timetable endpoints were
+ * removed: none returned data on this ERP, and a miss fanned out into a dozen
+ * requests per sync — exactly the traffic pattern that gets an egress IP blocked.
+ */
+
 const ERP_BASE = process.env.ERP_BASE_URL;
 
 const LEGACY_HEADERS = {
@@ -66,7 +81,7 @@ function parseLegacySession(payload) {
         otpHint: String(payload?.mobileString || ''),
     };
 
-    // roleId==2 (parent) acts on the child's userId (APK-FINDINGS.md §2b).
+    // roleId==2 (parent) acts on the child's userId.
     if (session.roleId === '2' && firstUser.fatherUserId) {
         session.userId = String(firstUser.fatherUserId);
     }
@@ -82,15 +97,12 @@ function parseLegacySession(payload) {
  * accepted and an OTP was sent. Only an explicit failure marker counts.
  *
  * The thrown error carries `erpShape`: the payload's keys and its status/error/message
- * fields, never a credential. Without it a rejected login is a 401 with no trace of
- * what the ERP actually said, which is exactly how a real student's login failure
- * became undiagnosable in production.
+ * fields, never a credential, so a rejected login is diagnosable from the logs.
  */
 function assertNotLoginFailure(payload) {
     const status = String(payload?.status ?? '').toLowerCase();
     // `error` is only a failure when it carries something. Some ERP responses include
-    // the key set to '', '0', false or null on a perfectly good challenge, and treating
-    // a present-but-empty key as a rejection fails a login the ERP accepted.
+    // the key set to '', '0', false or null on a perfectly good challenge.
     const errorField = payload?.error;
     const hasError = errorField !== undefined && errorField !== null
         && errorField !== '' && errorField !== false
@@ -110,10 +122,10 @@ function assertNotLoginFailure(payload) {
     }
 }
 
-async function postLegacy(path, body) {
+async function postLegacy(path, body, extraHeaders = {}) {
     const response = await fetch(`${ERP_BASE}${path}`, {
         method: 'POST',
-        headers: LEGACY_HEADERS,
+        headers: { ...LEGACY_HEADERS, ...extraHeaders },
         body: encodeForm(body),
     });
     const payload = await readErpPayload(response);
@@ -125,28 +137,32 @@ async function postLegacy(path, body) {
 // with no real ERP authentication. Enable only by setting ALLOW_MOCK_LOGIN=1.
 const MOCK_LOGIN_ENABLED = process.env.ALLOW_MOCK_LOGIN === '1';
 
+function mockSession(deviceIdUUID) {
+    return {
+        userId: 'mock-user-id',
+        sessionId: 'mock-session-id',
+        roleId: 'mock-role-id',
+        apiKey: 'mock-api-key',
+        securityToken: 'mock-security-token',
+        deviceIdUUID,
+        studentId: 'mock-student-id',
+        studentName: 'Mock Student',
+        studentPhoto: '',
+        isMock: true,
+    };
+}
+
 async function loginLegacy(username, password, deviceIdUUID = '') {
     if (MOCK_LOGIN_ENABLED && ((username && username.toLowerCase().startsWith('mock')) || password === 'presence-mock-bypass')) {
         return {
             authUserId: 'mock-auth-user-id',
             otpHint: 'Sent to Mock Phone (XXXXXX1234)',
-            session: {
-                userId: 'mock-user-id',
-                sessionId: 'mock-session-id',
-                roleId: 'mock-role-id',
-                apiKey: 'mock-api-key',
-                securityToken: 'mock-security-token',
-                deviceIdUUID,
-                studentId: 'mock-student-id',
-                studentName: 'Mock Student',
-                studentPhoto: '',
-                isMock: true,
-            }
+            session: mockSession(deviceIdUUID),
         };
     }
 
-    // Mobile login (APK-FINDINGS.md §2b): a device that has completed MFA once is trusted and
-    // returns status==1 (session + token) with NO OTP. deviceIdUUID identifies that device.
+    // A device that has completed MFA once is trusted and returns status==1
+    // (session + token) with NO OTP. deviceIdUUID identifies that device.
     const { response, payload } = await postLegacy('/mobilev2/appLoginAuthV2', {
         txtUsername: username,
         txtPassword: password,
@@ -170,24 +186,11 @@ async function loginLegacy(username, password, deviceIdUUID = '') {
 
 async function verifyOtpLegacy(authUserId, otp, deviceIdUUID = '') {
     if (MOCK_LOGIN_ENABLED && (authUserId === 'mock-auth-user-id' || (authUserId && authUserId.startsWith('mock')))) {
-        return {
-            userId: 'mock-user-id',
-            sessionId: 'mock-session-id',
-            roleId: 'mock-role-id',
-            apiKey: 'mock-api-key',
-            securityToken: 'mock-security-token',
-            deviceIdUUID,
-            studentId: 'mock-student-id',
-            studentName: 'Mock Student',
-            studentPhoto: '',
-            isMock: true,
-        };
+        return mockSession(deviceIdUUID);
     }
 
-    // Verified live 2026-07-17 (HANDOFF-erp-mobile.md): the real fresh-device OTP-verify
-    // endpoint is /mobilev2/verifyOtp (NOT /mobile/verifyOtp — that was the bug that blocked
-    // the whole mobile flow). It returns status:1 with res.data.token = the securityToken,
-    // which parseLegacySession reads. deviceIdUUID is forwarded to bind/trust the device.
+    // Verified live 2026-07-17: the fresh-device OTP-verify endpoint is /mobilev2/verifyOtp.
+    // It returns status:1 with res.data.token = the securityToken, which parseLegacySession reads.
     const { response, payload } = await postLegacy('/mobilev2/verifyOtp', {
         deviceIdUUID,
         OTPText: otp,
@@ -206,375 +209,99 @@ async function verifyOtpLegacy(authUserId, otp, deviceIdUUID = '') {
     return session;
 }
 
-async function fetchSummaryLegacy(session) {
-    return postLegacy('/mobile/commonPage', {
-        commonPageId: '28',
-        device: 'android',
+// ── Session-bound data calls ──────────────────────────────────────────
+
+function sessionForm(session) {
+    return {
         userId: session.userId,
         sessionId: session.sessionId,
         roleId: session.roleId,
-    });
+        apiKey: session.apiKey,
+        securityToken: session.securityToken || '',
+        deviceIdUUID: session.deviceIdUUID || '',
+    };
 }
 
-// Extract Set-Cookie names=values from a response (handles the several ways runtimes expose them).
+// Set-Cookie name=value pairs from a response, across the ways runtimes expose them.
 function extractCookies(resp) {
     const cookies = [];
-    const add = (c) => { const name = c.split(';')[0]; if (name && !cookies.includes(name)) cookies.push(name); };
+    const add = (c) => {
+        const name = String(c || '').trim().split(';')[0];
+        if (name && !cookies.includes(name)) cookies.push(name);
+    };
     try { if (typeof resp.headers.getSetCookie === 'function') resp.headers.getSetCookie().forEach(add); } catch { /* ignore */ }
     try { if (typeof resp.headers.raw === 'function') (resp.headers.raw()['set-cookie'] || []).forEach(add); } catch { /* ignore */ }
     try { const single = resp.headers.get('set-cookie'); if (single) single.split(/,(?=[^;]*=)/).forEach(add); } catch { /* ignore */ }
     return cookies.join('; ');
 }
 
-// Attendance summary via mobilev2 WITH the showAttendance warmup + cookies. The ERP binds the
-// server session on the warmup and sets PHPSESSID/ci_session; commonPage/28 then reads as a live
-// session. Without the warmup (the old fetchSummaryLegacy path) the ERP treats the session as dead
-// → "Session expired". This mirrors fetchRegisterLegacy and the official app / Attendly capture.
+/**
+ * The ERP binds its server-side session on /mobilev2/showAttendance and hands back
+ * PHPSESSID/ci_session. Every data call needs those cookies or it reads as a dead
+ * session. Failure here is non-fatal — the data call is still attempted.
+ */
+async function warmup(session) {
+    try {
+        const resp = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
+            method: 'POST',
+            headers: LEGACY_HEADERS,
+            redirect: 'manual',
+            body: encodeForm({ prevNext: '0', month: '', ...sessionForm(session) }),
+        });
+        const cookies = extractCookies(resp);
+        await resp.text(); // drain
+        return cookies;
+    } catch {
+        return '';
+    }
+}
+
+const withCookies = (cookies) => (cookies ? { Cookie: cookies } : {});
+
+/** Attendance summary cards (commonPage 28). Fallback when the register is unavailable. */
 async function fetchSummaryV2(session) {
-    const sessionForm = {
-        userId: session.userId,
-        sessionId: session.sessionId,
-        roleId: session.roleId,
-        apiKey: session.apiKey,
-        securityToken: session.securityToken || '',
-        deviceIdUUID: session.deviceIdUUID || '',
-    };
-
-    let cookies = '';
-    try {
-        const warmup = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
-            method: 'POST',
-            headers: LEGACY_HEADERS,
-            redirect: 'manual',
-            body: encodeForm({ prevNext: '0', month: '', ...sessionForm }),
-        });
-        cookies = extractCookies(warmup);
-        await warmup.text(); // drain
-    } catch { /* warmup failure is non-fatal — try the data call anyway */ }
-
-    const response = await fetch(`${ERP_BASE}/mobilev2/commonPage`, {
-        method: 'POST',
-        headers: { ...LEGACY_HEADERS, ...(cookies ? { Cookie: cookies } : {}) },
-        body: encodeForm({ commonPageId: '28', device: 'android', ...sessionForm }),
-    });
-    const payload = await readErpPayload(response);
-    return { response, payload };
+    const cookies = await warmup(session);
+    return postLegacy('/mobilev2/commonPage',
+        { commonPageId: '28', device: 'android', ...sessionForm(session) },
+        withCookies(cookies));
 }
 
-// Real weekly timetable via mobilev2 commonPage id 99 — the full published grid (all subjects,
-// real times), the SAME table the web /display page shows, but served over the plain mobile
-// session (verified live via the official app's own traffic, 2026-07-20). No Turnstile / web
-// session / capture needed. Mirrors fetchSummaryV2's warmup+cookie pattern.
+/** The full published weekly timetable grid (commonPage 99) — verified live 2026-07-20. */
 async function fetchTimetableV2(session) {
-    const sessionForm = {
-        userId: session.userId,
-        sessionId: session.sessionId,
-        roleId: session.roleId,
-        apiKey: session.apiKey,
-        securityToken: session.securityToken || '',
-        deviceIdUUID: session.deviceIdUUID || '',
-    };
-
-    let cookies = '';
-    try {
-        const warmup = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
-            method: 'POST',
-            headers: LEGACY_HEADERS,
-            redirect: 'manual',
-            body: encodeForm({ prevNext: '0', month: '', ...sessionForm }),
-        });
-        cookies = extractCookies(warmup);
-        await warmup.text();
-    } catch { /* warmup non-fatal */ }
-
-    const response = await fetch(`${ERP_BASE}/mobilev2/commonPage`, {
-        method: 'POST',
-        headers: { ...LEGACY_HEADERS, ...(cookies ? { Cookie: cookies } : {}) },
-        body: encodeForm({ commonObj: '', commonPageId: '99', device: '', ...sessionForm }),
-    });
-    const payload = await readErpPayload(response);
-    return { response, payload };
+    const cookies = await warmup(session);
+    return postLegacy('/mobilev2/commonPage',
+        { commonObj: '', commonPageId: '99', device: '', ...sessionForm(session) },
+        withCookies(cookies));
 }
 
+function isRegisterTable(html) {
+    return !!html && /id=['"]subject_\d+['"]/.test(html) && html.includes('<thead');
+}
+
+/**
+ * The day-wise attendance register — the primary data source. Tried with the
+ * warm-up cookies first, then bare; both are real observed-working shapes.
+ * Returns { response, payload: { content } } with content '' when neither yields a table.
+ */
 async function fetchRegisterLegacy(session) {
-    // Helper: check if HTML contains the register table structure
-    function isRegisterTable(html) {
-        return html && /id=['"]subject_\d+['"]/.test(html) && html.includes('<thead');
-    }
+    const body = { studentId: session.studentId, ...sessionForm(session) };
+    const cookies = await warmup(session);
+    let last = null;
 
-    // Helper: extract ALL cookies from a response (multiple Set-Cookie headers)
-    function extractAllCookies(resp) {
-        const cookies = [];
+    for (const headers of [withCookies(cookies), {}]) {
         try {
-            if (typeof resp.headers.getSetCookie === 'function') {
-                for (const c of resp.headers.getSetCookie()) {
-                    const name = c.split(';')[0];
-                    if (name) cookies.push(name);
-                }
-            }
-        } catch (e) { /* ignore */ }
-        try {
-            if (typeof resp.headers.raw === 'function') {
-                for (const c of (resp.headers.raw()['set-cookie'] || [])) {
-                    const name = c.split(';')[0];
-                    if (name && !cookies.includes(name)) cookies.push(name);
-                }
-            }
-        } catch (e) { /* ignore */ }
-        try {
-            const single = resp.headers.get('set-cookie');
-            if (single) {
-                for (const c of single.split(/,(?=[^;]*=)/)) {
-                    const name = c.trim().split(';')[0];
-                    if (name && !cookies.includes(name)) cookies.push(name);
-                }
-            }
-        } catch (e) { /* ignore */ }
-        return cookies.join('; ');
-    }
-
-    const registerBody = {
-        studentId: session.studentId,
-        sessionId: session.sessionId,
-        userId: session.userId,
-        apiKey: session.apiKey,
-        roleId: session.roleId,
-        securityToken: session.securityToken || '',
-        deviceIdUUID: session.deviceIdUUID || '',
-    };
-
-    // Step 1: Warmup — establishes server session needed for chalkpadpro.
-    // Must hit /mobilev2/showAttendance WITH securityToken + deviceIdUUID (matches the official
-    // app and Attendly's capture); the old /mobile/showAttendance warmup no longer binds a session.
-    let allCookies = '';
-    try {
-        const warmupResp = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
-            method: 'POST',
-            headers: LEGACY_HEADERS,
-            redirect: 'manual',
-            body: encodeForm({
-                prevNext: '0',
-                userId: session.userId,
-                sessionId: session.sessionId,
-                apiKey: session.apiKey,
-                roleId: session.roleId,
-                securityToken: session.securityToken || '',
-                deviceIdUUID: session.deviceIdUUID || '',
-                month: '',
-            }),
-        });
-        allCookies = extractAllCookies(warmupResp);
-        await warmupResp.text(); // drain body
-    } catch (err) { /* warmup failure is non-fatal */ }
-
-    // Step 2: Try register with warmup cookies
-    try {
-        const regResp = await fetch(
-            `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
-            {
+            const resp = await fetch(`${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`, {
                 method: 'POST',
-                headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
-                body: encodeForm(registerBody),
-            }
-        );
-        const regText = await regResp.text();
-        if (regResp.ok && isRegisterTable(regText)) {
-            return { response: regResp, payload: { content: regText } };
-        }
-    } catch (err) { /* try next */ }
-
-    // Step 3: Try register without cookies
-    try {
-        const regResp2 = await fetch(
-            `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
-            { method: 'POST', headers: LEGACY_HEADERS, body: encodeForm(registerBody) }
-        );
-        const regText2 = await regResp2.text();
-        if (regResp2.ok && isRegisterTable(regText2)) {
-            return { response: regResp2, payload: { content: regText2 } };
-        }
-    } catch (err) { /* try next */ }
-
-    // Step 4: Try studentId only
-    try {
-        const regResp3 = await fetch(
-            `${ERP_BASE}/chalkpadpro/studentDetails/getAttendanceRegister`,
-            {
-                method: 'POST',
-                headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
-                body: encodeForm({ studentId: session.studentId }),
-            }
-        );
-        const regText3 = await regResp3.text();
-        if (regResp3.ok && isRegisterTable(regText3)) {
-            return { response: regResp3, payload: { content: regText3 } };
-        }
-    } catch (err) { /* fall through to summary fallback */ }
-
-    // Fallback: commonPageId 28 (summary cards with per-subject totals)
-    try {
-        return await postLegacy('/mobile/commonPage', {
-            commonPageId: '28',
-            device: 'android',
-            userId: session.userId,
-            sessionId: session.sessionId,
-            roleId: session.roleId,
-        });
-    } catch (err) { /* ultimate fallback */ }
-
-    // Ultimate fallback: commonPageId 85
-    return postLegacy('/mobile/commonPage', {
-        commonPageId: '85',
-        device: 'android',
-        userId: session.userId,
-        sessionId: session.sessionId,
-        roleId: session.roleId,
-    });
-}
-
-async function fetchTimetableLegacy(session) {
-    function extractAllCookies(resp) {
-        const cookies = [];
-        try {
-            if (typeof resp.headers.getSetCookie === 'function') {
-                for (const c of resp.headers.getSetCookie()) {
-                    const name = c.split(';')[0];
-                    if (name) cookies.push(name);
-                }
-            }
-        } catch (e) { /* ignore */ }
-        try {
-            if (typeof resp.headers.raw === 'function') {
-                for (const c of (resp.headers.raw()['set-cookie'] || [])) {
-                    const name = c.split(';')[0];
-                    if (name && !cookies.includes(name)) cookies.push(name);
-                }
-            }
-        } catch (e) { /* ignore */ }
-        try {
-            const single = resp.headers.get('set-cookie');
-            if (single) {
-                for (const c of single.split(/,(?=[^;]*=)/)) {
-                    const name = c.trim().split(';')[0];
-                    if (name && !cookies.includes(name)) cookies.push(name);
-                }
-            }
-        } catch (e) { /* ignore */ }
-        return cookies.join('; ');
-    }
-
-    function isTimetableContent(html) {
-        if (!html || html.length < 100) return false;
-        const lower = html.toLowerCase();
-        const hasDayKeywords = /\b(monday|tuesday|wednesday|thursday|friday|saturday|mon|tue|wed|thu|fri|sat)\b/i.test(html);
-        const hasPeriodIndicator = /\b(period|slot|lecture)\b/i.test(html) ||
-            /\d{1,2}[:.]\d{2}\s*[-–]\s*\d{1,2}[:.]\d{2}/.test(html);
-        const hasSubjectContent = /\d{2}[A-Z]{2,}\d{4}/.test(html) || lower.includes('subject');
-        // Must NOT be just the attendance register
-        const isRegister = /id=['"]subject_\d+['"]/.test(html) && html.includes('<thead');
-        return hasDayKeywords && (hasPeriodIndicator || hasSubjectContent) && !isRegister;
-    }
-
-    const baseBody = {
-        studentId: session.studentId,
-        sessionId: session.sessionId,
-        userId: session.userId,
-        apiKey: session.apiKey,
-        roleId: session.roleId,
-        securityToken: session.securityToken || '',
-        deviceIdUUID: session.deviceIdUUID || '',
-    };
-
-    const _diag = { triedEndpoints: [], source: null };
-
-    // Step 1: Warmup — establish server session cookies via /mobilev2/showAttendance + tokens.
-    let allCookies = '';
-    try {
-        const warmupResp = await fetch(`${ERP_BASE}/mobilev2/showAttendance`, {
-            method: 'POST',
-            headers: LEGACY_HEADERS,
-            redirect: 'manual',
-            body: encodeForm({
-                prevNext: '0',
-                userId: session.userId,
-                sessionId: session.sessionId,
-                apiKey: session.apiKey,
-                roleId: session.roleId,
-                securityToken: session.securityToken || '',
-                deviceIdUUID: session.deviceIdUUID || '',
-                month: '',
-            }),
-        });
-        allCookies = extractAllCookies(warmupResp);
-        await warmupResp.text();
-    } catch (err) { /* warmup failure non-fatal */ }
-
-    // Candidate endpoints to try. The web My-Info page (GET /display, cookie-authed, no body)
-    // is the real timetable source — verified live 2026-07-18 via HTTP Toolkit capture: the
-    // PHPSESSID set by the mobilev2/showAttendance warmup authorizes it, and its HTML embeds the
-    // weekly grid (rowheading / Days-Periods / dataFont) the parser below already reads. The old
-    // POST-with-mobile-body candidates never returned a grid; keep them only as fallbacks.
-    const candidates = [
-        { path: '/chalkpadpro/studentDetails/display', method: 'GET' },
-        { path: '/chalkpadpro/studentDetails/studentTimeTable', method: 'POST' },
-        { path: '/chalkpadpro/studentDetails/getTimeTable', method: 'POST' },
-        { path: '/chalkpadpro/studentDetails/getStudentTimeTable', method: 'POST' },
-        { path: '/chalkpadpro/studentDetails/display', method: 'POST' },
-    ];
-
-    // Try each candidate with cookies first, then without
-    for (const candidate of candidates) {
-        _diag.triedEndpoints.push(candidate.path);
-        try {
-            const resp = await fetch(`${ERP_BASE}${candidate.path}`, {
-                method: candidate.method,
-                headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
-                ...(candidate.method === 'GET' ? {} : { body: encodeForm(baseBody) }),
+                headers: { ...LEGACY_HEADERS, ...headers },
+                body: encodeForm(body),
             });
             const text = await resp.text();
-            if (resp.ok && isTimetableContent(text)) {
-                _diag.source = candidate.path;
-                return { response: resp, payload: { content: text }, _diag };
-            }
-        } catch (err) { /* try next */ }
+            last = { response: resp, payload: { content: text } };
+            if (resp.ok && isRegisterTable(text)) return last;
+        } catch { /* try the next shape */ }
     }
 
-    // Try commonPageId values that might return timetable
-    const timetablePageIds = ['30', '31', '45', '50', '60', '70', '80', '90'];
-    for (const pageId of timetablePageIds) {
-        _diag.triedEndpoints.push(`/mobile/commonPage?id=${pageId}`);
-        try {
-            const { response, payload } = await postLegacy('/mobile/commonPage', {
-                commonPageId: pageId,
-                device: 'android',
-                userId: session.userId,
-                sessionId: session.sessionId,
-                roleId: session.roleId,
-            });
-            const content = payload?.content || '';
-            if (response.ok && isTimetableContent(content)) {
-                _diag.source = `/mobile/commonPage:${pageId}`;
-                return { response, payload, _diag };
-            }
-        } catch (err) { /* try next */ }
-    }
-
-    // Last resort: try /display without timetable detection (return whatever it gives)
-    try {
-        const resp = await fetch(`${ERP_BASE}/chalkpadpro/studentDetails/display`, {
-            method: 'POST',
-            headers: { ...LEGACY_HEADERS, ...(allCookies ? { Cookie: allCookies } : {}) },
-            body: encodeForm(baseBody),
-        });
-        const text = await resp.text();
-        if (resp.ok && text.length > 500) {
-            _diag.source = '/chalkpadpro/studentDetails/display (fallback)';
-            return { response: resp, payload: { content: text }, _diag };
-        }
-    } catch (err) { /* fall through */ }
-
-    _diag.source = null;
-    return { response: { ok: false }, payload: { content: '' }, _diag };
+    return last || { response: { ok: false, status: 0 }, payload: { content: '' } };
 }
 
 module.exports = {
@@ -585,9 +312,8 @@ module.exports = {
     parseLegacySession,
     loginLegacy,
     verifyOtpLegacy,
-    fetchSummaryLegacy,
     fetchSummaryV2,
     fetchTimetableV2,
     fetchRegisterLegacy,
-    fetchTimetableLegacy,
+    isRegisterTable,
 };

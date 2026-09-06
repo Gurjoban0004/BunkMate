@@ -63,12 +63,16 @@ const adminDb = {
         get: async () => ({ exists: !!cache[path], data: () => cache[path] }),
         set: async (v) => { cache[path] = v; },
     }),
-    collection: (name) => ({
-        get: async () => {
-            if (usersThrow) throw new Error('permission denied');
-            return name === 'users' ? mkSnap(userDocs) : mkSnap([]);
-        },
-    }),
+    collection: (name) => {
+        const col = {
+            limit: () => col,
+            get: async () => {
+                if (usersThrow) throw new Error('permission denied');
+                return name === 'users' ? mkSnap(userDocs) : mkSnap([]);
+            },
+        };
+        return col;
+    },
     collectionGroup: (name) => {
         const base = name === 'syncs' ? syncDocs : name === 'semesters' ? semDocs : [];
         const q = (rows) => ({
@@ -89,7 +93,9 @@ jest.mock('../_firebase-admin', () => ({
 jest.mock('../_session-utils', () => ({
     setCorsHeaders: () => {},
     decodeSessionRollNumber: (token) => token,
+    getClientIp: () => '127.0.0.1',
 }), { virtual: true });
+jest.mock('../_rate-limit', () => ({ tooManyAttempts: async () => false }), { virtual: true });
 
 jest.mock('firebase-admin/firestore', () => ({
     FieldValue: { serverTimestamp: () => ({ toMillis: () => Date.now() }) },

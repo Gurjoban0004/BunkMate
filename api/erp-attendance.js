@@ -1,42 +1,21 @@
 /**
- * Vercel Serverless Function: ERP Attendance Fetch
- *
  * POST /api/erp-attendance
  * Body: { token, persistentToken?, keepAlive? }
  *
- * keepAlive=true: short-circuit — only validates session, skips HTML parsing.
- *   Returns { success: true, alive: true } or { sessionExpired: true, ... }
+ * keepAlive=true: only probes session liveness (one ERP round-trip), no parsing.
+ *   → { success: true, alive: true } | the shared sessionExpired/needsOtp shape
  *
- * Flow (normal):
- * 1. Decrypt session token
- * 2. Fetch attendance from ERP
- * 3. If ERP signals dead session AND persistentToken provided:
- *    → Re-login (triggers OTP), return { sessionExpired: true, authUserId }
- * 4. Parse HTML → clean JSON
+ * Normal flow: register table (primary, proven for this college) → mobile
+ * summary cards (fallback). The session lifecycle — stale/dead detection, silent
+ * re-login on the sealed device id, OTP hand-off — lives in api/_data-session.js.
  *
- * SECURITY: All ERP communication and HTML parsing is server-side.
- *           Client receives only clean JSON. Passwords never logged.
+ * SECURITY: all ERP communication and HTML parsing is server-side. The client
+ * receives clean JSON only; nothing about the ERP's raw responses leaks out.
  */
 
-const {
-    decryptSession,
-    decryptPersistent,
-    reloginERP,
-    mintSessionToken,
-    isSessionDead,
-    checkSessionAlive,
-    setCorsHeaders,
-    encodeForm,
-    MOBILE_HEADERS,
-    ERP_BASE,
-} = require('./_session-utils');
-const { blockIfRevoked } = require('./_revocation');
-const {
-    fetchSummaryLegacy,
-    fetchSummaryV2,
-    fetchRegisterLegacy,
-    readErpPayload,
-} = require('./_erp-provider');
+const { setCorsHeaders, isSessionDead, checkSessionAlive, ERP_BASE } = require('./_session-utils');
+const { openSession, fetchWithLiveSession } = require('./_data-session');
+const { fetchSummaryV2, fetchRegisterLegacy, isRegisterTable } = require('./_erp-provider');
 const { parseRegisterHTML } = require('./erp-calendar');
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
@@ -151,176 +130,81 @@ function extractFromGenericHTML(html) {
 
 // ─── HANDLER ─────────────────────────────────────────────────────────
 
+const MOCK_SUBJECTS = [
+    { name: 'Database Management Systems', code: 'CS201', teacher: 'Dr. John Doe', delivered: 30, attended: 24, absent: 6, percentage: 80 },
+    { name: 'Data Structures & Algorithms', code: 'CS202', teacher: 'Prof. Jane Smith', delivered: 32, attended: 22, absent: 10, percentage: 68.8 },
+    { name: 'Discrete Mathematics', code: 'MA201', teacher: 'Dr. Alan Turing', delivered: 28, attended: 21, absent: 7, percentage: 75 },
+    { name: 'Computer Networks', code: 'CS203', teacher: 'Prof. Grace Hopper', delivered: 35, attended: 31, absent: 4, percentage: 88.6 },
+    { name: 'Web Development', code: 'CS204', teacher: 'Dr. Tim Berners-Lee', delivered: 24, attended: 22, absent: 2, percentage: 91.7 },
+];
+
+async function fetchAttendance(sess) {
+    // PRIMARY: the register (chalkpadpro) via the showAttendance warm-up + cookies —
+    // the same path the calendar and timetable use.
+    const register = await fetchRegisterLegacy(sess);
+    const registerHtml = register.payload?.content || '';
+    if (register.response.ok && isRegisterTable(registerHtml)) {
+        return { response: register.response, payload: register.payload, htmlBody: registerHtml, source: 'register' };
+    }
+
+    // FALLBACK: mobilev2 commonPage/28 summary cards.
+    const v2 = await fetchSummaryV2(sess);
+    const v2Content = v2.payload?.content || v2.payload?.data?.content || '';
+    if (v2.response.ok && v2Content) {
+        return { response: v2.response, payload: v2.payload, htmlBody: v2Content, source: 'summary' };
+    }
+
+    return {
+        response: register.response.ok ? register.response : v2.response,
+        payload:  register.response.ok ? register.payload  : v2.payload,
+        htmlBody: registerHtml || v2Content,
+        source:   'summary',
+    };
+}
+
+const attendanceIsDead = (r) => !r.response.ok || isSessionDead(r.payload, r.htmlBody);
+
+// keepAlive: the ERP's own liveness probe, nothing else.
+const probeSession = async (sess) => ({ alive: await checkSessionAlive(sess) });
+const probeIsDead = (r) => r.alive === false;
+
 module.exports = async function handler(req, res) {
-    try {
-        setCorsHeaders(res);
-    } catch (e) {
-        return res.status(500).json({ error: e.message });
-    }
+    setCorsHeaders(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
+    if (!ERP_BASE) return res.status(500).json({ error: 'Server configuration error' });
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-
-    const { token, persistentToken, keepAlive } = req.body || {};
-    if (!token) return res.status(400).json({ error: 'Session token is required' });
-    if (!ERP_BASE || !process.env.ENCRYPTION_SECRET) return res.status(500).json({ error: 'Server configuration error' });
-
-    let session;
-    try {
-        session = decryptSession(token);
-    } catch {
-        return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
-    }
-
-    // Revoked users are cut off here, not in the UI — this is the gate that actually works.
-    if (await blockIfRevoked(res, session.rollNumber)) return;
+    const opened = await openSession(req, res);
+    if (!opened) return;
+    const { session, persistentToken } = opened;
+    const keepAlive = req.body?.keepAlive === true;
 
     if (session.isMock) {
-        if (keepAlive) {
-            return res.status(200).json({ success: true, alive: true });
-        }
-        return res.status(200).json({
-            success: true,
-            subjects: [
-                { name: 'Database Management Systems', code: 'CS201', teacher: 'Dr. John Doe', delivered: 30, attended: 24, absent: 6, percentage: 80 },
-                { name: 'Data Structures & Algorithms', code: 'CS202', teacher: 'Prof. Jane Smith', delivered: 32, attended: 22, absent: 10, percentage: 68.8 },
-                { name: 'Discrete Mathematics', code: 'MA201', teacher: 'Dr. Alan Turing', delivered: 28, attended: 21, absent: 7, percentage: 75 },
-                { name: 'Computer Networks', code: 'CS203', teacher: 'Prof. Grace Hopper', delivered: 35, attended: 31, absent: 4, percentage: 88.6 },
-                { name: 'Web Development', code: 'CS204', teacher: 'Dr. Tim Berners-Lee', delivered: 24, attended: 22, absent: 2, percentage: 91.7 }
-            ],
-            fetchedAt: new Date().toISOString()
-        });
-    }
-
-    // ── Attempt ERP fetch ─────────────────────────────────────────
-    async function fetchAttendanceV2(sess) {
-        return fetch(`${ERP_BASE}/mobilev2/commonPage`, {
-            method: 'POST',
-            headers: MOBILE_HEADERS,
-            body: encodeForm({
-                commonPageId:  '28',
-                deviceIdUUID:  sess.deviceIdUUID || '',
-                userId:        sess.userId,
-                sessionId:     sess.sessionId,
-                roleId:        sess.roleId,
-                appKey:        sess.apiKey || '',
-            }),
-        });
-    }
-
-    async function fetchAttendance(sess) {
-        // PRIMARY: the attendance register (chalkpadpro) via the showAttendance warmup + cookies.
-        // This is the source proven to work for this college — the SAME path the calendar and
-        // timetable already use. The mobile commonPage/28 summary (below) is a dead end for CUIET
-        // (it reads as a dead session → "Session expired"); it's kept only as a fallback for
-        // colleges where the mobile summary works.
-        const register = await fetchRegisterLegacy(sess);
-        const registerHtml = register.payload?.content || register.payload?.data?.content || '';
-        const isRegister = /id=['"]subject_\d+/.test(registerHtml);
-        if (register.response.ok && registerHtml && isRegister) {
-            return { response: register.response, payload: register.payload, htmlBody: registerHtml, source: 'register' };
-        }
-
-        // FALLBACK 1: mobilev2 commonPage/28 summary WITH the warmup + cookies.
-        const v2 = await fetchSummaryV2(sess);
-        const v2Content = v2.payload?.content || v2.payload?.data?.content || '';
-        if (v2.response.ok && v2Content) {
-            return { response: v2.response, payload: v2.payload, htmlBody: v2Content, source: 'summary' };
-        }
-
-        // FALLBACK 2: legacy /mobile/commonPage (older colleges).
-        const legacy = await fetchSummaryLegacy(sess);
-        const legacyContent = legacy.payload?.content || legacy.payload?.data?.content || '';
-        if (legacy.response.ok && legacyContent) {
-            return { response: legacy.response, payload: legacy.payload, htmlBody: legacyContent, source: 'summary' };
-        }
-
-        // FALLBACK 3: cookie-less mobilev2 (prior behavior). If everything is empty, attach _diag
-        // so a still-failing real login reveals exactly what each ERP endpoint returned.
-        const fallbackResponse = await fetchAttendanceV2(sess);
-        const fallbackPayload = await readErpPayload(fallbackResponse);
-        const fallbackContent = fallbackPayload.content || fallbackPayload.data?.content || '';
-        if (fallbackResponse.ok && fallbackContent) {
-            return { response: fallbackResponse, payload: fallbackPayload, htmlBody: fallbackContent, source: 'summary' };
-        }
-        return {
-            response: register.response.ok ? register.response : v2.response,
-            payload: register.response.ok ? register.payload : v2.payload,
-            htmlBody: registerHtml || v2Content,
-            source: isRegister ? 'register' : 'summary',
-            _diag: {
-                registerStatus: register.response.status, registerLen: registerHtml.length, registerHasTable: isRegister,
-                v2Status: v2.response.status, v2Body: JSON.stringify(v2.payload).slice(0, 200),
-                legacyStatus: legacy.response.status,
-                fallbackStatus: fallbackResponse.status, fallbackBody: JSON.stringify(fallbackPayload).slice(0, 200),
-                sessionFields: {
-                    userId: !!sess.userId, sessionId: !!sess.sessionId, roleId: !!sess.roleId, apiKey: !!sess.apiKey,
-                    securityToken: !!sess.securityToken, deviceIdUUID: !!sess.deviceIdUUID, studentId: !!sess.studentId,
-                },
-            },
-        };
+        if (keepAlive) return res.status(200).json({ success: true, alive: true });
+        return res.status(200).json({ success: true, subjects: MOCK_SUBJECTS, fetchedAt: new Date().toISOString() });
     }
 
     try {
-        let erpResult = await fetchAttendance(session);
-        let refreshedToken = null;
-
-        // ── Session dead? ─────────────────────────────────────────
-        if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
-            // Our HTML heuristic false-positives on transient/partial responses. Confirm with the
-            // ERP's own liveness probe (the call the official app uses) before re-logging in —
-            // reloginERP always emails a fresh OTP on this ERP, so we must only do it when the
-            // session is genuinely dead. Alive/ambiguous → keep existing data, no OTP this cycle.
-            const liveness = await checkSessionAlive(session);
-            if (liveness !== false) {
-                return res.status(200).json({ success: true, subjects: [], transient: true, fetchedAt: new Date().toISOString() });
-            }
-
-            if (!persistentToken) {
-                // _diag is temporary — remove once the real OTP path is confirmed working.
-                return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: erpResult._diag });
-            }
-
-            let creds;
-            try { creds = decryptPersistent(persistentToken); } catch {
-                return res.status(401).json({ error: 'Invalid persistent token', sessionExpired: true });
-            }
-
-            const reloginResult = await reloginERP(creds.username, creds.password);
-
-            // Silent refresh: trusted device got a full session with no OTP — retry once.
-            if (reloginResult.session) {
-                session = reloginResult.session;
-                refreshedToken = mintSessionToken(session, creds);
-                erpResult = await fetchAttendance(session);
-            }
-
-            if (reloginResult.needsOtp
-                || !erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
-                // ERP demands OTP (or even a fresh session failed) — hand off to OTP flow
-                return res.status(200).json({
-                    sessionExpired: true,
-                    needsOtp:       true,
-                    authUserId:     reloginResult.authUserId,
-                    studentName:    creds.studentName || '',
-                });
-            }
+        const live = await fetchWithLiveSession(
+            res, session, persistentToken,
+            keepAlive ? probeSession : fetchAttendance,
+            keepAlive ? probeIsDead : attendanceIsDead,
+        );
+        if (!live) return;
+        if (live.transient) {
+            return res.status(200).json({ success: true, subjects: [], transient: true, fetchedAt: new Date().toISOString() });
         }
+        const { result, refreshedToken } = live;
+        const withToken = refreshedToken ? { token: refreshedToken } : {};
 
-        // ── keepAlive short-circuit — session is valid, skip parsing ──
-        if (keepAlive) {
-            return res.status(200).json({ success: true, alive: true, ...(refreshedToken && { token: refreshedToken }) });
-        }
+        if (keepAlive) return res.status(200).json({ success: true, alive: true, ...withToken });
 
-        const htmlContent = erpResult.htmlBody;
-
+        const htmlContent = result.htmlBody;
         if (!htmlContent) {
             return res.status(502).json({ error: 'Empty response', message: 'The portal returned no attendance data.' });
         }
 
-        // Register HTML → per-subject totals from the register table (proven source, no teacher
-        // field). Summary HTML → the commonPage/28 tt-box-new cards (has teacher). Same output shape.
-        const subjects = erpResult.source === 'register'
+        const subjects = result.source === 'register'
             ? (parseRegisterHTML(htmlContent).subjects || []).map(s => ({
                 name: s.name,
                 code: s.code,
@@ -334,34 +218,29 @@ module.exports = async function handler(req, res) {
 
         if (subjects.length === 0) {
             // Distinguish "not uploaded yet" (a valid empty state) from a real parse failure.
-            // Only warn when the HTML actually carries data-bearing structure we failed to read.
             const isEmptyState = /not uploaded|no records?\s*found|no data|attendance not/i.test(htmlContent);
             const hasDataStructure = /tt-box-new|id=['"]subject_\d+['"]|delivered\s*:/i.test(htmlContent);
-
             if (isEmptyState && !hasDataStructure) {
                 return res.status(200).json({
                     success: true, subjects: [], empty: true,
                     message: 'Attendance has not been uploaded yet for this session.',
                     fetchedAt: new Date().toISOString(),
-                    ...(refreshedToken && { token: refreshedToken }),
+                    ...withToken,
                 });
             }
-
+            console.warn('[ATTENDANCE] parse produced no subjects', JSON.stringify({ source: result.source, length: htmlContent.length }));
             return res.status(200).json({
                 success: true, subjects: [],
                 warning: 'Could not parse attendance data. The portal layout may have changed.',
-                ...(refreshedToken && { token: refreshedToken }),
+                ...withToken,
             });
         }
 
-        return res.status(200).json({
-            success: true, subjects, fetchedAt: new Date().toISOString(),
-            ...(refreshedToken && { token: refreshedToken }),
-        });
+        return res.status(200).json({ success: true, subjects, fetchedAt: new Date().toISOString(), ...withToken });
 
     } catch (err) {
         console.error('ERP attendance fetch error:', err.message);
-        return res.status(500).json({ error: 'Fetch failed', message: 'Could not retrieve attendance. Please try again.' });
+        return res.status(502).json({ error: 'Fetch failed', message: 'Could not retrieve attendance. Please try again.' });
     }
 };
 

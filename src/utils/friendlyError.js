@@ -42,6 +42,13 @@ export function friendlyError(err, context = 'signin') {
         });
     }
 
+    if (status === 429 || code === 'RATE_LIMITED') {
+        return withDetail({
+            title: 'Too many attempts',
+            message: 'Give it a few minutes before trying again.',
+        });
+    }
+
     if (code === 'TIMEOUT') {
         return withDetail({
             title: 'This is taking too long',

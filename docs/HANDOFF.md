@@ -1,5 +1,10 @@
 # Presence — Session Handoff
 
+> **2026-09-06 — read `docs/HARDENING-2026-09-06.md` first.** That round rewrote the
+> API trust boundary (device id, OTP cap, rate limits, token expiry, CORS/CSP,
+> auth-token signing) and the client's token storage. Sections below that describe
+> the OTP/session flow are superseded where they disagree.
+
 Last updated: 2026-08-17 · branch `main` · last commit `5a5ac1e`
 
 Goal driving this work: make Presence feel like a premium product rather than a

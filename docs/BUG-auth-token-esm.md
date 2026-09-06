@@ -1,6 +1,6 @@
 # `/api/auth-token` returns 500 in production
 
-**Status:** open, deliberately deferred. Not blocking the AI/ML collection drive.
+**Status:** FIXED in code 2026-09-06 — `api/_custom-token.js` signs the JWT with `crypto`; `api/auth-token.js` no longer imports `firebase-admin/auth`; `handlers-load.test.js` `KNOWN_BROKEN` is empty. Needs a deploy and the step-3 device check below.
 **First confirmed:** 2026-09-06, on a production deployment that was already 19 days old.
 **Severity:** Firebase custom-token sign-in is completely down, so cloud sync and every
 Firestore read/write a client attempts is failing. Local (AsyncStorage) use is unaffected,

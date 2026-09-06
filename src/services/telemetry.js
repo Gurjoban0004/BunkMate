@@ -13,6 +13,8 @@ import { db } from '../config/firebase';
 import { ensureAuthenticated } from '../utils/firebaseHelpers';
 import { logger } from '../utils/logger';
 
+const SYNC_LOG_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
 /**
  * @param {string} userId       login code — also the Firebase uid (rules require the match)
  * @param {Object} sync
@@ -24,10 +26,12 @@ export async function logSync(userId, { endpoints = [], parserErrors = [], rollN
     if (!userId || endpoints.length === 0) return;
     try {
         if (!(await ensureAuthenticated(userId))) return;
-        // ponytail: unbounded growth. Add a TTL policy on telemetry/*/syncs in the
-        // Firebase console if the collection ever gets expensive.
+        // `expiresAt` is the field a Firestore TTL policy reaps on (see
+        // docs/HARDENING-2026-09-06.md §H3 for the one-line gcloud command).
+        // The admin panel only ever looks at the last 7 days.
         await addDoc(collection(db, 'telemetry', userId, 'syncs'), {
             timestamp: serverTimestamp(),
+            expiresAt: new Date(Date.now() + SYNC_LOG_RETENTION_MS),
             endpoints,
             parserErrors,
             rollNumber,

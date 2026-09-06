@@ -2,7 +2,7 @@
   "expo": {
     "name": "Presence",
     "slug": "presence",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.presence.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F9F8F4"
@@ -35,8 +35,14 @@
         "POST_NOTIFICATIONS",
         "INTERNET",
         "ACCESS_NETWORK_STATE",
-        "FOREGROUND_SERVICE",
         "WAKE_LOCK"
+      ],
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.FOREGROUND_SERVICE"
       ]
     },
     "web": {
@@ -63,10 +69,9 @@
           "color": "#688E7F"
         }
       ],
-      "expo-background-fetch",
-      "expo-task-manager",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

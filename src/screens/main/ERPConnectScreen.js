@@ -59,6 +59,7 @@ export default function ERPConnectScreen({ navigation }) {
     const finishWithSession = useCallback(async (sessionResult) => {
         setToken(sessionResult.token);
         setStudentName(sessionResult.studentName || '');
+        dispatch({ type: 'UPDATE_SETTINGS', payload: { isAdmin: !!sessionResult.isAdmin } });
         await saveErpToken(sessionResult.token, sessionResult.studentName || '', sessionResult.persistentToken);
 
         const attendanceResult = await erpFetchAttendance(sessionResult.token);
@@ -70,7 +71,7 @@ export default function ERPConnectScreen({ navigation }) {
         const mapping = mapErpToAppState(attendanceResult.subjects, state.subjects);
         setMappingResult(mapping);
         setStep(STEP_PREVIEW);
-    }, [state.subjects]);
+    }, [state.subjects, dispatch]);
 
     // ─── STEP 1: LOGIN ─────────────────────────────────────────────
     const handleLogin = useCallback(async () => {
@@ -128,15 +129,15 @@ export default function ERPConnectScreen({ navigation }) {
         setError('');
 
         try {
-            // Verify OTP → get encrypted token
-            const otpResult = await erpVerifyOtp(authUserId, otp.trim(), username.trim(), password);
+            // Verify OTP → get encrypted token (the ticket carries the credentials)
+            const otpResult = await erpVerifyOtp(authUserId, otp.trim());
             await finishWithSession(otpResult);
         } catch (err) {
             setError(err.message || 'OTP verification failed. Please try again.');
         } finally {
             setLoading(false);
         }
-    }, [otp, authUserId, username, password, finishWithSession]);
+    }, [otp, authUserId, finishWithSession]);
 
     // ─── STEP 3: IMPORT ─────────────────────────────────────────────
     const handleImport = useCallback(() => {

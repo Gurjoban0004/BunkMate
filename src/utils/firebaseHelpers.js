@@ -2,8 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { signInWithCustomToken } from 'firebase/auth';
 import { Platform } from 'react-native';
+import * as Crypto from 'expo-crypto';
 import { db, auth } from '../config/firebase';
 import { buildApiUrl } from '../services/apiConfig';
+import { APP_VERSION } from '../config/version';
 import { logger } from './logger';
 
 /**
@@ -97,21 +99,18 @@ export const ensureAuthenticated = async (explicitCode) => {
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /**
- * Generate a random login code in format PRES-XXXXXXX
- * Uses non-ambiguous characters to prevent user confusion
+ * Generate a random login code in format PRES-XXXXXXX.
+ *
+ * The code IS the account credential, so it comes from the platform CSPRNG
+ * (expo-crypto), not Math.random. CODE_CHARS has 32 symbols, so one byte
+ * masked to 5 bits is a uniform pick — no modulo bias.
  * @returns {string} Login code in format PRES-XXXXXXX (12 characters total)
  */
 export const generateLoginCode = () => {
-  const prefix = 'PRES';
+  const bytes = Crypto.getRandomValues(new Uint8Array(7));
   let randomPart = '';
-  
-  // Generate 7 random characters
-  for (let i = 0; i < 7; i++) {
-    const randomIndex = Math.floor(Math.random() * CODE_CHARS.length);
-    randomPart += CODE_CHARS[randomIndex];
-  }
-  
-  return `${prefix}-${randomPart}`;
+  for (let i = 0; i < 7; i++) randomPart += CODE_CHARS[bytes[i] & 31];
+  return `PRES-${randomPart}`;
 };
 
 /**
@@ -134,7 +133,7 @@ export const getUserId = async () => {
         const userRef = doc(db, 'users', existingUserId);
         setDoc(userRef, {
           lastActive: serverTimestamp(),
-          version: '2.0.0'
+          version: APP_VERSION,
         }, { merge: true }).catch(error => {
           logger.warn('⚠️ Failed to update lastActive:', error);
         });
@@ -206,7 +205,7 @@ export const loginWithCode = async (code) => {
     const userRef = doc(db, 'users', code);
     await setDoc(userRef, {
       lastActive: serverTimestamp(),
-      version: '2.0.0'
+      version: APP_VERSION,
     }, { merge: true });
 
     logger.info('✅', 'Logged in as:', code);

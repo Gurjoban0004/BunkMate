@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, FONT_SIZES, SHADOWS, MOTION } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { loginWithCode } from '../../utils/firebaseHelpers';
+import { buildApiUrl } from '../../services/apiConfig';
 import { loadAppState, clearAppState } from '../../storage/storage';
 import { logger } from '../../utils/logger';
 import { friendlyError } from '../../utils/friendlyError';
@@ -20,12 +21,14 @@ import Notice from '../../components/common/Notice';
 import LoadingDots from '../../components/common/LoadingDots';
 import SetupIllustration from '../../components/setup/SetupIllustration';
 
-// CR-09: lightweight online check using fetch with a short timeout
+// Lightweight reachability check against our own origin (the thing we actually
+// need to reach), so it works under the CSP and sends nothing to a third party.
 async function isOnline() {
     try {
         const ctrl = new AbortController();
-        setTimeout(() => ctrl.abort(), 3000);
-        await fetch('https://www.google.com/generate_204', { method: 'HEAD', signal: ctrl.signal });
+        const timer = setTimeout(() => ctrl.abort(), 3000);
+        await fetch(buildApiUrl('/manifest.json', Platform.OS), { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
+        clearTimeout(timer);
         return true;
     } catch {
         return false;

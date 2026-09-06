@@ -1,87 +1,18 @@
 /**
- * Vercel Serverless Function: ERP Calendar Fetch
- *
  * POST /api/erp-calendar
- * Body: { token, persistentToken? }
+ * Body: { token, persistentToken?, researchId?, consentedAt? }
  *
- * Primary endpoint:
- * POST /chalkpadpro/studentDetails/getAttendanceRegister
- *
- * Fallback endpoint:
- * POST /mobilev2/commonPage with commonPageId: 85
+ * The day-wise attendance register (chalkpadpro getAttendanceRegister), parsed
+ * into { calendar, subjects, marks, latestDate }. The session lifecycle lives in
+ * api/_data-session.js. Raw ERP HTML never leaves the server.
  */
 
-const {
-    decryptSession,
-    decryptPersistent,
-    reloginERP,
-    mintSessionToken,
-    isSessionDead,
-    checkSessionAlive,
-    setCorsHeaders,
-    encodeForm,
-    MOBILE_HEADERS,
-    ERP_BASE,
-} = require('./_session-utils');
-const { blockIfRevoked } = require('./_revocation');
-const { saveResearch } = require('./_research');
-const {
-    fetchRegisterLegacy,
-    readErpPayload,
-} = require('./_erp-provider');
+const { setCorsHeaders, isSessionDead, ERP_BASE } = require('./_session-utils');
+const { openSession, fetchWithLiveSession } = require('./_data-session');
+const { saveResearch, RESEARCH_ID } = require('./_research');
+const { fetchRegisterLegacy } = require('./_erp-provider');
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
-
-/**
- * Parse tt-box-new cards from commonPageId 28 (attendance summary).
- * Extracts per-subject totals: name, code, teacher, delivered, attended, absent, percentage.
- * This is the fallback when the register table (chalkpadpro) isn't available.
- */
-function parseSummaryCards(htmlContent) {
-    const subjects = [];
-    const plainText = htmlContent
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&nbsp;?/gi, ' ')
-        .replace(/\\n/g, ' ')
-        .replace(/\\t/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    const regex = /(.+?)\s+(?:\d{2}[A-Z]{2,4}\d{4}\S*)\s+Teacher\s*:\s*(.+?)\s+From\s*:\s*.+?\s+Delivered\s*:\s*(\d+)\s+Attended\s*:\s*(\d+)\s+Absent\s*:\s*(\d+)[\s\S]*?Total Percentage\s*:\s*([\d.]+)%/gi;
-
-    // Also try a simpler per-block approach
-    const blockRegex = /class=['"]tt-box-new['"][^>]*>([\s\S]*?)(?=class=['"]tt-box-new['"]|<\/div>\s*<\/div>\s*<\/div>\s*<\/div>\s*$)/gi;
-    let blockMatch;
-    while ((blockMatch = blockRegex.exec(htmlContent)) !== null) {
-        const block = blockMatch[1];
-        const clean = block.replace(/<[^>]+>/g, ' ').replace(/&nbsp;?/gi, ' ').replace(/\\n/g, ' ').replace(/\\t/g, ' ').replace(/\s+/g, ' ').trim();
-
-        // Extract subject name and code from tt-period-number span pair
-        const nameCodeMatch = clean.match(/^\s*(.+?)\s+(\d{2}[A-Z]{2,4}\d{4}\S*)/);
-        if (!nameCodeMatch) continue;
-
-        const name = nameCodeMatch[1].trim();
-        const code = nameCodeMatch[2].trim();
-
-        const deliveredMatch = clean.match(/Delivered\s*:\s*(\d+)/i);
-        const attendedMatch = clean.match(/Attended\s*:\s*(\d+)/i);
-        const absentMatch = clean.match(/Absent\s*:\s*(\d+)/i);
-        const percentMatch = clean.match(/Total Percentage\s*:\s*([\d.]+)%/i);
-        const teacherMatch = clean.match(/Teacher\s*:\s*(.+?)\s+From/i);
-
-        const delivered = deliveredMatch ? parseInt(deliveredMatch[1], 10) : 0;
-        const attended = attendedMatch ? parseInt(attendedMatch[1], 10) : 0;
-        const absent = absentMatch ? parseInt(absentMatch[1], 10) : 0;
-        const percentage = percentMatch ? parseFloat(percentMatch[1]) : (delivered > 0 ? Math.round((attended / delivered) * 1000) / 10 : 0);
-        const teacher = teacherMatch ? teacherMatch[1].trim() : '';
-
-        if (name && (delivered > 0 || attended > 0)) {
-            subjects.push({ name, code, teacher, delivered, attended, absent, percentage });
-        }
-    }
-
-    return subjects;
-}
 
 function parseRegisterHTML(htmlContent) {
     const calendar = {}; // { 'YYYY-MM-DD': { subjectName: { status, period, code, erpSubjectId, units } } }
@@ -211,281 +142,88 @@ function parseRegisterHTML(htmlContent) {
     return { calendar, subjects, marks, latestDate: latestDateStr };
 }
 
-const parseCalendarHTML = parseRegisterHTML;
-
 // ─── HANDLER ─────────────────────────────────────────────────────────
 
-module.exports = async function handler(req, res) {
-    try {
-        setCorsHeaders(res);
-    } catch (e) {
-        return res.status(500).json({ error: e.message });
+function mockCalendar() {
+    const subjects = [
+        { name: 'Database Management Systems', code: 'CS201', erpSubjectId: '101', attended: 24, total: 30, percentage: 80, teacher: 'Dr. John Doe', absent: 6 },
+        { name: 'Data Structures & Algorithms', code: 'CS202', erpSubjectId: '102', attended: 22, total: 32, percentage: 68.8, teacher: 'Prof. Jane Smith', absent: 10 },
+        { name: 'Discrete Mathematics', code: 'MA201', erpSubjectId: '103', attended: 21, total: 28, percentage: 75, teacher: 'Dr. Alan Turing', absent: 7 },
+        { name: 'Computer Networks', code: 'CS203', erpSubjectId: '104', attended: 31, total: 35, percentage: 88.6, teacher: 'Prof. Grace Hopper', absent: 4 },
+        { name: 'Web Development', code: 'CS204', erpSubjectId: '105', attended: 22, total: 24, percentage: 91.7, teacher: 'Dr. Tim Berners-Lee', absent: 2 },
+    ];
+    const dailySchedule = {
+        1: [{ name: 'Database Management Systems', code: 'CS201', id: '101', period: 1 }, { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 2 }, { name: 'Computer Networks', code: 'CS203', id: '104', period: 4 }],
+        2: [{ name: 'Discrete Mathematics', code: 'MA201', id: '103', period: 1 }, { name: 'Web Development', code: 'CS204', id: '105', period: 3 }],
+        3: [{ name: 'Database Management Systems', code: 'CS201', id: '101', period: 1 }, { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 2 }, { name: 'Computer Networks', code: 'CS203', id: '104', period: 4 }],
+        4: [{ name: 'Discrete Mathematics', code: 'MA201', id: '103', period: 1 }, { name: 'Web Development', code: 'CS204', id: '105', period: 3 }],
+        5: [{ name: 'Database Management Systems', code: 'CS201', id: '101', period: 2 }, { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 3 }, { name: 'Web Development', code: 'CS204', id: '105', period: 5 }],
+        6: [],
+    };
+    const calendar = {};
+    const today = new Date();
+    let latestDateStr = null;
+    for (let i = 40; i >= 1; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek === 0) continue;
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        if (!latestDateStr || dateStr > latestDateStr) latestDateStr = dateStr;
+        const classesToday = dailySchedule[dayOfWeek] || [];
+        if (classesToday.length === 0) continue;
+        calendar[dateStr] = {};
+        const dateVal = date.getDate() + date.getMonth() * 31 + date.getFullYear();
+        for (const cls of classesToday) {
+            const absentEvery = { CS201: 5, CS202: 3, MA201: 4, CS203: 9, CS204: 12 }[cls.code];
+            const status = dateVal % absentEvery === 0 ? 'absent' : 'present';
+            calendar[dateStr][cls.name] = { status, code: cls.code, erpSubjectId: cls.id, period: cls.period, units: 1, attendedUnits: status === 'present' ? 1 : 0 };
+        }
     }
+    return { calendar, subjects, latestDate: latestDateStr };
+}
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
+async function fetchCalendar(sess) {
+    const register = await fetchRegisterLegacy(sess);
+    return { response: register.response, payload: register.payload, htmlBody: register.payload?.content || '' };
+}
 
-    const { token, persistentToken, researchId, consentedAt } = req.body || {};
-    if (!token) return res.status(400).json({ error: 'Session token is required' });
+const calendarIsDead = (r) => !r.response.ok || isSessionDead(r.payload, r.htmlBody);
+
+module.exports = async function handler(req, res) {
+    setCorsHeaders(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
     if (!ERP_BASE) return res.status(500).json({ error: 'Server configuration error' });
 
-    let session;
-    try {
-        session = decryptSession(token);
-    } catch {
-        return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
-    }
-
-    if (await blockIfRevoked(res, session.rollNumber)) return;
+    const opened = await openSession(req, res);
+    if (!opened) return;
+    const { session, persistentToken } = opened;
+    const body = req.body || {};
+    const researchId = RESEARCH_ID.test(body.researchId || '') ? body.researchId : null;
+    const consentedAt = typeof body.consentedAt === 'string' ? body.consentedAt.slice(0, 40) : undefined;
 
     if (session.isMock) {
-        const calendar = {};
-        const subjects = [
-            { name: 'Database Management Systems', code: 'CS201', erpSubjectId: '101', attended: 24, total: 30, percentage: 80, teacher: 'Dr. John Doe', absent: 6 },
-            { name: 'Data Structures & Algorithms', code: 'CS202', erpSubjectId: '102', attended: 22, total: 32, percentage: 68.8, teacher: 'Prof. Jane Smith', absent: 10 },
-            { name: 'Discrete Mathematics', code: 'MA201', erpSubjectId: '103', attended: 21, total: 28, percentage: 75, teacher: 'Dr. Alan Turing', absent: 7 },
-            { name: 'Computer Networks', code: 'CS203', erpSubjectId: '104', attended: 31, total: 35, percentage: 88.6, teacher: 'Prof. Grace Hopper', absent: 4 },
-            { name: 'Web Development', code: 'CS204', erpSubjectId: '105', attended: 22, total: 24, percentage: 91.7, teacher: 'Dr. Tim Berners-Lee', absent: 2 }
-        ];
-
-        const dailySchedule = {
-            1: [ // Monday
-                { name: 'Database Management Systems', code: 'CS201', id: '101', period: 1 },
-                { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 2 },
-                { name: 'Computer Networks', code: 'CS203', id: '104', period: 4 }
-            ],
-            2: [ // Tuesday
-                { name: 'Discrete Mathematics', code: 'MA201', id: '103', period: 1 },
-                { name: 'Web Development', code: 'CS204', id: '105', period: 3 }
-            ],
-            3: [ // Wednesday
-                { name: 'Database Management Systems', code: 'CS201', id: '101', period: 1 },
-                { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 2 },
-                { name: 'Computer Networks', code: 'CS203', id: '104', period: 4 }
-            ],
-            4: [ // Thursday
-                { name: 'Discrete Mathematics', code: 'MA201', id: '103', period: 1 },
-                { name: 'Web Development', code: 'CS204', id: '105', period: 3 }
-            ],
-            5: [ // Friday
-                { name: 'Database Management Systems', code: 'CS201', id: '101', period: 2 },
-                { name: 'Data Structures & Algorithms', code: 'CS202', id: '102', period: 3 },
-                { name: 'Web Development', code: 'CS204', id: '105', period: 5 }
-            ],
-            6: [] // Saturday
-        };
-
-        const today = new Date();
-        let latestDateStr = null;
-
-        for (let i = 40; i >= 1; i--) {
-            const date = new Date(today);
-            date.setDate(today.getDate() - i);
-            const dayOfWeek = date.getDay();
-            if (dayOfWeek === 0) continue;
-
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const dayNum = String(date.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${dayNum}`;
-            if (!latestDateStr || dateStr > latestDateStr) latestDateStr = dateStr;
-
-            const classesToday = dailySchedule[dayOfWeek] || [];
-            if (classesToday.length === 0) continue;
-
-            calendar[dateStr] = {};
-            for (const cls of classesToday) {
-                let status = 'present';
-                const dateVal = date.getDate() + date.getMonth() * 31 + date.getFullYear();
-                if (cls.code === 'CS201' && dateVal % 5 === 0) status = 'absent';
-                else if (cls.code === 'CS202' && dateVal % 3 === 0) status = 'absent';
-                else if (cls.code === 'MA201' && dateVal % 4 === 0) status = 'absent';
-                else if (cls.code === 'CS203' && dateVal % 9 === 0) status = 'absent';
-                else if (cls.code === 'CS204' && dateVal % 12 === 0) status = 'absent';
-
-                calendar[dateStr][cls.name] = {
-                    status,
-                    code: cls.code,
-                    erpSubjectId: cls.id,
-                    period: cls.period,
-                    units: 1,
-                    attendedUnits: status === 'present' ? 1 : 0
-                };
-            }
-        }
-
-        return res.status(200).json({
-            success: true,
-            calendar,
-            subjects,
-            latestDate: latestDateStr,
-            fetchedAt: new Date().toISOString()
-        });
-    }
-
-    async function fetchCalendarV2(sess) {
-        return fetch(`${ERP_BASE}/mobilev2/commonPage`, {
-            method: 'POST',
-            headers: MOBILE_HEADERS,
-            body: encodeForm({
-                commonPageId:  '85',
-                deviceIdUUID:  sess.deviceIdUUID || '',
-                userId:        sess.userId,
-                sessionId:     sess.sessionId,
-                roleId:        sess.roleId,
-                appKey:        sess.apiKey || '',
-            }),
-        });
-    }
-
-    async function fetchCalendar(sess) {
-        const _diag = { source: null, payloadKeys: null, payloadType: null, registerOk: false };
-
-        const register = await fetchRegisterLegacy(sess);
-        _diag.registerOk = register.response.ok;
-        _diag.payloadType = typeof register.payload;
-        _diag.payloadKeys = register.payload ? Object.keys(register.payload).slice(0, 10) : [];
-        
-        const registerHtml = register.payload?.content || register.payload?.data?.content || '';
-        if (register.response.ok && registerHtml) {
-            _diag.source = register._source || 'chalkpadpro';
-            _diag.regSteps = register._regDiag?.steps || [];
-            return { response: register.response, payload: register.payload, htmlBody: registerHtml, _diag };
-        }
-
-        _diag.source = 'mobilev2-fallback';
-        const fallbackResponse = await fetchCalendarV2(sess);
-        const fallbackPayload = await readErpPayload(fallbackResponse);
-        _diag.fallbackPayloadKeys = fallbackPayload ? Object.keys(fallbackPayload).slice(0, 10) : [];
-        _diag.fallbackPayloadType = typeof fallbackPayload;
-
-        return {
-            response: fallbackResponse,
-            payload: fallbackPayload,
-            htmlBody: fallbackPayload.content || fallbackPayload.data?.content || '',
-            _diag,
-        };
+        return res.status(200).json({ success: true, ...mockCalendar(), fetchedAt: new Date().toISOString() });
     }
 
     try {
-        // Log session fields being used (redacted for security)
-        const sessionDiag = {
-            hasUserId: !!session.userId,
-            hasSessionId: !!session.sessionId,
-            hasRoleId: !!session.roleId,
-            hasApiKey: !!session.apiKey,
-            hasStudentId: !!session.studentId,
-            studentIdValue: session.studentId ? `${String(session.studentId).slice(0, 3)}...` : 'MISSING',
-        };
-        console.log('[CAL-SERVER] Session fields:', JSON.stringify(sessionDiag));
+        const live = await fetchWithLiveSession(res, session, persistentToken, fetchCalendar, calendarIsDead);
+        if (!live) return;
+        if (live.transient) return res.status(200).json({ success: true, calendar: {}, transient: true });
+        const { result, refreshedToken } = live;
+        const withToken = refreshedToken ? { token: refreshedToken } : {};
 
-        let erpResult = await fetchCalendar(session);
-        let refreshedToken = null;
-        let diag = erpResult._diag || {};
-
-        if (!erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
-            // Confirm with the ERP's own liveness probe before re-login (→ OTP email). See
-            // checkSessionAlive: only re-auth on a genuine death, never on a transient false-positive.
-            const liveness = await checkSessionAlive(session);
-            if (liveness !== false) {
-                return res.status(200).json({ success: true, calendar: {}, transient: true });
-            }
-
-            if (!persistentToken) {
-                return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: diag });
-            }
-
-            let creds;
-            try { creds = decryptPersistent(persistentToken); } catch {
-                return res.status(401).json({ error: 'Invalid persistent token', sessionExpired: true });
-            }
-
-            const reloginResult = await reloginERP(creds.username, creds.password);
-
-            // Silent refresh: trusted device got a full session with no OTP — retry once.
-            if (reloginResult.session) {
-                session = reloginResult.session;
-                refreshedToken = mintSessionToken(session, creds);
-                erpResult = await fetchCalendar(session);
-                diag = erpResult._diag || {};
-            }
-
-            if (reloginResult.needsOtp
-                || !erpResult.response.ok || isSessionDead(erpResult.payload, erpResult.htmlBody)) {
-                return res.status(200).json({
-                    sessionExpired: true,
-                    needsOtp:       true,
-                    authUserId:     reloginResult.authUserId,
-                    studentName:    creds.studentName || '',
-                });
-            }
-        }
-
-        const htmlContent = erpResult.htmlBody;
-
-        // Diagnostic info about the HTML we got
-        const tableStart = htmlContent ? htmlContent.indexOf('<table') : -1;
-        const tablePreview = tableStart >= 0 ? htmlContent.slice(tableStart, tableStart + 3000) : 'NO TABLE FOUND';
-        
-        // Search for subject codes like 24CSE0212
-        const codePattern = /\d{2}[A-Z]{2,4}\d{4}/g;
-        const foundCodes = htmlContent ? [...new Set((htmlContent.match(codePattern) || []).slice(0, 10))] : [];
-        
-        // Extract first 5 <tr> rows to understand structure
-        const trSamples = [];
-        if (htmlContent) {
-            const trRegex = /<tr[^>]*>[\s\S]*?<\/tr>/gi;
-            let trMatch;
-            let trCount = 0;
-            while ((trMatch = trRegex.exec(htmlContent)) !== null && trCount < 5) {
-                trSamples.push(trMatch[0].slice(0, 500));
-                trCount++;
-            }
-        }
-
-        const htmlDiag = {
-            ...diag,
-            ...sessionDiag,
-            htmlLength: htmlContent ? htmlContent.length : 0,
-            htmlPreview: htmlContent ? htmlContent.slice(0, 500) : 'EMPTY',
-            tablePreview,
-            foundCodes,
-            trSamples,
-            hasTable: htmlContent ? htmlContent.includes('<table') : false,
-            hasThead: htmlContent ? htmlContent.includes('<thead') : false,
-            hasSubjectTr: htmlContent ? /id=['"]subject_\d+['"]/.test(htmlContent) : false,
-            hasTdWithSubjectId: htmlContent ? /id=['"]subject_\d+_\d{4}/.test(htmlContent) : false,
-        };
-
+        const htmlContent = result.htmlBody;
         if (!htmlContent) {
-            return res.status(502).json({ error: 'Empty response', message: 'The portal returned no calendar data.', _diag: htmlDiag });
+            return res.status(502).json({ error: 'Empty response', message: 'The portal returned no calendar data.' });
         }
 
-        console.log('[CAL-SERVER] HTML diag:', JSON.stringify(htmlDiag));
-
-        let { calendar, subjects, marks, latestDate } = parseRegisterHTML(htmlContent);
-
-        console.log('[CAL-SERVER] Register parse: days=' + Object.keys(calendar).length + ' subjects=' + subjects.length);
-
-        // If register parser found nothing, try the summary card parser (tt-box-new format)
-        if (subjects.length === 0 && htmlContent.includes('tt-box-new')) {
-            const summarySubjects = parseSummaryCards(htmlContent);
-            console.log('[CAL-SERVER] Summary card parse: subjects=' + summarySubjects.length);
-            if (summarySubjects.length > 0) {
-                subjects = summarySubjects.map(s => ({
-                    name: s.name,
-                    code: s.code,
-                    erpSubjectId: s.code, // Use code as ID since we don't have ERP subject IDs
-                    total: s.delivered,
-                    attended: s.attended,
-                    percentage: s.percentage,
-                    teacher: s.teacher,
-                    absent: s.absent,
-                }));
-                htmlDiag.parsedViaSummaryCards = true;
-                htmlDiag.summarySubjectCount = summarySubjects.length;
-            }
-        }
+        const { calendar, subjects, marks, latestDate } = parseRegisterHTML(htmlContent);
+        console.log('[CAL-SERVER]', JSON.stringify({
+            htmlLength: htmlContent.length, days: Object.keys(calendar).length, subjects: subjects.length,
+            hasRegisterRows: /id=['"]subject_\d+['"]/.test(htmlContent),
+        }));
 
         // Research dataset (opt-in). `subjects` carries the ERP's own per-subject
         // totals, which is what the dataset build validates the marks against.
@@ -497,15 +235,13 @@ module.exports = async function handler(req, res) {
             subjects,
             latestDate,
             fetchedAt: new Date().toISOString(),
-            _diag: htmlDiag,
-            ...(refreshedToken && { token: refreshedToken }),
+            ...withToken,
         });
 
     } catch (err) {
         console.error('ERP calendar fetch error:', err.message);
-        return res.status(500).json({ error: 'Fetch failed', message: 'Could not retrieve calendar. Please try again.' });
+        return res.status(502).json({ error: 'Fetch failed', message: 'Could not retrieve calendar. Please try again.' });
     }
 };
 
-module.exports.parseCalendarHTML = parseCalendarHTML;
 module.exports.parseRegisterHTML = parseRegisterHTML;

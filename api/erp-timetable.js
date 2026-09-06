@@ -1,34 +1,20 @@
 /**
- * Vercel Serverless Function: ERP Timetable Fetch
- *
  * POST /api/erp-timetable
- * Body: { token, persistentToken? }
+ * Body: { token, persistentToken?, researchId?, consentedAt? }
  *
- * Fetches the student's weekly timetable from the ERP.
- * Tries multiple endpoint candidates (dedicated timetable pages, commonPageIds,
- * the full student display page) and parses the timetable table from the HTML.
+ * Primary source: mobilev2 commonPage/99 — the full published weekly grid with
+ * real times (verified live 2026-07-20). Fallback: the recurring grid derived
+ * from the attendance register (live, but sparse early in the semester).
  *
- * Returns the parsed timetable with real days and period times.
+ * A missing timetable is NOT a dead session: only the ERP's explicit
+ * session-error markers count, and even those are confirmed by the liveness
+ * probe (api/_data-session.js) before any re-login can email an OTP.
  */
 
-const {
-    decryptSession,
-    decryptPersistent,
-    reloginERP,
-    mintSessionToken,
-    isSessionDead,
-    checkSessionAlive,
-    setCorsHeaders,
-    ERP_BASE,
-} = require('./_session-utils');
-const { blockIfRevoked } = require('./_revocation');
-const { saveResearch } = require('./_research');
-const {
-    fetchTimetableV2,
-    fetchTimetableLegacy,
-    fetchRegisterLegacy,
-    readErpPayload,
-} = require('./_erp-provider');
+const { setCorsHeaders, isSessionDead, ERP_BASE } = require('./_session-utils');
+const { openSession, fetchWithLiveSession } = require('./_data-session');
+const { saveResearch, RESEARCH_ID } = require('./_research');
+const { fetchTimetableV2, fetchRegisterLegacy } = require('./_erp-provider');
 const { parseRegisterHTML } = require('./erp-calendar');
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
@@ -453,30 +439,7 @@ function deriveTimetableFromRegister(htmlContent) {
 
 // ─── HANDLER ─────────────────────────────────────────────────────────
 
-module.exports = async function handler(req, res) {
-    try {
-        setCorsHeaders(res);
-    } catch (e) {
-        return res.status(500).json({ error: e.message });
-    }
-
-    if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-
-    const { token, persistentToken, researchId, consentedAt } = req.body || {};
-    if (!token) return res.status(400).json({ error: 'Session token is required' });
-    if (!ERP_BASE) return res.status(500).json({ error: 'Server configuration error' });
-
-    let session;
-    try {
-        session = decryptSession(token);
-    } catch {
-        return res.status(401).json({ error: 'Invalid session', sessionExpired: true });
-    }
-
-    if (await blockIfRevoked(res, session.rollNumber)) return;
-
-    if (session.isMock) {
+function mockTimetable() {
         const timetable = {
             Monday: [
                 { subjectName: 'Database Management Systems', subjectCode: 'CS201', period: 1, startTime: '09:00', endTime: '09:50' },
@@ -510,186 +473,93 @@ module.exports = async function handler(req, res) {
             { id: 'erp-period-4', start: '12:00', end: '12:50' },
             { id: 'erp-period-5', start: '13:40', end: '14:30' }
         ];
+        return { timetable, timeSlots };
+}
+
+async function fetchTimetableData(sess) {
+    try {
+        const v2 = await fetchTimetableV2(sess);
+        const v2Html = v2.payload?.content || v2.payload?.data?.content || '';
+        if (v2Html) {
+            const parsed = parseTimetableHTML(v2Html);
+            if (parsed.found) return { response: v2.response, payload: v2.payload, parsed, source: 'portal-web' };
+        }
+        if (isSessionDead(v2.payload, v2Html)) return { response: v2.response, payload: v2.payload, parsed: null, source: 'empty' };
+    } catch { /* fall through to register-derived */ }
+
+    const reg = await fetchRegisterLegacy(sess);
+    const html = reg.payload?.content || '';
+    if (html) {
+        const derived = deriveTimetableFromRegister(html);
+        if (derived.found) return { response: reg.response, payload: reg.payload, parsed: derived, source: 'register-derived' };
+    }
+    return { response: reg.response, payload: reg.payload, parsed: null, source: 'empty' };
+}
+
+const timetableIsDead = (r) => isSessionDead(r.payload, r.payload?.content || '');
+
+module.exports = async function handler(req, res) {
+    setCorsHeaders(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
+    if (!ERP_BASE) return res.status(500).json({ error: 'Server configuration error' });
+
+    const opened = await openSession(req, res);
+    if (!opened) return;
+    const { session, persistentToken } = opened;
+    const body = req.body || {};
+    const researchId = RESEARCH_ID.test(body.researchId || '') ? body.researchId : null;
+    const consentedAt = typeof body.consentedAt === 'string' ? body.consentedAt.slice(0, 40) : undefined;
+
+    if (session.isMock) {
         return res.status(200).json({
-            success: true,
-            timetable,
-            timeSlots,
-            source: 'mock-erp-provider',
-            timesAreInferred: false,
-            fetchedAt: new Date().toISOString()
+            success: true, ...mockTimetable(), source: 'mock-erp-provider',
+            timesAreInferred: false, fetchedAt: new Date().toISOString(),
         });
     }
 
-    // Primary timetable source: mobilev2 commonPage id 99 — the full published weekly grid (all
-    // subjects, real times), served over the plain mobile session. This is the SAME grid the web
-    // /display page shows, but with no Turnstile / web login / capture (verified live via the
-    // official app's own traffic, 2026-07-20). Falls back to register-derived if it's ever empty.
-    async function fetchTimetableData(sess) {
-        try {
-            const v2 = await fetchTimetableV2(sess);
-            const v2Html = v2.payload?.content || v2.payload?.data?.content || '';
-            if (v2Html) {
-                const parsed = parseTimetableHTML(v2Html);
-                if (parsed.found) {
-                    return { response: v2.response, payload: v2.payload, parsed, source: 'portal-web' };
-                }
-            }
-        } catch (e) { /* fall through to register-derived */ }
-
-        // Fallback: derive the recurring grid from the attendance register (live but sparse early
-        // in the semester). Used if commonPage/99 is empty (timetable not yet published to mobile).
-        const reg = await fetchRegisterLegacy(sess);
-        const html = reg.payload?.content || reg.payload?.data?.content || '';
-        if (html) {
-            const derived = deriveTimetableFromRegister(html);
-            if (derived.found) {
-                return { response: reg.response, payload: reg.payload, parsed: derived, source: 'register-derived' };
-            }
-        }
-        // Last resort: legacy dedicated timetable endpoints (kept for other colleges).
-        const tt = await fetchTimetableLegacy(sess);
-        const ttHtml = tt.payload?.content || '';
-        return {
-            response: tt.response,
-            payload: tt.payload,
-            parsed: parseTimetableHTML(ttHtml),
-            source: tt._diag?.source || 'chalkpadpro',
-            _diag: tt._diag,
-        };
-    }
-
     try {
-        // Derive the timetable from the attendance register.
-        let erpResult = await fetchTimetableData(session);
-        let refreshedToken = null;
-        let diag = erpResult._diag || {};
+        const live = await fetchWithLiveSession(res, session, persistentToken, fetchTimetableData, timetableIsDead);
+        if (!live) return;
+        // No `success`/`source` → the client leaves its existing timetable untouched.
+        if (live.transient) return res.status(200).json({ transient: true });
+        const { result, refreshedToken } = live;
+        const withToken = refreshedToken ? { token: refreshedToken } : {};
 
-        // Session dead check.
-        // NOTE: a missing/empty timetable is NOT a dead session. The mobile API never serves the
-        // real timetable (see memory erp-web-login-turnstile), so fetchTimetableLegacy returns
-        // response.ok=false as its normal "not found" outcome. Re-logging in on that fired an OTP
-        // email on every app open. Only re-auth on a genuine session-death signal — never on
-        // absent data (attendance/calendar on the same open detect a real dead session).
-        if (isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
-            // Confirm genuine death via the ERP's own liveness probe before re-login (→ OTP email).
-            const liveness = await checkSessionAlive(session);
-            if (liveness !== false) {
-                // No `success`/`source` → client leaves the existing timetable untouched (a transient
-                // blip must not be mistaken for an empty/vacation timetable).
-                return res.status(200).json({ transient: true });
-            }
-
-            if (!persistentToken) {
-                return res.status(401).json({ error: 'Session expired', sessionExpired: true, _diag: diag });
-            }
-
-            let creds;
-            try { creds = decryptPersistent(persistentToken); } catch {
-                return res.status(401).json({ error: 'Invalid persistent token', sessionExpired: true });
-            }
-
-            const reloginResult = await reloginERP(creds.username, creds.password);
-
-            // Silent refresh: trusted device got a full session with no OTP — retry once.
-            if (reloginResult.session) {
-                session = reloginResult.session;
-                refreshedToken = mintSessionToken(session, creds);
-                erpResult = await fetchTimetableData(session);
-                diag = erpResult._diag || {};
-            }
-
-            if (reloginResult.needsOtp
-                || isSessionDead(erpResult.payload, erpResult.payload?.content || '')) {
-                return res.status(200).json({
-                    sessionExpired: true,
-                    needsOtp:       true,
-                    authUserId:     reloginResult.authUserId,
-                    studentName:    creds.studentName || '',
-                });
-            }
-        }
-
-        const htmlContent = erpResult.payload?.content || '';
-
-        // Diagnostic info
-        const htmlDiag = {
-            ...diag,
-            htmlLength: htmlContent.length,
-            htmlPreview: htmlContent.slice(0, 500),
-            hasTimetableKeyword: /time\s*table|timetable|class\s*schedule/i.test(htmlContent),
-            hasDayNames: DAY_NAMES.some(d => htmlContent.toLowerCase().includes(d.toLowerCase())),
-            hasPeriodHint: /period|slot|\d{1,2}[:.]\d{2}\s*[-–]/i.test(htmlContent),
-            foundCodes: [...new Set((htmlContent.match(/\d{2}[A-Z]{2,4}\d{4}/g) || []).slice(0, 10))],
-            tableCount: (htmlContent.match(/<table/gi) || []).length,
-        };
-
-        if (!htmlContent || htmlContent.length < 100) {
+        const parsed = result.parsed;
+        if (!parsed || !parsed.found) {
             return res.status(200).json({
-                success: true,
-                timetable: {},
-                timeSlots: [],
-                source: 'empty',
-                timesAreInferred: true,
-                fetchedAt: new Date().toISOString(),
-                _diag: htmlDiag,
-                ...(refreshedToken && { token: refreshedToken }),
+                success: true, timetable: {}, timeSlots: [], source: 'empty',
+                timesAreInferred: true, fetchedAt: new Date().toISOString(), ...withToken,
             });
         }
 
-        // fetchTimetableData already derives from the register as the primary source
-        // (source 'register-derived'); the real full grid arrives via the WebView /display path.
-        const parsed = erpResult.parsed || parseTimetableHTML(htmlContent);
-        const source = erpResult.source || diag.source || 'chalkpadpro';
-
-        if (!parsed.found) {
-            return res.status(200).json({
-                success: true,
-                timetable: {},
-                timeSlots: [],
-                source: 'empty',
-                timesAreInferred: true,
-                fetchedAt: new Date().toISOString(),
-                _diag: { ...htmlDiag, parserResult: 'no_timetable_found' },
-                ...(refreshedToken && { token: refreshedToken }),
-            });
-        }
-
-        // Convert periods to timeSlots format
-        const timeSlots = parsed.periods.map(p => ({
-            id: `erp-period-${p.number}`,
-            start: p.start,
-            end: p.end,
-        }));
+        const timeSlots = parsed.periods.map(p => ({ id: `erp-period-${p.number}`, start: p.start, end: p.end }));
 
         // Research dataset (opt-in). The portal grid prints the student's section
-        // in every cell ("24CSE-G04") — that is the group id, not a derived hash.
-        // Register-derived grids carry no room/faculty/group; those keys just stay off.
+        // in every cell ("24CSE-G04") — the group id, not a derived hash.
         const slots = Object.entries(parsed.timetable).flatMap(([day, entries]) =>
             entries.map(e => ({
-                day,
-                p: e.period,
-                s: e.subjectCode,
-                name: e.subjectName,
+                day, p: e.period, s: e.subjectCode, name: e.subjectName,
                 ...(e.faculty && { faculty: e.faculty }),
                 ...(e.room && { room: e.room }),
             })));
         const group = Object.values(parsed.timetable).flat().find(e => e.group)?.group;
-        await saveResearch(researchId, { slots, source, ...(group && { group }) }, consentedAt);
+        await saveResearch(researchId, { slots, source: result.source, ...(group && { group }) }, consentedAt);
 
         return res.status(200).json({
             success: true,
             timetable: parsed.timetable,
             timeSlots,
-            source,
+            source: result.source,
             timesAreInferred: parsed.timesAreInferred,
             fetchedAt: new Date().toISOString(),
-            _diag: htmlDiag,
-            ...(refreshedToken && { token: refreshedToken }),
+            ...withToken,
         });
 
     } catch (err) {
         console.error('ERP timetable fetch error:', err.message);
-        return res.status(500).json({ error: 'Fetch failed', message: 'Could not retrieve timetable. Please try again.' });
+        return res.status(502).json({ error: 'Fetch failed', message: 'Could not retrieve timetable. Please try again.' });
     }
 };
 

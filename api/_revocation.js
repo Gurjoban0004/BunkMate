@@ -28,6 +28,15 @@ function getDb() {
     return adminDb;
 }
 
+// A revocation read that hangs (cold Firestore, credential discovery, a blip)
+// must not stall every sync for the function's whole budget. Past this the
+// lookup counts as an infrastructure error — fail open, like any other error.
+const LOOKUP_TIMEOUT_MS = 4000;
+const withTimeout = (promise, ms) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms).unref?.()),
+]);
+
 // Serverless instances are reused, so this cache spares a Firestore read on
 // every attendance/calendar/timetable call. A revoke takes effect within the
 // TTL; syncs are 3 min apart, so the lag is not observable in practice.
@@ -49,7 +58,7 @@ function isAdminRoll(roll) {
 async function getRevocation(rollNumber) {
     if (!rollNumber) return null;
     const roll = String(rollNumber).trim();
-    if (!roll || roll === '2410990296' || isAdminRoll(roll)) return null; // Admin is NEVER revoked
+    if (!roll || isAdminRoll(roll)) return null;   // an admin is never revoked
 
     const hit = cache.get(roll);
     if (hit && Date.now() - hit.at < TTL_MS) return hit.revocation;
@@ -59,7 +68,7 @@ async function getRevocation(rollNumber) {
 
     let revocation;
     try {
-        const snap = await db.doc(`admin/revokedUsers/items/${roll}`).get();
+        const snap = await withTimeout(db.doc(`admin/revokedUsers/items/${roll}`).get(), LOOKUP_TIMEOUT_MS);
         revocation = snap.exists ? (snap.data() || {}) : null;
     } catch (err) {
         console.error('Revocation lookup failed:', err.message);

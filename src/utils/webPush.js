@@ -2,9 +2,13 @@
  * Web Push for the installed PWA.
  *
  * Native uses expo-notifications (local schedule). The web/PWA build can't run JS
- * while closed, so a daily reminder must be server-pushed: the browser subscribes,
- * the subscription is stored server-side, and a cron (api/push-send) delivers at the
- * user's reminder hour. The service worker (public/sw.js) shows the notification.
+ * while closed, so the daily reminder is server-pushed: the browser subscribes,
+ * the subscription is stored server-side, and the daily cron (api/push-send)
+ * delivers it. The service worker (public/sw.js) shows the notification.
+ *
+ * There is one reminder time for everyone (18:00 IST) — the cron is daily and
+ * the app never had a working time picker, so the per-user time was dropped
+ * rather than shipped as a control that silently did nothing (audit H2).
  *
  * Requires EXPO_PUBLIC_VAPID_PUBLIC_KEY (the public half of the server's VAPID pair).
  */
@@ -17,9 +21,8 @@ import { logger } from './logger';
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY;
 
 /**
- * Headers for /api/push-subscribe, which now requires proof the caller owns userId.
- * @returns {Promise<Object|null>} null when no Firebase session can be established —
- *          callers must bail rather than send an unauthenticated request that 401s.
+ * Headers for /api/push-subscribe, which requires proof the caller owns userId.
+ * @returns {Promise<Object|null>} null when no Firebase session can be established.
  */
 async function pushHeaders(userId) {
     if (auth?.currentUser?.uid !== userId) await ensureAuthenticated(userId);
@@ -51,7 +54,7 @@ function urlBase64ToUint8Array(base64String) {
  * Ask for permission, subscribe, and register the subscription server-side.
  * @returns {Promise<{ ok: boolean, reason?: string }>}
  */
-export async function enableWebPush(userId, reminderTime = '18:00') {
+export async function enableWebPush(userId) {
     if (!isWebPushSupported()) return { ok: false, reason: 'unsupported' };
     if (!userId) return { ok: false, reason: 'no-user' };
 
@@ -74,7 +77,7 @@ export async function enableWebPush(userId, reminderTime = '18:00') {
         const res = await fetch(buildApiUrl('/api/push-subscribe', 'web'), {
             method: 'POST',
             headers,
-            body: JSON.stringify({ userId, subscription: sub.toJSON(), reminderTime, enabled: true }),
+            body: JSON.stringify({ userId, subscription: sub.toJSON(), enabled: true }),
         });
         if (!res.ok) return { ok: false, reason: 'server' };
         return { ok: true };
@@ -108,21 +111,4 @@ export async function disableWebPush(userId) {
         logger.warn('⚠️ disableWebPush failed:', e.message);
         return { ok: false };
     }
-}
-
-/** Keep the server's stored reminder time in sync when the user changes it. */
-export async function updateWebPushTime(userId, reminderTime) {
-    if (!isWebPushSupported() || Notification.permission !== 'granted') return;
-    try {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        if (!sub) return;
-        const headers = await pushHeaders(userId);
-        if (!headers) return;
-        await fetch(buildApiUrl('/api/push-subscribe', 'web'), {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ userId, subscription: sub.toJSON(), reminderTime, enabled: true }),
-        }).catch(() => {});
-    } catch (e) { /* best-effort */ }
 }

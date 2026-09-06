@@ -49,7 +49,7 @@ describe('api handlers load without env', () => {
 // the entry rather than widening it.
 // Full write-up, root cause and the fix: docs/BUG-auth-token-esm.md
 describe('no handler imports firebase-admin/auth', () => {
-    const KNOWN_BROKEN = ['auth-token.js'];
+    const KNOWN_BROKEN = [];   // auth-token now signs with crypto (api/_custom-token.js)
 
     // Comments get stripped first — several files discuss this import by name.
     const stripComments = (src) => src.replace(/\/\*[^]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

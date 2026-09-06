@@ -13,7 +13,7 @@ import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { setGlobalWebAlert } from './src/utils/alert';
 import ErpReauthModal from './src/components/erp/ErpReauthModal';
 import ResearchPrompt from './src/components/research/ResearchPrompt';
-import { registerBackgroundSync, setupNotifications } from './src/services/backgroundTasks';
+import { scheduleDailyReminder, cancelAllReminders } from './src/utils/notifications';
 // No webfont loading: the app is Times New Roman (system serif on Android),
 // so there is nothing to download and no font gate to wait on at boot.
 
@@ -133,18 +133,15 @@ function AppContent() {
         }
     }, [isLoading, devReady, state.setupComplete, runAutopilotCheck]);
 
-    // Register background sync & notifications (Android APK only)
+    // Android daily reminder: a local scheduled notification, (re)armed whenever
+    // the setting changes. Cancelling first keeps it idempotent across launches.
+    const reminderOn = !!state?.settings?.notificationEnabled;
+    const reminderTime = state?.settings?.notificationTime || '18:00';
     useEffect(() => {
-        if (Platform.OS === 'android') {
-            setupNotifications().then((granted) => {
-                if (granted) {
-                    registerBackgroundSync();
-                }
-            }).catch(() => {
-                // Silently fail — notifications are non-critical
-            });
-        }
-    }, []);
+        if (Platform.OS !== 'android' || isLoading || !state.setupComplete) return;
+        (reminderOn ? scheduleDailyReminder(reminderTime) : cancelAllReminders())
+            .catch(() => { /* notifications are non-critical */ });
+    }, [isLoading, state.setupComplete, reminderOn, reminderTime]);
 
     if (isLoading || !devReady) {
         return <BrandLoader />;

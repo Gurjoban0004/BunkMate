@@ -15,7 +15,6 @@ import {
     fetchDowntime, fetchRateLimitData, fetchUserRoster,
     getActiveAnnouncements, publishAnnouncement, deleteAnnouncement,
     getRevokedUsers, revokeUser, unrevokeUser,
-    isAdminRollNumber,
 } from '../../services/adminService';
 import { showAlert, confirmAction } from '../../utils/alert';
 
@@ -494,8 +493,8 @@ export default function AdminScreen() {
         const target = (targetRoll || revokeRoll).trim();
         const reason = (reasonText || revokeReason).trim();
         if (!target) return showAlert('Nothing to revoke', 'Enter a roll number first.');
-        if (target === '2410990296' || isAdminRollNumber(target)) {
-            return showAlert('Not allowed', 'The primary super admin (2410990296) cannot be revoked.');
+        if (target === String(roll || '').trim()) {
+            return showAlert('Not allowed', 'You cannot revoke your own access.');
         }
 
         // Locks the student out of the app on their next launch — worth a beat.

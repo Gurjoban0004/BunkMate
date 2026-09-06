@@ -32,7 +32,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { AppState } from 'react-native';
-import { getErpToken, getErpPersistentToken } from '../storage/erpTokenStorage';
+import { getErpToken, getErpPersistentToken, clearErpToken } from '../storage/erpTokenStorage';
 import { erpFetchAttendance, erpFetchCalendar, erpFetchTimetable, erpKeepAlive } from '../services/erpService';
 import { mapErpToAppState, buildResyncPayload, isNonRegressingErpUpdate, mapCalendarToRecords, mapTimetableToState, normalizeErpSubject, validateErpSubject, buildErpNameMap } from '../utils/erpAttendanceMapper';
 import { logger } from '../utils/logger';
@@ -72,6 +72,28 @@ export function useErpAutoSync(state, dispatch) {
     // ── Helper: patch erpSync in AppContext ──────────────────────
     const setSyncStatus = useCallback((patch) => {
         dispatch({ type: 'ERP_SYNC_STATE', payload: patch });
+    }, [dispatch]);
+
+    // The server said the session is gone. Two shapes:
+    //   needsOtp   → the ERP wants a code; the modal collects it and refreshes
+    //   needsLogin → the stored "remember me" (180 days) ran out; forget the
+    //                tokens and ask the student to reconnect from Settings
+    const handleSessionExpired = useCallback(async (result, persistentToken) => {
+        if (result.needsLogin) {
+            logger.info('🔑', 'ERP sign-in expired — clearing tokens, reconnect required');
+            await clearErpToken();
+            dispatch({ type: 'UPDATE_SETTINGS', payload: { erpConnected: false } });
+            return;
+        }
+        logger.info('🔑', 'ERP session expired — triggering OTP immediately');
+        dispatch({
+            type: 'ERP_SESSION_EXPIRED',
+            payload: {
+                authUserId:  result.authUserId,
+                studentName: result.studentName || '',
+                persistentToken,
+            },
+        });
     }, [dispatch]);
 
     // ─────────────────────────────────────────────────────────────
@@ -164,15 +186,7 @@ export function useErpAutoSync(state, dispatch) {
 
             // Auth failure — trigger OTP immediately, do not wait for keep-alive
             if (attendanceResult.sessionExpired) {
-                logger.info('🔑', 'ERP session expired — triggering OTP immediately');
-                dispatch({
-                    type: 'ERP_SESSION_EXPIRED',
-                    payload: {
-                        authUserId:      attendanceResult.authUserId,
-                        studentName:     attendanceResult.studentName || '',
-                        persistentToken,
-                    },
-                });
+                await handleSessionExpired(attendanceResult, persistentToken);
                 setSyncStatus({ status: 'error' });
                 // Do NOT update lastSyncTimeRef — allow retry after OTP
                 return;
@@ -453,7 +467,7 @@ export function useErpAutoSync(state, dispatch) {
                                 fetchedAt: ttData.fetchedAt,
                                 timesAreInferred: ttData.timesAreInferred || false,
                                 periodDefinitions: ttData.timeSlots,
-                                erpEndpoint: ttData._diag?.source || null,
+                                erpEndpoint: ttData.source || null,
                             },
                         });
                         logger.info('✅', 'ERP timetable synced');
@@ -506,7 +520,7 @@ export function useErpAutoSync(state, dispatch) {
             });
             logAttendanceSnapshot(currentState.userId, currentState.erpRollNumber, attendanceSnapshot);
         }
-    }, [dispatch, setSyncStatus]);
+    }, [dispatch, setSyncStatus, handleSessionExpired]);
 
     // ── Keep-alive: ping ERP every 12 min to warm the session ────
     // Server short-circuits on keepAlive=true — no HTML parsing overhead.
@@ -526,18 +540,8 @@ export function useErpAutoSync(state, dispatch) {
         const result = await erpKeepAlive(token, persistentToken);
 
         // If keep-alive reveals session is dead, trigger OTP immediately
-        if (result?.sessionExpired) {
-            logger.info('🔑', 'Keep-alive: session expired — triggering OTP immediately');
-            dispatch({
-                type: 'ERP_SESSION_EXPIRED',
-                payload: {
-                    authUserId:      result.authUserId,
-                    studentName:     result.studentName || '',
-                    persistentToken,
-                },
-            });
-        }
-    }, [dispatch]);
+        if (result?.sessionExpired) await handleSessionExpired(result, persistentToken);
+    }, [handleSessionExpired]);
 
     // ── Periodic sync + foreground sync + keep-alive ─────────────
     useEffect(() => {

@@ -1,138 +1,118 @@
 /**
- * Vercel Serverless Function: ERP Session Check / Refresh
- *
  * POST /api/erp-session
  * Body:
  *   check:   { action: 'check', token }
- *   refresh: { action: 'refresh', persistentToken, authUserId, otp }
+ *   refresh: { action: 'refresh', persistentToken, authUserId, otp, deviceId? }
  *
- * ── action: check ────────────────────────────────────────────────────
- * Called on app start. Decrypts the existing session token locally only.
- * It never contacts ERP login, so startup cannot silently send an OTP.
- *
- * ── action: refresh ──────────────────────────────────────────────────
- * Called after user enters OTP during a session refresh flow.
- * Completes the login, returns a new session token + updated persistent token.
- *
- * SECURITY: Credentials never logged. Client never sees plaintext session data.
- *           Internal error details are never forwarded to the client.
+ * check   — called on app start. Opens the session token locally, never contacts
+ *           ERP login (so startup cannot silently send an OTP), and reports whether
+ *           the roll is revoked / an admin so the client needs no Firestore reads.
+ * refresh — completes an OTP re-auth started by a data endpoint's silent re-login.
+ *           `authUserId` is the sealed ticket that endpoint returned; it carries the
+ *           device id the ERP just saw, so the verify binds the same device.
  */
 
 const {
     decryptSession,
     decryptPersistent,
-    encryptPersistent,
-    encryptSession,
+    mintSessionToken,
+    mintPersistentToken,
     verifyOtpWithERP,
-    generateDeviceUUID,
     openOtpTicket,
+    resolveDeviceId,
     setCorsHeaders,
+    cleanString,
+    getClientIp,
     ERP_BASE,
 } = require('./_session-utils');
+const { getRevocation } = require('./_revocation');
+const { tooManyAttempts } = require('./_rate-limit');
+const { isAdminRoll } = require('./_firebase-admin');
+
+const REFRESH_POLICY = { max: 10, windowMs: 15 * 60 * 1000 };
+const OTP_RE = /^\d{4,6}$/;
 
 module.exports = async function handler(req, res) {
-    try {
-        setCorsHeaders(res);
-    } catch (e) {
-        return res.status(500).json({ error: e.message });
-    }
+    setCorsHeaders(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    if (req.method !== 'POST')    return res.status(405).json({ error: 'Method not allowed' });
+    if (!ERP_BASE) return res.status(500).json({ error: 'Server configuration error' });
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
+    const body = req.body || {};
+    const action = cleanString(body.action, 16);
 
-    if (!ERP_BASE || !process.env.ENCRYPTION_SECRET) {
-        return res.status(500).json({ error: 'Server configuration error' });
-    }
-
-    const { action, token, persistentToken, authUserId, otp } = req.body || {};
-
-    // ── action: check ─────────────────────────────────────────────────
     if (action === 'check') {
-        if (!token) {
-            return res.status(200).json({ valid: false, reason: 'no_token' });
-        }
+        const token = cleanString(body.token, 16384);
+        if (!token) return res.status(200).json({ valid: false, reason: 'no_token' });
 
+        let session;
         try {
-            const session = decryptSession(token);
-            if (!session.userId || !session.sessionId || !session.roleId || !session.apiKey || !session.studentId) {
-                return res.status(200).json({ valid: false, reason: 'incomplete_session' });
-            }
-            return res.status(200).json({
-                valid: true,
-                reason: 'session_available',
-                studentId: session.studentId,
-                studentName: session.studentName || '',
-            });
+            session = decryptSession(token);
         } catch {
             return res.status(200).json({ valid: false, reason: 'invalid_token' });
         }
+        if (!session.userId || !session.sessionId || !session.roleId || !session.apiKey || !session.studentId) {
+            return res.status(200).json({ valid: false, reason: 'incomplete_session' });
+        }
+
+        const revocation = await getRevocation(session.rollNumber);
+        return res.status(200).json({
+            valid: true,
+            reason: 'session_available',
+            studentId: session.studentId,
+            studentName: session.studentName || '',
+            isAdmin: isAdminRoll(session.rollNumber),
+            ...(revocation && { revoked: { reason: revocation.reason || 'Your access to Presence has been revoked.' } }),
+        });
     }
 
-    // ── action: refresh ───────────────────────────────────────────────
     if (action === 'refresh') {
-        if (!persistentToken || !authUserId || !otp) {
+        const persistentToken = cleanString(body.persistentToken, 16384);
+        const ticket = cleanString(body.authUserId, 4096);
+        const otp = cleanString(body.otp, 8);
+        if (!persistentToken || !ticket || !otp) {
             return res.status(400).json({ error: 'persistentToken, authUserId and otp are required' });
         }
+        if (!OTP_RE.test(otp)) return res.status(400).json({ error: 'OTP must be 4–6 digits' });
+
+        if (await tooManyAttempts(res, 'erp-refresh-ip', getClientIp(req), REFRESH_POLICY)) return;
 
         let creds;
         try {
             creds = decryptPersistent(persistentToken);
-        } catch {
+        } catch (err) {
+            if (err.code === 'PERSISTENT_EXPIRED') {
+                return res.status(401).json({ error: 'Sign-in expired', needsLogin: true });
+            }
             return res.status(401).json({ error: 'Invalid persistent token' });
         }
 
+        // The ticket is what the data endpoint minted when the ERP demanded an OTP; its
+        // device id is the one the ERP has already seen for this challenge. The roll
+        // number, though, comes from the sealed persistent token — the ticket grants
+        // nothing on its own here.
+        const bound = openOtpTicket(ticket);
+        if (!bound) return res.status(401).json({ error: 'Login expired', message: 'Please try syncing again to get a new code.' });
+        const deviceId = resolveDeviceId(bound.deviceId, creds.deviceId, body.deviceId);
+
         try {
-            // Generate deterministic device UUID from stored credentials
-            const deviceIdUUID = generateDeviceUUID(creds.username);
-
-            // authUserId reaches this endpoint in two shapes: a sealed ticket when the
-            // flow started at /api/erp-login, or a raw id when a data endpoint's silent
-            // re-login surfaced needsOtp. Accept both — unlike erp-verify-otp, the roll
-            // number here comes from the sealed persistentToken (creds.username), so the
-            // ticket is not the trust anchor and a raw id grants nothing extra.
-            const resolvedAuthUserId = openOtpTicket(authUserId)?.authUserId || authUserId;
-
-            // Use shared OTP verification helper with deviceIdUUID
-            const session = await verifyOtpWithERP(resolvedAuthUserId, otp, deviceIdUUID);
-
+            const session = await verifyOtpWithERP(bound.authUserId, otp, deviceId);
             const studentName = creds.studentName || session.studentName || '';
-
-            const newToken = encryptSession({
-                rollNumber:    creds.username ? String(creds.username).trim() : '',
-                userId:        session.userId,
-                sessionId:     session.sessionId,
-                roleId:        session.roleId,
-                apiKey:        session.apiKey,
-                securityToken: session.securityToken || '',
-                deviceIdUUID:  session.deviceIdUUID || deviceIdUUID,
-                studentId:     session.studentId,
-                studentName,
-                studentPhoto:  session.studentPhoto,
-                isMock:        creds.isMock || session.isMock || false,
-            });
-
-            // Re-encrypt persistent token to update studentName if it changed
-            const newPersistentToken = encryptPersistent({
-                username: creds.username,
-                password: creds.password,
-                studentName,
-                isMock:       creds.isMock || session.isMock || false,
-            });
+            const isMock = creds.isMock || session.isMock || false;
 
             return res.status(200).json({
-                success:          true,
-                token:            newToken,
-                persistentToken:  newPersistentToken,
+                success:         true,
+                token:           mintSessionToken({ ...session, studentName, isMock }, { username: creds.username }),
+                persistentToken: mintPersistentToken({ username: creds.username, password: creds.password, deviceId, studentName, isMock }),
                 studentName,
+                isAdmin:         isAdminRoll(creds.username),
             });
-
         } catch (err) {
-            if (err.code === 'INVALID_OTP') {
+            if (err.code === 'INVALID_OTP' || err.code === 'ERP_REJECTED') {
                 return res.status(401).json({ error: 'Invalid OTP', message: 'OTP incorrect or expired' });
             }
-            // Do NOT forward err.message to client
             console.error('ERP session refresh error:', err.message);
-            return res.status(500).json({ error: 'Session refresh failed', message: 'Could not complete session refresh. Please try again.' });
+            return res.status(502).json({ error: 'Session refresh failed', message: 'Could not complete session refresh. Please try again.' });
         }
     }
 

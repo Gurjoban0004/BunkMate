@@ -57,6 +57,7 @@ const initialState = {
         erpConnected: false,
         lastErpSync: null,
         uiPalette: 'chalkpad',
+        isAdmin: false,               // decided by the server at ERP login, never by the client
     },
 
     // Track which warning notifications have been sent (avoid spam)
@@ -855,6 +856,11 @@ export function AppProvider({ children }) {
                                 const result = await erpCheckSession(erpToken);
                                 if (!result.valid && result.reason !== 'no_token') {
                                     safeDispatch({ type: 'UPDATE_SETTINGS', payload: { erpConnected: false } });
+                                } else if (result.valid) {
+                                    safeDispatch({ type: 'UPDATE_SETTINGS', payload: { isAdmin: !!result.isAdmin } });
+                                    if (result.revoked) {
+                                        safeDispatch({ type: 'ACCESS_REVOKED', payload: { reason: result.revoked.reason } });
+                                    }
                                 }
                             } catch (e) {
                                 logger.warn('⚠️ ERP session check failed:', e.message);

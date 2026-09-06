@@ -5,11 +5,12 @@
  *   - FIREBASE_SERVICE_ACCOUNT env var (JSON string of the service account key)
  *   - GOOGLE_APPLICATION_CREDENTIALS pointing to a JSON key file (local dev)
  *
- * Also reads ADMIN_ROLL_NUMBERS (comma-separated) for server-side admin validation.
+ * ADMIN_ROLL_NUMBERS (comma-separated) is the only source of admin identity.
+ * There is deliberately no baked-in default: an admin list that lives in the
+ * source is both a disclosure and a thing nobody remembers to change.
  */
 
-// Modular API only — firebase-admin v14 dropped the namespaced `admin.apps` /
-// `admin.credential` / `admin.firestore()` surface off the default export.
+// Modular API only — firebase-admin v14 dropped the namespaced surface.
 const { initializeApp, getApps, cert, applicationDefault } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
@@ -22,7 +23,7 @@ if (!getApps().length) {
 
 const adminDb = getFirestore();
 
-const ADMIN_ROLL_NUMBERS = (process.env.ADMIN_ROLL_NUMBERS || '2410990296')
+const ADMIN_ROLL_NUMBERS = String(process.env.ADMIN_ROLL_NUMBERS || '')
     .split(',')
     .map(r => r.trim())
     .filter(Boolean);

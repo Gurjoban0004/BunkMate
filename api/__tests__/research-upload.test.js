@@ -30,6 +30,7 @@ jest.mock('../_firebase-admin', () => ({
 jest.mock('firebase-admin/firestore', () => ({
     FieldValue: { arrayUnion: (...items) => ({ __arrayUnion: items }) },
 }));
+jest.mock('../_rate-limit', () => ({ tooManyAttempts: async () => false }));
 
 const { saveResearch } = require('../_research');
 const handler = require('../research');

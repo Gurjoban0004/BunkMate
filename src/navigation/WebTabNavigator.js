@@ -22,13 +22,13 @@ import TabIcon from './TabIcon';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
-import { isAdminRollNumber } from '../services/adminService';
+import { isAdminUser } from '../services/adminService';
 
 export default function WebTabNavigator() {
     const styles = getStyles();
     const insets = useSafeAreaInsets();
     const { state: appState } = useApp();
-    const isAdmin = isAdminRollNumber(appState.erpRollNumber);
+    const isAdmin = isAdminUser(appState);
     const [currentTab, setCurrentTab] = useState('Today');
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }],

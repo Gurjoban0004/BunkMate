@@ -23,11 +23,20 @@
  *   userRoster        — detailed user directory
  */
 
-const { setCorsHeaders, decodeSessionRollNumber } = require('./_session-utils');
+const { setCorsHeaders, decodeSessionRollNumber, getClientIp } = require('./_session-utils');
+const { tooManyAttempts } = require('./_rate-limit');
 const { adminDb, isAdminRoll } = require('./_firebase-admin');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const IP_POLICY = { max: 120, windowMs: 10 * 60 * 1000 };
+
+// Every read is bounded (audit H3). These are ceilings well above the user base,
+// not targets: a metric that hits one is reporting on a sample rather than
+// scanning a collection forever against the function's time limit.
+const MAX_USERS     = 5000;
+const MAX_SEMESTERS = 10000;
+const MAX_SYNCS     = 20000;
 
 // Presence is a single-college app (CUIET): every genuine user signs in with a
 // long numeric ERP roll number (e.g. 2410990296). Mock/dev and abandoned-onboarding
@@ -69,17 +78,21 @@ async function setCache(metric, data) {
     }
 }
 
+const allUsers     = () => adminDb.collection('users').limit(MAX_USERS).get();
+const allSemesters = () => adminDb.collectionGroup('semesters').limit(MAX_SEMESTERS).get();
+
 /**
- * Recent sync telemetry. Prefers a server-side timestamp filter and only falls
- * back to a full collection-group scan when the index is missing — the previous
- * code always read every sync ever written just to keep the last 24 hours.
+ * Recent sync telemetry, server-side filtered on `timestamp` (the COLLECTION_GROUP
+ * index is declared in firestore.indexes.json). If that index is missing the
+ * fallback is a *bounded* scan, never the whole history.
  */
 async function recentSyncs(sinceMs) {
     const since = Timestamp.fromMillis(sinceMs);
     try {
-        return await adminDb.collectionGroup('syncs').where('timestamp', '>=', since).get();
-    } catch {
-        return await adminDb.collectionGroup('syncs').get();
+        return await adminDb.collectionGroup('syncs').where('timestamp', '>=', since).limit(MAX_SYNCS).get();
+    } catch (err) {
+        console.warn('[ANALYTICS] syncs timestamp index missing — bounded fallback scan:', err.message);
+        return await adminDb.collectionGroup('syncs').limit(MAX_SYNCS).get();
     }
 }
 
@@ -90,10 +103,7 @@ const syncMillis = (data) => (data && data.timestamp && data.timestamp.toMillis)
 // ── Metric Computations ──────────────────────────────────────────────
 
 async function computeSubjectDifficulty() {
-    const [usersSnap, semestersSnap] = await Promise.all([
-        adminDb.collection('users').get(),
-        adminDb.collectionGroup('semesters').get(),
-    ]);
+    const [usersSnap, semestersSnap] = await Promise.all([allUsers(), allSemesters()]);
 
     // Only aggregate semesters owned by a real (roll-bearing) user, so mock/test
     // accounts' sample subjects never enter the heatmap.
@@ -136,7 +146,7 @@ async function computeSubjectDifficulty() {
 }
 
 async function computeBunkCulture() {
-    const semestersSnap = await adminDb.collectionGroup('semesters').get();
+    const semestersSnap = await allSemesters();
     const dayStats = {
         Monday: { present: 0, absent: 0 },
         Tuesday: { present: 0, absent: 0 },
@@ -291,7 +301,7 @@ async function computeRateLimit() {
     const hourAgo = Date.now() - 3600000;
     const dayAgo = Date.now() - 86400000;
 
-    const usersSnap = await adminDb.collection('users').get();
+    const usersSnap = await allUsers();
     const userRolls = {};
     usersSnap.forEach(docSnap => {
         const data = docSnap.data();
@@ -324,7 +334,7 @@ async function computeRateLimit() {
 }
 
 async function computeActiveUsers() {
-    const usersSnap = await adminDb.collection('users').get();
+    const usersSnap = await allUsers();
     const now = Date.now();
     const DAY = 86400000;
     let dau = 0, wau = 0, mau = 0;
@@ -375,7 +385,7 @@ async function computeActiveUsers() {
 }
 
 async function computeBatchDistribution() {
-    const usersSnap = await adminDb.collection('users').get();
+    const usersSnap = await allUsers();
     const batches = {};
 
     usersSnap.forEach(docSnap => {
@@ -396,10 +406,7 @@ async function computeUserRoster() {
     // Previously this ran one semesters subcollection read per user, in series —
     // an N+1 that got linearly slower with every signup and eventually times the
     // function out. Read every semester once and group by owner instead.
-    const [usersSnap, semestersSnap] = await Promise.all([
-        adminDb.collection('users').get(),
-        adminDb.collectionGroup('semesters').get(),
-    ]);
+    const [usersSnap, semestersSnap] = await Promise.all([allUsers(), allSemesters()]);
 
     const byUser = {}; // userId → { semesterCount, subjects[] }
     semestersSnap.forEach(semDoc => {
@@ -473,8 +480,8 @@ const METRIC_HANDLERS = {
 };
 
 module.exports = async function handler(req, res) {
-    setCorsHeaders(res);
-    if (req.method === 'OPTIONS') return res.status(200).end();
+    setCorsHeaders(res, req);
+    if (req.method === 'OPTIONS') return res.status(204).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const { token, metric, forceRefresh } = req.body || {};
@@ -483,6 +490,8 @@ module.exports = async function handler(req, res) {
     if (!rollNumber || !isAdminRoll(rollNumber)) {
         return res.status(403).json({ error: 'Unauthorized' });
     }
+
+    if (await tooManyAttempts(res, 'admin-analytics-ip', getClientIp(req), IP_POLICY)) return;
 
     if (!metric || !METRIC_HANDLERS[metric]) {
         return res.status(400).json({ error: `Unknown metric: ${metric}. Valid: ${Object.keys(METRIC_HANDLERS).join(', ')}` });
@@ -501,6 +510,8 @@ module.exports = async function handler(req, res) {
         // A dashboard that invents numbers when the query fails is worse than one
         // that says it failed. This used to answer 200 with { dau: 1, wau: 1 }.
         console.error(`Analytics computation failed for ${metric}:`, err);
+        // The reason is deliberately surfaced: this response only ever reaches an
+        // authenticated admin, and "why" is what makes the dashboard honest.
         return res.status(500).json({ error: `Failed to compute ${metric}: ${err.message}` });
     }
 };
