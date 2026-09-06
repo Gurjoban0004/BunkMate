@@ -489,7 +489,7 @@ module.exports = async function handler(req, res) {
 
         // Research dataset (opt-in). `subjects` carries the ERP's own per-subject
         // totals, which is what the dataset build validates the marks against.
-        saveResearch(researchId, { marks, subjects }, consentedAt);
+        await saveResearch(researchId, { marks, subjects }, consentedAt);
 
         return res.status(200).json({
             success: true,

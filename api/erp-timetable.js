@@ -674,7 +674,7 @@ module.exports = async function handler(req, res) {
                 ...(e.room && { room: e.room }),
             })));
         const group = Object.values(parsed.timetable).flat().find(e => e.group)?.group;
-        saveResearch(researchId, { slots, source, ...(group && { group }) }, consentedAt);
+        await saveResearch(researchId, { slots, source, ...(group && { group }) }, consentedAt);
 
         return res.status(200).json({
             success: true,

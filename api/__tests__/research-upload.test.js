@@ -57,8 +57,8 @@ describe('saveResearch', () => {
         expect(mockWrites).toHaveLength(0);
     });
 
-    it('merges the patch onto the participant document', () => {
-        saveResearch(UUID, { marks: [{ d: '2026-08-12', s: 'X', p: 1, a: 0 }] }, '2026-09-01T00:00:00Z');
+    it('merges the patch onto the participant document', async () => {
+        await saveResearch(UUID, { marks: [{ d: '2026-08-12', s: 'X', p: 1, a: 0 }] }, '2026-09-01T00:00:00Z');
         expect(mockWrites).toHaveLength(1);
         expect(mockWrites[0].id).toBe(UUID);
         expect(mockWrites[0].opts).toEqual({ merge: true });
@@ -69,10 +69,28 @@ describe('saveResearch', () => {
     it('swallows a failed write — a sync must not break on it', async () => {
         mockSetBehaviour = () => Promise.reject(new Error('firestore down'));
         const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-        expect(() => saveResearch(UUID, { marks: [] })).not.toThrow();
-        await new Promise(r => setImmediate(r));
+        await expect(saveResearch(UUID, { marks: [] })).resolves.toBeUndefined();
         expect(spy).toHaveBeenCalled();
         spy.mockRestore();
+    });
+
+    // The bug this pins: the write used to be fire-and-forget, and a serverless
+    // instance can be frozen the moment its response is sent. The first real
+    // participant's timetable (30 slots) landed and their marks (~1000 entries)
+    // did not — same request cycle, same code, different write duration.
+    it('does not resolve until the write has actually settled', async () => {
+        let settle;
+        mockSetBehaviour = () => new Promise(r => { settle = r; });
+
+        let done = false;
+        const pending = saveResearch(UUID, { marks: [] }).then(() => { done = true; });
+
+        await new Promise(r => setImmediate(r));
+        expect(done).toBe(false);      // still waiting on Firestore, as it must
+
+        settle();
+        await pending;
+        expect(done).toBe(true);
     });
 });
 

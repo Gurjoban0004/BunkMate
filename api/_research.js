@@ -8,8 +8,13 @@
  * that identifies a person is written here — no name, roll number or login code —
  * so there is nothing to strip later.
  *
- * Fire-and-forget in both directions: a failed research write must never fail or
- * slow a sync, and the sync never waits on it.
+ * The write is awaited, and never throws. Awaiting is not optional: a serverless
+ * instance can be frozen or torn down the moment its response is sent, so a
+ * promise left running after `res.json()` may simply never finish. That is not
+ * theoretical — it is why the first real participant's timetable (30 slots, a
+ * fast write) landed while their marks (~1000 entries, a slow one) silently did
+ * not. Swallowing errors is what keeps a failed research write from breaking a
+ * sync; not waiting for it was never the right way to get that.
  */
 
 const { adminDb } = require('./_firebase-admin');
@@ -21,23 +26,26 @@ function researchDoc(researchId) {
 }
 
 /**
- * Merge a patch into the student's research document. Returns immediately;
- * the write settles in the background.
+ * Merge a patch into the student's research document. Awaited by the caller so the
+ * write actually completes before the function returns; resolves either way.
  * @param {string|undefined} researchId  UUID from the request body, or absent if not consented
  * @param {Object} patch                 fields to merge
  * @param {string} [consentedAt]         ISO timestamp the device recorded at consent
+ * @returns {Promise<void>} never rejects — a research failure must not break a sync
  */
-function saveResearch(researchId, patch, consentedAt) {
+async function saveResearch(researchId, patch, consentedAt) {
     if (!researchId || !RESEARCH_ID.test(researchId)) return;
 
-    researchDoc(researchId)
-        .set({
+    try {
+        await researchDoc(researchId).set({
             v: 1,
             lastSyncAt: new Date().toISOString(),
             ...(consentedAt && { consentedAt }),
             ...patch,
-        }, { merge: true })
-        .catch(err => console.error('research write failed:', err.message));
+        }, { merge: true });
+    } catch (err) {
+        console.error('research write failed:', err.message);
+    }
 }
 
 module.exports = { saveResearch, researchDoc, RESEARCH_ID };
