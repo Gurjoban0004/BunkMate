@@ -10,9 +10,23 @@
  */
 
 import { buildApiUrl } from '../services/apiConfig';
+import { auth } from '../config/firebase';
+import { ensureAuthenticated } from './firebaseHelpers';
 import { logger } from './logger';
 
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY;
+
+/**
+ * Headers for /api/push-subscribe, which now requires proof the caller owns userId.
+ * @returns {Promise<Object|null>} null when no Firebase session can be established —
+ *          callers must bail rather than send an unauthenticated request that 401s.
+ */
+async function pushHeaders(userId) {
+    if (auth?.currentUser?.uid !== userId) await ensureAuthenticated(userId);
+    const idToken = await auth?.currentUser?.getIdToken?.();
+    if (!idToken) return null;
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` };
+}
 
 export function isWebPushSupported() {
     return (
@@ -54,9 +68,12 @@ export async function enableWebPush(userId, reminderTime = '18:00') {
             });
         }
 
+        const headers = await pushHeaders(userId);
+        if (!headers) return { ok: false, reason: 'unauthenticated' };
+
         const res = await fetch(buildApiUrl('/api/push-subscribe', 'web'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ userId, subscription: sub.toJSON(), reminderTime, enabled: true }),
         });
         if (!res.ok) return { ok: false, reason: 'server' };
@@ -74,11 +91,16 @@ export async function disableWebPush(userId) {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         if (sub) {
-            await fetch(buildApiUrl('/api/push-subscribe', 'web'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, subscription: sub.toJSON(), enabled: false }),
-            }).catch(() => {});
+            const headers = await pushHeaders(userId);
+            // Always unsubscribe locally, even if the server call can't be authenticated —
+            // the user asked for notifications off, so the local half must not depend on it.
+            if (headers) {
+                await fetch(buildApiUrl('/api/push-subscribe', 'web'), {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ userId, subscription: sub.toJSON(), enabled: false }),
+                }).catch(() => {});
+            }
             await sub.unsubscribe();
         }
         return { ok: true };
@@ -95,9 +117,11 @@ export async function updateWebPushTime(userId, reminderTime) {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         if (!sub) return;
+        const headers = await pushHeaders(userId);
+        if (!headers) return;
         await fetch(buildApiUrl('/api/push-subscribe', 'web'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({ userId, subscription: sub.toJSON(), reminderTime, enabled: true }),
         }).catch(() => {});
     } catch (e) { /* best-effort */ }

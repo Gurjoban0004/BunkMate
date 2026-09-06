@@ -24,12 +24,14 @@ if (!SECRET || SECRET.length < 32) {
 // Separate salts so the token types are cryptographically independent
 const SESSION_SALT    = 'presence-erp-salt';
 const PERSISTENT_SALT = 'presence-persistent-salt';
+const OTP_TICKET_SALT = 'presence-otp-ticket-salt';
 
 // ── Key derivation at module load — NOT per-request ───────────────────
 // scryptSync is intentionally slow (KDF). Calling it per-request blocks the
 // event loop for 50–200ms. Derive once at startup and reuse.
 const SESSION_KEY    = crypto.scryptSync(SECRET, SESSION_SALT,    32);
 const PERSISTENT_KEY = crypto.scryptSync(SECRET, PERSISTENT_SALT, 32);
+const OTP_TICKET_KEY = crypto.scryptSync(SECRET, OTP_TICKET_SALT, 32);
 
 const MOBILE_HEADERS = {
     'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -112,6 +114,48 @@ function encryptPersistent(creds) {
 /** Decrypt persistent credentials */
 function decryptPersistent(token) {
     return _decrypt(token, PERSISTENT_KEY);
+}
+
+// ── OTP tickets: bind authUserId to the username it was issued for ────
+// The ERP's OTP-verify response proves "this OTP belongs to *some* real account"
+// but never echoes back WHICH roll number that is. So the roll can only be known
+// at login time, where we sent the username ourselves.
+//
+// Passing authUserId and username to /api/erp-verify-otp as two independent
+// client fields let a caller complete their OWN OTP while claiming someone
+// else's roll — including the admin's — because nothing tied the two together.
+// Sealing them into one AES-GCM ticket at login makes that pairing unforgeable:
+// the client hands the ticket straight back and cannot alter half of it.
+const OTP_TICKET_MAX_AGE_MS = 15 * 60 * 1000;   // OTPs die long before this
+
+function sealOtpTicket(authUserId, username) {
+    return _encrypt({
+        authUserId: String(authUserId),
+        username:   String(username).trim(),
+        iat:        Date.now(),
+    }, OTP_TICKET_KEY);
+}
+
+/**
+ * Open an OTP ticket.
+ * @returns {{ authUserId: string, username: string } | null} null if the ticket is
+ *          missing, forged, tampered with, or older than OTP_TICKET_MAX_AGE_MS.
+ */
+function openOtpTicket(ticket) {
+    if (!ticket || typeof ticket !== 'string') return null;
+
+    let data;
+    try {
+        data = _decrypt(ticket, OTP_TICKET_KEY);
+    } catch {
+        return null;    // forged, tampered, or minted under a different secret
+    }
+
+    const username = data.username ? String(data.username).trim() : '';
+    if (!data.authUserId || !username) return null;
+    if (!Number.isFinite(data.iat) || Date.now() - data.iat > OTP_TICKET_MAX_AGE_MS) return null;
+
+    return { authUserId: String(data.authUserId), username };
 }
 
 /**
@@ -253,7 +297,7 @@ function setCorsHeaders(res) {
     const origin = process.env.ALLOWED_ORIGIN || '*';
     res.setHeader('Access-Control-Allow-Origin',  origin);
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
 module.exports = {
@@ -262,6 +306,8 @@ module.exports = {
     decodeSessionRollNumber,
     encryptPersistent,
     decryptPersistent,
+    sealOtpTicket,
+    openOtpTicket,
     reloginERP,
     mintSessionToken,
     verifyOtpWithERP,

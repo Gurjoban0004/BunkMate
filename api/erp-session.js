@@ -25,6 +25,7 @@ const {
     encryptSession,
     verifyOtpWithERP,
     generateDeviceUUID,
+    openOtpTicket,
     setCorsHeaders,
     ERP_BASE,
 } = require('./_session-utils');
@@ -84,8 +85,15 @@ module.exports = async function handler(req, res) {
             // Generate deterministic device UUID from stored credentials
             const deviceIdUUID = generateDeviceUUID(creds.username);
 
+            // authUserId reaches this endpoint in two shapes: a sealed ticket when the
+            // flow started at /api/erp-login, or a raw id when a data endpoint's silent
+            // re-login surfaced needsOtp. Accept both — unlike erp-verify-otp, the roll
+            // number here comes from the sealed persistentToken (creds.username), so the
+            // ticket is not the trust anchor and a raw id grants nothing extra.
+            const resolvedAuthUserId = openOtpTicket(authUserId)?.authUserId || authUserId;
+
             // Use shared OTP verification helper with deviceIdUUID
-            const session = await verifyOtpWithERP(authUserId, otp, deviceIdUUID);
+            const session = await verifyOtpWithERP(resolvedAuthUserId, otp, deviceIdUUID);
 
             const studentName = creds.studentName || session.studentName || '';
 

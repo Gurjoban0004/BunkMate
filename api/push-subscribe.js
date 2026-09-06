@@ -2,14 +2,18 @@
  * Vercel Serverless Function: store / update a Web Push subscription.
  *
  * POST /api/push-subscribe
+ * Headers: Authorization: Bearer <Firebase ID token>
  * Body: { userId, subscription, reminderTime?, enabled }
  *
  * Subscriptions live at users/{userId}/push/{endpointHash}. The daily-reminder cron
- * (api/push-send) reads them. Written with the Admin SDK (bypasses rules).
+ * (api/push-send) reads them. Written with the Admin SDK (bypasses rules) — so the
+ * caller's ownership of {userId} has to be proven here, since Firestore's own
+ * `request.auth.uid == userId` rule never runs on this path.
  */
 
 const crypto = require('crypto');
 const { FieldValue } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
 const { setCorsHeaders } = require('./_session-utils');
 const { adminDb } = require('./_firebase-admin');
 
@@ -27,6 +31,20 @@ module.exports = async function handler(req, res) {
     const { userId, subscription, reminderTime, enabled } = req.body || {};
     if (!userId || !CODE_REGEX.test(userId)) return res.status(400).json({ error: 'Invalid user' });
     if (!subscription || !subscription.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
+
+    // auth-token.js mints custom tokens with uid === login code, so a verified ID
+    // token proves the caller holds this code. Without this, knowing a code was
+    // enough to overwrite that user's push subscription.
+    const bearer = String(req.headers.authorization || '');
+    const idToken = bearer.startsWith('Bearer ') ? bearer.slice(7).trim() : '';
+    if (!idToken) return res.status(401).json({ error: 'Authentication required' });
+
+    try {
+        const decoded = await getAuth().verifyIdToken(idToken);
+        if (decoded.uid !== userId) return res.status(403).json({ error: 'Forbidden' });
+    } catch {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
 
     try {
         const ref = adminDb.doc(`users/${userId}/push/${endpointHash(subscription.endpoint)}`);

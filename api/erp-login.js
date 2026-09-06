@@ -23,6 +23,7 @@ const {
     reloginERP,
     mintSessionToken,
     encryptPersistent,
+    sealOtpTicket,
     ERP_BASE,
 } = require('./_session-utils');
 
@@ -70,11 +71,14 @@ module.exports = async function handler(req, res) {
             });
         }
 
-        // New device: ERP emailed an OTP.
+        // New device: ERP emailed an OTP. Hand back a sealed ticket rather than the
+        // raw authUserId — this is the only moment the server knows which username
+        // that authUserId was issued for, so the pairing is bound here and verified
+        // in erp-verify-otp. The client treats it as an opaque string.
         return res.status(200).json({
             success:    true,
             needsOtp:   true,
-            authUserId: result.authUserId,
+            authUserId: sealOtpTicket(result.authUserId, username.trim()),
             message:    'OTP sent to your registered mobile/email',
         });
 

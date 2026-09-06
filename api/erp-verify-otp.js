@@ -2,7 +2,9 @@
  * Vercel Serverless Function: ERP OTP Verification
  *
  * POST /api/erp-verify-otp
- * Body: { authUserId, otp, username, password }
+ * Body: { authUserId, otp, password }
+ *   authUserId — the opaque ticket returned by /api/erp-login, which seals the
+ *                ERP authUserId together with the username it was issued for.
  *
  * 1. Verifies OTP with ERP (via shared verifyOtpWithERP helper)
  * 2. Encrypts session (userId, sessionId, roleId, apiKey) — NO expiry
@@ -20,6 +22,7 @@ const {
     encryptPersistent,
     verifyOtpWithERP,
     generateDeviceUUID,
+    openOtpTicket,
     setCorsHeaders,
     ERP_BASE,
 } = require('./_session-utils');
@@ -35,9 +38,11 @@ module.exports = async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
 
-    const { authUserId, otp, username, password } = req.body || {};
+    // `username` is deliberately NOT read from the body. It arrives sealed inside the
+    // ticket instead — see below.
+    const { authUserId: ticket, otp, password } = req.body || {};
 
-    if (!authUserId || !otp) {
+    if (!ticket || !otp) {
         return res.status(400).json({ error: 'authUserId and OTP are required' });
     }
 
@@ -45,12 +50,25 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Server configuration error' });
     }
 
+    // The roll number sealed into the session token below is what admin.js and
+    // admin-analytics.js authorize on, so it must be the identity the ERP actually
+    // issued this OTP for — not a string the caller chose. The ticket carries both
+    // halves, sealed together at login, so they cannot be mixed and matched.
+    const bound = openOtpTicket(ticket);
+    if (!bound) {
+        return res.status(401).json({
+            error:   'Login expired',
+            message: 'Your login session expired. Please enter your credentials again.',
+        });
+    }
+    const { authUserId, username } = bound;
+
     // Block before burning an OTP — a revoked user gets the reason, not a dead session.
     if (await blockIfRevoked(res, username)) return;
 
     try {
-        // Generate deterministic device UUID from username (if provided)
-        const deviceIdUUID = username ? generateDeviceUUID(username) : '';
+        // Generate deterministic device UUID from the ticket's username
+        const deviceIdUUID = generateDeviceUUID(username);
 
         const session = await verifyOtpWithERP(authUserId, otp, deviceIdUUID);
 
@@ -61,9 +79,10 @@ module.exports = async function handler(req, res) {
         // Session token — persists securityToken + deviceIdUUID so /mobilev2/* data calls
         // are authenticated and the device stays bound (audit Bug 1 & 2).
         const token = encryptSession({
-            // Roll number is the ERP login username. Sealed inside the token so the
-            // server can authorize admin actions without trusting client-sent values.
-            rollNumber:    username ? String(username).trim() : '',
+            // Roll number is the ERP login username, taken from the sealed ticket —
+            // never from the request body. This is the trust anchor for admin
+            // authorization, so a caller must not be able to choose it.
+            rollNumber:    username,
             userId:        session.userId,
             sessionId:     session.sessionId,
             roleId:        session.roleId,
@@ -77,7 +96,7 @@ module.exports = async function handler(req, res) {
         });
 
         // Persistent token — stores credentials for auto re-login, no expiry
-        const persistentToken = (username && password)
+        const persistentToken = password
             ? encryptPersistent({ username, password, studentName: session.studentName, isMock: session.isMock || false })
             : null;
 
