@@ -22,6 +22,7 @@ const {
     ERP_BASE,
 } = require('./_session-utils');
 const { blockIfRevoked } = require('./_revocation');
+const { saveResearch } = require('./_research');
 const {
     fetchTimetableV2,
     fetchTimetableLegacy,
@@ -117,6 +118,34 @@ function extractSubjectInfo(cellText) {
     return { subjectName, subjectCode };
 }
 
+// A live grid cell reads:
+//   <span title="Algorithm Design & Implementation (24CSE0317)">24CSE0317</span>
+//   <br>TG312<br>24CSE-G04<br>DIYA GARG
+// i.e. code, room, group, faculty on <br>-separated lines. The group code is the
+// section the student sits in — printed, not inferred. Tolerant of missing lines:
+// the group is matched by shape, then the leftovers are room-then-faculty.
+function extractCellMeta(rawFrag) {
+    const lines = rawFrag
+        .split(/<br\s*\/?>/i)
+        .map(stripTags)
+        .filter(Boolean)
+        .slice(1); // line 0 is the subject code span
+    const meta = {};
+    const rest = [];
+    for (const line of lines) {
+        if (!meta.group && /^\d{2}[A-Z]{2,}-\w+$/i.test(line)) meta.group = line;
+        else rest.push(line);
+    }
+    // Older /display cells put both on one line: "Room-210 DR.YOGESH".
+    if (rest.length === 1) {
+        const m = rest[0].match(/^(Room[-\s]?\S+)\s+(.+)$/i);
+        if (m) { meta.room = m[1]; meta.faculty = m[2]; return meta; }
+    }
+    if (rest[0]) meta.room = rest[0];
+    if (rest[1]) meta.faculty = rest[1];
+    return meta;
+}
+
 function extractSubjectsFromCellHtml(rawHtml) {
     if (!rawHtml || !rawHtml.trim()) return [];
 
@@ -140,7 +169,7 @@ function extractSubjectsFromCellHtml(rawHtml) {
         if (!info) continue;
         if (info.subjectCode && seenCodes.has(info.subjectCode)) continue;
         if (info.subjectCode) seenCodes.add(info.subjectCode);
-        results.push(info);
+        results.push({ ...info, ...extractCellMeta(frag) });
     }
 
     return results;
@@ -293,8 +322,7 @@ function parseTimetableHTML(htmlContent) {
                 const period = periods[c - 1] || DEFAULT_PERIODS[c - 1];
                 if (!period) continue;
                 const entry = {
-                    subjectName: candidates[0].subjectName,
-                    subjectCode: candidates[0].subjectCode,
+                    ...candidates[0],
                     period: period.number,
                     startTime: period.start,
                     endTime: period.end,
@@ -327,8 +355,7 @@ function parseTimetableHTML(htmlContent) {
                 const candidates = extractSubjectsFromCellHtml(rawRows[r]?.[c] || '');
                 if (candidates.length === 0) continue;
                 const entry = {
-                    subjectName: candidates[0].subjectName,
-                    subjectCode: candidates[0].subjectCode,
+                    ...candidates[0],
                     period: period.number,
                     startTime: period.start,
                     endTime: period.end,
@@ -436,7 +463,7 @@ module.exports = async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
 
-    const { token, persistentToken } = req.body || {};
+    const { token, persistentToken, researchId, consentedAt } = req.body || {};
     if (!token) return res.status(400).json({ error: 'Session token is required' });
     if (!ERP_BASE) return res.status(500).json({ error: 'Server configuration error' });
 
@@ -633,6 +660,21 @@ module.exports = async function handler(req, res) {
             start: p.start,
             end: p.end,
         }));
+
+        // Research dataset (opt-in). The portal grid prints the student's section
+        // in every cell ("24CSE-G04") — that is the group id, not a derived hash.
+        // Register-derived grids carry no room/faculty/group; those keys just stay off.
+        const slots = Object.entries(parsed.timetable).flatMap(([day, entries]) =>
+            entries.map(e => ({
+                day,
+                p: e.period,
+                s: e.subjectCode,
+                name: e.subjectName,
+                ...(e.faculty && { faculty: e.faculty }),
+                ...(e.room && { room: e.room }),
+            })));
+        const group = Object.values(parsed.timetable).flat().find(e => e.group)?.group;
+        saveResearch(researchId, { slots, source, ...(group && { group }) }, consentedAt);
 
         return res.status(200).json({
             success: true,

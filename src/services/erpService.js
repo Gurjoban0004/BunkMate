@@ -14,6 +14,7 @@
 import { Platform } from 'react-native';
 import { buildApiUrl, getApiBaseUrl } from './apiConfig';
 import { updateErpToken } from '../storage/erpTokenStorage';
+import { getResearchId, getConsentedAt } from '../storage/researchStorage';
 
 const API_TIMEOUT = 20000; // 20 seconds
 
@@ -109,7 +110,16 @@ export async function erpRefreshSession(persistentToken, authUserId, otp) {
  * device, no OTP), the response carries a new `token` — persist it so
  * subsequent calls don't repeat the re-login.
  */
+// The two endpoints that already hold the raw register/timetable HTML server-side.
+// Tagging the request with the participant UUID lets the server file the dataset row
+// itself, instead of shipping a semester of marks down to the phone and back up.
+const RESEARCH_ENDPOINTS = ['/api/erp-calendar', '/api/erp-timetable'];
+
 async function dataCall(endpoint, body) {
+    if (RESEARCH_ENDPOINTS.includes(endpoint)) {
+        const researchId = await getResearchId();
+        if (researchId) body = { ...body, researchId, consentedAt: await getConsentedAt() };
+    }
     const result = await apiCall(endpoint, body);
     if (result?.token) {
         await updateErpToken(result.token); // never throws
@@ -141,6 +151,20 @@ export async function erpFetchCalendar(token, persistentToken = null) {
  */
 export async function erpFetchTimetable(token, persistentToken = null) {
     return dataCall('/api/erp-timetable', { token, persistentToken });
+}
+
+/** Record why a class was missed. Fire-and-forget; failures are not worth surfacing. */
+export async function researchLogReason(researchId, { d, s, p, r }) {
+    try {
+        return await apiCall('/api/research', { researchId, action: 'reason', d, s, p, r });
+    } catch {
+        return null;
+    }
+}
+
+/** Delete the student's research row. Errors surface — withdrawal must be confirmable. */
+export async function researchWithdraw(researchId) {
+    return apiCall('/api/research', { researchId, action: 'withdraw' });
 }
 
 /**

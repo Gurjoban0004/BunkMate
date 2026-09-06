@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -17,6 +17,8 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS, PALETTES } from '.
 import { useApp } from '../../context/AppContext';
 import { clearAppState, saveAppState, deleteUserAccount } from '../../storage/storage';
 import { clearErpToken } from '../../storage/erpTokenStorage';
+import { getResearchId, consentToResearch, forgetResearchId } from '../../storage/researchStorage';
+import { researchWithdraw } from '../../services/erpService';
 import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
 import ScreenHeader from '../../components/common/ScreenHeader';
@@ -26,6 +28,28 @@ const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
     const [editingName, setEditingName] = useState(false);
+    const [researchId, setResearchId] = useState(null);
+
+    useEffect(() => { getResearchId().then(setResearchId); }, []);
+
+    // Withdrawing deletes the row server-side first: forgetting the UUID locally
+    // before the delete lands would strand data nobody can point at any more.
+    const handleResearchWithdraw = () => showAlert(
+        'Withdraw from the study',
+        'Your attendance data will be deleted from the research dataset. The app itself is unaffected.',
+        [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Withdraw', style: 'destructive', onPress: async () => {
+                try {
+                    await researchWithdraw(researchId);
+                    await forgetResearchId();
+                    setResearchId(null);
+                } catch {
+                    showAlert('Could not withdraw', 'Check your connection and try again.');
+                }
+            } },
+        ],
+    );
     const [tempName, setTempName] = useState(state.userName || '');
 
     // Import Modal State (Removed)
@@ -431,6 +455,30 @@ const SettingsScreen = ({ navigation }) => {
                     </View>
                 </View>
 
+                {/* Research Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>RESEARCH</Text>
+                    <View style={styles.cardGroup}>
+                        <View style={[styles.settingRow, styles.groupItem]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={styles.settingLabel}>Class project</Text>
+                                <Text style={styles.settingDescription}>
+                                    {researchId
+                                        ? 'Your attendance and timetable are shared under a random ID. No name, roll number or login is ever sent.'
+                                        : 'Share your attendance under a random ID for a college AI/ML project. Nothing that identifies you is sent.'}
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={researchId
+                                ? handleResearchWithdraw
+                                : async () => setResearchId(await consentToResearch())}>
+                                <Text style={researchId ? styles.researchWithdraw : styles.editIcon}>
+                                    {researchId ? 'Withdraw' : 'Join'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+
                 {/* Account Section */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>ACCOUNT</Text>
@@ -630,6 +678,7 @@ const getStyles = () => StyleSheet.create({
     nameDisplay: { flexDirection: 'row', alignItems: 'center' },
     nameText: { fontSize: FONT_SIZES.md, color: COLORS.textSecondary, marginRight: SPACING.sm },
     editIcon: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
+    researchWithdraw: { fontSize: 13, fontWeight: '600', color: COLORS.dangerText },
     optionsRow: { flexDirection: 'row', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: 4 },
     optionButton: { flex: 1, paddingVertical: SPACING.sm, alignItems: 'center', borderRadius: BORDER_RADIUS.sm },
     optionButtonActive: { backgroundColor: COLORS.primary },

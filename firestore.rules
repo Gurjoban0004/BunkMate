@@ -34,6 +34,14 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Research dataset (AI/ML class project) — written and read only by the Admin
+    // SDK, which bypasses rules. No client may touch it, including the device that
+    // consented: the app writes through api/erp-calendar, api/erp-timetable and
+    // api/research, never directly.
+    match /research/{document=**} {
+      allow read, write: if false;
+    }
+
     // Admin config — anyone can read (gates need this), only server can write
     match /admin/config {
       allow read: if true;

@@ -24,6 +24,7 @@ const {
     ERP_BASE,
 } = require('./_session-utils');
 const { blockIfRevoked } = require('./_revocation');
+const { saveResearch } = require('./_research');
 const {
     fetchRegisterLegacy,
     readErpPayload,
@@ -85,6 +86,11 @@ function parseSummaryCards(htmlContent) {
 function parseRegisterHTML(htmlContent) {
     const calendar = {}; // { 'YYYY-MM-DD': { subjectName: { status, period, code, erpSubjectId, units } } }
     const subjects = []; // { name, code, erpSubjectId, total, attended, percentage }
+    // Flat per-period marks, one entry per register cell. `calendar` collapses a
+    // subject's periods into one entry per day (the app's math depends on that);
+    // this keeps which period was actually missed. Additive — nothing reads it
+    // except the research upload.
+    const marks = []; // { d: 'YYYY-MM-DD', s: code, p: period, a: 1|0 }
     let latestDateStr = null;
     const stripTags = (html) => html.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/&nbsp;?/gi, ' ').replace(/\s+/g, ' ').trim();
 
@@ -160,6 +166,8 @@ function parseRegisterHTML(htmlContent) {
                 const dateStr = `${year}-${month}-${day}`;
                 const status  = tdVal.toUpperCase() === 'X' ? 'absent' : 'present';
 
+                marks.push({ d: dateStr, s: code, p: period, a: status === 'present' ? 1 : 0 });
+
                 if (!latestDateStr || dateStr > latestDateStr) latestDateStr = dateStr;
                 if (!calendar[dateStr]) calendar[dateStr] = {};
 
@@ -200,7 +208,7 @@ function parseRegisterHTML(htmlContent) {
         subjects.push({ name, code, erpSubjectId, attended, total, percentage });
     }
 
-    return { calendar, subjects, latestDate: latestDateStr };
+    return { calendar, subjects, marks, latestDate: latestDateStr };
 }
 
 const parseCalendarHTML = parseRegisterHTML;
@@ -217,7 +225,7 @@ module.exports = async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
 
-    const { token, persistentToken } = req.body || {};
+    const { token, persistentToken, researchId, consentedAt } = req.body || {};
     if (!token) return res.status(400).json({ error: 'Session token is required' });
     if (!ERP_BASE) return res.status(500).json({ error: 'Server configuration error' });
 
@@ -455,7 +463,7 @@ module.exports = async function handler(req, res) {
 
         console.log('[CAL-SERVER] HTML diag:', JSON.stringify(htmlDiag));
 
-        let { calendar, subjects, latestDate } = parseRegisterHTML(htmlContent);
+        let { calendar, subjects, marks, latestDate } = parseRegisterHTML(htmlContent);
 
         console.log('[CAL-SERVER] Register parse: days=' + Object.keys(calendar).length + ' subjects=' + subjects.length);
 
@@ -478,6 +486,10 @@ module.exports = async function handler(req, res) {
                 htmlDiag.summarySubjectCount = summarySubjects.length;
             }
         }
+
+        // Research dataset (opt-in). `subjects` carries the ERP's own per-subject
+        // totals, which is what the dataset build validates the marks against.
+        saveResearch(researchId, { marks, subjects }, consentedAt);
 
         return res.status(200).json({
             success: true,

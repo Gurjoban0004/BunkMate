@@ -12,6 +12,7 @@ import BrandLoader from './src/components/common/BrandLoader';
 import { AlertProvider, useAlert } from './src/context/AlertContext';
 import { setGlobalWebAlert } from './src/utils/alert';
 import ErpReauthModal from './src/components/erp/ErpReauthModal';
+import ResearchPrompt from './src/components/research/ResearchPrompt';
 import { registerBackgroundSync, setupNotifications } from './src/services/backgroundTasks';
 // No webfont loading: the app is Times New Roman (system serif on Android),
 // so there is nothing to download and no font gate to wait on at boot.
@@ -154,6 +155,7 @@ function AppContent() {
             <StatusBar style={currentTheme === 'dark' ? 'light' : 'dark'} />
             <AppNavigator key={currentTheme} />
             <ErpReauthModal />
+            <ResearchPrompt />
             <DevModePanel />
         </>
     );
