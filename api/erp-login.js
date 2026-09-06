@@ -84,6 +84,13 @@ module.exports = async function handler(req, res) {
 
     } catch (err) {
         if (err.code === 'ERP_REJECTED') {
+            // Log what the ERP actually said. A 401 with no trace is why a real
+            // student's failed login could not be diagnosed from production at all.
+            // Never logs the username or password — only the response's own shape.
+            console.error('[LOGIN-REJECTED]', JSON.stringify({
+                erpMessage: err.message,
+                ...(err.erpShape || {}),
+            }));
             return res.status(401).json({
                 error: 'Invalid credentials',
                 message: err.message || 'Username or password is incorrect',

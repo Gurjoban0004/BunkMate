@@ -110,3 +110,43 @@ describe('attendance register parser', () => {
         }));
     });
 });
+
+// A login the ERP accepted must never be reported as bad credentials. The MFA
+// challenge (status 4) is an acceptance, and several real responses carry an
+// `error` key that is present but empty — treating that as a rejection fails a
+// login that actually worked, and tells the student their password is wrong.
+describe('assertNotLoginFailure', () => {
+    const { assertNotLoginFailure } = require('../_erp-provider');
+
+    it.each([
+        ['an MFA challenge',            { status: 4, authUserId: '24635', mobileString: 'XXXXXX1234' }],
+        ['a trusted-device success',    { status: 1, authUserId: '24635' }],
+        ['error present but empty',     { status: 4, error: '', authUserId: '24635' }],
+        ['error present as "0"',        { status: 4, error: '0', authUserId: '24635' }],
+        ['error present as false',      { status: 4, error: false, authUserId: '24635' }],
+        ['error present as null',       { status: 4, error: null, authUserId: '24635' }],
+    ])('accepts %s', (_label, payload) => {
+        expect(() => assertNotLoginFailure(payload)).not.toThrow();
+    });
+
+    it.each([
+        ['status 0',            { status: 0 }],
+        ['status "fail"',       { status: 'fail' }],
+        ['status "error"',      { status: 'error' }],
+        ['a real error string', { status: 4, error: 'Invalid username or password' }],
+    ])('rejects %s', (_label, payload) => {
+        expect(() => assertNotLoginFailure(payload)).toThrow();
+    });
+
+    it('carries the response shape for diagnosis, and no credentials', () => {
+        try {
+            assertNotLoginFailure({ status: 0, error: 'bad', message: 'nope', txtPassword: 'hunter2' });
+            throw new Error('should have thrown');
+        } catch (err) {
+            expect(err.code).toBe('ERP_REJECTED');
+            expect(err.erpShape.status).toBe(0);
+            expect(err.erpShape.message).toBe('nope');
+            expect(JSON.stringify(err.erpShape)).not.toContain('hunter2');
+        }
+    });
+});

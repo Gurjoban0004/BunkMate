@@ -75,11 +75,37 @@ function parseLegacySession(payload) {
     return session;
 }
 
+/**
+ * Reject a login payload that the ERP treated as a failure.
+ *
+ * The MFA challenge is status 4 and is NOT a failure — it means the credentials were
+ * accepted and an OTP was sent. Only an explicit failure marker counts.
+ *
+ * The thrown error carries `erpShape`: the payload's keys and its status/error/message
+ * fields, never a credential. Without it a rejected login is a 401 with no trace of
+ * what the ERP actually said, which is exactly how a real student's login failure
+ * became undiagnosable in production.
+ */
 function assertNotLoginFailure(payload) {
-    const status = String(payload?.status || '').toLowerCase();
-    if (payload?.error || status === '0' || status === 'error' || status === 'fail') {
+    const status = String(payload?.status ?? '').toLowerCase();
+    // `error` is only a failure when it carries something. Some ERP responses include
+    // the key set to '', '0', false or null on a perfectly good challenge, and treating
+    // a present-but-empty key as a rejection fails a login the ERP accepted.
+    const errorField = payload?.error;
+    const hasError = errorField !== undefined && errorField !== null
+        && errorField !== '' && errorField !== false
+        && String(errorField).toLowerCase() !== '0' && String(errorField).toLowerCase() !== 'false';
+
+    if (hasError || status === '0' || status === 'error' || status === 'fail') {
         const err = new Error(payload?.message || payload?.mobileString || 'ERP credentials rejected');
         err.code = 'ERP_REJECTED';
+        err.erpShape = {
+            keys: payload && typeof payload === 'object' ? Object.keys(payload) : typeof payload,
+            status: payload?.status,
+            error: errorField,
+            message: payload?.message,
+            hasAuthUserId: Boolean(payload?.authUserId),
+        };
         throw err;
     }
 }
@@ -553,6 +579,7 @@ async function fetchTimetableLegacy(session) {
 
 module.exports = {
     LEGACY_HEADERS,
+    assertNotLoginFailure,
     encodeForm,
     readErpPayload,
     parseLegacySession,
