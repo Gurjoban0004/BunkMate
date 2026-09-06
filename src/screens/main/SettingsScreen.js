@@ -32,6 +32,16 @@ const SettingsScreen = ({ navigation }) => {
 
     useEffect(() => { getResearchId().then(setResearchId); }, []);
 
+    // Consent alone uploads nothing — the dataset rides on the sync endpoints, so
+    // without this the student taps Join, sees nothing happen, and their data does
+    // not arrive until the app next syncs on its own. During a collection drive that
+    // reads as "it didn't work" and loses the participant. Forced, because the
+    // normal throttle would swallow a sync this soon after the last one.
+    const handleResearchJoin = async () => {
+        setResearchId(await consentToResearch());
+        triggerErpSync(true);
+    };
+
     // Withdrawing deletes the row server-side first: forgetting the UUID locally
     // before the delete lands would strand data nobody can point at any more.
     const handleResearchWithdraw = () => showAlert(
@@ -470,7 +480,7 @@ const SettingsScreen = ({ navigation }) => {
                             </View>
                             <TouchableOpacity onPress={researchId
                                 ? handleResearchWithdraw
-                                : async () => setResearchId(await consentToResearch())}>
+                                : handleResearchJoin}>
                                 <Text style={researchId ? styles.researchWithdraw : styles.editIcon}>
                                     {researchId ? 'Withdraw' : 'Join'}
                                 </Text>

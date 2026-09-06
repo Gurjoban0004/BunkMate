@@ -18,6 +18,12 @@
  * and Firebase Authentication enabled on the project.
  */
 
+// ⚠️ BROKEN IN PRODUCTION — this handler returns FUNCTION_INVOCATION_FAILED.
+// `firebase-admin/auth` cannot load on Vercel: jwks-rsa@4 does a CJS require() of
+// ESM-only jose@6, and Vercel's bytecode loader does not implement require(esm).
+// It loads fine locally, so this only reproduces in production.
+// Root cause, the fix, and what not to try: docs/BUG-auth-token-esm.md
+
 const crypto = require('crypto');
 const { getAuth } = require('firebase-admin/auth');
 const { FieldValue } = require('firebase-admin/firestore');

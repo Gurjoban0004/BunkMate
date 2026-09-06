@@ -47,6 +47,7 @@ describe('api handlers load without env', () => {
 // KNOWN_BROKEN is an exact set, not a floor: adding a handler that imports the
 // module fails this test, and so does fixing auth-token — at which point delete
 // the entry rather than widening it.
+// Full write-up, root cause and the fix: docs/BUG-auth-token-esm.md
 describe('no handler imports firebase-admin/auth', () => {
     const KNOWN_BROKEN = ['auth-token.js'];
 

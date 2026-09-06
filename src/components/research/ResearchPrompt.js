@@ -68,7 +68,7 @@ function findRecentAbsence(state, asked) {
 }
 
 export default function ResearchPrompt() {
-    const { state } = useApp();
+    const { state, triggerErpSync } = useApp();
     const [mode, setMode] = useState(null);          // null | 'consent' | 'reason'
     const [absence, setAbsence] = useState(null);
     const [busy, setBusy] = useState(false);
@@ -105,8 +105,15 @@ export default function ResearchPrompt() {
     const onConsent = async (yes) => {
         setBusy(true);
         try {
-            if (yes) await consentToResearch();
-            else await declineResearch();
+            if (yes) {
+                await consentToResearch();
+                // The dataset rides on the sync endpoints, so consenting on its own
+                // uploads nothing. Without this the student agrees and their data
+                // does not arrive until the app happens to sync again.
+                triggerErpSync(true);
+            } else {
+                await declineResearch();
+            }
         } finally {
             setBusy(false);
             close();
