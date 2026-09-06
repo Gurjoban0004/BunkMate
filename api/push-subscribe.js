@@ -13,7 +13,7 @@
 
 const crypto = require('crypto');
 const { FieldValue } = require('firebase-admin/firestore');
-const { getAuth } = require('firebase-admin/auth');
+const { verifyIdToken } = require('./_verify-id-token');
 const { setCorsHeaders } = require('./_session-utils');
 const { adminDb } = require('./_firebase-admin');
 
@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
     if (!idToken) return res.status(401).json({ error: 'Authentication required' });
 
     try {
-        const decoded = await getAuth().verifyIdToken(idToken);
+        const decoded = await verifyIdToken(idToken);
         if (decoded.uid !== userId) return res.status(403).json({ error: 'Forbidden' });
     } catch {
         return res.status(401).json({ error: 'Authentication required' });
