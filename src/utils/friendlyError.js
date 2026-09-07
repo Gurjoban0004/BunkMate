@@ -56,6 +56,23 @@ export function friendlyError(err, context = 'signin') {
         });
     }
 
+    // A dead session is not a rejected password. These come back as 401/403 too,
+    // so they have to be answered before the credentials branch below — otherwise
+    // a server-side session problem sends the student off to re-type a password
+    // that was never wrong.
+    if (err.data?.revoked) {
+        return withDetail({
+            title: 'Access removed',
+            message: serverSaid || 'Your access to Presence has been turned off.',
+        });
+    }
+    if (err.data?.sessionExpired || err.data?.needsLogin) {
+        return withDetail({
+            title: 'Your college signed this app out',
+            message: 'Nothing is lost. Sign in again and your attendance picks up where it left off.',
+        });
+    }
+
     // Auth failures. 401/403 on sign-in means the credentials were rejected;
     // on the OTP step it means the code was wrong or has already expired.
     if (status === 401 || status === 403 || /invalid|incorrect|wrong|mismatch|expired/i.test(raw)) {

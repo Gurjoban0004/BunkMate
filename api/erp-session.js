@@ -73,7 +73,11 @@ module.exports = async function handler(req, res) {
         } catch {
             return res.status(200).json({ valid: false, reason: 'invalid_token' });
         }
-        if (!session.userId || !session.sessionId || !session.roleId || !session.apiKey || !session.studentId) {
+        // securityToken included: every mobilev2 call validates it, so a token
+        // without one is dead on arrival — including the ones the old trusted-path
+        // bug minted from an OTP challenge. Rejecting it here retires them quietly.
+        if (!session.userId || !session.sessionId || !session.roleId || !session.apiKey || !session.studentId
+            || !session.securityToken) {
             return res.status(200).json({ valid: false, reason: 'incomplete_session' });
         }
 
@@ -105,7 +109,8 @@ module.exports = async function handler(req, res) {
             const result = await reloginERP(creds.username, creds.password, null, deviceId);
             const studentName = creds.studentName || result.session?.studentName || '';
 
-            if (result.session && result.session.sessionId && result.session.apiKey) {
+            // reloginERP is the only judge of trusted-vs-OTP (see _session-utils).
+            if (result.session) {
                 return res.status(200).json({
                     success: true,
                     trusted: true,

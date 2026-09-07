@@ -35,6 +35,7 @@ describe('ERP session check', () => {
             sessionId: '19',
             roleId: '4',
             apiKey: 'RFeRrG20260502052713',
+            securityToken: '6ced176a52410f35834cfd46cb3a65e6',   // every real session has one
         });
 
         const res = makeRes();

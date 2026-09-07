@@ -216,10 +216,19 @@ async function reloginERP(username, password, otp, deviceId) {
 
     if (otp) return verifyOtpWithERP(String(login.authUserId), otp, deviceIdUUID);
 
-    // sessionId + apiKey only exist on a status-1 (trusted device) response;
-    // an MFA challenge (status 4) parses without them.
+    // The ONE place that decides trusted-vs-OTP. Callers must not re-derive it.
+    //
+    // An MFA challenge (status 4) carries userId, sessionId AND apiKey — the
+    // real captured login proves it (proxyman/cuiet…19-56-14.har). The only
+    // thing it does not carry is `token`, the server-issued securityToken that
+    // every mobilev2 call validates. Treating sessionId+apiKey as proof of a
+    // trusted device therefore skipped the OTP screen on every single login and
+    // handed the app a session the college immediately called expired — which
+    // surfaced to the student as "those details did not match".
     const s = login.session;
-    if (s && s.sessionId && s.apiKey) return { session: s, authUserId: login.authUserId, deviceId: deviceIdUUID };
+    if (login.status !== '4' && s && s.sessionId && s.apiKey && s.securityToken) {
+        return { session: s, authUserId: login.authUserId, deviceId: deviceIdUUID };
+    }
     return { needsOtp: true, authUserId: login.authUserId, deviceId: deviceIdUUID };
 }
 

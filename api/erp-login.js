@@ -59,7 +59,8 @@ module.exports = async function handler(req, res) {
     try {
         const result = await reloginERP(username, password, null, deviceId);
 
-        if (result.session && result.session.sessionId && result.session.apiKey) {
+        // reloginERP already decided; re-deriving "trusted" here is what broke it.
+        if (result.session) {
             return res.status(200).json({
                 success:         true,
                 trusted:         true,

@@ -58,12 +58,15 @@ describe('silent session refresh (trusted device, no OTP)', () => {
         }));
     });
 
+    // The real status-4 body carries sessionId and apiKey (see the capture in
+    // login-otp-required.test.js). The stripped-down fixture this test used to
+    // carry is what let the trusted-device fast path fire on every login.
     test('reloginERP falls back to OTP flow when ERP demands MFA (status 4)', async () => {
         global.fetch = jest.fn(async () => jsonResponse({
             status: '4',
             authUserId: '24635',
             mobileString: 'XXXXXX1234',
-            data: [{ userId: '24635', roleId: '4' }],
+            data: [{ userId: '24635', roleId: '4', sessionId: '20', apiKey: 'A001vt20260720070653' }],
         }));
 
         const { reloginERP } = require('../_session-utils');

@@ -178,6 +178,8 @@ async function loginLegacy(username, password, deviceIdUUID = '') {
     if (!authUserId) throw new Error('No authUserId in ERP login response');
 
     return {
+        // The ERP's own verdict: '1' = trusted device (full session), '4' = OTP sent.
+        status: String(payload.status ?? ''),
         authUserId: String(authUserId),
         otpHint: payload.mobileString || '',
         session,

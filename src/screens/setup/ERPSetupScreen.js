@@ -81,7 +81,7 @@ export default function ERPSetupScreen({ navigation }) {
         dispatch({ type: 'UPDATE_SETTINGS', payload: { isAdmin: !!sessionResult.isAdmin } });
         await saveErpToken(sessionResult.token, sessionResult.studentName || '', sessionResult.persistentToken);
 
-        const attendanceResult = await erpFetchAttendance(sessionResult.token);
+        const attendanceResult = await erpFetchAttendance(sessionResult.token, sessionResult.persistentToken);
         if (!attendanceResult.subjects || attendanceResult.subjects.length === 0) {
             setError({
                 title: 'No attendance yet',

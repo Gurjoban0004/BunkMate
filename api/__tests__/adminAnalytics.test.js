@@ -4,6 +4,8 @@
  * expensive queries must stay bounded.
  */
 
+process.env.ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || '0123456789abcdef0123456789abcdef';
+
 const now = Date.now();
 const HOUR = 3600000;
 const DAY = 86400000;
