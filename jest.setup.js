@@ -6,6 +6,12 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(() => Promise.resolve(null)),
   removeItem: jest.fn(() => Promise.resolve()),
   clear: jest.fn(() => Promise.resolve()),
+  // The multi-* calls are real API surface (researchStorage mints with multiSet).
+  // Leaving them off the mock turned a write into a TypeError, which the caller
+  // swallowed — silently, and in the direction of collecting nothing.
+  multiSet: jest.fn(() => Promise.resolve()),
+  multiGet: jest.fn((keys) => Promise.resolve(keys.map((k) => [k, null]))),
+  multiRemove: jest.fn(() => Promise.resolve()),
 }));
 
 // Mock Firebase Firestore

@@ -28,7 +28,8 @@
  */
 
 const fs = require('fs');
-const admin = require('firebase-admin');
+const { initializeApp, cert, applicationDefault } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const APPLY = process.argv.includes('--apply');
 const REAL_ROLL = /^\d{6,}$/;
@@ -38,15 +39,17 @@ function initFirebase() {
     const path = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     let credential;
     if (inline) {
-        credential = admin.credential.cert(JSON.parse(inline));
+        credential = cert(JSON.parse(inline));
     } else if (path && fs.existsSync(path)) {
-        credential = admin.credential.cert(JSON.parse(fs.readFileSync(path, 'utf8')));
-    } else {
-        console.error('No credentials. Set FIREBASE_SERVICE_ACCOUNT or GOOGLE_APPLICATION_CREDENTIALS.');
+        credential = cert(JSON.parse(fs.readFileSync(path, 'utf8')));
+    } else if (path) {
+        console.error('Credentials file not found at:', path);
         process.exit(1);
+    } else {
+        credential = applicationDefault();
     }
-    admin.initializeApp({ credential });
-    return admin.firestore();
+    initializeApp({ credential });
+    return getFirestore();
 }
 
 const db = initFirebase();
@@ -94,7 +97,9 @@ async function planMockFlagged() {
 }
 
 async function planDerived() {
-    await collectTree(db.collection('admin/analyticsCache'), 'analytics cache (regenerates)');
+    const cacheDoc = db.doc('admin/analyticsCache');
+    for (const sub of await cacheDoc.listCollections()) await collectTree(sub, 'analytics cache (regenerates)');
+    if ((await cacheDoc.get()).exists) note(cacheDoc, 'analytics cache (regenerates)');
 
     const now = Date.now();
     const snap = await db.collection('rateLimits').get();
