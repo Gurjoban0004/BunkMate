@@ -138,10 +138,10 @@ module.exports = async function handler(req, res) {
             if (err.code === 'ERP_REJECTED') {
                 // The password changed since it was stored: the student has to
                 // sign in properly. Tokens are forgotten client-side on needsLogin.
-                return res.status(401).json({ error: 'Sign-in rejected', message: err.message || 'Your college did not accept the saved sign-in.', needsLogin: true });
+                return res.status(401).json({ error: 'Sign-in rejected', message: err.message || 'Our college did not accept the saved sign-in.', needsLogin: true });
             }
             console.error('ERP requestOtp error:', err.message);
-            return res.status(502).json({ error: 'Connection failed', message: 'Could not reach your college. Please try again.' });
+            return res.status(502).json({ error: 'Connection failed', message: 'Could not reach our college. Please try again.' });
         }
     }
 

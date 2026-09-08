@@ -261,7 +261,7 @@ function generateSmartInsights(weekdayPatterns, subjectTrends, recentRhythm, sem
             insights.push({
                 type: 'rhythm',
                 severity: 'warning',
-                text: `You've missed ${recentRhythm.absentCount} of your last ${recentRhythm.total} classes. Your attendance is trending down.`,
+                text: `You've missed ${recentRhythm.absentCount} of your last ${recentRhythm.total} classes. Our attendance is trending down.`,
             });
         }
     }

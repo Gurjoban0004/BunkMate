@@ -105,7 +105,7 @@ export default function InsightsScreen() {
                 {!intel.hasData ? (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>No insights yet</Text>
-                        <Text style={styles.emptyText}>Insights appear once your college has recorded a few days of classes.{'\n'}Pull down on Today to sync now.</Text>
+                        <Text style={styles.emptyText}>Insights appear once our college has recorded a few days of classes.{'\n'}Pull down on Today to sync now.</Text>
                     </View>
                 ) : (
                     <>
@@ -442,7 +442,7 @@ export default function InsightsScreen() {
                 <View style={styles.footerNote}>
                     <Text style={styles.footerNoteText}>
                         {endGameStats.isExactMath
-                            ? 'Exact calculation based on your timetable until the semester end date.'
+                            ? 'Exact calculation based on our timetable until the semester end date.'
                             : 'Estimated based on weekly timetable × weeks remaining. Set semester end date in Settings for exact numbers.'}
                     </Text>
                 </View>

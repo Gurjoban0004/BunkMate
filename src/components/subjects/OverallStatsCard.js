@@ -56,7 +56,7 @@ const OverallStatsCard = ({ stats, threshold, updatedThrough }) => {
             )}
 
             {updatedThrough && (
-                <Text style={styles.updatedText}>Your college has updated through {formatDay(updatedThrough)}.</Text>
+                <Text style={styles.updatedText}>Our college has updated through {formatDay(updatedThrough)}.</Text>
             )}
         </View>
     );

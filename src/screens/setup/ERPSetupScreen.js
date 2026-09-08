@@ -19,6 +19,7 @@ import SetupProgress from '../../components/setup/SetupProgress';
 import SetupIllustration from '../../components/setup/SetupIllustration';
 import ImportProgress from '../../components/setup/ImportProgress';
 import BrandMark from '../../components/common/BrandMark';
+import LegalSheet from '../../components/common/LegalSheet';
 
 const STEP_LOGIN = 'login';
 const STEP_OTP = 'otp';
@@ -36,9 +37,9 @@ const ONBOARDING_PALETTES = ['chalkpad', 'nordic', 'forest', 'catppuccin'];
 // and 3 now finish during the theme step, so these tick over work that is
 // already in hand — the checklist still never claims progress that isn't real.
 const IMPORT_TASKS = [
-    { id: 'subjects', label: 'Importing your subjects' },
+    { id: 'subjects', label: 'Importing our subjects' },
     { id: 'calendar', label: 'Syncing attendance history' },
-    { id: 'timetable', label: 'Building your timetable' },
+    { id: 'timetable', label: 'Building our timetable' },
 ];
 
 // Every import step is local state or an already-resolved prefetch, so the
@@ -52,6 +53,8 @@ export default function ERPSetupScreen({ navigation }) {
 
     // Flow state
     const [step, setStep] = useState(STEP_LOGIN);
+    // Which legal document the student has opened, if any.
+    const [legalDoc, setLegalDoc] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [resendCooldown, setResendCooldown] = useState(0);
@@ -105,7 +108,7 @@ export default function ERPSetupScreen({ navigation }) {
             setError({
                 title: 'No attendance yet',
                 message: attendanceResult.warning
-                    || 'Your college has not recorded any attendance for this term yet. Try again once your first classes are marked.',
+                    || 'Our college has not recorded any attendance for this term yet. Try again once your first classes are marked.',
             });
             return;
         }
@@ -125,7 +128,7 @@ export default function ERPSetupScreen({ navigation }) {
 
     const handleLogin = useCallback(async () => {
         if (!username.trim() || !password.trim()) {
-            setError({ title: 'Two fields to go', message: 'Enter your college ID and password to continue.' });
+            setError({ title: 'Two fields to go', message: 'Enter your ID and password to continue.' });
             return;
         }
         setLoading(true);
@@ -324,7 +327,7 @@ export default function ERPSetupScreen({ navigation }) {
             <View style={styles.sectionHeader}>
                 <View style={styles.brandPill}><BrandMark size={56} /></View>
                 <Text style={styles.brandName}>Presence</Text>
-                <Text style={styles.sectionSub}>Sign in with your college ID and password.</Text>
+                <Text style={styles.sectionSub}>Sign in with your ID and password for our college.</Text>
             </View>
 
             <View style={styles.card}>
@@ -334,7 +337,7 @@ export default function ERPSetupScreen({ navigation }) {
                         style={styles.input}
                         value={username}
                         onChangeText={(t) => { setUsername(t); setError(null); }}
-                        placeholder="Your college ID"
+                        placeholder="College ID"
                         placeholderTextColor={COLORS.textMuted}
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -608,6 +611,21 @@ export default function ERPSetupScreen({ navigation }) {
 
             {button && (
                 <View style={styles.bottomBar}>
+                    {/* The acceptance sits on the button that performs the act,
+                        so "by tapping Enter Presence" is literally true. */}
+                    {step === STEP_THEME && (
+                        <Text style={styles.legalLine}>
+                            By tapping Enter Presence you agree to our{' '}
+                            <Text style={styles.legalLink} onPress={() => setLegalDoc('terms')} accessibilityRole="link">
+                                Terms of Use
+                            </Text>
+                            {' and '}
+                            <Text style={styles.legalLink} onPress={() => setLegalDoc('privacy')} accessibilityRole="link">
+                                Privacy Policy
+                            </Text>
+                            .
+                        </Text>
+                    )}
                     <TouchableOpacity
                         // Stays primary while working — a greyed-out button reads
                         // as "off", not "busy", and the dots need the contrast.
@@ -629,6 +647,8 @@ export default function ERPSetupScreen({ navigation }) {
                     </TouchableOpacity>
                 </View>
             )}
+
+            <LegalSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />
         </SafeAreaView>
     );
 }
@@ -886,6 +906,14 @@ const getStyles = () => StyleSheet.create({
     },
 
     // Bottom bar
+    legalLine: {
+        ...TYPOGRAPHY.captionMedium,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        lineHeight: 16,
+        marginBottom: SPACING.sm,
+    },
+    legalLink: { color: COLORS.primary, textDecorationLine: 'underline' },
     bottomBar: {
         position: 'absolute',
         bottom: 0,

@@ -307,7 +307,7 @@ export default function SubjectPlannerScreen({ route }) {
                         {isAssumed && (
                             <View style={styles.note}>
                                 <Text style={styles.noteText}>
-                                    Assuming one class on each weekday. Connect your timetable to plan exact slots and periods.
+                                    Assuming one class on each weekday. Connect our timetable to plan exact slots and periods.
                                 </Text>
                             </View>
                         )}
@@ -344,8 +344,8 @@ export default function SubjectPlannerScreen({ route }) {
                         <Text style={styles.emptyTitle}>No upcoming classes to plan</Text>
                         <Text style={styles.emptyBody}>
                             {planner.semesterEndDate
-                                ? 'There are no class days left in your semester window.'
-                                : 'Set a semester end date in settings, or connect your timetable, to plan upcoming classes.'}
+                                ? 'There are no class days left in our semester window.'
+                                : 'Set a semester end date in settings, or connect our timetable, to plan upcoming classes.'}
                         </Text>
                     </View>
                 )}

@@ -24,6 +24,7 @@ import { enableWebPush, disableWebPush, isWebPushSupported } from '../../utils/w
 import { syncDailyPlanNotifications, cancelAllReminders } from '../../utils/notifications';
 import { formatRelativeTime, formatTime } from '../../utils/dateHelpers';
 import { APP_VERSION } from '../../config/version';
+import LegalSheet from '../../components/common/LegalSheet';
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
@@ -35,6 +36,7 @@ const SettingsScreen = ({ navigation }) => {
 
     // Threshold Editor Modal State
     const [thresholdModalVisible, setThresholdModalVisible] = useState(false);
+    const [legalDoc, setLegalDoc] = useState(null);
     const [editingSubject, setEditingSubject] = useState(null); // null means editing global threshold
     const [tempThreshold, setTempThreshold] = useState(75);
 
@@ -195,7 +197,7 @@ const SettingsScreen = ({ navigation }) => {
                         <View style={[styles.settingRow, styles.groupItem, styles.primarySettingRow]}>
                             <View style={styles.settingInfo}>
                                 <Text style={styles.cardTitle}>
-                                    {!state.settings?.erpConnected ? 'Not connected' : needsSignIn ? 'Signed out by your college' : 'Connected'}
+                                    {!state.settings?.erpConnected ? 'Not connected' : needsSignIn ? 'Signed out by our college' : 'Connected'}
                                 </Text>
                                 <Text style={styles.cardDescription}>
                                     {state.erpRollNumber ? `${state.erpRollNumber}  ·  ` : ''}
@@ -238,9 +240,9 @@ const SettingsScreen = ({ navigation }) => {
                                     style={styles.groupItem}
                                     onPress={() => navigation.navigate('ERPConnect')}
                                     accessibilityRole="button"
-                                    accessibilityLabel="Connect your college account"
+                                    accessibilityLabel="Connect our college account"
                                 >
-                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Connect your college account</Text>
+                                    <Text style={[styles.linkText, { color: COLORS.primary }]}>Connect our college account</Text>
                                     <Text style={styles.chevron}>›</Text>
                                 </TouchableOpacity>
                             </>
@@ -254,7 +256,7 @@ const SettingsScreen = ({ navigation }) => {
                                     onPress={() => {
                                         showAlert(
                                             'Re-match subjects',
-                                            'Pulls your subjects and the full day-by-day record again from scratch. Use it if something looks mismatched.',
+                                            'Pulls our subjects and the full day-by-day record again from scratch. Use it if something looks mismatched.',
                                             [
                                                 { text: 'Cancel', style: 'cancel' },
                                                 {
@@ -278,8 +280,8 @@ const SettingsScreen = ({ navigation }) => {
                                     style={styles.groupItem}
                                     onPress={() => {
                                         showAlert(
-                                            'Disconnect your college account?',
-                                            'Your numbers stay as they are, but they will stop updating until you connect again.',
+                                            'Disconnect our college account?',
+                                            'Our numbers stay as they are, but they will stop updating until you connect again.',
                                             [
                                                 { text: 'Cancel', style: 'cancel' },
                                                 {
@@ -540,7 +542,18 @@ const SettingsScreen = ({ navigation }) => {
                 <View style={styles.aboutContainer}>
                     <Text style={styles.appName}>Presence</Text>
                     <Text style={styles.version}>v{APP_VERSION}</Text>
+                    <View style={styles.legalRow}>
+                        <TouchableOpacity onPress={() => setLegalDoc('terms')} accessibilityRole="link" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Text style={styles.legalLink}>Terms of Use</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.legalDot}>·</Text>
+                        <TouchableOpacity onPress={() => setLegalDoc('privacy')} accessibilityRole="link" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Text style={styles.legalLink}>Privacy</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
+
+                <LegalSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />
 
                 <View style={styles.bottomPadding} />
             </ScrollView>
@@ -929,6 +942,9 @@ const getStyles = () => StyleSheet.create({
     aboutContainer: { alignItems: 'center', marginTop: SPACING.lg },
     appName: { fontSize: FONT_SIZES.md, fontWeight: '700', color: COLORS.textMuted },
     version: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: 4 },
+    legalRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: SPACING.sm },
+    legalLink: { fontSize: FONT_SIZES.xs, color: COLORS.primary, textDecorationLine: 'underline' },
+    legalDot: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted },
     bottomPadding: { height: 100 },
 
     // Sync button styles

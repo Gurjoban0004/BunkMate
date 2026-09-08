@@ -92,8 +92,8 @@ export default function SubjectDetailScreen({ route }) {
                     <Text style={styles.sectionTitle}>Calendar</Text>
                     <Text style={styles.syncNote}>
                         {coverageDate
-                            ? `Your college has updated through ${formatRecordDate(coverageDate)}`
-                            : 'Waiting for your college to record the first class'}
+                            ? `Our college has updated through ${formatRecordDate(coverageDate)}`
+                            : 'Waiting for our college to record the first class'}
                     </Text>
                     <CalendarView subjectId={subjectId} state={state} flat={true} />
                 </Card>

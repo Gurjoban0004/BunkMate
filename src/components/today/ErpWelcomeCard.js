@@ -86,7 +86,7 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
             {/* Header row */}
             <View style={styles.headerRow}>
                 <View>
-                    <Text style={styles.title}>Synced with your college</Text>
+                    <Text style={styles.title}>Synced with our college</Text>
                     <Text style={styles.subtitle}>
                         {formatDate(insights.earliest)} — {formatDate(insights.latest)}
                     </Text>
@@ -148,7 +148,7 @@ export default function ErpWelcomeCard({ state, onDismiss }) {
             </View>
 
             <Text style={styles.footnote}>
-                Your calendar and insights now come straight from your college.
+                Our calendar and insights now come straight from our college.
             </Text>
         </View>
     );

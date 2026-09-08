@@ -249,7 +249,7 @@ export default function CalendarView({ subjectId, state, subjectColor, flat = fa
                                         <Text style={styles.dayDetailUnits}>{selectedDay.units} hours</Text>
                                     )}
                                     <View style={[styles.sourcePill]}>
-                                        <Text style={styles.sourcePillText}>Recorded by your college</Text>
+                                        <Text style={styles.sourcePillText}>Recorded by our college</Text>
                                     </View>
                                 </View>
                             ) : (

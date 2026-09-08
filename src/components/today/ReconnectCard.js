@@ -28,8 +28,8 @@ export default function ReconnectCard() {
             <View style={styles.text}>
                 <Text style={styles.title}>Sign in again to keep syncing</Text>
                 <Text style={styles.body}>
-                    Your college signed this app out.
-                    {lastSync ? ` Your numbers are from ${formatRelativeTime(lastSync)}.` : ''}
+                    Our college signed this app out.
+                    {lastSync ? ` Our numbers are from ${formatRelativeTime(lastSync)}.` : ''}
                 </Text>
             </View>
             <View style={styles.button}>

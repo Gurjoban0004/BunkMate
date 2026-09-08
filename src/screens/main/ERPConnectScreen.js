@@ -69,7 +69,7 @@ export default function ERPConnectScreen({ navigation }) {
 
         const attendanceResult = await erpFetchAttendance(sessionResult.token, sessionResult.persistentToken);
         if (!attendanceResult.subjects || attendanceResult.subjects.length === 0) {
-            setError(attendanceResult.warning || 'No attendance found. Your college may not have recorded any classes yet.');
+            setError(attendanceResult.warning || 'No attendance found. Our college may not have recorded any classes yet.');
             return;
         }
         calendarRef.current = attendanceResult.calendar
@@ -88,7 +88,7 @@ export default function ERPConnectScreen({ navigation }) {
     // ─── STEP 1: LOGIN ─────────────────────────────────────────────
     const handleLogin = useCallback(async () => {
         if (!username.trim() || !password.trim()) {
-            setError('Enter your college ID and password.');
+            setError('Enter your ID and password.');
             return;
         }
 
@@ -272,9 +272,9 @@ export default function ERPConnectScreen({ navigation }) {
         <View style={styles.stepContainer}>
             <View style={styles.header}>
                 <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
-                <Text style={styles.headerTitle}>Connect your college account</Text>
+                <Text style={styles.headerTitle}>Connect our college account</Text>
                 <Text style={styles.headerSub}>
-                    Sign in with your college ID and password. Your attendance then stays up to date on its own.
+                    Sign in with your ID and password. Our attendance then stays up to date on its own.
                 </Text>
             </View>
 
@@ -285,7 +285,7 @@ export default function ERPConnectScreen({ navigation }) {
                         style={styles.input}
                         value={username}
                         onChangeText={(t) => { setUsername(t); setError(''); }}
-                        placeholder="Your college ID"
+                        placeholder="College ID"
                         placeholderTextColor={COLORS.textMuted}
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -320,7 +320,7 @@ export default function ERPConnectScreen({ navigation }) {
             <View style={styles.securityNote}>
                 <View style={styles.securityDot} />
                 <Text style={styles.securityText}>
-                    Your password goes straight to your college. Presence never stores it.
+                    Your password goes straight to our college. Presence never stores it.
                 </Text>
             </View>
         </View>
@@ -333,7 +333,7 @@ export default function ERPConnectScreen({ navigation }) {
                 <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
                 <Text style={styles.headerTitle}>Enter the code</Text>
                 <Text style={styles.headerSub}>
-                    Your college has sent a code to your registered number.
+                    Our college has sent a code to your registered number.
                 </Text>
             </View>
 
@@ -407,7 +407,7 @@ export default function ERPConnectScreen({ navigation }) {
                                 </Text>
                                 {u.erpName !== u.subjectName && (
                                     <Text style={styles.previewMatch}>
-                                        Listed by your college as: {u.erpName}
+                                        Listed by our college as: {u.erpName}
                                     </Text>
                                 )}
                             </View>
@@ -448,7 +448,7 @@ export default function ERPConnectScreen({ navigation }) {
                 <View style={[styles.headerMark, { width: 56, height: 56, borderRadius: 28 }]}><View style={styles.headerMarkDot} /></View>
                 <Text style={styles.headerTitle}>All synced</Text>
                 <Text style={styles.headerSub}>
-                    Your attendance now matches your college.
+                    Our attendance now matches our college.
                     {studentName ? `\n\nWelcome, ${studentName}!` : ''}
                 </Text>
             </View>
@@ -596,7 +596,7 @@ export default function ERPConnectScreen({ navigation }) {
                         <View style={styles.loadingContainer}>
                             <ActivityIndicator size="small" color={COLORS.primary} />
                             <Text style={styles.loadingText}>
-                                {step === STEP_LOGIN ? 'Connecting to your college…' : 'Fetching attendance…'}
+                                {step === STEP_LOGIN ? 'Connecting to our college…' : 'Fetching attendance…'}
                             </Text>
                         </View>
                     )}

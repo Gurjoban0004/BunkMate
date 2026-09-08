@@ -33,7 +33,7 @@ function currentSemesterId() {
 
 /** One line about where this student stands, from their saved numbers. */
 async function summaryFor(userId) {
-    const fallback = 'Your attendance is up to date. Open Presence to see this week.';
+    const fallback = 'Our attendance is up to date. Open Presence to see this week.';
     if (!userId) return fallback;
     try {
         const snap = await adminDb.doc(`users/${userId}/semesters/${currentSemesterId()}`).get();

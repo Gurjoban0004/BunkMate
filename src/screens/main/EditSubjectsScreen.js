@@ -40,7 +40,7 @@ const EditSubjectsScreen = () => {
     const handleDelete = (subject) => {
         showAlert(
             'Remove this subject?',
-            'It disappears from your timetable and calendar. It was not sent by your college, so it will not come back on sync.',
+            'It disappears from our timetable and calendar. It was not sent by our college, so it will not come back on sync.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Remove', style: 'destructive', onPress: () => dispatch({ type: 'DELETE_SUBJECT', payload: subject.id }) },
@@ -53,7 +53,7 @@ const EditSubjectsScreen = () => {
             <ScreenHeader title="Subjects" />
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <Text style={styles.intro}>
-                    Your subjects and their numbers come from your college. Rename them, pick a colour, or set a goal for one that needs a different target.
+                    Our subjects and their numbers come from our college. Rename them, pick a colour, or set a goal for one that needs a different target.
                 </Text>
 
                 {state.subjects.length === 0 ? (
@@ -129,7 +129,7 @@ const EditSubjectsScreen = () => {
                         />
 
                         {editing && isFromCollege(editing) ? (
-                            <Text style={styles.hint}>Attendance numbers for this subject come from your college and cannot be edited.</Text>
+                            <Text style={styles.hint}>Attendance numbers for this subject come from our college and cannot be edited.</Text>
                         ) : editing ? (
                             <TouchableOpacity style={styles.removeLink} onPress={() => { const s = editing; setEditing(null); handleDelete(s); }}>
                                 <Text style={styles.removeLinkText}>Remove this subject</Text>

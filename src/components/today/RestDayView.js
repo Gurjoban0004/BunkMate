@@ -81,7 +81,7 @@ export default function RestDayView({ state, dayName, navigation }) {
                         </View>
                     </View>
                     {updatedThrough && (
-                        <Text style={styles.footnote}>Your college has updated through {formatDay(updatedThrough)}.</Text>
+                        <Text style={styles.footnote}>Our college has updated through {formatDay(updatedThrough)}.</Text>
                     )}
                 </View>
             )}
