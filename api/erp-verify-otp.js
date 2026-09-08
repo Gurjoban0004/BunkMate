@@ -19,11 +19,13 @@ const {
     ticketFingerprint,
     setCorsHeaders,
     cleanString,
+    getClientIp,
     ERP_BASE,
 } = require('./_session-utils');
 const { blockIfRevoked } = require('./_revocation');
 const { tooManyAttempts } = require('./_rate-limit');
 const { isAdminRoll } = require('./_firebase-admin');
+const { recordLogin, clientMeta } = require('./_activity');
 
 const OTP_ATTEMPTS = { max: 5, windowMs: 15 * 60 * 1000 };   // window == ticket lifetime
 const OTP_RE = /^\d{4,6}$/;
@@ -49,6 +51,7 @@ module.exports = async function handler(req, res) {
         });
     }
     const { authUserId, username, password, deviceId } = bound;
+    const meta = { rollNumber: username, deviceId, method: 'otp', ip: getClientIp(req), ...clientMeta(req) };
 
     // Count before contacting the ERP so a wrong guess costs an attempt.
     if (await tooManyAttempts(res, 'otp-ticket', ticketFingerprint(ticket), OTP_ATTEMPTS)) return;
@@ -61,6 +64,13 @@ module.exports = async function handler(req, res) {
         if (!session.userId || !session.sessionId) {
             return res.status(502).json({ error: 'Could not retrieve session details' });
         }
+
+        await recordLogin({
+            ...meta,
+            outcome: 'otp-verified',
+            studentName: session.studentName,
+            isMock: !!session.isMock,
+        });
 
         return res.status(200).json({
             success:         true,
@@ -75,6 +85,7 @@ module.exports = async function handler(req, res) {
 
     } catch (err) {
         if (err.code === 'INVALID_OTP' || err.code === 'ERP_REJECTED') {
+            await recordLogin({ ...meta, outcome: 'rejected' });
             return res.status(401).json({ error: 'Invalid OTP', message: 'The OTP you entered is incorrect' });
         }
         console.error('ERP OTP verification error:', err.message);

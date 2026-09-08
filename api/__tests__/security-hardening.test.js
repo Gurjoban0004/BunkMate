@@ -43,11 +43,18 @@ function fakeDb() {
     };
 }
 
+// NB: these mocks must NOT carry `{ virtual: true }`. `_firebase-admin` etc. are
+// real files; a virtual mock is keyed on the extensionless path, so once another
+// suite in the same worker has resolved the real `./_firebase-admin.js` (see
+// handlers-load.test.js, which loads every handler), the resolver's module-ID
+// cache makes the require inside `_rate-limit` miss the mock and hit the real
+// module — the limiter then talks to a real Firestore and every attempt stalls
+// on its 4s withTimeout. Order-dependent and invisible when the suite runs alone.
 describe('_rate-limit', () => {
     beforeEach(() => jest.resetModules());
 
     test('allows `max` attempts in a window, then denies', async () => {
-        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb() }), { virtual: true });
+        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb() }));
         const { allowAttempt } = require('../_rate-limit');
         const policy = { max: 5, windowMs: 60000 };
         for (let i = 0; i < 5; i++) expect(await allowAttempt('otp', 'ticket-A', policy)).toBe(true);
@@ -56,7 +63,7 @@ describe('_rate-limit', () => {
     });
 
     test('resets once the window has passed', async () => {
-        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb() }), { virtual: true });
+        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb() }));
         const { allowAttempt } = require('../_rate-limit');
         const policy = { max: 1, windowMs: 1000 };
         const realNow = Date.now;
@@ -74,7 +81,7 @@ describe('_rate-limit', () => {
     test('fails open when Firestore is unavailable', async () => {
         jest.doMock('../_firebase-admin', () => ({
             adminDb: { doc: () => ({}), runTransaction: async () => { throw new Error('UNAVAILABLE'); } },
-        }), { virtual: true });
+        }));
         jest.spyOn(console, 'error').mockImplementation(() => {});
         const { allowAttempt } = require('../_rate-limit');
         expect(await allowAttempt('s', 'k', { max: 1, windowMs: 1000 })).toBe(true);
@@ -82,7 +89,7 @@ describe('_rate-limit', () => {
     });
 
     test('tooManyAttempts answers 429 with Retry-After', async () => {
-        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb() }), { virtual: true });
+        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb() }));
         const { tooManyAttempts } = require('../_rate-limit');
         const policy = { max: 1, windowMs: 60000 };
         const res = makeRes();
@@ -124,7 +131,10 @@ describe('C1 — device identity', () => {
         const { reloginERP } = require('../_session-utils');
         const result = await reloginERP('2410990001', 'pw', null, '3F2A9C14-8B7D-4E6A-9C21-7D5E0F1A2B3C');
         expect(sentBody).toContain('deviceIdUUID=3F2A9C14-8B7D-4E6A-9C21-7D5E0F1A2B3C');
-        expect(result).toEqual({ needsOtp: true, authUserId: '24635', deviceId: '3F2A9C14-8B7D-4E6A-9C21-7D5E0F1A2B3C' });
+        expect(result).toEqual({
+            needsOtp: true, authUserId: '24635',
+            deviceId: '3F2A9C14-8B7D-4E6A-9C21-7D5E0F1A2B3C', otpHint: '',
+        });
     });
 });
 
@@ -132,7 +142,7 @@ describe('C2 — OTP brute force', () => {
     beforeEach(() => jest.resetModules());
 
     test('the fifth wrong OTP is the last one the ticket accepts', async () => {
-        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb(), isAdminRoll: () => false }), { virtual: true });
+        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb(), isAdminRoll: () => false }));
         jest.doMock('../_revocation', () => ({ blockIfRevoked: async () => false }));
         global.fetch = jest.fn(async () => jsonResponse({ status: '0', message: 'Invalid OTP' }));
 
@@ -152,7 +162,7 @@ describe('C2 — OTP brute force', () => {
     });
 
     test('a malformed OTP is rejected before anything is counted or sent', async () => {
-        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb(), isAdminRoll: () => false }), { virtual: true });
+        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb(), isAdminRoll: () => false }));
         global.fetch = jest.fn();
         const { sealOtpTicket } = require('../_session-utils');
         const handler = require('../erp-verify-otp');
@@ -167,7 +177,7 @@ describe('login → OTP → session, end to end', () => {
     beforeEach(() => jest.resetModules());
 
     test('the ticket carries the device id and password; verify seals both into the tokens', async () => {
-        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb(), isAdminRoll: (r) => r === '2410990296' }), { virtual: true });
+        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb(), isAdminRoll: (r) => r === '2410990296' }));
         jest.doMock('../_revocation', () => ({ blockIfRevoked: async () => false }));
 
         const bodies = [];
@@ -199,7 +209,7 @@ describe('login → OTP → session, end to end', () => {
     });
 
     test('login refuses oversized or non-string credentials without touching the ERP', async () => {
-        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb(), isAdminRoll: () => false }), { virtual: true });
+        jest.doMock('../_firebase-admin', () => ({ adminDb: fakeDb(), isAdminRoll: () => false }));
         global.fetch = jest.fn();
         const login = require('../erp-login');
         for (const body of [{ username: 'x'.repeat(65), password: 'pw' }, { username: { $ne: '' }, password: 'pw' }, { username: 'u', password: 'p'.repeat(129) }]) {
@@ -246,10 +256,10 @@ describe('C3 — push-send fails closed', () => {
     afterEach(() => { if (originalSecret === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = originalSecret; });
 
     const load = () => {
-        jest.doMock('web-push', () => ({ setVapidDetails: jest.fn(), sendNotification: jest.fn(async () => {}) }), { virtual: true });
+        jest.doMock('web-push', () => ({ setVapidDetails: jest.fn(), sendNotification: jest.fn(async () => {}) }));
         jest.doMock('../_firebase-admin', () => ({
             adminDb: { collectionGroup: () => ({ where: () => ({ limit: () => ({ get: async () => ({ forEach: () => {} }) }) }) }) },
-        }), { virtual: true });
+        }));
         return require('../push-send');
     };
 

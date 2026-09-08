@@ -245,3 +245,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.parseRegisterHTML = parseRegisterHTML;
+module.exports.mockCalendar = mockCalendar;

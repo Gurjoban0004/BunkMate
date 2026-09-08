@@ -87,22 +87,29 @@ const adminDb = {
     },
 };
 
+// NB: these mocks must NOT carry `{ virtual: true }`. `_firebase-admin` etc. are
+// real files; a virtual mock is keyed on the extensionless path, so once another
+// suite in the same worker has resolved the real `./_firebase-admin.js` (see
+// handlers-load.test.js, which loads every handler), the resolver's module-ID
+// cache makes the require inside the handler miss the mock and hit the real
+// module — the handler then 403s on every request. Order-dependent and invisible
+// when the suite runs alone.
 jest.mock('../_firebase-admin', () => ({
     adminDb,
     isAdminRoll: (roll) => roll === '2410990296',
-}), { virtual: true });
+}));
 
 jest.mock('../_session-utils', () => ({
     setCorsHeaders: () => {},
     decodeSessionRollNumber: (token) => token,
     getClientIp: () => '127.0.0.1',
-}), { virtual: true });
-jest.mock('../_rate-limit', () => ({ tooManyAttempts: async () => false }), { virtual: true });
+}));
+jest.mock('../_rate-limit', () => ({ tooManyAttempts: async () => false }));
 
 jest.mock('firebase-admin/firestore', () => ({
     FieldValue: { serverTimestamp: () => ({ toMillis: () => Date.now() }) },
     Timestamp: { fromMillis: (ms) => ({ toMillis: () => ms }) },
-}), { virtual: true });
+}));
 
 const handler = require('../admin-analytics');
 

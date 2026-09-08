@@ -142,6 +142,14 @@ async function fetchAnalyticsMetric(rollNumber, metric, forceRefresh = false) {
 export const fetchOverview = (forceRefresh) =>
     fetchAnalyticsMetric(null, 'overview', forceRefresh);
 
+// Live and login history come from the server-side activity ledger, not from
+// what the app managed to write to Firestore — see api/_activity.js.
+export const fetchLive = (forceRefresh) =>
+    fetchAnalyticsMetric(null, 'live', forceRefresh);
+
+export const fetchLoginEvents = (forceRefresh) =>
+    fetchAnalyticsMetric(null, 'loginEvents', forceRefresh);
+
 export const fetchSessionEvents = (forceRefresh) =>
     fetchAnalyticsMetric(null, 'sessionEvents', forceRefresh);
 

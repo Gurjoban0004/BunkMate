@@ -9,14 +9,22 @@
  * summary cards (fallback). The session lifecycle — stale/dead detection, silent
  * re-login on the sealed device id, OTP hand-off — lives in api/_data-session.js.
  *
+ * When the register is the source, the answer also carries `calendar`,
+ * `registerSubjects` and `latestDate` — the exact payload /api/erp-calendar
+ * returns. The register page IS the calendar; parsing it once here spares the
+ * client a second fetch of the same page on every sync and during onboarding.
+ * The client only falls back to /api/erp-calendar when `calendar` is absent
+ * (summary-card fallback, or mock).
+ *
  * SECURITY: all ERP communication and HTML parsing is server-side. The client
  * receives clean JSON only; nothing about the ERP's raw responses leaks out.
  */
 
 const { setCorsHeaders, isSessionDead, checkSessionAlive, ERP_BASE } = require('./_session-utils');
 const { openSession, fetchWithLiveSession } = require('./_data-session');
+const { saveResearch, RESEARCH_ID } = require('./_research');
 const { fetchSummaryV2, fetchRegisterLegacy, isRegisterTable } = require('./_erp-provider');
-const { parseRegisterHTML } = require('./erp-calendar');
+const { parseRegisterHTML, mockCalendar } = require('./erp-calendar');
 
 // ─── HTML PARSING ────────────────────────────────────────────────────
 
@@ -177,11 +185,21 @@ module.exports = async function handler(req, res) {
     const opened = await openSession(req, res);
     if (!opened) return;
     const { session, persistentToken } = opened;
-    const keepAlive = req.body?.keepAlive === true;
+    const body = req.body || {};
+    const keepAlive = body.keepAlive === true;
+    const researchId = RESEARCH_ID.test(body.researchId || '') ? body.researchId : null;
+    const consentedAt = typeof body.consentedAt === 'string' ? body.consentedAt.slice(0, 40) : undefined;
 
     if (session.isMock) {
         if (keepAlive) return res.status(200).json({ success: true, alive: true });
-        return res.status(200).json({ success: true, subjects: MOCK_SUBJECTS, fetchedAt: new Date().toISOString() });
+        // Same shape as the register path, so mock login exercises the branch
+        // production takes rather than the summary-card fallback.
+        const mock = mockCalendar();
+        return res.status(200).json({
+            success: true, subjects: MOCK_SUBJECTS,
+            calendar: mock.calendar, registerSubjects: mock.subjects, latestDate: mock.latestDate,
+            fetchedAt: new Date().toISOString(),
+        });
     }
 
     try {
@@ -204,8 +222,11 @@ module.exports = async function handler(req, res) {
             return res.status(502).json({ error: 'Empty response', message: 'The portal returned no attendance data.' });
         }
 
-        const subjects = result.source === 'register'
-            ? (parseRegisterHTML(htmlContent).subjects || []).map(s => ({
+        // One parse, both answers. `register` is null on the summary-card fallback,
+        // which carries totals only — the client then asks /api/erp-calendar.
+        const register = result.source === 'register' ? parseRegisterHTML(htmlContent) : null;
+        const subjects = register
+            ? (register.subjects || []).map(s => ({
                 name: s.name,
                 code: s.code,
                 teacher: s.teacher || '',
@@ -236,7 +257,21 @@ module.exports = async function handler(req, res) {
             });
         }
 
-        return res.status(200).json({ success: true, subjects, fetchedAt: new Date().toISOString(), ...withToken });
+        // The register carries the day-by-day calendar too. Shipping it here is what
+        // lets the client skip /api/erp-calendar — same data, one fetch instead of two.
+        const withCalendar = register && Object.keys(register.calendar).length > 0
+            ? { calendar: register.calendar, registerSubjects: register.subjects, latestDate: register.latestDate }
+            : {};
+
+        // Research dataset. Awaited on purpose — see api/_research.js: a serverless
+        // instance can be frozen the moment it responds, so a detached write may
+        // never land. Moved here from /api/erp-calendar along with the parse.
+        if (register) await saveResearch(researchId, { marks: register.marks, subjects: register.subjects }, consentedAt);
+
+        return res.status(200).json({
+            success: true, subjects, ...withCalendar,
+            fetchedAt: new Date().toISOString(), ...withToken,
+        });
 
     } catch (err) {
         console.error('ERP attendance fetch error:', err.message);

@@ -72,6 +72,12 @@ describe('silent session refresh (trusted device, no OTP)', () => {
         const { reloginERP } = require('../_session-utils');
         const result = await reloginERP('2410990001', 'pw');
 
-        expect(result).toEqual({ needsOtp: true, authUserId: '24635', deviceId: expect.stringMatching(/^[0-9A-F-]{36}$/) });
+        // otpHint is the college's masked destination, carried through so the OTP
+        // screen can say where to look instead of guessing "your registered number".
+        expect(result).toEqual({
+            needsOtp: true, authUserId: '24635',
+            deviceId: expect.stringMatching(/^[0-9A-F-]{36}$/),
+            otpHint: 'XXXXXX1234',
+        });
     });
 });

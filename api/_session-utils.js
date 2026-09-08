@@ -229,7 +229,10 @@ async function reloginERP(username, password, otp, deviceId) {
     if (login.status !== '4' && s && s.sessionId && s.apiKey && s.securityToken) {
         return { session: s, authUserId: login.authUserId, deviceId: deviceIdUUID };
     }
-    return { needsOtp: true, authUserId: login.authUserId, deviceId: deviceIdUUID };
+    // otpHint is the college's own masked destination ("email address gur****@…").
+    // It has to reach the student: this ERP mails the code, and a screen that says
+    // "check your SMS" sends people looking in the wrong place until they give up.
+    return { needsOtp: true, authUserId: login.authUserId, deviceId: deviceIdUUID, otpHint: login.otpHint || '' };
 }
 
 /** Seal a full ERP session into a client token — the one shape used everywhere. */
@@ -339,7 +342,10 @@ function setCorsHeaders(res, req) {
 
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    // X-Presence-* are the build/platform the app reports for the activity
+    // ledger. Without them here the browser preflight fails and the web build
+    // cannot call the API at all.
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Presence-Version, X-Presence-Platform');
     res.setHeader('Access-Control-Max-Age', '600');
 
     if (!origin) return;

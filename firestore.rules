@@ -68,6 +68,13 @@ service cloud.firestore {
     match /admin/auditLog/{document=**} {
       allow read, write: if false;
     }
+
+    // The activity ledger (who signed in, who is online) — written by
+    // api/_activity.js with the Admin SDK and read only by api/admin-analytics.
+    // No client path, in either direction: it is a roster of other students.
+    match /admin/activity/{document=**} {
+      allow read, write: if false;
+    }
     match /admin/analyticsCache/{document=**} {
       allow read, write: if false;
     }

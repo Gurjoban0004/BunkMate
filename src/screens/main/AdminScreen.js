@@ -9,7 +9,7 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, TABULAR } from '..
 import { useApp } from '../../context/AppContext';
 import {
     getAdminConfig, updateAdminConfig,
-    fetchOverview, fetchSessionEvents, fetchSubjectDifficulty,
+    fetchOverview, fetchLive, fetchLoginEvents, fetchSessionEvents, fetchSubjectDifficulty,
     fetchBunkCultureIndex, fetchBatchDistribution,
     fetchEndpointHealth, fetchParserFailures,
     fetchDowntime, fetchRateLimitData, fetchUserRoster,
@@ -32,6 +32,22 @@ const REASON_COPY = {
     invalid_token: 'token from an older app version',
     no_persistent: 'no saved sign-in on the device',
     expired: 'saved sign-in expired',
+};
+
+// How api/_activity.js labels a sign-in attempt, in words and in colour.
+const OUTCOME_COPY = {
+    trusted: 'Signed in — trusted device, no OTP',
+    'otp-sent': 'OTP sent — new device',
+    'otp-verified': 'Signed in — OTP verified',
+    rejected: 'Rejected by the college',
+    error: 'Could not reach the college',
+};
+const OUTCOME_TONE = {
+    trusted: COLORS.success,
+    'otp-verified': COLORS.success,
+    'otp-sent': COLORS.warning,
+    rejected: COLORS.danger,
+    error: COLORS.danger,
 };
 
 // ─── Small pieces ────────────────────────────────────────────────────
@@ -176,6 +192,8 @@ export default function AdminScreen() {
 
     // Metrics
     const overview = useMetric(useCallback((f) => fetchOverview(f), []));
+    const live = useMetric(useCallback((f) => fetchLive(f), []));
+    const logins = useMetric(useCallback((f) => fetchLoginEvents(f), []));
     const roster = useMetric(useCallback((f) => fetchUserRoster(roll, f), [roll]));
     const sessions = useMetric(useCallback((f) => fetchSessionEvents(f), []));
     const difficulty = useMetric(useCallback((f) => fetchSubjectDifficulty(roll, f), [roll]));
@@ -215,10 +233,18 @@ export default function AdminScreen() {
         }
     }, []);
 
-    useEffect(() => { loadConfig(); overview.load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { loadConfig(); overview.load(); live.load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // "Online now" is only true if it keeps asking. The server caches the
+    // metric for 20s, so a 30s poll is one real computation per tick.
+    useEffect(() => {
+        if (tab !== 'overview') return undefined;
+        const t = setInterval(() => { live.load(true).catch(() => {}); }, 30000);
+        return () => clearInterval(t);
+    }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const tabMetrics = {
-        overview: [overview, difficulty, bunk, batches],
+        overview: [overview, live, logins, difficulty, bunk, batches],
         students: [roster, revoked],
         health: [endpoints, downtime, sessions, failures, rate],
         controls: [announcements, revoked, audit],
@@ -236,7 +262,7 @@ export default function AdminScreen() {
 
     const handleForceRefreshAll = async () => {
         setForceRefreshing(true);
-        const all = [overview, roster, sessions, difficulty, bunk, batches, endpoints, failures, downtime, rate, announcements, revoked, audit];
+        const all = [overview, live, logins, roster, sessions, difficulty, bunk, batches, endpoints, failures, downtime, rate, announcements, revoked, audit];
         try {
             const ok = await reloadMany(all, true);
             showAlert(ok === all.length ? 'Refreshed' : 'Partly refreshed', ok === all.length ? 'Every panel reloaded from the server.' : `${ok} of ${all.length} panels reloaded; the rest show their own error.`);
@@ -340,6 +366,7 @@ export default function AdminScreen() {
 
     const adminName = (state.userName || 'Admin').split(' ')[0];
     const o = overview.data;
+    const lv = live.data;
     const unfinishedOld = roster.data?.unfinished?.olderThan7d ?? o?.unfinishedOlderThan7d ?? 0;
     const unfinishedAll = roster.data?.unfinished?.count ?? o?.unfinishedSignups ?? 0;
 
@@ -366,11 +393,15 @@ export default function AdminScreen() {
                     <Text style={styles.heroEyebrow}>ADMIN</Text>
                     <Text style={styles.heroTitle}>Hello, {adminName}</Text>
 
+                    {/* The hero reads the server-side ledger, which is written on the
+                        login and sync endpoints themselves. The old hero read the
+                        app's own Firestore writes, so it sat at zero whenever a
+                        phone failed to sign in to Firebase. */}
                     <View style={styles.kpiRow}>
-                        <Kpi label="STUDENTS" value={o?.students} />
-                        <Kpi label="CONNECTED" value={o?.connected} />
-                        <Kpi label="TODAY" value={o?.dau} />
-                        <Kpi label="THIS WEEK" value={o?.wau} />
+                        <Kpi label="ONLINE NOW" value={lv ? lv.onlineNow : o?.onlineNow} tone={(lv?.onlineNow ?? o?.onlineNow) > 0 ? 'good' : undefined} />
+                        <Kpi label="TODAY" value={lv ? lv.activeToday : o?.activeToday} />
+                        <Kpi label="SIGNED IN" value={lv ? lv.knownStudents : o?.signedInStudents} />
+                        <Kpi label="LOGINS TODAY" value={o?.loginsToday} />
                     </View>
                     {overview.loading && !o && <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: SPACING.sm }} />}
                     {overview.error && <Text style={styles.heroError}>{overview.error}</Text>}
@@ -394,6 +425,98 @@ export default function AdminScreen() {
                 {/* ══ OVERVIEW ══ */}
                 {tab === 'overview' && (
                     <>
+                        {/* ── Who is using the app, from the server-side ledger ──
+                            These two panels do not depend on the student's phone
+                            writing anything to Firestore. If a login happened,
+                            it is here. */}
+                        <Panel
+                            icon="users"
+                            title="Who's using it now"
+                            accent={COLORS.successText}
+                            statusText={lv ? `${lv.onlineNow} online · updated ${new Date(lv.generatedAt).toLocaleTimeString()}` : ''}
+                        >
+                            <Loadable load={live.load} loading={live.loading && !lv} error={live.error} onRetry={() => live.load(true)}>
+                                {lv && (
+                                    <>
+                                        <View style={styles.kpiRow}>
+                                            <Kpi label="ONLINE NOW" value={lv.onlineNow} tone={lv.onlineNow > 0 ? 'good' : undefined} />
+                                            <Kpi label="LAST 30 MIN" value={lv.activeLast30m} />
+                                            <Kpi label="TODAY" value={lv.activeToday} />
+                                            <Kpi label="EVER SIGNED IN" value={lv.knownStudents} />
+                                        </View>
+
+                                        {lv.online.length > 0 ? (
+                                            <>
+                                                <Text style={styles.noteText}>Open right now — last request within five minutes.</Text>
+                                                {lv.online.slice(0, 25).map((u) => (
+                                                    <View key={u.rollNumber} style={styles.liveRow}>
+                                                        <View style={styles.liveRowDot} />
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={styles.liveRowName} numberOfLines={1}>{u.studentName || u.rollNumber}</Text>
+                                                            <Text style={styles.liveRowSub} numberOfLines={1}>
+                                                                {u.rollNumber}{u.platform ? ` · ${u.platform}` : ''}{u.appVersion ? ` · v${u.appVersion}` : ''}
+                                                            </Text>
+                                                        </View>
+                                                        <Text style={styles.liveRowWhen}>{fmtWhen(u.lastSeenAt)}</Text>
+                                                    </View>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            <Empty>
+                                                {lv.knownStudents === 0
+                                                    ? 'Nobody has signed in through the app yet. The moment someone does, they appear here.'
+                                                    : 'Nobody has the app open right now.'}
+                                            </Empty>
+                                        )}
+
+                                        {lv.neverSynced > 0 && (
+                                            <Text style={styles.noteText}>
+                                                {lv.neverSynced} signed in but never synced — they got past the college login and stopped there.
+                                            </Text>
+                                        )}
+                                    </>
+                                )}
+                            </Loadable>
+                        </Panel>
+
+                        <Panel
+                            icon="key"
+                            title="Sign-in log"
+                            accent={COLORS.primary}
+                            statusText={logins.data ? `${logins.data.loginsToday} today` : ''}
+                        >
+                            <Loadable load={logins.load} loading={logins.loading && !logins.data} error={logins.error} onRetry={() => logins.load(true)}>
+                                {logins.data && (
+                                    <>
+                                        <View style={styles.kpiRow}>
+                                            <Kpi label="LOGINS TODAY" value={logins.data.loginsToday} />
+                                            <Kpi label="STUDENTS TODAY" value={logins.data.studentsToday} />
+                                            <Kpi label="LOGINS 24H" value={logins.data.logins24h} />
+                                            <Kpi label="FAILED 24H" value={logins.data.failed24h} tone={logins.data.failed24h > 0 ? 'warn' : 'good'} />
+                                        </View>
+                                        {logins.data.events.length === 0 ? (
+                                            <Empty>No sign-in attempts recorded yet.</Empty>
+                                        ) : (
+                                            logins.data.events.slice(0, 40).map((e) => (
+                                                <View key={e.id} style={styles.liveRow}>
+                                                    <View style={[styles.outcomeDot, { backgroundColor: OUTCOME_TONE[e.outcome] || COLORS.textMuted }]} />
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={styles.liveRowName} numberOfLines={1}>{e.rollNumber || 'unknown'}</Text>
+                                                        <Text style={styles.liveRowSub} numberOfLines={1}>
+                                                            {OUTCOME_COPY[e.outcome] || e.outcome}
+                                                            {e.method === 'otp' ? ' · via OTP' : ''}
+                                                            {e.platform ? ` · ${e.platform}` : ''}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={styles.liveRowWhen}>{fmtWhen(e.at)}</Text>
+                                                </View>
+                                            ))
+                                        )}
+                                    </>
+                                )}
+                            </Loadable>
+                        </Panel>
+
                         <Panel icon="activity" title="Right now" accent={COLORS.primary} statusText={o ? `cached ${fmtWhen(overview.data && Date.now())}` : ''}>
                             <Loadable load={overview.load} loading={overview.loading && !o} error={overview.error} onRetry={() => overview.load(true)}>
                                 {o && (
@@ -808,6 +931,17 @@ const getStyles = () => StyleSheet.create({
     panelPillText: { ...TYPOGRAPHY.micro },
     panelBody: { padding: SPACING.md },
     noteText: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: SPACING.sm, marginBottom: SPACING.xs },
+
+    // Live roster and sign-in log rows.
+    liveRow: {
+        flexDirection: 'row', alignItems: 'center', gap: SPACING.sm,
+        paddingVertical: SPACING.sm, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle,
+    },
+    liveRowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.success },
+    outcomeDot: { width: 8, height: 8, borderRadius: 4 },
+    liveRowName: { ...TYPOGRAPHY.labelMedium, color: COLORS.textPrimary },
+    liveRowSub: { ...TYPOGRAPHY.captionSmall, color: COLORS.textMuted, marginTop: 1 },
+    liveRowWhen: { ...TYPOGRAPHY.captionSmall, color: COLORS.textMuted, ...TABULAR },
     noticeBox: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, backgroundColor: COLORS.warningLight, borderWidth: 1, borderColor: COLORS.warning, borderRadius: BORDER_RADIUS.md, padding: SPACING.sm, marginBottom: SPACING.md },
     noticeText: { ...TYPOGRAPHY.captionMedium, color: COLORS.warningDark, flex: 1 },
     noticeBtn: { backgroundColor: COLORS.warning, paddingHorizontal: SPACING.sm, paddingVertical: 6, borderRadius: BORDER_RADIUS.sm },

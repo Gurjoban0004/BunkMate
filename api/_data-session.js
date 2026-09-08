@@ -23,9 +23,11 @@ const {
     checkSessionAlive,
     cleanString,
     ticketFingerprint,
+    getClientIp,
 } = require('./_session-utils');
 const { blockIfRevoked } = require('./_revocation');
 const { tooManyAttempts } = require('./_rate-limit');
+const { touchActive, clientMeta } = require('./_activity');
 
 // A phone syncs three endpoints every three minutes plus a few manual pulls;
 // 150 per ten minutes is far above any real use and stops a leaked token from
@@ -91,6 +93,12 @@ async function openSession(req, res) {
 
     if (await blockIfRevoked(res, session.rollNumber)) return null;
     if (await tooManyAttempts(res, 'data-session', ticketFingerprint(token), SESSION_POLICY)) return null;
+
+    // Liveness heartbeat. Every data endpoint opens its session here, and the
+    // app syncs every three minutes while it is in the foreground, so this is
+    // what makes "students with the app open right now" a real number. Not
+    // awaited: a telemetry write must never sit in front of a student's sync.
+    touchActive(session.rollNumber, { ip: getClientIp(req), ...clientMeta(req) });
 
     return { session, persistentToken };
 }

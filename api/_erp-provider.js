@@ -154,10 +154,15 @@ function mockSession(deviceIdUUID) {
 
 async function loginLegacy(username, password, deviceIdUUID = '') {
     if (MOCK_LOGIN_ENABLED && ((username && username.toLowerCase().startsWith('mock')) || password === 'presence-mock-bypass')) {
+        // A mock username containing "otp" takes the OTP branch. Without it the
+        // mock only ever exercised the trusted-device path, so the screen every
+        // first-time student actually sees could not be run locally at all.
+        const wantsOtp = String(username || '').toLowerCase().includes('otp');
         return {
+            status: wantsOtp ? '4' : '1',
             authUserId: 'mock-auth-user-id',
-            otpHint: 'Sent to Mock Phone (XXXXXX1234)',
-            session: mockSession(deviceIdUUID),
+            otpHint: 'email address moc****@example.edu',
+            session: wantsOtp ? null : mockSession(deviceIdUUID),
         };
     }
 

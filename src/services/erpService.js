@@ -15,8 +15,11 @@
 
 import { Platform } from 'react-native';
 import { buildApiUrl, getApiBaseUrl } from './apiConfig';
+import { APP_VERSION } from '../config/version';
 import { updateErpToken, getDeviceId } from '../storage/erpTokenStorage';
-import { getResearchId, getConsentedAt } from '../storage/researchStorage';
+import {
+    getResearchId, getConsentedAt, shouldUploadResearch, markResearchUploaded,
+} from '../storage/researchStorage';
 
 // The functions cap at 30s (vercel.json); the client must outlive the server so a
 // slow college surfaces as the server's JSON error, not as a client-side abort.
@@ -30,7 +33,15 @@ async function apiCall(endpoint, body) {
     try {
         const response = await fetch(requestUrl, {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                // Which build and platform is calling. The server's activity
+                // ledger records these so the admin panel can answer "who is
+                // still on an old version" without the app having to report in
+                // separately.
+                'X-Presence-Version': APP_VERSION,
+                'X-Presence-Platform': Platform.OS,
+            },
             body:    JSON.stringify(body),
             signal:  controller.signal,
         });
@@ -114,17 +125,26 @@ export async function erpRefreshSession(persistentToken, ticket, otp) {
 
 // ─── DATA ─────────────────────────────────────────────────────────────
 
-// The two endpoints that hold the raw register/timetable HTML server-side. Tagging
+// The endpoints that hold the raw register/timetable HTML server-side. Tagging
 // the request with the participant UUID lets the server file the dataset row
 // itself instead of shipping a semester of marks down to the phone and back up.
-const RESEARCH_ENDPOINTS = ['/api/erp-calendar', '/api/erp-timetable'];
+// erp-attendance is on the list because it now parses the register itself and
+// answers with the calendar — it is where the marks are written from.
+const RESEARCH_ENDPOINTS = ['/api/erp-attendance', '/api/erp-calendar', '/api/erp-timetable'];
 
 async function dataCall(endpoint, body) {
-    if (RESEARCH_ENDPOINTS.includes(endpoint)) {
+    let tagged = false;
+    if (RESEARCH_ENDPOINTS.includes(endpoint) && await shouldUploadResearch(endpoint)) {
         const researchId = await getResearchId();
-        if (researchId) body = { ...body, researchId, consentedAt: await getConsentedAt() };
+        if (researchId) {
+            body = { ...body, researchId, consentedAt: await getConsentedAt() };
+            tagged = true;
+        }
     }
     const result = await apiCall(endpoint, body);
+    // Marked after the answer, so a request that never reached the server is
+    // retried on the next sync instead of silently skipping a whole window.
+    if (tagged) await markResearchUploaded(endpoint);
     if (result?.token) await updateErpToken(result.token); // never throws
     return result;
 }
@@ -148,9 +168,4 @@ export async function researchLogReason(researchId, { d, s, p, r }) {
     } catch {
         return null;
     }
-}
-
-/** Delete the student's research row. Errors surface — withdrawal must be confirmable. */
-export async function researchWithdraw(researchId) {
-    return apiCall('/api/research', { researchId, action: 'withdraw' });
 }

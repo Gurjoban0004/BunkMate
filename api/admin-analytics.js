@@ -13,7 +13,16 @@
  * never got past onboarding), test accounts and mock logins do not have one
  * and are reported separately as `unfinishedSignups`, never mixed in.
  *
+ * Two independent sources feed this file:
+ *   1. What the APP writes (users/, semesters/, telemetry syncs). Rich, but it
+ *      only lands if the phone completed a Firebase sign-in and passed rules.
+ *   2. The server-side ledger written by api/_activity.js from inside the
+ *      login and data endpoints. Always lands. This is `live` / `loginEvents`
+ *      and the first block of `overview`.
+ *
  * Metrics:
+ *   live              — who has the app open right now, plus the known roster
+ *   loginEvents       — every sign-in attempt against the college, success or not
  *   overview          — the hero: students, activity, sync health, sign-in events, attendance
  *   userRoster        — { users: [real students], unfinished: { count, olderThan7d } }
  *   sessionEvents     — who was asked to sign in again in the last 7 days, and why
@@ -37,10 +46,14 @@ const IP_POLICY = { max: 120, windowMs: 10 * 60 * 1000 };
 const MAX_USERS     = 5000;
 const MAX_SEMESTERS = 10000;
 const MAX_SYNCS     = 20000;
+const MAX_ACTIVITY  = 5000;
+const MAX_LOGINS    = 500;
 
 // Live panels refresh often; the heavy aggregates less so.
 const TTL_MS = {
-    overview: 2 * 60 * 1000,
+    live: 20 * 1000,
+    loginEvents: 60 * 1000,
+    overview: 60 * 1000,
     userRoster: 2 * 60 * 1000,
     sessionEvents: 2 * 60 * 1000,
     endpointHealth: 5 * 60 * 1000,
@@ -165,10 +178,160 @@ function summarise(semester) {
     };
 }
 
+
+// ── The server-side activity ledger ──────────────────────────────────
+// Written by api/_activity.js from inside the login and data endpoints, with
+// the Admin SDK. Unlike everything above it, it does not depend on the
+// student's phone completing a Firebase sign-in and passing security rules —
+// which is why it is the section that is actually populated.
+
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;      // the app syncs every 3 minutes
+const RECENT_WINDOW_MS = 30 * 60 * 1000;
+
+const activityCol = () => adminDb.collection('admin/activity/students');
+const loginsCol   = () => adminDb.collection('admin/activity/logins');
+
+/** Every roster row the ledger holds. One bounded read. */
+async function loadLedger() {
+    const snap = await activityCol().limit(MAX_ACTIVITY).get();
+    const rows = [];
+    snap.forEach((d) => {
+        const v = d.data() || {};
+        rows.push({
+            rollNumber: v.rollNumber || d.id,
+            studentName: v.studentName || null,
+            firstSeen: finiteMillis(v.createdAt),
+            lastLoginAt: finiteMillis(v.lastLoginAt),
+            lastSuccessAt: finiteMillis(v.lastSuccessAt),
+            lastSeenAt: finiteMillis(v.lastSeenAt),
+            lastLoginOutcome: v.lastLoginOutcome || null,
+            loginCount: Number(v.loginCount) || 0,
+            loginAttempts: Number(v.loginAttempts) || 0,
+            syncCount: Number(v.syncCount) || 0,
+            devices: Array.isArray(v.deviceIds) ? v.deviceIds.length : 0,
+            appVersion: v.appVersion || null,
+            platform: v.platform || null,
+            isMock: !!v.isMock,
+        });
+    });
+    return rows.filter((r) => !r.isMock);
+}
+
+/**
+ * Who has the app open right now, and who has used it lately.
+ * "Online" means the app called a data endpoint inside the last five minutes,
+ * which it does every three while it is in the foreground.
+ */
+async function computeLive() {
+    const now = Date.now();
+    const rows = await loadLedger();
+    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+
+    const online = rows.filter((r) => r.lastSeenAt && now - r.lastSeenAt <= ONLINE_WINDOW_MS);
+    const recent = rows.filter((r) => r.lastSeenAt && now - r.lastSeenAt <= RECENT_WINDOW_MS);
+    const seenToday = rows.filter((r) => r.lastSeenAt && r.lastSeenAt >= startOfToday.getTime());
+
+    const byVersion = {};
+    const byPlatform = {};
+    rows.forEach((r) => {
+        if (r.appVersion) byVersion[r.appVersion] = (byVersion[r.appVersion] || 0) + 1;
+        if (r.platform) byPlatform[r.platform] = (byPlatform[r.platform] || 0) + 1;
+    });
+
+    return {
+        onlineNow: online.length,
+        activeLast30m: recent.length,
+        activeToday: seenToday.length,
+        knownStudents: rows.length,
+        neverSynced: rows.filter((r) => !r.lastSeenAt).length,
+        byVersion,
+        byPlatform,
+        online: online
+            .sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0))
+            .map((r) => ({
+                rollNumber: r.rollNumber, studentName: r.studentName,
+                lastSeenAt: r.lastSeenAt, appVersion: r.appVersion, platform: r.platform,
+            })),
+        roster: rows
+            .sort((a, b) => (b.lastSeenAt || b.lastLoginAt || 0) - (a.lastSeenAt || a.lastLoginAt || 0))
+            .slice(0, 200),
+        generatedAt: now,
+    };
+}
+
+/**
+ * The sign-in log: every attempt against the college, successful or not.
+ * This is the answer to "who logged in, and when".
+ */
+async function computeLoginEvents() {
+    let snap;
+    try {
+        snap = await loginsCol().orderBy('at', 'desc').limit(MAX_LOGINS).get();
+    } catch (err) {
+        // The composite index may not exist yet on a fresh project.
+        console.warn('[ANALYTICS] logins orderBy failed, unordered scan:', err.message);
+        snap = await loginsCol().limit(MAX_LOGINS).get();
+    }
+
+    const events = [];
+    snap.forEach((d) => {
+        const v = d.data() || {};
+        if (v.isMock) return;
+        events.push({
+            id: d.id,
+            rollNumber: v.rollNumber || null,
+            outcome: v.outcome || 'unknown',
+            method: v.method || 'password',
+            at: finiteMillis(v.at),
+            deviceId: v.deviceId ? String(v.deviceId).slice(0, 8) : null,
+            ipHash: v.ipHash || null,
+            appVersion: v.appVersion || null,
+            platform: v.platform || null,
+        });
+    });
+    events.sort((a, b) => (b.at || 0) - (a.at || 0));
+
+    const now = Date.now();
+    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+    const succeeded = (e) => e.outcome === 'trusted' || e.outcome === 'otp-verified';
+
+    const byOutcome = {};
+    events.forEach((e) => { byOutcome[e.outcome] = (byOutcome[e.outcome] || 0) + 1; });
+
+    const todays = events.filter((e) => e.at && e.at >= startOfToday.getTime());
+    return {
+        events: events.slice(0, 200),
+        total: events.length,
+        byOutcome,
+        loginsToday: todays.filter(succeeded).length,
+        studentsToday: new Set(todays.filter(succeeded).map((e) => e.rollNumber)).size,
+        logins24h: events.filter((e) => e.at && now - e.at <= DAY && succeeded(e)).length,
+        failed24h: events.filter((e) => e.at && now - e.at <= DAY && e.outcome === 'rejected').length,
+        firstTimers7d: 0,   // filled in by the roster; kept for shape stability
+    };
+}
+
 // ── Metrics ──────────────────────────────────────────────────────────
 
 async function computeOverview() {
     const now = Date.now();
+
+    // The ledger is the half that is always populated (see _activity.js), so
+    // it is read first and never allowed to take the rest of the panel down
+    // with it — a blank hero row is what made this screen useless before.
+    let ledger = null;
+    try {
+        ledger = await computeLive();
+    } catch (err) {
+        console.warn('[ANALYTICS] activity ledger unavailable:', err.message);
+    }
+    let logins = null;
+    try {
+        logins = await computeLoginEvents();
+    } catch (err) {
+        console.warn('[ANALYTICS] login events unavailable:', err.message);
+    }
+
     const { students, unfinished, semesters } = await loadPeople();
 
     let dau = 0, wau = 0, mau = 0;
@@ -216,6 +379,18 @@ async function computeOverview() {
 
     const sevenDaysAgo = now - 7 * DAY;
     return {
+        // ── Live, from the server-side ledger ──
+        onlineNow: ledger ? ledger.onlineNow : null,
+        activeLast30m: ledger ? ledger.activeLast30m : null,
+        activeToday: ledger ? ledger.activeToday : null,
+        signedInStudents: ledger ? ledger.knownStudents : null,
+        loginsToday: logins ? logins.loginsToday : null,
+        studentsSignedInToday: logins ? logins.studentsToday : null,
+        logins24h: logins ? logins.logins24h : null,
+        failedLogins24h: logins ? logins.failed24h : null,
+        ledgerAvailable: !!ledger,
+
+        // ── From the app's own cloud writes ──
         students: students.size,
         connected,
         unfinishedSignups: unfinished.length,
@@ -477,6 +652,8 @@ async function computeRateLimit() {
 // ── Handler ──────────────────────────────────────────────────────────
 
 const METRIC_HANDLERS = {
+    live: computeLive,
+    loginEvents: computeLoginEvents,
     overview: computeOverview,
     userRoster: computeUserRoster,
     sessionEvents: computeSessionEvents,

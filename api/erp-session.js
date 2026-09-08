@@ -34,11 +34,15 @@ const { getRevocation, blockIfRevoked } = require('./_revocation');
 const { tooManyAttempts } = require('./_rate-limit');
 const { isAdminRoll } = require('./_firebase-admin');
 
-const REFRESH_POLICY    = { max: 10, windowMs: 15 * 60 * 1000 };
+// The per-username caps are the real ceilings; the per-IP ones only stop a spray
+// across accounts. A client IP is a whole lecture hall on campus WiFi or behind
+// carrier NAT, so an IP cap sized for one person locks out everyone who shares
+// it. See the same reasoning in api/erp-login.js.
+const REFRESH_POLICY    = { max: 60, windowMs: 15 * 60 * 1000 };
 // One tap = one email. Three per quarter hour per student is generous for a
 // human and a hard ceiling for anything else.
 const REQUEST_OTP_USER  = { max: 3,  windowMs: 15 * 60 * 1000 };
-const REQUEST_OTP_IP    = { max: 10, windowMs: 15 * 60 * 1000 };
+const REQUEST_OTP_IP    = { max: 60, windowMs: 15 * 60 * 1000 };
 const OTP_RE = /^\d{4,6}$/;
 
 function openPersistent(res, persistentToken) {
@@ -127,6 +131,7 @@ module.exports = async function handler(req, res) {
                 success: true,
                 needsOtp: true,
                 authUserId: sealOtpTicket(result.authUserId, creds.username, { password: creds.password, deviceId }),
+                otpHint: result.otpHint || '',
                 studentName,
             });
         } catch (err) {
