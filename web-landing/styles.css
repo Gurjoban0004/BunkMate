@@ -1,7 +1,8 @@
 /* =========================================================
    Presence — landing / install page
-   Palette + type mirror the app's default "Chalkpad Classic" theme:
-   the serif carries display, Inter carries everything you operate.
+   Palette + type mirror the app's default "Paper" theme, which is
+   ui-lab/today-replica.html: the serif carries display, Inter carries
+   everything you operate. Change one and change the other.
    ========================================================= */
 
 :root {
@@ -14,31 +15,41 @@
   --font-serif: 'Tinos', 'Times New Roman', Times, serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
-  /* Chalkpad Classic — light (mirrors PALETTES.chalkpad.light in src/theme/theme.js) */
-  --bg: #FAFBFD;
-  --surface: #FFFFFF;
-  --sidebar: #F1F5F9;
-  --input: #F1F5F9;
-  --border: #E2E8F0;
-  --border-subtle: #F8FAFC;
-  --ink: #0F172A;
-  --ink-2: #495465;
-  --muted: #656F7E;
-  --primary: #5B9BF2;
-  --primary-ink: #0F172A;
-  --primary-light: #E8F1FF;
-  --success: #34D399;
-  --success-ink: #1F7D5B;
-  --success-bg: #ECFDF5;
-  --warning: #FBBF24;
-  --warning-ink: #8B6914;
-  --warning-bg: #FFFBEB;
-  --danger: #F87171;
-  --danger-ink: #B15151;
-  --danger-bg: #FEF2F2;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.12);
+  /* Paper — light (mirrors PALETTES.paper.light in src/theme/theme.js) */
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --sidebar: #f4f3f7;
+  --input: #f4f3f7;
+  --border: #e5e3e9;
+  --border-subtle: #f2f1f4;
+  --ink: #292737;
+  --ink-2: #666373;
+  --muted: #85818d;
+  --primary: #5f668b;
+  --primary-ink: #ffffff;
+  --primary-light: #e8e9f5;
+  --success: #4f8f74;
+  --success-ink: #326a55;
+  --success-bg: #e4f1eb;
+  --warning: #c08f45;
+  --warning-ink: #7e5c28;
+  --warning-bg: #f9f0dc;
+  --danger: #b5674e;
+  --danger-ink: #914732;
+  --danger-bg: #fbe7de;
+
+  /* The greeting wash from the replica. In a browser it is what it always was:
+     three radial pools over a warm linear base. */
+  --paper-base: #f8f7f2;
+  --paper-wash:
+    radial-gradient(ellipse 116% 70% at -9% 23%, rgba(255,255,255,.98) 36%, rgba(255,255,255,0) 69%),
+    radial-gradient(ellipse 74% 55% at 94% 29%, rgba(221,228,217,.56) 26%, rgba(221,228,217,0) 71%),
+    radial-gradient(ellipse 64% 42% at 42% 116%, rgba(228,225,242,.5) 28%, rgba(228,225,242,0) 75%),
+    linear-gradient(125deg, #fdfcf8, #f2f1ea);
+
+  --shadow-sm: 0 1px 2px rgba(41, 39, 55, 0.05);
+  --shadow-md: 0 4px 16px rgba(41, 39, 55, 0.08);
+  --shadow-lg: 0 12px 40px rgba(41, 39, 55, 0.12);
   --r-sm: 10px;
   --r-md: 16px;
   --r-lg: 22px;
@@ -47,11 +58,14 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* Landing page is light-only — no dark variant. */
-html { font-size: 16px; -webkit-tap-highlight-color: transparent; color-scheme: light; }
+html { font-size: 16px; -webkit-tap-highlight-color: transparent; color-scheme: light; background: var(--bg); }
 
 body {
   font-family: var(--font-sans);
-  background: var(--bg);
+  /* Transparent on purpose: html carries --bg and body::before carries the
+     paper wash between them. Painting a colour here would hide the wash. */
+  background: transparent;
+  position: relative;   /* the wash below is positioned against the document */
   color: var(--ink);
   min-height: 100dvh;
   line-height: 1.55;
@@ -96,7 +110,25 @@ body {
 }
 
 /* ---------- Hero ---------- */
-.hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.hero { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+
+/* Same sheet of paper the app opens on: the wash behind the hero, fading out
+   into --bg further down, so the page and the Today screen are one surface.
+   Masked rather than cut, so there is no seam partway down the page. */
+body::before {
+  content: "";
+  /* Absolute, not fixed: the sheet belongs to the top of the page. Fixed made
+     it follow the viewport, so the wash reappeared over every section. */
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 440px;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--paper-base);
+  background-image: var(--paper-wash);
+  -webkit-mask-image: linear-gradient(to bottom, #000 50%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 50%, transparent 100%);
+}
 .hero .brand-mark { margin-bottom: 20px; }
 .app-name {
   font-family: var(--font-serif);

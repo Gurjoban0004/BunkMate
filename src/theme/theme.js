@@ -8,6 +8,90 @@ import { Platform, Easing } from 'react-native';
 // ─────────────────────────────────────────────────────────────
 
 export const PALETTES = {
+    // The default. Every token here comes from ui-lab/today-replica.html — the
+    // signed-off Today design — so the rest of the app now reads as the same
+    // piece of paper rather than as a blue app with one warm screen in it.
+    // PAPER (§1b) holds the extra Today-only tokens that have no COLORS slot.
+    paper: {
+        id: 'paper',
+        name: 'Paper',
+        description: 'Warm paper, ink and soft tints',
+        swatches: ['#f8f7f2', '#5f668b', '#e2f0ea'],
+        light: {
+            background:      '#f9fafb',
+            cardBackground:  '#ffffff',
+            inputBackground: '#f4f3f7',
+            bgSkip:          '#fbe7de',
+            bgAttend:        '#e2f0ea',
+            primary:         '#5f668b',
+            primaryLight:    '#e8e9f5',
+            primaryDark:     '#454b6b',
+            textOnPrimary:   '#ffffff',
+            success:         '#4f8f74',
+            successLight:    '#e4f1eb',
+            successDark:     '#326a55',
+            successText:     '#326a55',
+            danger:          '#b5674e',
+            dangerLight:     '#fbe7de',
+            dangerDark:      '#914732',
+            dangerText:      '#914732',
+            warning:         '#c08f45',
+            warningLight:    '#f9f0dc',
+            warningDark:     '#8a652c',
+            warningText:     '#7e5c28',
+            textPrimary:     '#292737',
+            textSecondary:   '#666373',
+            textMuted:       '#85818d',
+            border:          '#e5e3e9',
+            borderSubtle:    'rgba(95, 102, 139, 0.14)',
+            borderLight:     '#f2f1f4',
+            shadow:          '#292737',
+            overlay:         'rgba(41, 39, 55, 0.45)',
+            subjectPalette: [
+                '#7f8bb8', '#4f8f74', '#c08f45', '#b5674e', '#6f8f9c',
+                '#8f7fa8', '#9c8f5f', '#5f8f8b', '#a87f8f', '#7f9c6f',
+            ],
+        },
+        // Paper at night. The tints keep their hue and lose their brightness, so
+        // sage still reads as sage; inventing a second set would give the dark
+        // mode a different personality from the one that was signed off.
+        dark: {
+            background:      '#16151b',
+            cardBackground:  '#1f1e26',
+            inputBackground: '#27262f',
+            bgSkip:          '#2f231e',
+            bgAttend:        '#1b2a24',
+            primary:         '#9aa2cc',
+            primaryLight:    '#2a2a3d',
+            primaryDark:     '#c2c7e6',
+            textOnPrimary:   '#16151b',
+            success:         '#7fc0a3',
+            successLight:    '#1b2a24',
+            successDark:     '#a6d8c1',
+            successText:     '#7fc0a3',
+            danger:          '#d9967d',
+            dangerLight:     '#2f231e',
+            dangerDark:      '#efb9a3',
+            dangerText:      '#d9967d',
+            warning:         '#dfb877',
+            warningLight:    '#2d2718',
+            warningDark:     '#f0d5a2',
+            warningText:     '#dfb877',
+            textPrimary:     '#eceaf1',
+            textSecondary:   '#a8a4b3',
+            textMuted:       '#8b8797',
+            border:          '#33313d',
+            borderSubtle:    'rgba(154, 162, 204, 0.14)',
+            borderLight:     '#27262f',
+            shadow:          '#000000',
+            overlay:         'rgba(0, 0, 0, 0.7)',
+            subjectPalette: [
+                '#9aa2cc', '#7fc0a3', '#dfb877', '#d9967d', '#8fb2c0',
+                '#b4a3d0', '#c4b47f', '#7fb8b4', '#cba3b4', '#a3c48f',
+            ],
+        },
+    },
+
     chalkpad: {
         id: 'chalkpad',
         name: 'Chalkpad Classic',
@@ -404,10 +488,10 @@ export const DARK_COLORS = PALETTES.nordic.dark;
 // COLORS is the live token map. Always read from this — never from
 // palette definitions directly in components.
 // Call applyTheme() once on app boot (and on theme toggle) to populate it.
-export const COLORS = { ...PALETTES.chalkpad.light };
+export const COLORS = { ...PALETTES.paper.light };
 
 export const applyTheme = (themeStr, paletteId) => {
-    const palette = PALETTES[paletteId] || PALETTES.chalkpad;
+    const palette = PALETTES[paletteId] || PALETTES.paper;
     const mode = palette.oledOnly ? 'dark' : themeStr;
     const source = mode === 'dark' ? palette.dark : palette.light;
     Object.assign(COLORS, source);

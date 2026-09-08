@@ -4,12 +4,12 @@ import {
     Platform, KeyboardAvoidingView, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY, PALETTES, MOTION } from '../../theme/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY, PALETTES, MOTION, PAPER } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { erpLogin, erpVerifyOtp, erpFetchAttendance, erpFetchCalendar, erpFetchTimetable } from '../../services/erpService';
 import { saveErpToken } from '../../storage/erpTokenStorage';
 import { mapErpToAppState, mapCalendarToRecords, buildErpNameMap, mapTimetableToState } from '../../utils/erpAttendanceMapper';
-import { getUserId } from '../../utils/firebaseHelpers';
+import { registerUser } from '../../utils/firebaseHelpers';
 import { getTodayKey } from '../../utils/dateHelpers';
 import { logger } from '../../utils/logger';
 import { friendlyError } from '../../utils/friendlyError';
@@ -19,6 +19,7 @@ import SetupProgress from '../../components/setup/SetupProgress';
 import SetupIllustration from '../../components/setup/SetupIllustration';
 import ImportProgress from '../../components/setup/ImportProgress';
 import BrandMark from '../../components/common/BrandMark';
+import PaperWash from '../../components/common/PaperWash';
 import LegalSheet from '../../components/common/LegalSheet';
 
 const STEP_LOGIN = 'login';
@@ -31,7 +32,7 @@ const PROGRESS_STEPS = [STEP_LOGIN, STEP_OTP, STEP_THEME];
 
 // Curated onboarding palettes — the final "pick a vibe" step before entering the app.
 // The full picker (all palettes + light/dark) lives in Settings; this is intentionally short.
-const ONBOARDING_PALETTES = ['chalkpad', 'nordic', 'forest', 'catppuccin'];
+const ONBOARDING_PALETTES = ['paper', 'nordic', 'forest', 'catppuccin'];
 
 // One row per thing handleImport actually applies. The requests behind rows 2
 // and 3 now finish during the theme step, so these tick over work that is
@@ -69,8 +70,8 @@ export default function ERPSetupScreen({ navigation }) {
     const [authUserId, setAuthUserId] = useState('');
     const [otp, setOtp] = useState('');
     // The college's own masked destination ("email address gur****@…"). Shown
-    // verbatim: this ERP mails the code, and "check your SMS" sent people
-    // hunting through the wrong inbox until they assumed sign-in was broken.
+    // verbatim: this ERP mails the code — it never texts it — and "check your
+    // SMS" sent people hunting through the wrong inbox until they gave up.
     const [otpHint, setOtpHint] = useState('');
 
     // Data
@@ -202,10 +203,9 @@ export default function ERPSetupScreen({ navigation }) {
         setStep(STEP_IMPORTING);
 
         try {
-            // Generate userId
-            let userId = state.userId;
-            if (!userId) {
-                userId = await getUserId();
+            // The roll number the student just signed in with IS the account id.
+            const userId = await registerUser(username.trim()) || state.userId;
+            if (userId && userId !== state.userId) {
                 dispatch({ type: 'SET_USER_ID', payload: userId });
             }
             dispatch({ type: 'SET_AUTHENTICATED', payload: true });
@@ -381,17 +381,6 @@ export default function ERPSetupScreen({ navigation }) {
                     Your password is never stored.
                 </Text>
             </View>
-
-            <TouchableOpacity
-                style={styles.codeLink}
-                onPress={() => navigation.navigate('Login')}
-                accessibilityRole="button"
-                accessibilityLabel="I already have a login code"
-            >
-                <Text style={styles.codeLinkText}>
-                    Already have a login code? <Text style={styles.codeLinkHighlight}>Tap here</Text>
-                </Text>
-            </TouchableOpacity>
         </View>
     );
 
@@ -402,7 +391,7 @@ export default function ERPSetupScreen({ navigation }) {
                 <SetupIllustration name="code" />
                 <Text style={styles.sectionTitle}>Enter the code</Text>
                 <Text style={styles.sectionSub}>
-                    {otpHint ? `Sent to your ${otpHint}.` : 'Sent to your registered email or phone.'}
+                    {otpHint ? `Our college emailed it to your ${otpHint}.` : 'Our college emailed it to the address on your college account.'}
                 </Text>
             </View>
 
@@ -417,7 +406,7 @@ export default function ERPSetupScreen({ navigation }) {
                         placeholderTextColor={COLORS.textMuted}
                         keyboardType="number-pad"
                         textContentType="oneTimeCode"
-                        autoComplete="sms-otp"
+                        autoComplete="one-time-code"
                         maxLength={6}
                         autoFocus
                         editable={!loading}
@@ -454,7 +443,7 @@ export default function ERPSetupScreen({ navigation }) {
 
     // ─── RENDER: THEME (final onboarding step, before entering the app) ──
     const renderTheme = () => {
-        const activePalette = state?.settings?.uiPalette || 'chalkpad';
+        const activePalette = state?.settings?.uiPalette || 'paper';
         return (
             <View style={styles.formSection}>
                 <View style={styles.sectionHeader}>
@@ -557,6 +546,11 @@ export default function ERPSetupScreen({ navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+            {/* Setup happens on the same sheet of paper as Today — literally the
+                same drawing (components/common/PaperWash), so the first screen a
+                student sees is not a different app from the one they keep. The
+                ring is off: it belongs to a header band, not a full page. */}
+            <PaperWash style={StyleSheet.absoluteFill} ring={false} pointerEvents="none" />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -657,7 +651,7 @@ export default function ERPSetupScreen({ navigation }) {
 const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: PAPER.paperBase,   // the wash paints over this
     },
     scrollContent: {
         paddingHorizontal: SPACING.lg,
@@ -721,22 +715,6 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textPrimary,
         marginBottom: 6,
     },
-    codeLink: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 44,
-        marginTop: SPACING.sm,
-    },
-    codeLinkText: {
-        ...TYPOGRAPHY.bodySmall,
-        color: COLORS.textSecondary,
-        textAlign: 'center',
-    },
-    codeLinkHighlight: {
-        ...TYPOGRAPHY.labelSmall,
-        color: COLORS.primaryDark,
-    },
-
     // Card
     card: {
         backgroundColor: COLORS.cardBackground,
@@ -920,9 +898,11 @@ const getStyles = () => StyleSheet.create({
         left: 0,
         right: 0,
         padding: SPACING.lg,
-        backgroundColor: COLORS.background,
+        // Sits on the wash, so it takes the schedule card's near-white rather
+        // than an opaque theme background that would read as a seam.
+        backgroundColor: 'rgba(255,255,255,0.94)',
         borderTopWidth: 1,
-        borderTopColor: COLORS.border,
+        borderTopColor: PAPER.line,
     },
     actionButton: {
         backgroundColor: COLORS.primary,
