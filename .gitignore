@@ -33,3 +33,5 @@ skills-lock.json
 
 # Editor workspace files
 *.code-workspace
+
+.npm/
