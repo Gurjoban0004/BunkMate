@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { PAPER } from '../../theme/theme';
+import { PAPER, SERIF_FONT } from '../../theme/theme';
 import { parseTimeToMinutes } from '../../utils/dateHelpers';
 import { shortSubjectName } from '../../utils/subjectName';
 
@@ -122,7 +122,7 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
     );
 };
 
-const SERIF = { fontFamily: 'Times New Roman' };
+const SERIF = { fontFamily: SERIF_FONT };
 
 const getStyles = () => StyleSheet.create({
     container: {

@@ -14,7 +14,7 @@ const f = 'dist/app.html';
 let html = fs.readFileSync(f, 'utf8');
 html = html.replace(/<meta name=\"description\" content=\"[^\"]*\">/, '<meta name=\"description\" content=\"Presence — your attendance, exactly as your college records it, and what it lets you skip.\">');
 html = html.replace('<link rel=\"icon\" href=\"/favicon.ico\" /></head>',
-  '<link rel=\"icon\" href=\"/favicon.ico\" /><link rel=\"manifest\" href=\"/manifest.json\" /><link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" /><link rel=\"canonical\" href=\"https://presence-blue.vercel.app/app\" /><meta name=\"robots\" content=\"noindex\" /><meta name=\"apple-mobile-web-app-capable\" content=\"yes\" /><meta name=\"mobile-web-app-capable\" content=\"yes\" /><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\" /><meta name=\"apple-mobile-web-app-title\" content=\"Presence\" /></head>');
+  '<link rel=\"icon\" href=\"/favicon.ico\" /><link rel=\"manifest\" href=\"/manifest.json\" /><link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" /><link rel=\"canonical\" href=\"https://presence.runs-on.dev/app\" /><meta name=\"robots\" content=\"noindex\" /><meta name=\"apple-mobile-web-app-capable\" content=\"yes\" /><meta name=\"mobile-web-app-capable\" content=\"yes\" /><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\" /><meta name=\"apple-mobile-web-app-title\" content=\"Presence\" /></head>');
 fs.writeFileSync(f, html);
 console.log('App shell head updated');
 "

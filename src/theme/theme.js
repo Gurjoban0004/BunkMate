@@ -603,7 +603,10 @@ export const SPACING = {
 // ponytail: `android: 'serif'` resolves to Noto Serif, not Times — Android
 // won't be pixel-identical to iOS/web. Bundle Tinos as an Android-only face if
 // that ever matters.
-const SERIF_FONT = Platform.select({
+// Exported: every serif in the app must come from here. Hardcoding
+// 'Times New Roman' silently falls back to Roboto on Android — which is how
+// the whole Today screen ended up sans-serif in the APK.
+export const SERIF_FONT = Platform.select({
     ios: 'Times New Roman',
     android: 'serif',
     default: 'Times New Roman',

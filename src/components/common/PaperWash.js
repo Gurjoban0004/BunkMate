@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect, Ellipse } from 'react-native-svg';
 import { PAPER } from '../../theme/theme';
 
@@ -96,3 +97,13 @@ export default function PaperWash({ ring = true, style, pointerEvents, children 
 const styles = StyleSheet.create({
     surface: { overflow: 'hidden', backgroundColor: PAPER.paperBase },
 });
+
+/**
+ * The gap between the status bar and the first line of a paper header.
+ *
+ * The replica's 82px top padding was measured under a fixed 54px status bar,
+ * i.e. the design intent is "~26px below the bar" — so it is measured, not
+ * hardcoded, or Android's 24dp bar leaves a hole and a tall notch leaves none.
+ * Screens using a paper header must leave `top` off their SafeAreaView edges.
+ */
+export const usePaperTopPadding = (gap = 26) => Math.max(useSafeAreaInsets().top, 14) + gap;

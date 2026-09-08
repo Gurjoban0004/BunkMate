@@ -16,5 +16,5 @@
 
 ## Pages
 
-- https://presence-blue.vercel.app/ — landing page and install instructions
-- https://presence-blue.vercel.app/app — the app itself (requires a college account; not for indexing)
+- https://presence.runs-on.dev/ — landing page and install instructions
+- https://presence.runs-on.dev/app — the app itself (requires a college account; not for indexing)

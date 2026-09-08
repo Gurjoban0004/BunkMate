@@ -6,18 +6,18 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY, PAPER } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { deriveErpIntelligence } from '../../utils/erpIntelligence';
 import { getSubjectAttendance, calculatePercentage } from '../../utils/attendance';
 import { getEndGameStats, findLongWeekends } from '../../utils/planner.js';
-import { DisplayMedium, BodySmall } from '../../components/common/Typography';
 
 import { getRiskLevel, getRiskColor, getRiskLabel, getSkipStrategy, OVERALL_MESSAGES, getWeeklyBurnPlan } from '../../utils/endgame';
 import { triggerHaptic } from '../../utils/haptics';
 import { estimateWeeksRemaining } from '../../utils/planner/semesterWindow';
 import { generateWeeklyReport } from '../../utils/insights';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
+import PaperScreenHeader from '../../components/common/PaperScreenHeader';
 
 // Semester-scale horizons (a term runs months, not a couple of weeks).
 const WEEK_OPTIONS = [8, 12, 16, 20];
@@ -81,7 +81,7 @@ export default function InsightsScreen() {
     const maxDayTotal = Math.max(...Object.values(weekdayPatterns?.byDay || {}).map(d => d.total), 1);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['left', 'right']}>
             {/* Tab bar — commented out to consolidate screens into a single view */}
             {/*
             <View style={styles.tabBar}>
@@ -95,12 +95,12 @@ export default function InsightsScreen() {
             */}
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <DisplayMedium style={styles.title}>Insights</DisplayMedium>
-                {intel.hasData && (
-                    <BodySmall color="textMuted" style={styles.subtitle}>
-                        {formatDate(semesterSummary.earliestDate)} — {formatDate(semesterSummary.latestDate)} · {semesterSummary.totalDays} days tracked
-                    </BodySmall>
-                )}
+                <PaperScreenHeader
+                    title="Insights"
+                    subtitle={intel.hasData
+                        ? `${formatDate(semesterSummary.earliestDate)} — ${formatDate(semesterSummary.latestDate)} · ${semesterSummary.totalDays} days tracked`
+                        : null}
+                />
 
                 {!intel.hasData ? (
                     <View style={styles.emptyCard}>
@@ -453,8 +453,8 @@ export default function InsightsScreen() {
 }
 
 const getStyles = () => StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
-    scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xxl },
+    container: { flex: 1, backgroundColor: PAPER.background },
+    scrollContent: { paddingBottom: SPACING.xxl },
 
     // Tab bar
     tabBar: {
@@ -482,9 +482,6 @@ const getStyles = () => StyleSheet.create({
     tabText: { fontSize: FONT_SIZES.sm, fontWeight: '600', color: COLORS.textSecondary },
     tabTextActive: { color: COLORS.textPrimary, fontWeight: '700' },
 
-    // Header
-    title: { paddingHorizontal: SPACING.screenPadding, fontSize: FONT_SIZES.xl, fontWeight: '700', color: COLORS.textPrimary },
-    subtitle: { paddingHorizontal: SPACING.screenPadding, marginTop: 4, marginBottom: SPACING.md },
 
     // Sections
     section: {

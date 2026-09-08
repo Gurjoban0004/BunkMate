@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { PAPER, TABULAR } from '../../theme/theme';
+import { PAPER, TABULAR, SERIF_FONT } from '../../theme/theme';
 import { getSubjectSkipBudget } from '../../utils/attendance';
 import { shortSubjectName } from '../../utils/subjectName';
 import { getTodayKey, formatTimeRange } from '../../utils/dateHelpers';
@@ -97,7 +97,7 @@ const ClassCard = ({ classInfo, state, isCurrentClass = false }) => {
     );
 };
 
-const SERIF = { fontFamily: 'Times New Roman' };
+const SERIF = { fontFamily: SERIF_FONT };
 
 const getStyles = () => StyleSheet.create({
     container: {

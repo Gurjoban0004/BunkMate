@@ -10,7 +10,7 @@ import {
     Platform,
     LayoutAnimation,
 } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, PAPER } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
 
@@ -18,6 +18,7 @@ import { getSubjectAttendance, calculateSkips } from '../../utils/attendance';
 import OverallStatsCard from '../../components/subjects/OverallStatsCard';
 import SubjectRow from '../../components/subjects/SubjectRow';
 import CalendarView from '../../components/subjects/CalendarView';
+import PaperScreenHeader from '../../components/common/PaperScreenHeader';
 
 const SubjectsScreen = ({ navigation }) => {
     const styles = getStyles();
@@ -130,7 +131,7 @@ const SubjectsScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['left', 'right']}>
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
@@ -143,13 +144,8 @@ const SubjectsScreen = ({ navigation }) => {
                     />
                 }
             >
-                {/* Header */}
-                <View style={styles.headerContainer}>
-                    <View style={styles.headerRow}>
-                        <Text style={styles.headerTitle}>Subjects</Text>
-                    </View>
-                    
-                    {/* View Mode Segmented Control */}
+                {/* Same sheet of paper as Today — see PaperScreenHeader. */}
+                <PaperScreenHeader title="Subjects">
                     <View style={styles.toggleContainer}>
                         {[
                             { key: 'list', label: 'Subjects' },
@@ -167,7 +163,7 @@ const SubjectsScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         ))}
                     </View>
-                </View>
+                </PaperScreenHeader>
 
                 {/* Overall Stats Card */}
                 <OverallStatsCard
@@ -267,38 +263,22 @@ const SubjectsScreen = ({ navigation }) => {
 const getStyles = () => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        backgroundColor: PAPER.background,
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingTop: SPACING.md,
         paddingBottom: SPACING.xxl,
-    },
-    headerContainer: {
-        paddingHorizontal: SPACING.screenPadding,
-        paddingBottom: SPACING.cardGap,
-    },
-    headerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    headerTitle: {
-        fontWeight: '700',
-        fontSize: 26,
-        letterSpacing: 0,
-        color: COLORS.textPrimary,
     },
     toggleContainer: {
         flexDirection: 'row',
-        backgroundColor: COLORS.inputBackground,
+        backgroundColor: 'rgba(255,255,255,0.6)',
         borderRadius: BORDER_RADIUS.md,
         padding: 4,
         marginTop: SPACING.md,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: PAPER.line,
     },
     toggleTab: {
         flex: 1,

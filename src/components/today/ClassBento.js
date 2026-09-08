@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { PAPER, TABULAR } from '../../theme/theme';
+import { PAPER, TABULAR, SERIF_FONT } from '../../theme/theme';
 import { getSubjectSkipBudget } from '../../utils/attendance';
 import { shortSubjectName } from '../../utils/subjectName';
 import { getTodayKey } from '../../utils/dateHelpers';
@@ -89,7 +89,7 @@ export default function ClassBento({ classInfo, state, variant = 'upcoming', ind
     );
 }
 
-const SERIF = { fontFamily: 'Times New Roman' };
+const SERIF = { fontFamily: SERIF_FONT };
 
 const getStyles = () => StyleSheet.create({
     // Two to a row, as in the replica's 2-column grid. `flex: 1` alone would

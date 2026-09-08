@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { PAPER } from '../../theme/theme';
+import { PAPER, SERIF_FONT } from '../../theme/theme';
 
 /**
  * Section header for the day's classes, with the one occasional action that
@@ -34,7 +34,7 @@ const SectionHeader = ({ title, classCount, onHolidayPress }) => {
     );
 };
 
-const SERIF = { fontFamily: 'Times New Roman' };
+const SERIF = { fontFamily: SERIF_FONT };
 
 const getStyles = () => StyleSheet.create({
     container: {

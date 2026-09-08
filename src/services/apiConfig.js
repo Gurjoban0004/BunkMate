@@ -10,7 +10,7 @@
  *   3. the production alias below
  */
 
-export const DEFAULT_NATIVE_API_BASE = 'https://presence-blue.vercel.app';
+export const DEFAULT_NATIVE_API_BASE = 'https://presence.runs-on.dev';
 
 let runtimeApiBase = '';
 

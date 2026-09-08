@@ -13,13 +13,13 @@ import {
     Switch
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS, PALETTES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS, PALETTES, PAPER } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { clearAppState, saveAppState, deleteUserAccount } from '../../storage/storage';
 import { clearErpToken } from '../../storage/erpTokenStorage';
 import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
-import ScreenHeader from '../../components/common/ScreenHeader';
+import PaperScreenHeader from '../../components/common/PaperScreenHeader';
 import { enableWebPush, disableWebPush, isWebPushSupported } from '../../utils/webPush';
 import { syncDailyPlanNotifications, cancelAllReminders } from '../../utils/notifications';
 import { formatRelativeTime, formatTime } from '../../utils/dateHelpers';
@@ -186,8 +186,11 @@ const SettingsScreen = ({ navigation }) => {
     const needsSignIn = !!state.erpSessionExpired && !!state.settings?.erpConnected;
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScreenHeader title="Settings" />
+        <SafeAreaView style={styles.container} edges={['left', 'right']}>
+            <PaperScreenHeader
+                title="Settings"
+                onBack={navigation.canGoBack() ? () => navigation.goBack() : null}
+            />
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
                 {/* College account */}
@@ -626,11 +629,9 @@ const SettingsScreen = ({ navigation }) => {
 };
 
 const getStyles = () => StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
+    container: { flex: 1, backgroundColor: PAPER.background },
     scrollView: { flex: 1 },
     scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xxl },
-    header: { paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.cardGap },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, letterSpacing: -0.3 },
     section: { marginBottom: SPACING.lg },
     sectionTitle: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm },
     card: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.md, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border },

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutAnimation } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, PAPER } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, PAPER, SERIF_FONT } from '../../theme/theme';
 import { getDayRecommendation } from '../../utils/planner.js';
 import { shortSubjectName } from '../../utils/subjectName';
 
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
         gap: 3,
     },
     compactDetailsText: {
-        fontFamily: 'Times New Roman',
+        fontFamily: SERIF_FONT,
         fontSize: 11,
         lineHeight: 17,
     },
