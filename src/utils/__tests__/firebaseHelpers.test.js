@@ -2,9 +2,8 @@ import * as fc from 'fast-check';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import {
-  generateLoginCode,
-  getUserId,
-  loginWithCode,
+  registerUser,
+  ensureAuthenticated,
   getCurrentSemesterId,
   initNetworkListener,
   checkOnlineStatus,
@@ -18,9 +17,13 @@ jest.mock('../../config/firebase', () => ({
   db: {},
   auth: { currentUser: null }
 }));
+// The identity comes from the college session now, so every auth path needs one.
+jest.mock('../../storage/erpTokenStorage', () => ({
+  getErpToken: jest.fn(async () => 'erp-session-token'),
+}));
 // firebase/auth ships untransformed ESM; mock with a factory. signInWithCustomToken
-// sets currentUser to the token value — our fetch mock issues token === code, so
-// ensureAuthenticated's uid check passes.
+// sets currentUser to the token value — our fetch mock issues token === the roll
+// the server would read out of the ERP token, so ensureAuthenticated's uid check passes.
 jest.mock('firebase/auth', () => ({
   signInWithCustomToken: jest.fn(async (authObj, token) => {
     authObj.currentUser = { uid: token };
@@ -28,13 +31,17 @@ jest.mock('firebase/auth', () => ({
 }));
 
 const { auth } = require('../../config/firebase');
+const { getErpToken } = require('../../storage/erpTokenStorage');
 
-// Mock the auth-token API: returns token === requested code.
+const ROLL = '23BCS1234';
+
+// Stand in for /api/auth-token: it opens the ERP token server-side and answers
+// with a custom token whose uid is the roll sealed inside it.
 const mockAuthApi = () => {
-  global.fetch = jest.fn(async (url, opts) => ({
+  global.fetch = jest.fn(async () => ({
     ok: true,
     status: 200,
-    json: async () => ({ token: JSON.parse(opts.body).code }),
+    json: async () => ({ token: ROLL }),
   }));
 };
 
@@ -45,168 +52,74 @@ describe('firebaseHelpers', () => {
     jest.clearAllMocks();
     auth.currentUser = null;
     mockAuthApi();
+    getErpToken.mockResolvedValue('erp-session-token');
     console.log = jest.fn();
     console.warn = jest.fn();
     console.error = jest.fn();
   });
 
-  describe('generateLoginCode', () => {
-    // Feature: firebase-cloud-sync, Property 1: Login Code Format Validation
-    test('generated login codes always match format PRES-XXXXXXX with valid characters', () => {
-      fc.assert(
-        fc.property(fc.integer({ min: 0, max: 1000 }), () => {
-          const code = generateLoginCode();
-          
-          // Check length (12 characters total)
-          expect(code.length).toBe(12);
-          
-          // Check format: PRES-XXXXXXX
-          expect(code).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/);
-          
-          // Check no ambiguous characters (0, O, 1, I)
-          expect(code).not.toMatch(/[01IO]/);
-          
-          // Check prefix
-          expect(code.substring(0, 4)).toBe('PRES');
-          
-          // Check hyphen at position 4
-          expect(code[4]).toBe('-');
-        }),
-        { numRuns: 100 }
-      );
-    });
-
-    test('generates unique codes on multiple calls', () => {
-      const codes = new Set();
-      for (let i = 0; i < 100; i++) {
-        codes.add(generateLoginCode());
-      }
-      // Should have high uniqueness (allow for small chance of collision)
-      expect(codes.size).toBeGreaterThan(95);
-    });
-
-    test('uses only non-ambiguous characters', () => {
-      const code = generateLoginCode();
-      const randomPart = code.substring(5); // Skip "PRES-"
-      
-      // Should not contain confusing characters
-      expect(randomPart).not.toContain('0');
-      expect(randomPart).not.toContain('O');
-      expect(randomPart).not.toContain('1');
-      expect(randomPart).not.toContain('I');
-    });
-  });
-
-  describe('getUserId', () => {
-    test('returns existing userId from AsyncStorage', async () => {
-      const existingId = 'PRES-ABC2345';
-      AsyncStorage.getItem.mockResolvedValue(existingId);
+  describe('registerUser', () => {
+    test('adopts the roll number as the account id and signs in', async () => {
+      AsyncStorage.setItem.mockResolvedValue();
       setDoc.mockResolvedValue();
 
-      const userId = await getUserId();
+      const userId = await registerUser(ROLL);
 
-      expect(userId).toBe(existingId);
-      expect(AsyncStorage.getItem).toHaveBeenCalledWith('userId');
-
-      // lastActive update is fire-and-forget after background auth — flush it
-      await flush();
-      expect(setDoc).toHaveBeenCalled(); // Updates lastActive
-    });
-
-    test('generates new userId if none exists', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
-      AsyncStorage.setItem.mockResolvedValue();
-
-      const userId = await getUserId();
-
-      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/);
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith('userId', userId);
-      // User doc is created server-side now: client calls /api/auth-token with create:true
+      expect(userId).toBe(ROLL);
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('userId', ROLL);
+      // The server is asked with the ERP session token — never a client-chosen id.
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/auth-token'),
-        expect.objectContaining({ body: JSON.stringify({ code: userId, create: true }) })
+        expect.objectContaining({ body: JSON.stringify({ token: 'erp-session-token' }) })
       );
+
+      await flush();
+      expect(setDoc).toHaveBeenCalled(); // stamps lastActive
     });
 
-    test('handles cloud registration errors gracefully', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
+    test('trims the roll and refuses an empty one', async () => {
+      expect(await registerUser('  ' + ROLL + ' ')).toBe(ROLL);
+      expect(await registerUser('')).toBeNull();
+      expect(await registerUser(null)).toBeNull();
+    });
+
+    test('a failed sign-in still leaves the id usable offline', async () => {
       AsyncStorage.setItem.mockResolvedValue();
       global.fetch = jest.fn(() => Promise.reject(new Error('Network down')));
 
-      const userId = await getUserId();
-
-      // Should still return a valid userId (cloud registration is deferred)
-      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/);
+      expect(await registerUser(ROLL)).toBe(ROLL);
+      await flush();
       expect(console.warn).toHaveBeenCalled();
-    });
-
-    test('generates temporary ID if AsyncStorage fails', async () => {
-      AsyncStorage.getItem.mockRejectedValue(new Error('Storage error'));
-      AsyncStorage.setItem.mockResolvedValue();
-
-      const userId = await getUserId();
-
-      expect(userId).toMatch(/^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/);
-      expect(console.error).toHaveBeenCalled();
-    });
-
-    // Feature: firebase-cloud-sync, Property 4: Login Code Storage Round-Trip
-    test('storing and retrieving login code returns identical code', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.integer({ min: 0, max: 100 }), async () => {
-          const code = generateLoginCode();
-          
-          // Mock AsyncStorage to simulate storage
-          let storedValue = null;
-          AsyncStorage.setItem.mockImplementation(async (key, value) => {
-            storedValue = value;
-          });
-          AsyncStorage.getItem.mockImplementation(async (key) => {
-            return storedValue;
-          });
-          
-          // Store the code
-          await AsyncStorage.setItem('userId', code);
-          
-          // Retrieve the code
-          const retrieved = await AsyncStorage.getItem('userId');
-          
-          // Should be identical
-          expect(retrieved).toBe(code);
-        }),
-        { numRuns: 50 }
-      );
     });
   });
 
-  describe('loginWithCode', () => {
-    test('successfully logs in with valid code', async () => {
-      const validCode = 'PRES-ABC2345';
-      AsyncStorage.setItem.mockResolvedValue();
-      setDoc.mockResolvedValue();
+  describe('ensureAuthenticated', () => {
+    test('signs in with the stored roll and the ERP token', async () => {
+      AsyncStorage.getItem.mockResolvedValue(ROLL);
 
-      const userId = await loginWithCode(validCode);
-
-      expect(userId).toBe(validCode);
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith('userId', validCode);
-      expect(setDoc).toHaveBeenCalled(); // Updates lastActive
+      expect(await ensureAuthenticated()).toBe(true);
+      expect(auth.currentUser.uid).toBe(ROLL);
     });
 
-    test('throws error for a code that fails format validation', async () => {
-      // Contains I and L, which are not in CODE_CHARS
-      await expect(loginWithCode('PRES-INVALID')).rejects.toThrow('Invalid login code');
+    test('no college session means no cloud session — and no throw', async () => {
+      AsyncStorage.getItem.mockResolvedValue(ROLL);
+      getErpToken.mockResolvedValue(null);
+
+      expect(await ensureAuthenticated()).toBe(false);
+      expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    test('throws error for a code the server rejects', async () => {
-      global.fetch = jest.fn(async () => ({ ok: false, status: 404 }));
-
-      await expect(loginWithCode('PRES-ABC2345')).rejects.toThrow('Invalid login code');
-    });
-
-    test('throws error on network failure', async () => {
+    test('fails open when the server is down', async () => {
+      AsyncStorage.getItem.mockResolvedValue(ROLL);
       global.fetch = jest.fn(() => Promise.reject(new Error('Network error')));
 
-      await expect(loginWithCode('PRES-ABC2345')).rejects.toThrow('Failed to login');
+      expect(await ensureAuthenticated()).toBe(false);
+    });
+
+    test('a session for a different roll is not accepted for this one', async () => {
+      AsyncStorage.getItem.mockResolvedValue('99SOMEONE_ELSE');
+
+      expect(await ensureAuthenticated()).toBe(false);
     });
   });
 

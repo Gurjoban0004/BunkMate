@@ -1,7 +1,6 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
-import LoginScreen from '../screens/setup/LoginScreen';
 import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
 
 import { COLORS } from '../theme/theme';
@@ -9,9 +8,10 @@ import { COLORS } from '../theme/theme';
 const Stack = createStackNavigator();
 
 export default function SetupNavigator() {
-    // Straight to sign-in. Welcome was a splash with a Get-started button: one
-    // full screen and one tap before anything could start loading. Its brand and
-    // its "already have a login code" link both live on the sign-in step now.
+    // One screen. Welcome was a splash with a Get-started button — one full
+    // screen and one tap before anything could start loading — and the separate
+    // login-code screen is gone with the codes themselves. The stack survives
+    // only because the web fixes below live in its screenOptions.
     const initialRoute = 'ERPSetup';
 
     return (
@@ -63,11 +63,6 @@ export default function SetupNavigator() {
             }}
             detachInactiveScreens={Platform.OS === 'web'}
         >
-            <Stack.Screen
-                name="Login"
-                component={LoginScreen}
-                options={{ headerShown: false }}
-            />
             <Stack.Screen
                 name="ERPSetup"
                 component={ERPSetupScreen}

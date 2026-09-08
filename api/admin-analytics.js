@@ -9,9 +9,10 @@
  * never invents figures.
  *
  * "Student" means a user document with a real roll number, i.e. someone who
- * connected their college account. Abandoned sign-ups (a login code that
- * never got past onboarding), test accounts and mock logins do not have one
- * and are reported separately as `unfinishedSignups`, never mixed in.
+ * connected their college account — which, since the account id IS the roll
+ * number, is now every document api/auth-token can create. Leftovers from the
+ * old PRES-XXXXXXX login codes, test accounts and mock logins have no roll
+ * number and are reported separately as `unfinishedSignups`, never mixed in.
  *
  * Two independent sources feed this file:
  *   1. What the APP writes (users/, semesters/, telemetry syncs). Rich, but it
@@ -24,7 +25,7 @@
  *   live              — who has the app open right now, plus the known roster
  *   loginEvents       — every sign-in attempt against the college, success or not
  *   overview          — the hero: students, activity, sync health, sign-in events, attendance
- *   userRoster        — { users: [real students], unfinished: { count, olderThan7d } }
+ *   userRoster        — { users: [real students], unfinished: { count, olderThan7d } — legacy only }
  *   sessionEvents     — who was asked to sign in again in the last 7 days, and why
  *   subjectDifficulty — aggregate attendance per subject across students
  *   bunkCulture       — day-of-week miss rates from the register
@@ -116,8 +117,14 @@ const syncMillis = (data) => millis(data && data.timestamp);
 const ownerOf = (docSnap) => docSnap.ref.path.split('/')[1] || null;
 
 /**
- * Users split into real students and unfinished sign-ups, plus each student's
+ * Users split into real students and legacy docs, plus each student's
  * current-semester summary. One users read + one semesters read, joined here.
+ *
+ * The document id is the roll number: api/auth-token only ever creates a user
+ * doc from a sealed ERP session, so every id is one the college vouched for.
+ * erpRollNumber is still honoured because it is what the older PRES-XXXXXXX
+ * documents carry — anything with neither is a leftover from the login-code
+ * era and lands in `unfinished`, which is what the purge action clears.
  */
 async function loadPeople() {
     const [usersSnap, semestersSnap] = await Promise.all([allUsers(), allSemesters()]);
@@ -126,7 +133,8 @@ async function loadPeople() {
     const unfinished = [];
     usersSnap.forEach((d) => {
         const data = d.data() || {};
-        if (isRealRoll(data.erpRollNumber)) students.set(d.id, { id: d.id, ...data });
+        const roll = isRealRoll(d.id) ? d.id : (isRealRoll(data.erpRollNumber) ? String(data.erpRollNumber).trim() : null);
+        if (roll) students.set(d.id, { id: d.id, erpRollNumber: roll, ...data });
         else unfinished.push({ id: d.id, lastActive: finiteMillis(data.lastActive) || finiteMillis(data.createdAt) });
     });
 

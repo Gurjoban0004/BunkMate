@@ -4,7 +4,7 @@
  *
  * WHY THIS EXISTS
  * The admin panel used to read only what the *client* wrote to Firestore
- * (users/{loginCode}, telemetry/{loginCode}/syncs). Every one of those writes
+ * (users/{roll}, telemetry/{roll}/syncs). Every one of those writes
  * sits behind a chain the student's phone has to complete: mint a custom token
  * → Firebase sign-in → pass the security rules. Any broken link in that chain
  * and the panel is silently empty, which is exactly what it was: a friend

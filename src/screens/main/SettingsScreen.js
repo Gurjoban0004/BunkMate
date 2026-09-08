@@ -47,7 +47,7 @@ const SettingsScreen = ({ navigation }) => {
         smartAlertsEnabled = true,
         notificationTime = '07:30',
         theme = 'light',
-        uiPalette = 'chalkpad',
+        uiPalette = 'paper',
         semesterEndDate = null,
     } = state.settings || {};
 
@@ -67,11 +67,11 @@ const SettingsScreen = ({ navigation }) => {
 
 
     const handleLogout = () => {
-        // BUG-19 fix: Show login code so user can copy it before logging out
-        const loginCode = state.userId || 'unknown';
+        // Nothing to write down any more: signing in to our college again, on
+        // this phone or any other, lands on the same account.
         showAlert(
-            'Logout',
-            `Your login code is:\n\n${loginCode}\n\nKeep it — it is how you get back in on any device.`,
+            'Log out',
+            'Signing in with our college account again brings everything back.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -90,7 +90,7 @@ const SettingsScreen = ({ navigation }) => {
     const handleDeleteAccount = () => {
         showAlert(
             'Delete Account',
-            'This cannot be undone. Everything saved to your login code, on this device and in the cloud, is deleted.',
+            'This cannot be undone. Everything saved to our account, on this device and in the cloud, is deleted.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -496,31 +496,11 @@ const SettingsScreen = ({ navigation }) => {
                             )}
                         </View>
                         <View style={styles.divider} />
-                        <TouchableOpacity style={[styles.loginButtonCard]} onPress={() => {
-                            showAlert(
-                                'Switch account?',
-                                'This device forgets the current account so you can enter another code. Nothing in the cloud is touched.',
-                                [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Switch', style: 'default', onPress: async () => {
-                                        await clearAppState();
-                                        await AsyncStorage.removeItem('userId');
-                                        dispatch({ type: 'RESET_STATE' });
-                                    }}
-                                ]
-                            );
-                        }}>
-                            <View>
-                                <Text style={styles.loginButtonCardTitle}>Use a different login code</Text>
-                                <Text style={styles.loginButtonCardDesc}>Switch accounts, or pick up where another device left off</Text>
-                            </View>
-                        </TouchableOpacity>
-                        <View style={styles.divider} />
                         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                             <View style={styles.accountButtonContent}>
                                 <View style={styles.accountButtonTextContainer}>
                                     <Text style={styles.accountButtonTitle}>Log out</Text>
-                                    <Text style={styles.accountButtonSubtitle}>Your data stays saved to your code</Text>
+                                    <Text style={styles.accountButtonSubtitle}>Everything stays saved to our account</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
@@ -963,24 +943,6 @@ const getStyles = () => StyleSheet.create({
         fontSize: FONT_SIZES.sm,
     },
 
-    // Login with Different Code card styles
-    loginButtonCard: {
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: 0,
-        padding: SPACING.md,
-    },
-    loginButtonCardTitle: {
-        fontWeight: '600',
-        fontSize: FONT_SIZES.md,
-        color: COLORS.textPrimary,
-        marginBottom: 2,
-    },
-    loginButtonCardDesc: {
-        fontWeight: '400',
-        fontSize: FONT_SIZES.xs,
-        color: COLORS.textSecondary,
-    },
-    
     // Login button styles
     loginButton: {
         backgroundColor: COLORS.cardBackground,

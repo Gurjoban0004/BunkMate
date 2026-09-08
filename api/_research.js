@@ -5,7 +5,7 @@
  *   { v, consentedAt, lastSyncAt, group, marks[], slots[], subjects[], reasons[] }
  *
  * `researchId` is a random UUID minted on the student's device at consent. Nothing
- * that identifies a person is written here — no name, roll number or login code —
+ * that identifies a person is written here — no name, roll number or account id —
  * so there is nothing to strip later.
  *
  * The write is awaited, and never throws. Awaiting is not optional: a serverless

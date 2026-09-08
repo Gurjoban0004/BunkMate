@@ -2,7 +2,7 @@
  * Research participation (AI/ML class project — see attendance-insights/PLAN.md).
  *
  * The device mints a random UUID on first sync. That UUID is the only thing that
- * ever leaves with the attendance data — no name, no roll number, no login code —
+ * ever leaves with the attendance data — no name, no roll number, no account id —
  * so there is nothing to anonymise later. What is filed is the same register the
  * college publishes to the class; nothing personal rides along.
  *

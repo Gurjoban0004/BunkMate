@@ -19,7 +19,7 @@ const INFRA = /FUNCTION_INVOCATION|NON_JSON_RESPONSE|HTTP \d{3}|<!DOCTYPE|Deploy
 
 /**
  * @param {Error} err   the thrown error (may carry .code / .status from erpService)
- * @param {'signin'|'otp'|'import'|'code'} context which step failed
+ * @param {'signin'|'otp'|'import'} context which step failed
  * @returns {{ title: string, message: string, detail?: string }}
  */
 export function friendlyError(err, context = 'signin') {
@@ -80,12 +80,6 @@ export function friendlyError(err, context = 'signin') {
             return withDetail({
                 title: 'That code did not work',
                 message: 'Check the most recent code you were sent, or request a new one.',
-            });
-        }
-        if (context === 'code') {
-            return withDetail({
-                title: 'That login code did not work',
-                message: 'Codes look like PRES-XXXXXXX. Check it against the one on your other device.',
             });
         }
         return withDetail({

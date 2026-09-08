@@ -1,21 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { signInWithCustomToken } from 'firebase/auth';
 import { Platform } from 'react-native';
-import * as Crypto from 'expo-crypto';
 import { db, auth } from '../config/firebase';
+import { getErpToken } from '../storage/erpTokenStorage';
 import { buildApiUrl } from '../services/apiConfig';
 import { APP_VERSION } from '../config/version';
 import { logger } from './logger';
 
 /**
- * Exchange a login code for a Firebase auth session.
- * Calls the server, which validates the code and mints a custom token (uid === code),
- * then signs in. Firestore rules require this session for any read/write of user data.
+ * Exchange the ERP session token for a Firebase auth session.
  *
- * @param {string} code
- * @param {{ create?: boolean }} [opts] - create the user doc server-side if missing (new users)
- * @throws {Error} 'Invalid login code' (404), a throttling message (429), or a generic failure
+ * The server opens the sealed token, reads the roll number out of it and mints a
+ * custom token with uid === roll number. Firestore rules require that session for
+ * any read/write of user data. There is no second credential: the college login
+ * the student already did is the whole proof.
+ *
+ * @param {string} erpToken - the sealed session token from erpTokenStorage
+ * @throws {Error} 'Session expired' (401), a throttling message (429), or a generic failure
  */
 // React Native's fetch has NO default timeout. An unbounded stall here hangs app
 // STARTUP: loadAppState() awaits ensureAuthenticated(), and AppProvider's
@@ -31,7 +33,7 @@ function withTimeout(promise, ms, message) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
-export const authenticateWithCode = async (code, { create = false } = {}) => {
+export const authenticateWithErp = async (erpToken) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
 
@@ -40,7 +42,7 @@ export const authenticateWithCode = async (code, { create = false } = {}) => {
     res = await fetch(buildApiUrl('/api/auth-token', Platform.OS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, create }),
+      body: JSON.stringify({ token: erpToken }),
       signal: controller.signal,
     });
   } catch (e) {
@@ -52,7 +54,7 @@ export const authenticateWithCode = async (code, { create = false } = {}) => {
     clearTimeout(timeoutId);
   }
 
-  if (res.status === 404) throw new Error('Invalid login code');
+  if (res.status === 401) throw new Error('Session expired');
   if (res.status === 429) throw new Error('Too many attempts. Please try again in a few minutes.');
   if (!res.ok) throw new Error('Could not sign in. Please check your connection and try again.');
 
@@ -70,155 +72,65 @@ export const authenticateWithCode = async (code, { create = false } = {}) => {
 let authInFlight = null;
 
 /**
- * Ensure there is a Firebase session for the stored (or given) code, minting one if
- * needed. Fail-OPEN: returns false instead of throwing so offline / server-down never
- * blocks the app — cloud writes simply no-op under the rules until a session exists,
- * while local AsyncStorage keeps working.
+ * Ensure there is a Firebase session for the stored (or given) roll number,
+ * minting one from the ERP session token if needed. Fail-OPEN: returns false
+ * instead of throwing so offline / server-down / signed-out-of-college never
+ * blocks the app — cloud writes simply no-op under the rules until a session
+ * exists, while local storage keeps working.
  *
- * @param {string} [explicitCode] - defaults to the userId in AsyncStorage
+ * @param {string} [explicitRoll] - defaults to the userId in AsyncStorage
  * @returns {Promise<boolean>} whether a valid session exists
  */
-export const ensureAuthenticated = async (explicitCode) => {
+export const ensureAuthenticated = async (explicitRoll) => {
   try {
-    const code = explicitCode || (await AsyncStorage.getItem('userId'));
-    if (!code) return false;
-    if (auth?.currentUser?.uid === code) return true;
+    const roll = explicitRoll || (await AsyncStorage.getItem('userId'));
+    if (!roll) return false;
+    if (auth?.currentUser?.uid === roll) return true;
 
     if (!authInFlight) {
-      authInFlight = authenticateWithCode(code).finally(() => { authInFlight = null; });
+      // No college session, no cloud session. That is the whole point: there is
+      // no longer a second credential that could stand in for one.
+      authInFlight = getErpToken()
+        .then((erpToken) => (erpToken ? authenticateWithErp(erpToken) : false))
+        .finally(() => { authInFlight = null; });
     }
     await authInFlight;
-    return auth?.currentUser?.uid === code;
+    return auth?.currentUser?.uid === roll;
   } catch (e) {
     logger.warn('⚠️ Firebase auth unavailable — running local-only:', e.message);
     return false;
   }
 };
 
-// Character set for login code generation (excludes confusing characters: 0, O, 1, I)
-const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
 /**
- * Generate a random login code in format PRES-XXXXXXX.
+ * Adopt a roll number as this install's identity and register it in the cloud.
  *
- * The code IS the account credential, so it comes from the platform CSPRNG
- * (expo-crypto), not Math.random. CODE_CHARS has 32 symbols, so one byte
- * masked to 5 bits is a uniform pick — no modulo bias.
- * @returns {string} Login code in format PRES-XXXXXXX (12 characters total)
+ * Called once, right after the college sign-in that proved the roll belongs to
+ * this student. Signing in on a new phone with the same college account lands on
+ * the same id, so cloud data comes back by itself — which is the job the
+ * PRES-XXXXXXX login code used to do badly.
+ *
+ * @param {string} rollNumber
+ * @returns {Promise<string|null>} the stored id, or null if the roll was empty
  */
-export const generateLoginCode = () => {
-  const bytes = Crypto.getRandomValues(new Uint8Array(7));
-  let randomPart = '';
-  for (let i = 0; i < 7; i++) randomPart += CODE_CHARS[bytes[i] & 31];
-  return `PRES-${randomPart}`;
-};
+export const registerUser = async (rollNumber) => {
+  const roll = String(rollNumber || '').trim();
+  if (!roll) return null;
 
-/**
- * Get or create user ID
- * Checks AsyncStorage for existing userId, generates new one if not found
- * Creates Firestore user document for new users
- * Updates lastActive timestamp for existing users
- * @returns {Promise<string>} User ID (login code)
- */
-export const getUserId = async () => {
-  try {
-    // Check AsyncStorage for existing userId
-    const existingUserId = await AsyncStorage.getItem('userId');
-    
-    if (existingUserId) {
-      // Sign in (needed for any cloud write), then update lastActive in the background
-      // so startup is never blocked. All of this fails-open when offline.
-      ensureAuthenticated(existingUserId).then((ok) => {
-        if (!ok) return;
-        const userRef = doc(db, 'users', existingUserId);
-        setDoc(userRef, {
-          lastActive: serverTimestamp(),
-          version: APP_VERSION,
-        }, { merge: true }).catch(error => {
-          logger.warn('⚠️ Failed to update lastActive:', error);
-        });
-      });
+  await AsyncStorage.setItem('userId', roll);
 
-      logger.info('✅', 'Logged in as:', existingUserId);
-      return existingUserId;
-    }
-    
-    // Generate new login code
-    const newUserId = generateLoginCode();
-
-    // Save to AsyncStorage
-    await AsyncStorage.setItem('userId', newUserId);
-
-    // Create the user doc server-side and sign in (uid === code). The server owns
-    // doc creation now — clients can't write arbitrary user docs under the rules.
-    try {
-      await authenticateWithCode(newUserId, { create: true });
-      logger.info('✅', 'New user created:', newUserId);
-    } catch (error) {
-      // Offline / server down: keep the local code; cloud sync starts once auth succeeds.
-      logger.warn('⚠️ Deferred cloud registration for new user:', error.message);
-    }
-
-    return newUserId;
-    
-  } catch (error) {
-    logger.error('❌ Error in getUserId:', error);
-    
-    // Fallback: Generate temporary ID and store in AsyncStorage
-    const tempUserId = generateLoginCode();
-    try {
-      await AsyncStorage.setItem('userId', tempUserId);
-      logger.warn('⚠️ Using temporary ID:', tempUserId);
-      return tempUserId;
-    } catch (storageError) {
-      logger.error('❌ Critical: Cannot save userId to AsyncStorage:', storageError);
-      // Return temporary ID even if storage fails
-      return tempUserId;
-    }
-  }
-};
-
-/**
- * Login with existing code
- * Validates code exists in Firestore, saves to AsyncStorage, updates lastActive
- * @param {string} code - Login code to validate
- * @returns {Promise<string>} User ID if valid
- * @throws {Error} If code is invalid or doesn't exist
- */
-export const loginWithCode = async (code) => {
-  try {
-    // Validate code format before hitting the network
-    // Only accept characters from CODE_CHARS (excludes 0, O, 1, I)
-    const CODE_REGEX = /^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/;
-    if (!code || !CODE_REGEX.test(code)) {
-      throw new Error('Invalid login code');
-    }
-
-    // Authenticate — the server validates the code exists, throttles brute force,
-    // and mints a session. A wrong code throws 'Invalid login code' here.
-    await authenticateWithCode(code);
-
-    // Save code to AsyncStorage
-    await AsyncStorage.setItem('userId', code);
-
-    // Update lastActive (now permitted — we're signed in as this uid)
-    const userRef = doc(db, 'users', code);
-    await setDoc(userRef, {
+  // Sign in and stamp lastActive in the background so setup is never blocked;
+  // fails open when offline, and the next sync picks it up.
+  ensureAuthenticated(roll).then((ok) => {
+    if (!ok) return;
+    setDoc(doc(db, 'users', roll), {
       lastActive: serverTimestamp(),
       version: APP_VERSION,
-    }, { merge: true });
+    }, { merge: true }).catch((error) => logger.warn('⚠️ Failed to update lastActive:', error));
+  });
 
-    logger.info('✅', 'Logged in as:', code);
-
-    return code;
-    
-  } catch (error) {
-    if (error.message === 'Invalid login code') {
-      throw error;
-    }
-    logger.error('❌ Error in loginWithCode:', error);
-    throw new Error('Failed to login. Please check your connection and try again.');
-  }
+  logger.info('✅', 'Signed in as:', roll);
+  return roll;
 };
 
 /**

@@ -16,7 +16,7 @@ import { logger } from '../utils/logger';
 const SYNC_LOG_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
- * @param {string} userId       login code — also the Firebase uid (rules require the match)
+ * @param {string} userId       roll number — also the Firebase uid (rules require the match)
  * @param {Object} sync
  * @param {Array}  sync.endpoints    [{ name, status: 'ok'|'fail', durationMs, error? }]
  * @param {Array}  sync.parserErrors [{ endpoint, message }]
@@ -45,7 +45,7 @@ export async function logSync(userId, { endpoints = [], parserErrors = [], sessi
 
 /**
  * Store one current, aggregate-only attendance snapshot per student per day.
- * This deliberately excludes dates, class-level marks, names, and login codes
+ * This deliberately excludes dates, class-level marks, names, and roll numbers
  * from the document body. A trusted server can later aggregate these records by
  * course code for the teacher-facing AIML work without reading a student's full
  * attendance history.

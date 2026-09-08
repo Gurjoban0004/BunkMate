@@ -7,7 +7,7 @@ import {
     migrateToFirestore,
     deleteUserAccount
 } from '../storage/storage';
-import { loginWithCode, getUserId, checkOnlineStatus, getCurrentSemesterId } from '../utils/firebaseHelpers';
+import { registerUser, checkOnlineStatus, getCurrentSemesterId } from '../utils/firebaseHelpers';
 
 // Mock dependencies
 jest.mock('@react-native-async-storage/async-storage');
@@ -17,12 +17,15 @@ jest.mock('../config/firebase', () => ({
     auth: { currentUser: null }
 }));
 // firebase/auth ships untransformed ESM; mock with a factory. signInWithCustomToken
-// sets currentUser to the token — the fetch mock below issues token === code, so
-// ensureAuthenticated's uid check passes.
+// sets currentUser to the token — the fetch mock below issues token === ROLL, the
+// roll the server reads out of the ERP token, so ensureAuthenticated's uid check passes.
 jest.mock('firebase/auth', () => ({
     signInWithCustomToken: jest.fn(async (authObj, token) => {
         authObj.currentUser = { uid: token };
     }),
+}));
+jest.mock('../storage/erpTokenStorage', () => ({
+    getErpToken: jest.fn(async () => 'erp-session-token'),
 }));
 jest.mock('../utils/firebaseHelpers', () => {
     const original = jest.requireActual('../utils/firebaseHelpers');
@@ -35,6 +38,8 @@ jest.mock('../utils/firebaseHelpers', () => {
 
 const { auth } = require('../config/firebase');
 
+const ROLL = '23BCS1234';
+
 describe('Firebase Integration Flow', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -43,11 +48,11 @@ describe('Firebase Integration Flow', () => {
         console.error = jest.fn();
 
         auth.currentUser = null;
-        // Mock the auth-token API: returns token === requested code
-        global.fetch = jest.fn(async (url, opts) => ({
+        // Stand in for /api/auth-token: the roll comes out of the ERP session token.
+        global.fetch = jest.fn(async () => ({
             ok: true,
             status: 200,
-            json: async () => ({ token: JSON.parse(opts.body).code }),
+            json: async () => ({ token: ROLL }),
         }));
         doc.mockReturnValue({ id: 'mock-ref' });
 
@@ -56,19 +61,19 @@ describe('Firebase Integration Flow', () => {
     });
 
     // Feature: firebase-cloud-sync, Property 2: Timestamp Field Presence
-    test('new user flow: generate ID, save state, and sync to cloud', async () => {
-        // 1. New user gets ID
+    test('new user flow: adopt the roll as the id, save state, sync to cloud', async () => {
+        // 1. Signing in to the college is what creates the account
         AsyncStorage.getItem.mockResolvedValue(null); // No ID yet
         AsyncStorage.setItem.mockResolvedValue();
         setDoc.mockResolvedValue();
 
-        const userId = await getUserId();
-        expect(userId).toMatch(/^PRES-/);
+        const userId = await registerUser(ROLL);
+        expect(userId).toBe(ROLL);
         expect(AsyncStorage.setItem).toHaveBeenCalledWith('userId', userId);
-        // User doc is created server-side via /api/auth-token with create:true
+        // The user doc is created server-side, from the sealed ERP session token
         expect(global.fetch).toHaveBeenCalledWith(
             expect.stringContaining('/api/auth-token'),
-            expect.objectContaining({ body: JSON.stringify({ code: userId, create: true }) })
+            expect.objectContaining({ body: JSON.stringify({ token: 'erp-session-token' }) })
         );
 
         // 2. User saves state
@@ -88,16 +93,16 @@ describe('Firebase Integration Flow', () => {
         );
     });
 
-    test('cross-device login flow: login with code, load cloud state', async () => {
-        const existingCode = 'PRES-ABC2345';
+    test('second device: sign in to the college, get the same cloud state', async () => {
+        const existingCode = ROLL;
         const cloudState = { 
             _lastModified: '2024-01-02T00:00:00.000Z', 
             setupComplete: true, 
             subjects: [{ id: '1', name: 'Math' }] 
         };
 
-        // 1. Login with code (validated server-side via /api/auth-token, not getDoc)
-        const userId = await loginWithCode(existingCode);
+        // 1. The college sign-in is the whole login: same roll, same account
+        const userId = await registerUser(existingCode);
         expect(userId).toBe(existingCode);
         expect(AsyncStorage.setItem).toHaveBeenCalledWith('userId', existingCode);
 
@@ -119,7 +124,7 @@ describe('Firebase Integration Flow', () => {
     });
 
     test('offline-to-online sync: save offline, sync when online', async () => {
-        const userId = 'PRES-QRS7892';
+        const userId = ROLL;
         const state = { subjects: [], userId };
         
         // 1. Save while offline

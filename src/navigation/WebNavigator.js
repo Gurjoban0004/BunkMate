@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Platform, Animated } from 'react-native';
 import useRouteTransition from '../hooks/useRouteTransition';
 
-import LoginScreen from '../screens/setup/LoginScreen';
 import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
 
 
@@ -103,11 +102,9 @@ export default function WebNavigator() {
             route: { params: currentRoute.params }
         };
 
-        let screen;
-        switch (currentRoute.name) {
-            case 'Login': screen = <LoginScreen {...props} />; break;
-            default: screen = <ERPSetupScreen {...props} />; break;
-        }
+        // Setup is a single screen now, but the history/navigation shim around
+        // it is still what the web build uses instead of a real stack.
+        const screen = <ERPSetupScreen {...props} />;
 
         return (
             <NavigationContext.Provider value={mockNavigation}>

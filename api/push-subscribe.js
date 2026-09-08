@@ -16,7 +16,9 @@ const { setCorsHeaders } = require('./_session-utils');
 const { tooManyAttempts } = require('./_rate-limit');
 const { adminDb } = require('./_firebase-admin');
 
-const CODE_REGEX = /^PRES-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{7}$/;
+// The uid is the roll number. This only keeps it safe to interpolate into a
+// document path — ownership is proved below by the ID token's own uid.
+const USER_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const USER_POLICY = { max: 20, windowMs: 10 * 60 * 1000 };
 
 function endpointHash(endpoint) {
@@ -40,7 +42,7 @@ module.exports = async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const { userId, subscription, enabled } = req.body || {};
-    if (!userId || typeof userId !== 'string' || !CODE_REGEX.test(userId)) {
+    if (!userId || typeof userId !== 'string' || !USER_ID_RE.test(userId)) {
         return res.status(400).json({ error: 'Invalid user' });
     }
     const clean = cleanSubscription(subscription);

@@ -38,7 +38,7 @@ describe('friendlyError', () => {
     it('varies the auth message by which step failed', () => {
         const bad = () => err('invalid', { status: 401 });
         expect(friendlyError(bad(), 'otp').title).toBe('That code did not work');
-        expect(friendlyError(bad(), 'code').title).toBe('That login code did not work');
+        expect(friendlyError(bad(), 'signin').title).toBe('Those details did not match');
     });
 
     it('passes through a real server sentence but keeps machine codes as detail', () => {
