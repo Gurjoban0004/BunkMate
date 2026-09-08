@@ -108,8 +108,8 @@ export default function ReconnectSheet() {
                     <Text style={styles.title}>{isOtp ? 'Enter the code' : 'Sign in again'}</Text>
                     <Text style={styles.subtitle}>
                         {isOtp
-                            ? `Our college just sent a code to your ${otpHint || 'registered email or phone'}.`
-                            : 'Our college signed this app out. Tap below and it will send you a code — the same as when you first set up.'}
+                            ? `Our college just emailed a code to your ${otpHint || 'college email address'}.`
+                            : 'Our college signed this app out. Tap below and it will email you a code — the same as when you first set up.'}
                     </Text>
 
                     {isOtp && (
@@ -122,7 +122,7 @@ export default function ReconnectSheet() {
                                 placeholderTextColor={COLORS.textMuted}
                                 keyboardType="number-pad"
                                 textContentType="oneTimeCode"
-                                autoComplete="sms-otp"
+                                autoComplete="one-time-code"
                                 maxLength={6}
                                 autoFocus
                                 editable={!loading}

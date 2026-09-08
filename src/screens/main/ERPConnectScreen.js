@@ -333,7 +333,7 @@ export default function ERPConnectScreen({ navigation }) {
                 <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
                 <Text style={styles.headerTitle}>Enter the code</Text>
                 <Text style={styles.headerSub}>
-                    Our college has sent a code to your registered number.
+                    Our college has emailed a code to the address on your college account.
                 </Text>
             </View>
 
