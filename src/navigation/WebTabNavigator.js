@@ -20,14 +20,14 @@ import { NavigationContext, NavigationRouteContext } from '@react-navigation/nat
 import { useApp } from '../context/AppContext';
 import { isAdminUser } from '../services/adminService';
 
-// The admin dashboard is only ever loaded for an admin.
-const AdminScreen = React.lazy(() => import('../screens/main/AdminScreen'));
+// Web only — AdminTab.native.js is an empty stub, so the panel is not in the APK.
+import { ADMIN_AVAILABLE, AdminScreen } from './AdminTab';
 
 export default function WebTabNavigator() {
     const styles = getStyles();
     const insets = useSafeAreaInsets();
     const { state: appState } = useApp();
-    const isAdmin = isAdminUser(appState);
+    const isAdmin = ADMIN_AVAILABLE && isAdminUser(appState);
     const [currentTab, setCurrentTab] = useState('Today');
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }],
@@ -181,7 +181,7 @@ export default function WebTabNavigator() {
             case 'EditSubjects': screen = <EditSubjectsScreen {...props} />; break;
             case 'ERPConnect': screen = <ERPConnectScreen {...props} />; break;
             case 'InsightsMain': screen = <InsightsScreen {...props} />; break;
-            case 'AdminMain': screen = <Suspense fallback={<BrandLoader />}><AdminScreen {...props} /></Suspense>; break;
+            case 'AdminMain': screen = AdminScreen ? <Suspense fallback={<BrandLoader />}><AdminScreen {...props} /></Suspense> : <TodayScreen {...props} />; break;
             default: screen = <TodayScreen {...props} />; break;
         }
 

@@ -7,15 +7,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline, Path, Circle, Line, Rect } from 'react-native-svg';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS, TABULAR } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
+import { getAdminConfig, getActiveAnnouncements } from '../../services/adminService';
 import {
-    getAdminConfig, updateAdminConfig,
+    updateAdminConfig,
     fetchOverview, fetchLive, fetchLoginEvents, fetchSessionEvents, fetchSubjectDifficulty,
     fetchBunkCultureIndex, fetchBatchDistribution,
     fetchEndpointHealth, fetchParserFailures,
     fetchDowntime, fetchRateLimitData, fetchUserRoster,
-    getActiveAnnouncements, publishAnnouncement, deleteAnnouncement,
+    publishAnnouncement, deleteAnnouncement,
     getRevokedUsers, revokeUser, unrevokeUser, listAuditLog, purgeUnfinishedSignups,
-} from '../../services/adminService';
+} from '../../services/adminApi';
 import { showAlert, confirmAction } from '../../utils/alert';
 import { formatRelativeTime } from '../../utils/dateHelpers';
 
@@ -339,8 +340,8 @@ export default function AdminScreen() {
     const handlePurge = async () => {
         const count = roster.data?.unfinished?.olderThan7d ?? overview.data?.unfinishedOlderThan7d ?? 0;
         if (!await confirmAction(
-            'Delete unfinished sign-ups?',
-            `${count} login code${count === 1 ? '' : 's'} never connected a college account and ${count === 1 ? 'has' : 'have'} been idle for over a week. They hold no attendance data. A student who comes back simply starts onboarding again.`,
+            'Delete leftover accounts?',
+            `${count} account${count === 1 ? '' : 's'} left over from the old login codes ${count === 1 ? 'has' : 'have'} been idle for over a week. They hold no attendance data, and nothing can create new ones. A student who comes back simply signs in again.`,
             'Delete',
         )) return;
         setPurging(true);
@@ -535,12 +536,12 @@ export default function AdminScreen() {
                                         </View>
                                         <Text style={styles.noteText}>
                                             {o.unfinishedSignups > 0
-                                                ? `${o.unfinishedSignups} login code${o.unfinishedSignups === 1 ? '' : 's'} never connected a college account (${o.unfinishedOlderThan7d} idle over a week). They are not counted above.`
-                                                : 'No unfinished sign-ups.'}
+                                                ? `${o.unfinishedSignups} leftover account${o.unfinishedSignups === 1 ? '' : 's'} from the old login codes (${o.unfinishedOlderThan7d} idle over a week). They are not counted above.`
+                                                : 'Nothing left over.'}
                                         </Text>
                                         {o.unfinishedOlderThan7d > 0 && (
                                             <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.inputBackground }]} onPress={handlePurge} disabled={purging}>
-                                                <Text style={[styles.actionBtnText, { color: COLORS.textPrimary }]}>{purging ? 'Deleting…' : `Delete ${o.unfinishedOlderThan7d} idle sign-ups`}</Text>
+                                                <Text style={[styles.actionBtnText, { color: COLORS.textPrimary }]}>{purging ? 'Deleting…' : `Delete ${o.unfinishedOlderThan7d} leftovers`}</Text>
                                             </TouchableOpacity>
                                         )}
                                     </>
@@ -591,7 +592,7 @@ export default function AdminScreen() {
                             {unfinishedAll > 0 && (
                                 <View style={styles.noticeBox}>
                                     <Text style={styles.noticeText}>
-                                        {unfinishedAll} login code{unfinishedAll === 1 ? '' : 's'} never connected a college account — not shown here.
+                                        {unfinishedAll} leftover account{unfinishedAll === 1 ? '' : 's'} from the old login codes — not shown here.
                                         {unfinishedOld > 0 ? ` ${unfinishedOld} idle over a week.` : ''}
                                     </Text>
                                     {unfinishedOld > 0 && (

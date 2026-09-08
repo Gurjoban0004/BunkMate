@@ -18,8 +18,8 @@ import { COLORS } from '../theme/theme';
 import { useApp } from '../context/AppContext';
 import { isAdminUser } from '../services/adminService';
 
-// The admin dashboard (and its SVG charts) is only ever loaded for an admin.
-const AdminScreen = React.lazy(() => import('../screens/main/AdminScreen'));
+// Web only — AdminTab.native.js is an empty stub, so the panel is not in the APK.
+import { ADMIN_AVAILABLE, AdminScreen } from './AdminTab';
 
 const Tab = createBottomTabNavigator();
 const TodayStack = createStackNavigator();
@@ -74,6 +74,7 @@ function InsightsStackScreen() {
 }
 
 function LazyAdmin(props) {
+    if (!AdminScreen) return null;   // native: the panel is not in this build
     return (
         <Suspense fallback={<BrandLoader />}>
             <AdminScreen {...props} />
@@ -137,7 +138,7 @@ export default function TabNavigator() {
             <Tab.Screen name="Today" component={TodayStackScreen} />
             <Tab.Screen name="Subjects" component={SubjectsStackScreen} />
             <Tab.Screen name="Insights" component={InsightsStackScreen} />
-            {isAdmin && <Tab.Screen name="Admin" component={AdminStackScreen} />}
+            {ADMIN_AVAILABLE && isAdmin && <Tab.Screen name="Admin" component={AdminStackScreen} />}
         </Tab.Navigator>
     );
 }
