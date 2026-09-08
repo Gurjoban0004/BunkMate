@@ -132,10 +132,19 @@ async function postLegacy(path, body, extraHeaders = {}) {
     return { response, payload };
 }
 
-// Dev-only mock login. MUST stay off in production: otherwise anyone can mint a
-// session for ANY roll number (including the admin) with the bypass password,
-// with no real ERP authentication. Enable only by setting ALLOW_MOCK_LOGIN=1.
-const MOCK_LOGIN_ENABLED = process.env.ALLOW_MOCK_LOGIN === '1';
+// Dev-only mock login: with it on, anyone can mint a session for ANY roll number
+// (including the admin) using the bypass password, with no real ERP auth at all.
+//
+// ALLOW_MOCK_LOGIN alone is NOT enough to turn it on. Vercel stamps VERCEL_ENV
+// on every deployment, so a production deploy refuses the bypass even if the
+// variable is set there by accident — the one failure mode nobody would notice,
+// because the app keeps working perfectly while the door stands open.
+const IS_PRODUCTION = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+const MOCK_LOGIN_ENABLED = process.env.ALLOW_MOCK_LOGIN === '1' && !IS_PRODUCTION;
+
+if (process.env.ALLOW_MOCK_LOGIN === '1' && IS_PRODUCTION) {
+    console.error('[SECURITY] ALLOW_MOCK_LOGIN is set in production and was IGNORED. Remove it from the deployment environment.');
+}
 
 function mockSession(deviceIdUUID) {
     return {
