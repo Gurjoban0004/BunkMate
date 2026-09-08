@@ -142,6 +142,7 @@ const TodayScreen = ({ navigation }) => {
                             todayKey={todayKey}
                             currentTime={currentTime}
                             nextClassInfo={nextClassInfo}
+                            subjects={state.subjects}
                         />
                     </View>
                 </View>
@@ -187,7 +188,6 @@ const TodayScreen = ({ navigation }) => {
                                                 key={`${c.subjectId}-${i}`}
                                                 classInfo={c}
                                                 state={state}
-                                                index={i}
                                                 // A lone trailing tile takes the
                                                 // whole row rather than sitting
                                                 // half-width against nothing.

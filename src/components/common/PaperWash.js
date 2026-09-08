@@ -32,7 +32,7 @@ export default function PaperWash({ ring = true, style, pointerEvents, children 
 
     return (
         <View
-            style={[styles.surface, style]}
+            style={[styles.surface, { backgroundColor: PAPER.paperBase }, style]}
             pointerEvents={pointerEvents}
             onLayout={(e) => {
                 const { width, height } = e.nativeEvent.layout;
@@ -48,21 +48,21 @@ export default function PaperWash({ ring = true, style, pointerEvents, children 
                         </LinearGradient>
                         {/* ellipse 116% 70% at -9% 23% — the bright sheet edge */}
                         <RadialGradient id={`${uid}w1`} cx="-0.09" cy="0.23" rx="1.16" ry="0.7">
-                            <Stop offset="0" stopColor="#ffffff" stopOpacity="0.98" />
-                            <Stop offset="0.36" stopColor="#ffffff" stopOpacity="0.98" />
-                            <Stop offset="0.69" stopColor="#ffffff" stopOpacity="0" />
+                            <Stop offset="0" stopColor={PAPER.washHi} stopOpacity={PAPER.washHiOp} />
+                            <Stop offset="0.36" stopColor={PAPER.washHi} stopOpacity={PAPER.washHiOp} />
+                            <Stop offset="0.69" stopColor={PAPER.washHi} stopOpacity="0" />
                         </RadialGradient>
                         {/* ellipse 74% 55% at 94% 29% — the sage pool, top right */}
                         <RadialGradient id={`${uid}w2`} cx="0.94" cy="0.29" rx="0.74" ry="0.55">
-                            <Stop offset="0" stopColor="#dde4d9" stopOpacity="0.56" />
-                            <Stop offset="0.26" stopColor="#dde4d9" stopOpacity="0.56" />
-                            <Stop offset="0.71" stopColor="#dde4d9" stopOpacity="0" />
+                            <Stop offset="0" stopColor={PAPER.washA} stopOpacity={PAPER.washAOp} />
+                            <Stop offset="0.26" stopColor={PAPER.washA} stopOpacity={PAPER.washAOp} />
+                            <Stop offset="0.71" stopColor={PAPER.washA} stopOpacity="0" />
                         </RadialGradient>
                         {/* ellipse 64% 42% at 42% 116% — the lavender pool, below the fold */}
                         <RadialGradient id={`${uid}w3`} cx="0.42" cy="1.16" rx="0.64" ry="0.42">
-                            <Stop offset="0" stopColor="#e4e1f2" stopOpacity="0.5" />
-                            <Stop offset="0.28" stopColor="#e4e1f2" stopOpacity="0.5" />
-                            <Stop offset="0.75" stopColor="#e4e1f2" stopOpacity="0" />
+                            <Stop offset="0" stopColor={PAPER.washB} stopOpacity={PAPER.washBOp} />
+                            <Stop offset="0.28" stopColor={PAPER.washB} stopOpacity={PAPER.washBOp} />
+                            <Stop offset="0.75" stopColor={PAPER.washB} stopOpacity="0" />
                         </RadialGradient>
                     </Defs>
 
@@ -81,7 +81,7 @@ export default function PaperWash({ ring = true, style, pointerEvents, children 
                         return (
                             <Ellipse
                                 cx={cx} cy={cy} rx={130} ry={49}
-                                fill="none" stroke="rgba(255,255,255,0.36)" strokeWidth={20}
+                                fill="none" stroke={PAPER.washRing} strokeWidth={20}
                                 transform={`rotate(-9, ${cx}, ${cy})`}
                             />
                         );
@@ -94,8 +94,10 @@ export default function PaperWash({ ring = true, style, pointerEvents, children 
     );
 }
 
+// PAPER is a live token map (see theme.js §1b), so the surface colour has to be
+// read at render time — a module-level StyleSheet would freeze the light sheet.
 const styles = StyleSheet.create({
-    surface: { overflow: 'hidden', backgroundColor: PAPER.paperBase },
+    surface: { overflow: 'hidden' },
 });
 
 /**

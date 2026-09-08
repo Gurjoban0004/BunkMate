@@ -2,10 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { COLORS } from '../../theme/theme';
+import { formatPct } from '../../utils/attendance';
 
 // One SVG implementation for web and native (react-native-svg renders on both),
 // so the ring is a pixel copy of the PWA on Android.
-export default function ProgressRing({ percentage, size = 48, strokeWidth = 5, color, children }) {
+export default function ProgressRing({ percentage, size = 48, strokeWidth = 5, color, trackColor, children }) {
     const fillColor = color || (percentage >= 75 ? COLORS.success : percentage >= 60 ? COLORS.warning : COLORS.danger);
     const clamped = Math.min(100, Math.max(0, percentage));
 
@@ -17,7 +18,14 @@ export default function ProgressRing({ percentage, size = 48, strokeWidth = 5, c
     return (
         <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
             <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-                <Circle cx={center} cy={center} r={radius} fill="none" stroke={COLORS.inputBackground} strokeWidth={strokeWidth} />
+                {/* The unfilled track. `trackColor` lets a caller tie the ring to a
+                    tinted card — at low opacity, so it never competes with the fill. */}
+                <Circle
+                    cx={center} cy={center} r={radius} fill="none"
+                    stroke={trackColor || COLORS.inputBackground}
+                    strokeOpacity={trackColor ? 0.28 : 1}
+                    strokeWidth={strokeWidth}
+                />
                 <Circle
                     cx={center} cy={center} r={radius} fill="none" stroke={fillColor} strokeWidth={strokeWidth}
                     strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
@@ -25,7 +33,7 @@ export default function ProgressRing({ percentage, size = 48, strokeWidth = 5, c
                 />
             </Svg>
             <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-                {children || <Text style={{ fontSize: size * 0.24, fontWeight: '800', color: COLORS.textPrimary }}>{Math.round(clamped)}%</Text>}
+                {children || <Text style={{ fontSize: size * 0.24, fontWeight: '800', color: COLORS.textPrimary }}>{formatPct(clamped)}%</Text>}
             </View>
         </View>
     );

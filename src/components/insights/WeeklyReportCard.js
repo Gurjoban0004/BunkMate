@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, subjectTint } from '../../theme/theme';
+import { shortSubjectName } from '../../utils/subjectName';
+import { formatPct } from '../../utils/attendance';
 
 /**
  * WeeklyReportCard — Beautiful weekly attendance summary.
@@ -9,7 +11,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
  *   report: output of generateWeeklyReport()
  *   onDismiss: callback to hide the card
  */
-const WeeklyReportCard = ({ report, onDismiss }) => {
+const WeeklyReportCard = ({ report, subjects, onDismiss }) => {
     const styles = getStyles();
 
     if (!report || report.weekTotal === 0) return null;
@@ -77,11 +79,11 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
                         <View style={styles.subjectTag}>
                             <View style={[styles.subjectDot, { backgroundColor: bestSubject.color }]} />
                             <Text style={styles.subjectName} numberOfLines={1}>
-                                {bestSubject.name}
+                                {shortSubjectName(bestSubject.name)}
                             </Text>
                         </View>
                         <Text style={[styles.statValue, { color: COLORS.successText }]}>
-                            {bestSubject.percentage}%
+                            {formatPct(bestSubject.percentage)}%
                         </Text>
                     </View>
                 )}
@@ -91,11 +93,11 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
                         <View style={styles.subjectTag}>
                             <View style={[styles.subjectDot, { backgroundColor: worstSubject.color }]} />
                             <Text style={styles.subjectName} numberOfLines={1}>
-                                {worstSubject.name}
+                                {shortSubjectName(worstSubject.name)}
                             </Text>
                         </View>
                         <Text style={[styles.statValue, { color: COLORS.dangerText }]}>
-                            {worstSubject.percentage}%
+                            {formatPct(worstSubject.percentage)}%
                         </Text>
                     </View>
                 )}
@@ -108,14 +110,16 @@ const WeeklyReportCard = ({ report, onDismiss }) => {
                     .sort((a, b) => b.percentage - a.percentage)
                     .map(sub => (
                         <View key={sub.subjectId} style={styles.barRow}>
-                            <View style={[styles.barDot, { backgroundColor: sub.color }]} />
-                            <Text style={styles.barName} numberOfLines={1}>{sub.name}</Text>
+                            {/* The subject's own hue, the same one it wears on
+                                Today and in the subject list — see theme.js §1c. */}
+                            <View style={[styles.barDot, { backgroundColor: subjectTint(sub.subjectId, subjects).accent }]} />
+                            <Text style={styles.barName} numberOfLines={1}>{shortSubjectName(sub.name)}</Text>
                             <View style={styles.barTrack}>
                                 <View style={[
                                     styles.barFill,
                                     {
                                         width: `${Math.min(sub.percentage, 100)}%`,
-                                        backgroundColor: sub.percentage >= 75 ? COLORS.success : COLORS.danger,
+                                        backgroundColor: subjectTint(sub.subjectId, subjects).accent,
                                     },
                                 ]} />
                             </View>

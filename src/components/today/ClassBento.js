@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { PAPER, TABULAR, SERIF_FONT } from '../../theme/theme';
+import { PAPER, TABULAR, SERIF_FONT, subjectTint } from '../../theme/theme';
 import { getSubjectSkipBudget } from '../../utils/attendance';
 import { shortSubjectName } from '../../utils/subjectName';
 import { getTodayKey } from '../../utils/dateHelpers';
@@ -11,27 +11,29 @@ import { getTodayKey } from '../../utils/dateHelpers';
  * time, room, percentage, and the one-line verdict) at a size that lets two sit
  * side by side.
  *
- * Tints come from PAPER: upcoming classes cycle sage → apricot → lavender so a
- * day reads as a set rather than a list; a class the college has already
- * recorded is stone and goes full width.
+ * The tile's colour is the SUBJECT's colour, not its position in today's list.
+ * It used to cycle sage → apricot → lavender by index, which meant DBMS was
+ * green on Monday and apricot on Tuesday — pretty, but it taught the student
+ * nothing. Now the same hue follows a subject across the bento, the schedule
+ * bar, the subject list and the insights charts (see theme.js §1c), so the
+ * colour becomes the subject's identity.
+ *
+ * A class the college has already marked drops to stone and goes full width:
+ * it is history, and history should not compete with the day ahead.
  */
-
-const TINTS = [
-    { bg: PAPER.sage, ink: PAPER.sageInk },
-    { bg: PAPER.apricot, ink: PAPER.apricotInk },
-    { bg: PAPER.lavender, ink: PAPER.lavenderInk },
-];
-const STONE = { bg: PAPER.stone, ink: PAPER.stoneInk };
 
 /** "14:00", from the timetable's "14:00" or "14:00:00". */
 const hhmm = (t) => String(t || '').slice(0, 5);
 
-export default function ClassBento({ classInfo, state, variant = 'upcoming', index = 0, wide = false, onPress }) {
+export default function ClassBento({ classInfo, state, variant = 'upcoming', wide = false, onPress }) {
     const styles = getStyles();
     const { subjectId, subjectName, startTime, endTime, room } = classInfo;
 
     const done = variant === 'done';
-    const tint = done ? STONE : TINTS[index % TINTS.length];
+    // PAPER is a live token map — read it in render, never at module scope.
+    const tint = done
+        ? { bg: PAPER.stone, ink: PAPER.stoneInk }
+        : subjectTint(subjectId, state.subjects);
 
     const budget = getSubjectSkipBudget(subjectId, state);
     const percentage = budget?.percentage || 0;

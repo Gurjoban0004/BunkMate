@@ -2,11 +2,15 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, BORDER_RADIUS, FONT_SIZES, SPACING } from '../../theme/theme';
 
-const STATUS_COLORS = { danger: COLORS.danger, warning: COLORS.warning, safe: COLORS.success };
+// COLORS is a live token map — read at call time, not at module load, or the
+// gauge keeps whatever palette happened to be active when the bundle evaluated.
+const statusColor = (status) => ({
+    danger: COLORS.danger, warning: COLORS.warning, safe: COLORS.success,
+}[status] || COLORS.success);
 
 export default function SkipGauge({ skipsAvailable, maxSkips = 10, status = 'safe', compact }) {
     const fill = Math.min(1, Math.max(0, skipsAvailable / maxSkips));
-    const color = STATUS_COLORS[status] || COLORS.success;
+    const color = statusColor(status);
     const segments = Math.min(maxSkips, 8);
 
     if (compact) {

@@ -78,7 +78,7 @@ const getStyles = () => StyleSheet.create({
     },
     text: {
         ...TYPOGRAPHY.button,
-        color: '#FFFFFF',
+        color: COLORS.textOnPrimary,
     },
     secondaryText: {
         color: COLORS.primary,

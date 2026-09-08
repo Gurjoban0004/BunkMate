@@ -69,6 +69,6 @@ const styles = StyleSheet.create({
     },
     updateBtnText: {
         ...TYPOGRAPHY.labelLarge,
-        color: '#FFFFFF',
+        color: COLORS.textOnPrimary,
     },
 });

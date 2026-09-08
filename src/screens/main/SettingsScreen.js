@@ -187,11 +187,12 @@ const SettingsScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
-            <PaperScreenHeader
-                title="Settings"
-                onBack={navigation.canGoBack() ? () => navigation.goBack() : null}
-            />
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <PaperScreenHeader
+                    title="Settings"
+                    bleed={{ top: SPACING.md }}
+                    onBack={navigation.canGoBack() ? () => navigation.goBack() : null}
+                />
 
                 {/* College account */}
                 <View style={styles.section}>
@@ -383,39 +384,38 @@ const SettingsScreen = ({ navigation }) => {
                         <View style={styles.divider} />
 
                         {/* UI Palette Picker */}
+                        {/* Two columns of actual swatch blocks, not a seven-row
+                            list of names. A palette is a look; you pick it by
+                            seeing it, and seven full-width rows made the rest of
+                            Settings a scroll away. */}
                         <View style={styles.paletteSection}>
                             <Text style={styles.paletteSectionLabel}>UI Palette</Text>
-                            {Object.values(PALETTES).map((palette) => {
-                                const isActive = uiPalette === palette.id;
-                                return (
-                                    <TouchableOpacity
-                                        key={palette.id}
-                                        style={[styles.paletteCard, isActive && styles.paletteCardActive]}
-                                        onPress={() => updateSetting('uiPalette', palette.id)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <View style={styles.paletteSwatches}>
-                                            {palette.swatches.map((color, i) => (
-                                                <View
-                                                    key={i}
-                                                    style={[styles.paletteDot, { backgroundColor: color }]}
-                                                />
-                                            ))}
-                                        </View>
-                                        <View style={styles.paletteInfo}>
-                                            <Text style={[styles.paletteName, isActive && styles.paletteNameActive]}>
+                            <View style={styles.paletteGrid}>
+                                {Object.values(PALETTES).map((palette) => {
+                                    const isActive = uiPalette === palette.id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={palette.id}
+                                            style={[styles.paletteCard, isActive && styles.paletteCardActive]}
+                                            onPress={() => updateSetting('uiPalette', palette.id)}
+                                            activeOpacity={0.8}
+                                            accessibilityRole="radio"
+                                            accessibilityState={{ selected: isActive }}
+                                            accessibilityLabel={palette.name}
+                                        >
+                                            <View style={[styles.paletteSwatches, { backgroundColor: palette.swatches[0] }]}>
+                                                {palette.swatches.slice(1).map((color, i) => (
+                                                    <View key={i} style={[styles.paletteDot, { backgroundColor: color }]} />
+                                                ))}
+                                            </View>
+                                            <Text style={[styles.paletteName, isActive && styles.paletteNameActive]} numberOfLines={1}>
                                                 {palette.name}
                                             </Text>
-                                            <Text style={styles.paletteDesc}>{palette.description}</Text>
-                                        </View>
-                                        {isActive && (
-                                            <View style={styles.paletteCheck}>
-                                                <Text style={styles.paletteCheckText}>&#10003;</Text>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })}
+                                            <Text style={styles.paletteDesc} numberOfLines={2}>{palette.description}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
                         </View>
 
                         {Platform.OS === 'android' && (
@@ -821,11 +821,16 @@ const getStyles = () => StyleSheet.create({
         letterSpacing: 0.5,
         marginBottom: 4,
     },
-    paletteCard: {
+    paletteGrid: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: SPACING.md,
-        padding: SPACING.sm + 4,
+        flexWrap: 'wrap',
+        gap: SPACING.sm,
+    },
+    paletteCard: {
+        // 46% rather than a third, so exactly two fit and a seventh wraps.
+        flexGrow: 1,
+        flexBasis: '46%',
+        padding: SPACING.sm + 2,
         backgroundColor: COLORS.inputBackground,
         borderRadius: BORDER_RADIUS.md,
         borderWidth: 1,
@@ -835,19 +840,25 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.primary,
         backgroundColor: COLORS.primaryLight,
     },
+    // The card's own background is the palette's canvas colour, with its two
+    // accents sitting on it — a miniature of the theme, not three dots.
     paletteSwatches: {
         flexDirection: 'row',
-        gap: 4,
+        alignItems: 'center',
+        gap: 5,
+        height: 34,
+        paddingHorizontal: 9,
+        borderRadius: BORDER_RADIUS.sm,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
+        marginBottom: SPACING.sm,
     },
     paletteDot: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.08)',
-    },
-    paletteInfo: {
-        flex: 1,
     },
     paletteName: {
         fontWeight: '600',
@@ -862,19 +873,6 @@ const getStyles = () => StyleSheet.create({
         fontSize: 10,
         color: COLORS.textSecondary,
         marginTop: 1,
-    },
-    paletteCheck: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: COLORS.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    paletteCheckText: {
-        color: COLORS.textOnPrimary,
-        fontSize: 12,
-        fontWeight: '700',
     },
     timePickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
     timePickerLabel: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary },

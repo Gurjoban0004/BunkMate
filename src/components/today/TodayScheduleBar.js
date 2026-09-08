@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { PAPER, SERIF_FONT } from '../../theme/theme';
+import { PAPER, SERIF_FONT, subjectTint } from '../../theme/theme';
 import { parseTimeToMinutes } from '../../utils/dateHelpers';
 import { shortSubjectName } from '../../utils/subjectName';
 
@@ -8,12 +8,22 @@ import { shortSubjectName } from '../../utils/subjectName';
 // many uppercase characters. Anything longer abbreviates rather than ellipses.
 const BLOCK_NAME_BUDGET = 8;
 
-// The track's four states, from ui-lab/today-replica.html's .schedule-block.
-const PHASE_TINT = {
-    done:  { backgroundColor: PAPER.successSoft,  borderTopColor: PAPER.successLine },
-    now:   { backgroundColor: PAPER.primarySoft,  borderTopColor: PAPER.primary },
-    next:  { backgroundColor: PAPER.nextBlockBg,  borderTopColor: PAPER.nextBlockLine },
-    later: { backgroundColor: PAPER.lastBlockBg,  borderTopColor: PAPER.lastBlockLine },
+/**
+ * A block's colour is its SUBJECT's colour (theme.js §1c) — the same hue the
+ * class wears in the bento, the subject list and the insights charts. The four
+ * phases are expressed as weight, not as a different hue: the old version
+ * painted done green and later lavender, so the bar answered "what time is it"
+ * in colours that clashed with every other screen's answer to "which subject".
+ *
+ * PAPER and the ramp are live token maps, so this is a function, not a const.
+ */
+const blockStyle = (phase, tint) => {
+    switch (phase) {
+        case 'now':   return { backgroundColor: tint.bg, borderTopColor: tint.accent, borderTopWidth: 4 };
+        case 'done':  return { backgroundColor: tint.bg, borderTopColor: tint.accent, opacity: 0.45 };
+        case 'next':  return { backgroundColor: tint.bg, borderTopColor: tint.accent };
+        default:      return { backgroundColor: tint.bg, borderTopColor: tint.accent, opacity: 0.7 };
+    }
 };
 
 /**
@@ -45,7 +55,7 @@ export const markerPercent = (classes, now) => {
     return null;
 };
 
-const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTime, nextClassInfo }) => {
+const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTime, nextClassInfo, subjects }) => {
     const styles = getStyles();
 
     const timeMarkerPosition = useMemo(
@@ -90,19 +100,15 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
                             : idx === nextIndex ? 'next'
                                 : 'later';
 
-                    const tint = PHASE_TINT[phase];
-                    const isLive = phase === 'now';
+                    const tint = subjectTint(c.subjectId, subjects);
 
                     return (
                         <View
                             key={`${c.subjectId}-${idx}`}
-                            style={[styles.classBlock, tint]}
+                            style={[styles.classBlock, blockStyle(phase, tint)]}
                         >
                             <Text
-                                style={[
-                                    styles.blockLabel,
-                                    isLive && { color: PAPER.primary },
-                                ]}
+                                style={[styles.blockLabel, { color: tint.ink }]}
                                 numberOfLines={1}
                             >
                                 {shortSubjectName(c.subjectName, BLOCK_NAME_BUDGET)}
@@ -126,7 +132,7 @@ const SERIF = { fontFamily: SERIF_FONT };
 
 const getStyles = () => StyleSheet.create({
     container: {
-        backgroundColor: 'rgba(255,255,255,0.95)',
+        backgroundColor: PAPER.surface,
         borderRadius: 12,
         padding: 15,
         borderWidth: 1,

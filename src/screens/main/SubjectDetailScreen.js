@@ -7,6 +7,7 @@ import Card from '../../components/common/Card';
 import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
+import { shortSubjectName } from '../../utils/subjectName';
 import SubjectSummaryCard from '../../components/planner/SubjectDetail/SubjectSummaryCard';
 import WhatIfSimulator from '../../components/planner/SubjectDetail/WhatIfSimulator';
 import PatternsInsights from '../../components/planner/SubjectDetail/PatternsInsights';
@@ -69,11 +70,15 @@ export default function SubjectDetailScreen({ route }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <ScreenHeader title={subject?.name || 'Subject'} />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                {/* Inside the scroll, so it moves with the page. */}
+                <ScreenHeader
+                    title={shortSubjectName(subject?.name) || 'Subject'}
+                    bleed={{ horizontal: SPACING.screenPadding, top: SPACING.md }}
+                />
                 {/* Where it stands + what the next class does + the way back */}
                 {simulatedData && <SubjectSummaryCard subjectData={simulatedData} />}
 
@@ -162,6 +167,8 @@ const getStyles = () => StyleSheet.create({
     scrollContent: {
         padding: SPACING.screenPadding,
         paddingBottom: SPACING.xxl,
+        // The header bleeds out of this padding (see its `bleed` prop) and
+        // supplies its own gap, so the first card starts here instead.
         paddingTop: SPACING.md,
     },
     errorText: {

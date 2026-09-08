@@ -899,7 +899,7 @@ const getStyles = () => StyleSheet.create({
     errorContainer: { padding: SPACING.md, alignItems: 'center', backgroundColor: COLORS.dangerLight, borderRadius: BORDER_RADIUS.md, gap: SPACING.xs, marginBottom: SPACING.md },
     errorText: { ...TYPOGRAPHY.captionMedium, color: COLORS.dangerDark, textAlign: 'center' },
     retryBtn: { backgroundColor: COLORS.danger, paddingHorizontal: SPACING.md, paddingVertical: 5, borderRadius: BORDER_RADIUS.sm },
-    retryBtnText: { ...TYPOGRAPHY.labelSmall, color: '#FFF' },
+    retryBtnText: { ...TYPOGRAPHY.labelSmall, color: COLORS.textOnPrimary },
     refreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryLight, paddingHorizontal: 10, paddingVertical: 5, borderRadius: BORDER_RADIUS.full },
     refreshBtnText: { ...TYPOGRAPHY.micro, color: COLORS.primary },
 

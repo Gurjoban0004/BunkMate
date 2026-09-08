@@ -190,6 +190,7 @@ const SubjectsScreen = ({ navigation }) => {
                                         subject={subject}
                                         status="danger"
                                         threshold={dangerThreshold}
+                                        subjects={state.subjects}
                                         onPress={() => handleSubjectPress(subject)}
                                     />
                                 ))}
@@ -212,6 +213,7 @@ const SubjectsScreen = ({ navigation }) => {
                                         subject={subject}
                                         status="edge"
                                         threshold={dangerThreshold}
+                                        subjects={state.subjects}
                                         onPress={() => handleSubjectPress(subject)}
                                     />
                                 ))}
@@ -234,6 +236,7 @@ const SubjectsScreen = ({ navigation }) => {
                                         subject={subject}
                                         status="safe"
                                         threshold={dangerThreshold}
+                                        subjects={state.subjects}
                                         onPress={() => handleSubjectPress(subject)}
                                     />
                                 ))}
@@ -273,7 +276,7 @@ const getStyles = () => StyleSheet.create({
     },
     toggleContainer: {
         flexDirection: 'row',
-        backgroundColor: 'rgba(255,255,255,0.6)',
+        backgroundColor: PAPER.surface,
         borderRadius: BORDER_RADIUS.md,
         padding: 4,
         marginTop: SPACING.md,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
+import { formatPct } from '../../utils/attendance';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
 const formatDay = (dateKey) => {
@@ -30,7 +31,7 @@ const OverallStatsCard = ({ stats, threshold, updatedThrough }) => {
                     styles.percentage,
                     isAboveThreshold ? styles.percentageSafe : styles.percentageDanger,
                 ]}>
-                    {percentage}%
+                    {formatPct(percentage)}%
                 </Text>
                 <Text style={styles.heroLabel}>Overall</Text>
             </View>

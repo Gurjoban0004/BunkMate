@@ -133,6 +133,9 @@ const EditTimetableScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
+            {/* The one header that stays pinned: the day strip right below it is
+                a selector the student flips between constantly, and the two read
+                as one toolbar. Scrolling it away would cost more than it gains. */}
             <ScreenHeader title="Edit Timetable" />
             <View style={styles.header}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.daysScroll}>

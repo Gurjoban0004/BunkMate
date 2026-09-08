@@ -2,16 +2,20 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
-const LEVEL_CONFIG = {
+// COLORS/PAPER are live token maps (theme.js) — a module-level object freezes
+// whatever palette happened to be active when the bundle evaluated, so this is
+// a function and callers invoke it.
+const LEVEL_CONFIG = () => ({
     impossible: { bg: COLORS.dangerLight, text: COLORS.danger, label: 'Cannot pass' },
     critical: { bg: COLORS.dangerLight, text: COLORS.danger, label: 'Zero margin' },
     tight: { bg: COLORS.warningLight, text: COLORS.warningDark, label: 'Tight' },
     moderate: { bg: COLORS.primaryLight, text: COLORS.primaryDark, label: 'Manageable' },
     comfortable: { bg: COLORS.successLight, text: COLORS.successDark, label: 'Comfortable' },
-};
+});
 
 export default function RiskBadge({ level, compact }) {
-    const cfg = LEVEL_CONFIG[level] || LEVEL_CONFIG.moderate;
+    const cfgs = LEVEL_CONFIG();
+    const cfg = cfgs[level] || cfgs.moderate;
     return (
         <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
             {compact && <View style={[styles.dot, { backgroundColor: cfg.text }]} />}

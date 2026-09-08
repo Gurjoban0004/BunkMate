@@ -78,7 +78,7 @@ const getStyles = () => StyleSheet.create({
     status: { ...SERIF, fontSize: 11, lineHeight: 15, color: PAPER.muted, marginTop: 3 },
     avatar: {
         width: 40, height: 40, borderRadius: 20, marginLeft: 12, marginTop: 2,
-        alignItems: 'center', justifyContent: 'center', backgroundColor: '#e5e5f3',
+        alignItems: 'center', justifyContent: 'center', backgroundColor: PAPER.primarySoft,
     },
     avatarText: { fontSize: 13, fontWeight: '700', color: PAPER.primary },
 });

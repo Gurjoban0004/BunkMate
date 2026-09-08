@@ -1,16 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutAnimation } from 'react-native';
+import { formatPct } from '../../utils/attendance';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, PAPER, SERIF_FONT } from '../../theme/theme';
 import { getDayRecommendation } from '../../utils/planner.js';
 import { shortSubjectName } from '../../utils/subjectName';
 
 // Today reads on paper, so the compact card uses the PAPER tints rather than
 // the palette engine's — see theme.js §1b.
-const PAPER_TONE = {
+// COLORS/PAPER are live token maps (theme.js) — a module-level object freezes
+// whatever palette happened to be active when the bundle evaluated, so this is
+// a function and callers invoke it.
+const PAPER_TONE = () => ({
     safe:    { bg: PAPER.successSoft, border: PAPER.successLine, ink: PAPER.sageInk,    subInk: PAPER.sageInk,        rule: 'rgba(50,106,85,0.2)' },
     partial: { bg: PAPER.warningSoft, border: PAPER.warningLine, ink: PAPER.warningInk, subInk: PAPER.warningInkSoft, rule: 'rgba(126,92,40,0.2)' },
-    risky:   { bg: PAPER.apricot,     border: '#e0b3a3',         ink: PAPER.apricotInk, subInk: PAPER.apricotInk,     rule: 'rgba(145,71,50,0.2)' },
-};
+    risky:   { bg: PAPER.apricot,     border: PAPER.apricotInk,         ink: PAPER.apricotInk, subInk: PAPER.apricotInk,     rule: 'rgba(145,71,50,0.2)' },
+});
 
 const QuickAnswerCard = ({ dayStatus, compact = false }) => {
     const [expanded, setExpanded] = useState(false);
@@ -85,7 +89,8 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
     // Compact mode — Today's one-line verdict, which opens in place rather than
     // swapping to the full planner card (ui-lab/today-replica.html .quick-answer).
     if (compact) {
-        const tone = PAPER_TONE[status] || PAPER_TONE.partial;
+        const tones = PAPER_TONE();
+        const tone = tones[status] || tones.partial;
         return (
             <Animated.View style={{ opacity: fadeAnim }}>
                 <TouchableOpacity
@@ -113,7 +118,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                                     style={[styles.compactDetailsText, { color: tone.subInk }]}
                                     numberOfLines={1}
                                 >
-                                    {shortSubjectName(cls.subjectName)} · {cls.safe ? 'safe to skip' : 'attend'} · {cls.currentPercentage.toFixed(0)}% → {cls.newPercentage.toFixed(0)}%
+                                    {shortSubjectName(cls.subjectName)} · {cls.safe ? 'safe to skip' : 'attend'} · {formatPct(cls.currentPercentage)}% → {formatPct(cls.newPercentage)}%
                                 </Text>
                             ))}
                             {recommendation ? (
@@ -160,7 +165,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                                     styles.classImpact,
                                     { color: cls.safe ? COLORS.success : COLORS.danger },
                                 ]}>
-                                    {cls.currentPercentage.toFixed(0)}% → {cls.newPercentage.toFixed(0)}%
+                                    {formatPct(cls.currentPercentage)}% → {formatPct(cls.newPercentage)}%
                                 </Text>
                             </View>
                         ))}

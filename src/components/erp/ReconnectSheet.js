@@ -21,6 +21,7 @@ import { updateErpToken, clearErpToken, getErpPersistentToken } from '../../stor
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
 import { logger } from '../../utils/logger';
 import { friendlyError } from '../../utils/friendlyError';
+import OtpField from '../setup/OtpField';
 
 export default function ReconnectSheet() {
     const { state, dispatch, triggerErpSync } = useApp();
@@ -114,22 +115,7 @@ export default function ReconnectSheet() {
 
                     {isOtp && (
                         <View style={styles.inputWrapper}>
-                            <TextInput
-                                style={[styles.input, error ? styles.inputError : null]}
-                                value={otp}
-                                onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '')); setError(''); }}
-                                placeholder="• • • •"
-                                placeholderTextColor={COLORS.textMuted}
-                                keyboardType="number-pad"
-                                textContentType="oneTimeCode"
-                                autoComplete="one-time-code"
-                                maxLength={6}
-                                autoFocus
-                                editable={!loading}
-                                returnKeyType="done"
-                                onSubmitEditing={handleVerify}
-                                accessibilityLabel="Verification code"
-                            />
+                            <OtpField value={otp} onChange={(t) => { setOtp(t); setError(''); }} editable={!loading} />
                         </View>
                     )}
 

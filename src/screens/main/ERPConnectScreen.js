@@ -13,6 +13,7 @@ import { friendlyError } from '../../utils/friendlyError';
 import { erpLogin, erpVerifyOtp, erpFetchAttendance, erpFetchCalendar } from '../../services/erpService';
 import { saveErpToken, clearErpToken } from '../../storage/erpTokenStorage';
 import { mapErpToAppState, buildResyncPayload, mapCalendarToRecords } from '../../utils/erpAttendanceMapper';
+import OtpField from '../../components/setup/OtpField';
 
 // ─── STEP CONSTANTS ────────────────────────────────────────────────
 const STEP_LOGIN = 'login';
@@ -274,18 +275,18 @@ export default function ERPConnectScreen({ navigation }) {
                 <View style={styles.headerMark}><View style={styles.headerMarkDot} /></View>
                 <Text style={styles.headerTitle}>Connect our college account</Text>
                 <Text style={styles.headerSub}>
-                    Sign in with your ID and password. Our attendance then stays up to date on its own.
+                    Use the same roll number and password you use for Chalkpad. Our attendance then stays up to date on its own.
                 </Text>
             </View>
 
             <View style={styles.formCard}>
                 <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>USER ID</Text>
+                    <Text style={styles.inputLabel}>ROLL NUMBER</Text>
                     <TextInput
                         style={styles.input}
                         value={username}
                         onChangeText={(t) => { setUsername(t); setError(''); }}
-                        placeholder="College ID"
+                        placeholder="e.g. 2410990296"
                         placeholderTextColor={COLORS.textMuted}
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -294,7 +295,7 @@ export default function ERPConnectScreen({ navigation }) {
                 </View>
 
                 <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>PASSWORD</Text>
+                    <Text style={styles.inputLabel}>CHALKPAD PASSWORD</Text>
                     <View style={styles.passwordRow}>
                         <TextInput
                             style={[styles.input, { flex: 1 }]}
@@ -339,18 +340,8 @@ export default function ERPConnectScreen({ navigation }) {
 
             <View style={styles.formCard}>
                 <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>OTP CODE</Text>
-                    <TextInput
-                        style={[styles.input, styles.otpInput]}
-                        value={otp}
-                        onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '')); setError(''); }}
-                        placeholder="• • • •"
-                        placeholderTextColor={COLORS.textMuted}
-                        keyboardType="number-pad"
-                        maxLength={6}
-                        autoFocus
-                        editable={!loading}
-                    />
+                    <Text style={styles.inputLabel}>VERIFICATION CODE</Text>
+                    <OtpField value={otp} onChange={(t) => { setOtp(t); setError(''); }} editable={!loading} />
                 </View>
             </View>
 
@@ -527,7 +518,6 @@ export default function ERPConnectScreen({ navigation }) {
     // ─── MAIN RENDER ────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <ScreenHeader title="College account" />
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -537,6 +527,11 @@ export default function ERPConnectScreen({ navigation }) {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
+                    <ScreenHeader
+                        title="College account"
+                        bleed={{ horizontal: SPACING.screenPadding, top: SPACING.md }}
+                    />
+
                     {/* Step indicator */}
                     {step !== STEP_SUCCESS && (
                         <View style={styles.stepIndicator}>
@@ -679,7 +674,7 @@ const getStyles = () => StyleSheet.create({
     stepCheckmark: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#fff',
+        color: COLORS.textOnPrimary,
     },
     stepLabel: {
         fontWeight: '600',
@@ -766,12 +761,6 @@ const getStyles = () => StyleSheet.create({
         fontSize: FONT_SIZES.md,
         color: COLORS.textPrimary,
         ...Platform.select({ web: { outlineStyle: 'none' } }),
-    },
-    otpInput: {
-        textAlign: 'center',
-        fontWeight: '700',
-        fontSize: FONT_SIZES.xl,
-        letterSpacing: 8,
     },
     passwordRow: {
         flexDirection: 'row',
@@ -965,6 +954,6 @@ const getStyles = () => StyleSheet.create({
     primaryButtonText: {
         fontWeight: '700',
         fontSize: FONT_SIZES.md,
-        color: '#FFFFFF',
+        color: COLORS.textOnPrimary,
     },
 });

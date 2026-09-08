@@ -17,6 +17,7 @@ import Notice from '../../components/common/Notice';
 import LoadingDots from '../../components/common/LoadingDots';
 import SetupProgress from '../../components/setup/SetupProgress';
 import SetupIllustration from '../../components/setup/SetupIllustration';
+import OtpField from '../../components/setup/OtpField';
 import ImportProgress from '../../components/setup/ImportProgress';
 import BrandMark from '../../components/common/BrandMark';
 import PaperWash from '../../components/common/PaperWash';
@@ -30,9 +31,10 @@ const STEP_FAILED = 'failed';
 
 const PROGRESS_STEPS = [STEP_LOGIN, STEP_OTP, STEP_THEME];
 
-// Curated onboarding palettes — the final "pick a vibe" step before entering the app.
-// The full picker (all palettes + light/dark) lives in Settings; this is intentionally short.
-const ONBOARDING_PALETTES = ['paper', 'nordic', 'forest', 'catppuccin'];
+// The final "pick a vibe" step. This used to be a hand-picked subset, which is
+// how Chalkpad Classic ended up in Settings but not here — two lists, one of
+// them always stale. It is now every palette there is, in one order.
+const ONBOARDING_PALETTES = Object.keys(PALETTES);
 
 // One row per thing handleImport actually applies. The requests behind rows 2
 // and 3 now finish during the theme step, so these tick over work that is
@@ -327,28 +329,31 @@ export default function ERPSetupScreen({ navigation }) {
             <View style={styles.sectionHeader}>
                 <View style={styles.brandPill}><BrandMark size={56} /></View>
                 <Text style={styles.brandName}>Presence</Text>
-                <Text style={styles.sectionSub}>Sign in with your ID and password for our college.</Text>
+                <Text style={styles.sectionSub}>
+                    Use the same roll number and password you use for Chalkpad — our college's portal.
+                </Text>
             </View>
 
             <View style={styles.card}>
                 <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>USER ID</Text>
+                    <Text style={styles.inputLabel}>ROLL NUMBER</Text>
                     <TextInput
                         style={styles.input}
                         value={username}
                         onChangeText={(t) => { setUsername(t); setError(null); }}
-                        placeholder="College ID"
+                        placeholder="e.g. 2410990296"
                         placeholderTextColor={COLORS.textMuted}
                         autoCapitalize="none"
                         autoCorrect={false}
                         autoComplete="username"
                         editable={!loading}
-                        accessibilityLabel="College ID"
+                        accessibilityLabel="Roll number"
                     />
+                    <Text style={styles.inputHint}>Not our email — the number our college knows us by.</Text>
                 </View>
 
                 <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>PASSWORD</Text>
+                    <Text style={styles.inputLabel}>CHALKPAD PASSWORD</Text>
                     <View style={styles.passwordRow}>
                         <TextInput
                             style={[styles.input, { flex: 1 }]}
@@ -397,21 +402,8 @@ export default function ERPSetupScreen({ navigation }) {
 
             <View style={styles.card}>
                 <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>OTP CODE</Text>
-                    <TextInput
-                        style={[styles.input, styles.otpInput]}
-                        value={otp}
-                        onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '')); setError(null); }}
-                        placeholder="• • • •"
-                        placeholderTextColor={COLORS.textMuted}
-                        keyboardType="number-pad"
-                        textContentType="oneTimeCode"
-                        autoComplete="one-time-code"
-                        maxLength={6}
-                        autoFocus
-                        editable={!loading}
-                        accessibilityLabel="Verification code"
-                    />
+                    <Text style={styles.inputLabel}>VERIFICATION CODE</Text>
+                    <OtpField value={otp} onChange={(t) => { setOtp(t); setError(null); }} editable={!loading} />
                 </View>
             </View>
 
@@ -743,11 +735,10 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.textPrimary,
         ...Platform.select({ web: { outlineStyle: 'none' } }),
     },
-    otpInput: {
-        textAlign: 'center',
-        fontWeight: '700',
-        fontSize: FONT_SIZES.xl,
-        letterSpacing: 8,
+    inputHint: {
+        ...TYPOGRAPHY.captionMedium,
+        color: COLORS.textMuted,
+        marginTop: 6,
     },
     passwordRow: {
         flexDirection: 'row',
@@ -900,7 +891,7 @@ const getStyles = () => StyleSheet.create({
         padding: SPACING.lg,
         // Sits on the wash, so it takes the schedule card's near-white rather
         // than an opaque theme background that would read as a seam.
-        backgroundColor: 'rgba(255,255,255,0.94)',
+        backgroundColor: COLORS.cardBackground,
         borderTopWidth: 1,
         borderTopColor: PAPER.line,
     },

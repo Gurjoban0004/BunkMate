@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, LayoutAnimation }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import ScreenHeader from '../../components/common/ScreenHeader';
+import { shortSubjectName } from '../../utils/subjectName';
 import PlannerCalendar from '../../components/planner/PlannerCalendar';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
@@ -189,8 +190,11 @@ export default function SubjectPlannerScreen({ route }) {
 
     return (
         <SafeAreaView style={styles.screen} edges={['bottom']}>
-            <ScreenHeader title={name} />
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <ScreenHeader
+                    title={shortSubjectName(name)}
+                    bleed={{ horizontal: SPACING.screenPadding, top: SPACING.md }}
+                />
 
                 {/* Mode toggle */}
                 <View style={styles.modeSwitch}>

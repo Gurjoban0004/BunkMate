@@ -50,8 +50,8 @@ const EditSubjectsScreen = () => {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <ScreenHeader title="Subjects" />
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <ScreenHeader title="Subjects" bleed={{ top: SPACING.md }} />
                 <Text style={styles.intro}>
                     Our subjects and their numbers come from our college. Rename them, pick a colour, or set a goal for one that needs a different target.
                 </Text>

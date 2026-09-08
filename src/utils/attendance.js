@@ -38,6 +38,19 @@ export function calculatePercentage(attended, total) {
     return (Math.min(Math.max(safeAttended, 0), safeTotal) * 100) / safeTotal;
 }
 
+/**
+ * Display helper: the percentage as a STRING, always to one decimal.
+ *
+ * Every screen must use this. The subject list used to print Math.round(pct),
+ * so a student on 77.8% read "78%" here and "77.8%" one tap deeper and had every
+ * reason to distrust both. One decimal is what the register supports; a second
+ * would be invented precision, and zero is a number we did not compute.
+ */
+export function formatPct(percentage) {
+    const n = Number(percentage);
+    return (Number.isFinite(n) ? n : 0).toFixed(1);
+}
+
 /** Display helper: 1 decimal place. Never feed this back into a comparison. */
 export function roundPct(percentage) {
     const n = Number(percentage);

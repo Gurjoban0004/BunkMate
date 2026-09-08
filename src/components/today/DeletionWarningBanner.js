@@ -6,11 +6,12 @@ import { db } from '../../config/firebase';
 import { useApp } from '../../context/AppContext';
 import { getCurrentSemesterId } from '../../utils/firebaseHelpers';
 import { Typography } from '../common/Typography';
-import { SPACING, BORDER_RADIUS } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS } from '../../theme/theme';
 import { logger } from '../../utils/logger';
 import { useBannerSlot, BANNER_PRIORITY } from './BannerSlot';
 
 export default function DeletionWarningBanner() {
+  const styles = getStyles();
   const [warningData, setWarningData] = useState(null);
   const { userId } = useApp();
   const navigation = useNavigation();
@@ -69,18 +70,21 @@ export default function DeletionWarningBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+// The banner used to hardcode a yellow it had picked itself, so it stayed a
+// bright cream box on every dark palette. It is a warning; the palette already
+// says what warning looks like.
+const getStyles = () => StyleSheet.create({
   container: {
-    backgroundColor: '#FFFBE6', // Light warning yellow
+    backgroundColor: COLORS.warningLight,
     borderWidth: 1,
-    borderColor: '#FFE58F', // Border warning yellow
+    borderColor: COLORS.warning,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.cardGap,
     marginHorizontal: SPACING.screenPadding,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: COLORS.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -97,27 +101,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    color: '#856404', // Dark warning brown
+    color: COLORS.warningText,
     marginBottom: 4,
   },
   message: {
-    color: '#856404',
+    color: COLORS.warningText,
     textAlign: 'center',
     marginBottom: 4,
   },
   reminder: {
-    color: '#856404',
+    color: COLORS.warningText,
     opacity: 0.8,
     marginBottom: 12,
   },
   button: {
-    backgroundColor: '#856404',
+    backgroundColor: COLORS.warningDark,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: BORDER_RADIUS.md,
   },
   buttonText: {
-    color: '#FFF',
+    color: COLORS.textOnPrimary,
     fontWeight: 'bold',
   }
 });

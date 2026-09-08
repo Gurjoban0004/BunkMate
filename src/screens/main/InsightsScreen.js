@@ -6,7 +6,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY, PAPER } from '../../theme/theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, TYPOGRAPHY, PAPER, subjectTint } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { deriveErpIntelligence } from '../../utils/erpIntelligence';
 import { getSubjectAttendance, calculatePercentage } from '../../utils/attendance';
@@ -18,16 +18,26 @@ import { estimateWeeksRemaining } from '../../utils/planner/semesterWindow';
 import { generateWeeklyReport } from '../../utils/insights';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import PaperScreenHeader from '../../components/common/PaperScreenHeader';
+import { shortSubjectName } from '../../utils/subjectName';
 
 // Semester-scale horizons (a term runs months, not a couple of weeks).
 const WEEK_OPTIONS = [8, 12, 16, 20];
+
+// Insights was one scroll with six stacked sections — a student looking for
+// "which subject is in trouble" had to swipe past the whole term to reach it.
+// Three groups, each answering one question.
+const TABS = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'patterns', label: 'Patterns' },
+    { key: 'subjects', label: 'Subjects' },
+];
 
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function InsightsScreen() {
     const styles = getStyles();
     const { state } = useApp();
-    const [activeTab, setActiveTab] = useState('insights');
+    const [activeTab, setActiveTab] = useState('overview');
     // Default to a realistic estimate of the weeks left in the term, not a fixed guess.
     const [weeksLeft, setWeeksLeft] = useState(() => estimateWeeksRemaining(state));
     const [expandedSubject, setExpandedSubject] = useState(null);
@@ -100,7 +110,27 @@ export default function InsightsScreen() {
                     subtitle={intel.hasData
                         ? `${formatDate(semesterSummary.earliestDate)} — ${formatDate(semesterSummary.latestDate)} · ${semesterSummary.totalDays} days tracked`
                         : null}
-                />
+                >
+                    {intel.hasData && (
+                        <View style={styles.tabBar}>
+                            {TABS.map((t) => {
+                                const on = activeTab === t.key;
+                                return (
+                                    <TouchableOpacity
+                                        key={t.key}
+                                        style={[styles.tab, on && styles.tabActive]}
+                                        onPress={() => { triggerHaptic('selection'); setActiveTab(t.key); }}
+                                        activeOpacity={0.8}
+                                        accessibilityRole="tab"
+                                        accessibilityState={{ selected: on }}
+                                    >
+                                        <Text style={[styles.tabText, on && styles.tabTextActive]}>{t.label}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
+                </PaperScreenHeader>
 
                 {!intel.hasData ? (
                     <View style={styles.emptyCard}>
@@ -112,7 +142,8 @@ export default function InsightsScreen() {
                         {/* Week in Review — moved here from Today, where it was a
                            full-height retrospective sitting above the day's
                            classes. It belongs with the other retrospectives. */}
-                        <WeeklyReportCard report={weeklyReport} />
+                        {activeTab === 'overview' && (<>
+                        <WeeklyReportCard report={weeklyReport} subjects={state.subjects} />
 
                         {/* 1. Overall verdict (Semester Outlook) */}
                         <View style={styles.verdictCard}>
@@ -164,6 +195,9 @@ export default function InsightsScreen() {
                         )}
                         */}
 
+                        </>)}
+
+                        {activeTab === 'patterns' && (<>
                         {/* 3. Weekday patterns — Kept */}
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Weekday patterns</Text>
@@ -204,7 +238,7 @@ export default function InsightsScreen() {
                                         return (
                                             <View key={i} style={styles.trendRow}>
                                                 <View style={[styles.trendDot, { backgroundColor: sub?.color || COLORS.primary }]} />
-                                                <Text style={styles.trendName} numberOfLines={1}>{trend.name}</Text>
+                                                <Text style={styles.trendName} numberOfLines={1}>{shortSubjectName(trend.name)}</Text>
                                                 <Text style={[styles.trendArrow, { color }]}>{arrow}</Text>
                                                 <Text style={[styles.trendDelta, { color }]}>{trend.delta > 0 ? '+' : ''}{trend.delta.toFixed(0)}%</Text>
                                                 <Text style={styles.trendRange}>{trend.firstHalfPct.toFixed(0)}% → {trend.secondHalfPct.toFixed(0)}%</Text>
@@ -236,6 +270,9 @@ export default function InsightsScreen() {
                         )}
                         */}
 
+                        </>)}
+
+                        {activeTab === 'subjects' && (<>
                         {/* 5. Weeks selector (Estimate) */}
                         {!hasEndDate && (
                             <View style={styles.section}>
@@ -256,6 +293,7 @@ export default function InsightsScreen() {
                         {sortedResults.map(subject => {
                             const risk = getRiskLevel(subject);
                             const riskColor = getRiskColor(risk);
+                            const tint = subjectTint(subject.id, state.subjects);
                             const strategy = getSkipStrategy(subject, threshold);
                             const isExpanded = expandedSubject === subject.id;
                             const tgt = subject.target || threshold;
@@ -298,9 +336,9 @@ export default function InsightsScreen() {
                                     {/* ── Header: Title + Risk Badge ── */}
                                     <View style={styles.cardHeader}>
                                         <View style={styles.cardHeaderLeft}>
-                                            <View style={[styles.colorDot, { backgroundColor: subject.color }]} />
+                                            <View style={[styles.colorDot, { backgroundColor: tint.accent }]} />
                                             <View style={styles.cardTitleWrap}>
-                                                <Text style={styles.cardSubjectName} numberOfLines={2}>{subject.name}</Text>
+                                                <Text style={styles.cardSubjectName} numberOfLines={2}>{shortSubjectName(subject.name)}</Text>
                                                 {subject.weeklyClasses > 0 && (
                                                     <Text style={styles.weeklyLoadCaption}>{subject.weeklyClasses} {subject.weeklyClasses === 1 ? 'CLASS' : 'CLASSES'} / WEEK</Text>
                                                 )}
@@ -412,6 +450,8 @@ export default function InsightsScreen() {
                             );
                         })}
 
+                        </>)}
+
                         {/* Subject breakdown progress bars — commented out in favor of the richer per-subject strategy cards */}
                         {/*
                         <View style={styles.section}>
@@ -422,7 +462,7 @@ export default function InsightsScreen() {
                                     <View key={sub.id} style={styles.subjectRow}>
                                         <View style={styles.subjectInfo}>
                                             <View style={[styles.subjectDot, { backgroundColor: sub.color }]}/ >
-                                            <Text style={styles.subjectName} numberOfLines={1}>{sub.name}</Text>
+                                            <Text style={styles.subjectName} numberOfLines={1}>{shortSubjectName(sub.name)}</Text>
                                             <Text style={[styles.subjectPct, isAtRisk && { color: COLORS.dangerText }]}>{sub.percentage.toFixed(1)}%</Text>
                                         </View>
                                         <View style={styles.subjectBarTrack}>
@@ -456,17 +496,16 @@ const getStyles = () => StyleSheet.create({
     container: { flex: 1, backgroundColor: PAPER.background },
     scrollContent: { paddingBottom: SPACING.xxl },
 
-    // Tab bar
+    // Tab bar — sits inside the paper header, so it takes paper's surface
+    // rather than the page background it used to float on.
     tabBar: {
         flexDirection: 'row',
-        marginHorizontal: SPACING.screenPadding,
-        marginTop: SPACING.md,
-        marginBottom: SPACING.xs,
-        backgroundColor: COLORS.inputBackground,
+        marginTop: 14,
+        backgroundColor: PAPER.trackBg,
         borderRadius: BORDER_RADIUS.lg,
         padding: 4,
         borderWidth: 1,
-        borderColor: COLORS.borderSubtle,
+        borderColor: PAPER.line,
     },
     tab: {
         flex: 1,
@@ -475,9 +514,9 @@ const getStyles = () => StyleSheet.create({
         borderRadius: BORDER_RADIUS.md,
     },
     tabActive: {
-        backgroundColor: COLORS.cardBackground,
+        backgroundColor: PAPER.surface,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: PAPER.line,
     },
     tabText: { fontSize: FONT_SIZES.sm, fontWeight: '600', color: COLORS.textSecondary },
     tabTextActive: { color: COLORS.textPrimary, fontWeight: '700' },
@@ -627,7 +666,7 @@ const getStyles = () => StyleSheet.create({
     weekButton: { flex: 1, paddingVertical: SPACING.sm, alignItems: 'center', borderRadius: BORDER_RADIUS.md, backgroundColor: COLORS.inputBackground, borderWidth: 1, borderColor: COLORS.borderSubtle },
     weekButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
     weekButtonText: { fontSize: FONT_SIZES.sm, fontWeight: '600', color: COLORS.textSecondary },
-    weekButtonTextActive: { color: '#fff' },
+    weekButtonTextActive: { color: COLORS.textOnPrimary },
     endDateHint: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: SPACING.sm },
 
     // EG section label

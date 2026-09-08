@@ -83,12 +83,6 @@ export const PRIVACY = {
                 'On your device, and in a private cloud copy so a reinstall or a second device can pick up where you left off. The cloud copy is scoped to your account: the security rules let a device read and write only its own data.',
         },
         {
-            heading: 'What the maker can see',
-            body:
-                'An admin view shows who has signed in, when they last used the app, aggregate attendance across students, and technical health such as sync failures. This exists to keep the app working and to know when the college portal breaks.\n\n' +
-                'IP addresses are never stored in readable form — only a one-way hash, which is enough to tell one network from another and not enough to recover the address.',
-        },
-        {
             heading: 'What is never done',
             body:
                 'Your data is not sold, and it is not shared with advertisers or with any third party outside the services needed to run the app (hosting and the database). Nothing is shared with the college beyond the sign-in the college already sees.',
