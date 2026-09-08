@@ -1,13 +1,14 @@
 /**
- * ResearchPrompt — the two things the research dataset needs from the student.
+ * ResearchPrompt — "why was this one missed?", asked at most once per app open,
+ * only for an absence the register itself revealed in the last few days.
  *
- *   1. Consent, asked once, after the app already has real ERP data to show for itself.
- *   2. Why a class was missed, asked at most once per app open, only for absences the
- *      register revealed in the last few days.
+ * It is a dismissible bottom sheet and never blocks the app. A skip is remembered
+ * so the same class is not asked about twice.
  *
- * Both are bottom sheets, both are dismissible, neither ever blocks the app. Declining
- * either is remembered so it is not asked again. If the student never consents, this
- * component renders nothing and the app is exactly what it was.
+ * There is no consent sheet any more: what the dataset holds is the college's own
+ * register under a random UUID — no name, no roll number, no login — and asking
+ * permission for it read as though the app were taking something personal.
+ * See docs/ONBOARDING-SPEED-2026-09-07.md.
  *
  * Mounted once at the app root next to ReconnectSheet.
  */
@@ -17,12 +18,7 @@ import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApp } from '../../context/AppContext';
 import { COLORS, SPACING, FONT_SIZES, RADIUS, SHADOWS } from '../../theme/theme';
-import {
-    getResearchId,
-    hasAnsweredConsent,
-    consentToResearch,
-    declineResearch,
-} from '../../storage/researchStorage';
+import { getResearchId } from '../../storage/researchStorage';
 import { researchLogReason } from '../../services/erpService';
 
 const ASKED_KEY = '@presence_research_asked';   // "date:subjectId" pairs already answered
@@ -68,31 +64,22 @@ function findRecentAbsence(state, asked) {
 }
 
 export default function ResearchPrompt() {
-    const { state, triggerErpSync } = useApp();
-    const [mode, setMode] = useState(null);          // null | 'consent' | 'reason'
+    const { state } = useApp();
     const [absence, setAbsence] = useState(null);
     const [busy, setBusy] = useState(false);
 
     const hasErpData = Boolean(state.setupComplete && (state.subjects || []).some(s => s.erpSubjectId));
 
     useEffect(() => {
-        if (mode || !hasErpData) return;
+        if (absence || !hasErpData) return undefined;
         let cancelled = false;
 
         (async () => {
-            if (!(await hasAnsweredConsent())) {
-                if (!cancelled) setMode('consent');
-                return;
-            }
-            if (!(await getResearchId())) return;   // declined, or withdrawn
-
+            if (!(await getResearchId())) return;   // storage unreadable: file nothing
             const raw = await AsyncStorage.getItem(ASKED_KEY);
             const asked = new Set(raw ? JSON.parse(raw) : []);
             const found = findRecentAbsence(state, asked);
-            if (found && !cancelled) {
-                setAbsence(found);
-                setMode('reason');
-            }
+            if (found && !cancelled) setAbsence(found);
         })();
 
         return () => { cancelled = true; };
@@ -100,25 +87,7 @@ export default function ResearchPrompt() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasErpData]);
 
-    const close = useCallback(() => { setMode(null); setAbsence(null); }, []);
-
-    const onConsent = async (yes) => {
-        setBusy(true);
-        try {
-            if (yes) {
-                await consentToResearch();
-                // The dataset rides on the sync endpoints, so consenting on its own
-                // uploads nothing. Without this the student agrees and their data
-                // does not arrive until the app happens to sync again.
-                triggerErpSync(true);
-            } else {
-                await declineResearch();
-            }
-        } finally {
-            setBusy(false);
-            close();
-        }
-    };
+    const close = useCallback(() => setAbsence(null), []);
 
     const onReason = async (r) => {
         setBusy(true);
@@ -138,58 +107,31 @@ export default function ResearchPrompt() {
         }
     };
 
-    if (!mode) return null;
+    if (!absence) return null;
 
     return (
         <Modal visible transparent animationType="slide" onRequestClose={close}>
             <View style={styles.overlay}>
                 <View style={styles.sheet}>
-                    {mode === 'consent' ? (
-                        <>
-                            <Text style={styles.title}>Help with a class project?</Text>
-                            <Text style={styles.body}>
-                                I'm studying when and why students miss class for a college AI/ML
-                                project. If you say yes, your attendance record and timetable get
-                                copied under a random ID — no name, no roll number, no login. There
-                                is nothing in it that points back at you.
-                                {'\n\n'}
-                                Nothing about the app changes either way, and you can pull your data
-                                out any time from Settings.
-                            </Text>
+                    <Text style={styles.title}>Missed {absence.name}</Text>
+                    <Text style={styles.body}>
+                        The portal marked you absent on {absence.date}. What happened?
+                    </Text>
+                    <View style={styles.options}>
+                        {REASON_OPTIONS.map(({ r, label }) => (
                             <TouchableOpacity
-                                style={[styles.primary, busy && styles.disabled]}
-                                onPress={() => onConsent(true)}
+                                key={r}
+                                style={[styles.option, busy && styles.disabled]}
+                                onPress={() => onReason(r)}
                                 disabled={busy}
                             >
-                                <Text style={styles.primaryText}>Count me in</Text>
+                                <Text style={styles.optionText}>{label}</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => onConsent(false)} disabled={busy}>
-                                <Text style={styles.decline}>No thanks</Text>
-                            </TouchableOpacity>
-                        </>
-                    ) : (
-                        <>
-                            <Text style={styles.title}>Missed {absence.name}</Text>
-                            <Text style={styles.body}>
-                                The portal marked you absent on {absence.date}. What happened?
-                            </Text>
-                            <View style={styles.options}>
-                                {REASON_OPTIONS.map(({ r, label }) => (
-                                    <TouchableOpacity
-                                        key={r}
-                                        style={[styles.option, busy && styles.disabled]}
-                                        onPress={() => onReason(r)}
-                                        disabled={busy}
-                                    >
-                                        <Text style={styles.optionText}>{label}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                            <TouchableOpacity onPress={() => onReason(null)} disabled={busy}>
-                                <Text style={styles.decline}>Skip</Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
+                        ))}
+                    </View>
+                    <TouchableOpacity onPress={() => onReason(null)} disabled={busy}>
+                        <Text style={styles.decline}>Skip</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         </Modal>
@@ -219,14 +161,6 @@ const styles = StyleSheet.create({
         lineHeight: 21,
         marginBottom: SPACING.xl,
     },
-    primary: {
-        backgroundColor: COLORS.primary,
-        borderRadius: RADIUS.md,
-        paddingVertical: SPACING.md,
-        alignItems: 'center',
-        marginBottom: SPACING.md,
-    },
-    primaryText: { color: COLORS.textOnPrimary, fontWeight: '700', fontSize: FONT_SIZES.md },
     options: { marginBottom: SPACING.md },
     option: {
         borderWidth: 1,

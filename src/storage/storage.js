@@ -18,10 +18,15 @@ function stripTransient(state) {
     return out;
 }
 
-const withTimeout = (promise, ms, message) => Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
-]);
+// The timer is cleared once the race settles — a pending 5s timeout otherwise
+// keeps the event loop (and Jest) alive long after the call resolved.
+const withTimeout = (promise, ms, message) => {
+    let t;
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => { t = setTimeout(() => reject(new Error(message)), ms); }),
+    ]).finally(() => clearTimeout(t));
+};
 
 /** Whether the cloud copy is newer than the local one. */
 export function shouldUseCloudData(localState, cloudState) {

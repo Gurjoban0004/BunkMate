@@ -1,14 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY, TABULAR } from '../../theme/theme';
+import { PAPER, TABULAR } from '../../theme/theme';
 import { getSubjectSkipBudget } from '../../utils/attendance';
 import { shortSubjectName } from '../../utils/subjectName';
 import { getTodayKey, formatTimeRange } from '../../utils/dateHelpers';
 
 /**
- * One class on Today. Reads only what the college says — the subject's
- * current numbers and, once the teacher has uploaded it, today's mark — and
- * turns them into the one sentence the student needs.
+ * The class happening now. It keeps the dominant surface on Today — every other
+ * class of the day compacts into a ClassBento tile — and carries the subject's
+ * name, time, percentage and the one sentence the student needs.
+ *
+ * Styled to ui-lab/today-replica.html's `.now-card`.
  */
 const ClassCard = ({ classInfo, state, isCurrentClass = false }) => {
     const styles = getStyles();
@@ -31,8 +33,8 @@ const ClassCard = ({ classInfo, state, isCurrentClass = false }) => {
     if (recorded) {
         const attendedUnits = Number(todayRecord.attendedUnits ?? (todayRecord.status === 'present' ? todayRecord.units : 0));
         const total = Number(todayRecord.units || 1);
-        if (attendedUnits >= total) { verdict = 'Marked present by your college'; verdictTone = 'good'; }
-        else if (attendedUnits === 0) { verdict = 'Marked absent by your college'; verdictTone = 'bad'; }
+        if (attendedUnits >= total) { verdict = 'Marked present by our college'; verdictTone = 'good'; }
+        else if (attendedUnits === 0) { verdict = 'Marked absent by our college'; verdictTone = 'bad'; }
         else { verdict = `Partly attended · ${attendedUnits} of ${total} hours`; verdictTone = 'warn'; }
     } else if (!budget || budget.totalUnits === 0) {
         verdict = 'No attendance recorded yet';
@@ -50,21 +52,18 @@ const ClassCard = ({ classInfo, state, isCurrentClass = false }) => {
         verdictTone = 'warn';
     }
 
-    const toneColor = verdictTone === 'good' ? COLORS.successText
-        : verdictTone === 'bad' ? COLORS.dangerText
-            : verdictTone === 'warn' ? COLORS.warningText
-                : COLORS.textSecondary;
+    const toneColor = verdictTone === 'good' ? PAPER.sageInk
+        : verdictTone === 'bad' ? PAPER.apricotInk
+            : verdictTone === 'warn' ? PAPER.warningInkDeep
+                : PAPER.secondary;
 
-    const barColor = isDanger ? COLORS.danger : isEdge ? COLORS.warning : COLORS.success;
-    const borderColor = recorded
-        ? (verdictTone === 'good' ? COLORS.success : verdictTone === 'bad' ? COLORS.danger : COLORS.warning)
-        : isCurrentClass ? COLORS.primary : COLORS.border;
+    const barColor = isDanger ? PAPER.apricotInk : isEdge ? PAPER.warning : PAPER.successLine;
 
     return (
-        <View style={[styles.container, { borderColor }, isCurrentClass && styles.currentClassBorder]}>
+        <View style={styles.container}>
             <View style={styles.headerRow}>
                 <View style={styles.subjectInfo}>
-                    <Text style={styles.subjectName} numberOfLines={1} accessibilityLabel={subjectName}>
+                    <Text style={styles.subjectName} numberOfLines={2} accessibilityLabel={subjectName}>
                         {shortSubjectName(subjectName)}
                     </Text>
                     <View style={styles.timeRow}>
@@ -77,14 +76,9 @@ const ClassCard = ({ classInfo, state, isCurrentClass = false }) => {
                     </View>
                 </View>
 
-                {!recorded && isDanger && (
-                    <View style={[styles.statusTag, { backgroundColor: COLORS.dangerLight, borderColor: COLORS.danger }]}>
-                        <Text style={[styles.statusTagText, { color: COLORS.dangerText }]}>LOW</Text>
-                    </View>
-                )}
-                {!recorded && isEdge && (
-                    <View style={[styles.statusTag, { backgroundColor: COLORS.warningLight, borderColor: COLORS.warning }]}>
-                        <Text style={[styles.statusTagText, { color: COLORS.warningText }]}>EDGE</Text>
+                {!recorded && (isDanger || isEdge) && (
+                    <View style={styles.statusTag}>
+                        <Text style={styles.statusTagText}>{isDanger ? 'LOW' : 'EDGE'}</Text>
                     </View>
                 )}
             </View>
@@ -93,7 +87,7 @@ const ClassCard = ({ classInfo, state, isCurrentClass = false }) => {
                 <View style={styles.progressBarTrack}>
                     <View style={[styles.progressBarFill, { width: `${Math.min(percentage, 100)}%`, backgroundColor: barColor }]} />
                 </View>
-                <Text style={[styles.percentage, TABULAR, isDanger && { color: COLORS.dangerText }]}>
+                <Text style={[styles.percentage, TABULAR, isDanger && styles.percentageRisk]}>
                     {percentage.toFixed(1)}%
                 </Text>
             </View>
@@ -103,34 +97,37 @@ const ClassCard = ({ classInfo, state, isCurrentClass = false }) => {
     );
 };
 
+const SERIF = { fontFamily: 'Times New Roman' };
+
 const getStyles = () => StyleSheet.create({
     container: {
-        backgroundColor: COLORS.cardBackground,
-        marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.sm,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
+        backgroundColor: PAPER.nowCardBg,
+        borderRadius: 18,
+        padding: 15,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: PAPER.nowCardBorder,
     },
-    currentClassBorder: { borderWidth: 2 },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-    subjectInfo: { flex: 1 },
-    subjectName: { ...TYPOGRAPHY.headingSmall, color: COLORS.textPrimary },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+    subjectInfo: { flex: 1, minWidth: 0 },
+    subjectName: { ...SERIF, fontSize: 16, fontWeight: '700', letterSpacing: -0.16, color: PAPER.ink },
     timeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-    time: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary },
+    time: { ...SERIF, fontSize: 12, color: PAPER.secondary },
     durationBadge: {
-        backgroundColor: COLORS.inputBackground, paddingHorizontal: 6, paddingVertical: 2,
-        borderRadius: 3, marginLeft: SPACING.sm,
+        backgroundColor: PAPER.blockBg, paddingHorizontal: 6, paddingVertical: 2,
+        borderRadius: 3, marginLeft: 8,
     },
-    durationBadgeText: { ...TYPOGRAPHY.micro, color: COLORS.textSecondary },
-    statusTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: BORDER_RADIUS.sm, borderWidth: 1, marginLeft: SPACING.sm },
-    statusTagText: { ...TYPOGRAPHY.micro },
-    progressRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
-    progressBarTrack: { flex: 1, height: 6, backgroundColor: COLORS.inputBackground, borderRadius: 3, marginRight: 10, overflow: 'hidden' },
-    progressBarFill: { height: '100%', borderRadius: 3 },
-    percentage: { ...TYPOGRAPHY.displaySmall, color: COLORS.textPrimary, minWidth: 52, textAlign: 'right' },
-    verdict: { ...TYPOGRAPHY.labelMedium, marginTop: 10 },
+    durationBadgeText: { ...SERIF, fontSize: 9, fontWeight: '700', letterSpacing: 0.5, color: PAPER.secondary },
+    statusTag: {
+        alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6,
+        borderWidth: 1, borderColor: PAPER.warningLine, backgroundColor: PAPER.warningSoft,
+    },
+    statusTagText: { ...SERIF, fontSize: 9, fontWeight: '700', color: PAPER.riskInk },
+    progressRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 10 },
+    progressBarTrack: { flex: 1, height: 6, backgroundColor: PAPER.trackBg, borderRadius: 4, overflow: 'hidden' },
+    progressBarFill: { height: '100%', borderRadius: 4 },
+    percentage: { ...SERIF, fontSize: 18, fontWeight: '700', color: PAPER.ink, minWidth: 46, textAlign: 'right' },
+    percentageRisk: { color: PAPER.pctRiskInk },
+    verdict: { ...SERIF, fontSize: 11, fontWeight: '700', marginTop: 8 },
 });
 
 export default ClassCard;

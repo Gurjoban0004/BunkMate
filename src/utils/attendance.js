@@ -262,6 +262,7 @@ export function getClassesForDay(state, dayName) {
                 subjectName: subject.name,
                 teacher: subject.teacher,
                 color: subject.color,
+                room: slot.room || null,
                 startTime,
                 endTime,
                 units: 1,

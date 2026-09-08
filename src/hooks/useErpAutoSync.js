@@ -123,6 +123,26 @@ export function useErpAutoSync(state, dispatch) {
 
         setSyncStatus({ status: 'syncing', lastSyncAttemptAt: new Date().toISOString(), changedSubjectIds: [] });
 
+        // The timetable is a different portal page and depends on nothing the
+        // register returns, so it starts here and is collected at step 3 — one
+        // round trip off the wall clock of the once-a-day sync that fetches it.
+        // Settled into { data } | { error } at creation, because an early return
+        // below (session expired) would otherwise leave a rejection unhandled.
+        //
+        // The cost of starting early: if the session turns out to be dead, this
+        // request is already in flight and pays its own liveness probes. That
+        // happens at most once — the next sync sees erpSessionExpired and stops.
+        const lastTtFetch = currentState.timetableMeta?.fetchedAt;
+        const ttSource = currentState.timetableMeta?.source;
+        const shouldFetchTimetable = ttSource !== 'manual' && (
+            force || !lastTtFetch || !REAL_TT_SOURCES.includes(ttSource)
+            || (Date.now() - new Date(lastTtFetch).getTime()) > TIMETABLE_INTERVAL_MS
+        );
+        const timetablePromise = shouldFetchTimetable
+            ? trackEndpoint(endpoints, 'timetable', () => erpFetchTimetable(token, persistentToken))
+                .then((data) => ({ data }), (error) => ({ error }))
+            : null;
+
         try {
             // ── Step 1: totals ────────────────────────────────────
             const attendanceResult = await trackEndpoint(endpoints, 'attendance',
@@ -198,8 +218,18 @@ export function useErpAutoSync(state, dispatch) {
             } else {
                 setSyncStatus({ calendarSyncStatus: 'loading' });
                 try {
-                    const calData = await trackEndpoint(endpoints, 'calendar',
-                        () => erpFetchCalendar(token, persistentToken));
+                    // /api/erp-attendance parses the register, and the register IS the
+                    // calendar — so it ships both. Asking /api/erp-calendar as well
+                    // would fetch the same portal page a second time. Only the
+                    // summary-card fallback (and mock) leaves `calendar` absent.
+                    const calData = attendanceResult.calendar
+                        ? {
+                            calendar: attendanceResult.calendar,
+                            subjects: attendanceResult.registerSubjects,
+                            latestDate: attendanceResult.latestDate,
+                        }
+                        : await trackEndpoint(endpoints, 'calendar',
+                            () => erpFetchCalendar(token, persistentToken));
                     if (calData.token) token = calData.token;
 
                     if (calData.sessionExpired) {
@@ -263,18 +293,12 @@ export function useErpAutoSync(state, dispatch) {
                 }
             }
 
-            // ── Step 3: timetable (daily, or on manual refresh) ───
-            const lastTtFetch = currentState.timetableMeta?.fetchedAt;
-            const ttSource = currentState.timetableMeta?.source;
-            const shouldFetchTimetable = ttSource !== 'manual' && (
-                force || !lastTtFetch || !REAL_TT_SOURCES.includes(ttSource)
-                || (Date.now() - new Date(lastTtFetch).getTime()) > TIMETABLE_INTERVAL_MS
-            );
-
-            if (shouldFetchTimetable) {
+            // ── Step 3: timetable (started before step 1; collected here) ───
+            if (timetablePromise) {
+                const settled = await timetablePromise;
                 try {
-                    const ttData = await trackEndpoint(endpoints, 'timetable',
-                        () => erpFetchTimetable(token, persistentToken));
+                    if (settled.error) throw settled.error;
+                    const ttData = settled.data;
                     if (ttData.sessionExpired) {
                         // Steps 1–2 already succeeded on this session; a
                         // timetable-only failure is not worth a sign-in card.

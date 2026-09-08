@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutAnimation } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, PAPER } from '../../theme/theme';
 import { getDayRecommendation } from '../../utils/planner.js';
 import { shortSubjectName } from '../../utils/subjectName';
+
+// Today reads on paper, so the compact card uses the PAPER tints rather than
+// the palette engine's — see theme.js §1b.
+const PAPER_TONE = {
+    safe:    { bg: PAPER.successSoft, border: PAPER.successLine, ink: PAPER.sageInk,    subInk: PAPER.sageInk,        rule: 'rgba(50,106,85,0.2)' },
+    partial: { bg: PAPER.warningSoft, border: PAPER.warningLine, ink: PAPER.warningInk, subInk: PAPER.warningInkSoft, rule: 'rgba(126,92,40,0.2)' },
+    risky:   { bg: PAPER.apricot,     border: '#e0b3a3',         ink: PAPER.apricotInk, subInk: PAPER.apricotInk,     rule: 'rgba(145,71,50,0.2)' },
+};
 
 const QuickAnswerCard = ({ dayStatus, compact = false }) => {
     const [expanded, setExpanded] = useState(false);
@@ -74,24 +82,45 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
         setExpanded(!expanded);
     };
 
-    // Compact mode — single line for Today screen
-    if (compact && !expanded) {
+    // Compact mode — Today's one-line verdict, which opens in place rather than
+    // swapping to the full planner card (ui-lab/today-replica.html .quick-answer).
+    if (compact) {
+        const tone = PAPER_TONE[status] || PAPER_TONE.partial;
         return (
             <Animated.View style={{ opacity: fadeAnim }}>
                 <TouchableOpacity
-                    style={[styles.compactCard, { backgroundColor: cfg.bg, borderColor: cfg.border }]}
+                    style={[styles.compactCard, { backgroundColor: tone.bg, borderColor: tone.border }]}
                     onPress={toggleExpand}
-                    activeOpacity={0.7}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded }}
+                    accessibilityLabel={`Can I skip today? ${cfg.shortTitle}`}
                 >
                     <View style={styles.compactRow}>
-                        <Text style={[styles.compactLabel, { color: cfg.textColor }]}>
-                            Can I skip today?
-                        </Text>
-                        <Text style={[styles.compactAnswer, { color: cfg.textColor }]}>
-                            {cfg.shortTitle}
-                        </Text>
+                        <Text style={[styles.compactLabel, { color: tone.ink }]}>Can I skip today?</Text>
+                        <Text style={[styles.compactAnswer, { color: tone.ink }]}>{cfg.shortTitle}</Text>
                     </View>
-                    <Text style={styles.tapHint}>Tap for details</Text>
+                    <Text style={[styles.tapHint, { color: tone.subInk }]}>
+                        {expanded ? 'Tap to collapse' : 'Tap for details'}
+                    </Text>
+
+                    {expanded && (
+                        <View style={[styles.compactDetails, { borderTopColor: tone.rule }]}>
+                            <Text style={[styles.compactDetailsText, { color: tone.subInk }]}>{cfg.subtitle}</Text>
+                            {classes.map((cls) => (
+                                <Text
+                                    key={cls.subjectId}
+                                    style={[styles.compactDetailsText, { color: tone.subInk }]}
+                                    numberOfLines={1}
+                                >
+                                    {shortSubjectName(cls.subjectName)} · {cls.safe ? 'safe to skip' : 'attend'} · {cls.currentPercentage.toFixed(0)}% → {cls.newPercentage.toFixed(0)}%
+                                </Text>
+                            ))}
+                            {recommendation ? (
+                                <Text style={[styles.compactDetailsText, { color: tone.subInk }]}>{recommendation}</Text>
+                            ) : null}
+                        </View>
+                    )}
                 </TouchableOpacity>
             </Animated.View>
         );
@@ -160,31 +189,31 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
 
 const styles = StyleSheet.create({
     compactCard: {
-        marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.cardGap,
-        padding: SPACING.md,
-        borderRadius: BORDER_RADIUS.md,
+        marginTop: 16,
+        paddingVertical: 13,
+        paddingHorizontal: 16,
+        borderRadius: 12,
         borderWidth: 1,
+    },
+    compactDetails: {
+        marginTop: 12,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        gap: 3,
+    },
+    compactDetailsText: {
+        fontFamily: 'Times New Roman',
+        fontSize: 11,
+        lineHeight: 17,
     },
     compactRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    compactLabel: {
-        fontWeight: '600',
-        fontSize: FONT_SIZES.sm,
-    },
-    compactAnswer: {
-        fontWeight: '700',
-        fontSize: FONT_SIZES.sm,
-    },
-    tapHint: {
-        fontWeight: '400',
-        fontSize: FONT_SIZES.xs,
-        color: COLORS.textMuted,
-        marginTop: 4,
-    },
+    compactLabel: { fontSize: 12, fontWeight: '700' },
+    compactAnswer: { fontSize: 12, fontWeight: '700' },
+    tapHint: { fontSize: 10, fontWeight: '500', marginTop: 4 },
     card: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,

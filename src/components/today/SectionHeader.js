@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '../../theme/theme';
+import { PAPER } from '../../theme/theme';
 
 /**
  * Section header for the day's classes, with the one occasional action that
@@ -34,21 +34,32 @@ const SectionHeader = ({ title, classCount, onHolidayPress }) => {
     );
 };
 
+const SERIF = { fontFamily: 'Times New Roman' };
+
 const getStyles = () => StyleSheet.create({
     container: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: SPACING.screenPadding,
-        paddingVertical: SPACING.sm,
-        marginTop: SPACING.md,
+        marginTop: 24,
+        marginBottom: 10,
+        paddingBottom: 9,
+        borderBottomWidth: 1,
+        borderBottomColor: PAPER.line,
     },
-    left: { flexDirection: 'row', alignItems: 'center' },
-    title: { ...TYPOGRAPHY.labelSmall, color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
-    badge: { backgroundColor: COLORS.primary, borderRadius: BORDER_RADIUS.full, paddingHorizontal: 7, paddingVertical: 2, marginLeft: SPACING.sm },
-    badgeText: { ...TYPOGRAPHY.micro, color: COLORS.textOnPrimary },
-    action: { minHeight: 36, justifyContent: 'center', paddingHorizontal: SPACING.sm },
-    actionText: { ...TYPOGRAPHY.labelSmall, color: COLORS.textMuted },
+    left: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    title: { ...SERIF, fontSize: 14, fontWeight: '700', letterSpacing: -0.14, color: PAPER.ink },
+    badge: {
+        minWidth: 18, paddingHorizontal: 6, paddingVertical: 2,
+        borderRadius: 99, borderWidth: 1, borderColor: PAPER.countBorder,
+        backgroundColor: PAPER.primarySoft, alignItems: 'center', justifyContent: 'center',
+    },
+    badgeText: { fontSize: 9, fontWeight: '700', color: PAPER.primary },
+    action: {
+        minHeight: 32, justifyContent: 'center', paddingHorizontal: 10,
+        borderRadius: 9, borderWidth: 1, borderColor: PAPER.line, backgroundColor: PAPER.surface,
+    },
+    actionText: { ...SERIF, fontSize: 11, fontWeight: '700', color: PAPER.secondary },
 });
 
 export default SectionHeader;

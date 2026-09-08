@@ -1,19 +1,22 @@
 /**
  * Research participation (AI/ML class project — see attendance-insights/PLAN.md).
  *
- * Consent mints a random UUID and stores it on the device. That UUID is the only
- * thing that ever leaves with the attendance data — no name, no roll number, no
- * login code — so there is nothing to anonymise later. No UUID means no upload and
- * the app behaves exactly as it did before.
+ * The device mints a random UUID on first sync. That UUID is the only thing that
+ * ever leaves with the attendance data — no name, no roll number, no login code —
+ * so there is nothing to anonymise later. What is filed is the same register the
+ * college publishes to the class; nothing personal rides along.
+ *
+ * There is no consent screen: it read as "we are collecting your private data"
+ * for a dataset that holds none of it. See docs/ONBOARDING-SPEED-2026-09-07.md.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ID_KEY        = '@presence_research_id';
 const CONSENTED_KEY = '@presence_research_consented_at';
-const DECLINED_KEY  = '@presence_research_declined';
+const UPLOADED_PREFIX = '@presence_research_uploaded_at:';
 
-// undefined = not read from storage yet, null = not participating
+// undefined = not read from storage yet
 let cachedId;
 let cachedConsentedAt;
 
@@ -26,11 +29,22 @@ function uuidV4() {
     });
 }
 
-/** The participant UUID, or null if the student has not consented. */
+/**
+ * This install's participant UUID, minted on first call and kept from then on.
+ * Returns null only if storage itself is unreadable — in which case nothing is
+ * filed, which is the safe direction to fail.
+ */
 export async function getResearchId() {
     if (cachedId === undefined) {
         try {
-            cachedId = (await AsyncStorage.getItem(ID_KEY)) || null;
+            const stored = await AsyncStorage.getItem(ID_KEY);
+            if (stored) {
+                cachedId = stored;
+            } else {
+                cachedId = uuidV4();
+                cachedConsentedAt = new Date().toISOString();
+                await AsyncStorage.multiSet([[ID_KEY, cachedId], [CONSENTED_KEY, cachedConsentedAt]]);
+            }
         } catch {
             cachedId = null;
         }
@@ -38,7 +52,7 @@ export async function getResearchId() {
     return cachedId;
 }
 
-/** ISO timestamp of consent, or null. Sent alongside the data as the consent record. */
+/** ISO timestamp the UUID was minted. Filed with the data as the enrolment date. */
 export async function getConsentedAt() {
     if (cachedConsentedAt === undefined) {
         try {
@@ -50,38 +64,40 @@ export async function getConsentedAt() {
     return cachedConsentedAt;
 }
 
-/** Whether the student has already answered the consent question either way. */
-export async function hasAnsweredConsent() {
-    if (await getResearchId()) return true;
-    try {
-        return (await AsyncStorage.getItem(DECLINED_KEY)) === '1';
-    } catch {
-        return false;
+// A semester's register does not change twenty times an hour, but the app syncs
+// every three minutes — and each tagged sync makes the server write ~1000 marks
+// to Firestore *before* it can answer, on the request the student is waiting on.
+// Six hours keeps the dataset current to within a lecture block, takes that write
+// off ~99% of syncs, and keeps a class of 50 well inside the daily write quota.
+const UPLOAD_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+// Kept per endpoint, because different endpoints file different halves of the
+// row: the register writes `marks`, the timetable writes `slots`. One shared
+// clock would let whichever request went first eat the window and leave the
+// other half of the dataset permanently unwritten.
+const cachedUploadedAt = new Map();
+
+/**
+ * Whether this request should carry the dataset. Every upload is a full
+ * replacement, so a skipped or failed one costs nothing but freshness — the next
+ * one catches up.
+ */
+export async function shouldUploadResearch(endpoint) {
+    if (!cachedUploadedAt.has(endpoint)) {
+        try {
+            cachedUploadedAt.set(endpoint, Number(await AsyncStorage.getItem(UPLOADED_PREFIX + endpoint)) || 0);
+        } catch {
+            cachedUploadedAt.set(endpoint, 0);
+        }
     }
+    return Date.now() - cachedUploadedAt.get(endpoint) > UPLOAD_INTERVAL_MS;
 }
 
-/** Opt in. Returns the new participant UUID. */
-export async function consentToResearch() {
-    const id = uuidV4();
-    const at = new Date().toISOString();
-    await AsyncStorage.multiSet([[ID_KEY, id], [CONSENTED_KEY, at]]);
-    await AsyncStorage.removeItem(DECLINED_KEY);
-    cachedId = id;
-    cachedConsentedAt = at;
-    return id;
-}
-
-/** Decline without consenting. Remembered so the screen is not shown again. */
-export async function declineResearch() {
-    await AsyncStorage.setItem(DECLINED_KEY, '1');
-    cachedId = null;
-    cachedConsentedAt = null;
-}
-
-/** Forget the UUID locally. The server-side delete is the caller's job. */
-export async function forgetResearchId() {
-    await AsyncStorage.multiRemove([ID_KEY, CONSENTED_KEY]);
-    await AsyncStorage.setItem(DECLINED_KEY, '1');
-    cachedId = null;
-    cachedConsentedAt = null;
+/** Called once the tagged request has been sent. Never throws. */
+export async function markResearchUploaded(endpoint) {
+    const now = Date.now();
+    cachedUploadedAt.set(endpoint, now);
+    try {
+        await AsyncStorage.setItem(UPLOADED_PREFIX + endpoint, String(now));
+    } catch { /* a lost timestamp just means one extra upload */ }
 }

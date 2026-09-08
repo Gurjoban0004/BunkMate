@@ -18,6 +18,7 @@ import LoadingDots from '../../components/common/LoadingDots';
 import SetupProgress from '../../components/setup/SetupProgress';
 import SetupIllustration from '../../components/setup/SetupIllustration';
 import ImportProgress from '../../components/setup/ImportProgress';
+import BrandMark from '../../components/common/BrandMark';
 
 const STEP_LOGIN = 'login';
 const STEP_OTP = 'otp';
@@ -31,17 +32,19 @@ const PROGRESS_STEPS = [STEP_LOGIN, STEP_OTP, STEP_THEME];
 // The full picker (all palettes + light/dark) lives in Settings; this is intentionally short.
 const ONBOARDING_PALETTES = ['chalkpad', 'nordic', 'forest', 'catppuccin'];
 
-// Each row maps to one real request in handleImport, so the checklist can't
-// claim progress that isn't happening.
+// One row per thing handleImport actually applies. The requests behind rows 2
+// and 3 now finish during the theme step, so these tick over work that is
+// already in hand — the checklist still never claims progress that isn't real.
 const IMPORT_TASKS = [
     { id: 'subjects', label: 'Importing your subjects' },
     { id: 'calendar', label: 'Syncing attendance history' },
     { id: 'timetable', label: 'Building your timetable' },
 ];
 
-// The subjects step is local state, so it completes instantly. A short settle
-// lets the first row visibly tick over instead of strobing past.
-const settle = (ms = 550) => new Promise((resolve) => setTimeout(resolve, ms));
+// Every import step is local state or an already-resolved prefetch, so the
+// checklist would strobe past unread. One short beat per row, and no more —
+// this used to be 950ms of pure theatre on top of three live network calls.
+const settle = (ms = 160) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function ERPSetupScreen({ navigation }) {
     const { state, dispatch } = useApp();
@@ -62,13 +65,20 @@ export default function ERPSetupScreen({ navigation }) {
     // OTP
     const [authUserId, setAuthUserId] = useState('');
     const [otp, setOtp] = useState('');
+    // The college's own masked destination ("email address gur****@…"). Shown
+    // verbatim: this ERP mails the code, and "check your SMS" sent people
+    // hunting through the wrong inbox until they assumed sign-in was broken.
+    const [otpHint, setOtpHint] = useState('');
 
     // Data
     const [token, setToken] = useState('');
     const tokenRef = React.useRef(''); // BUG-06 fix: ref avoids stale closure
+    const persistentRef = React.useRef(null);
     const [studentName, setStudentName] = useState('');
-    const [erpSubjects, setErpSubjects] = useState([]);
     const [mappingResult, setMappingResult] = useState(null);
+    // Filled in the moment the session lands, so the theme step is the only wait.
+    const calendarRef = React.useRef(null);   // register calendar, from the attendance answer
+    const timetableRef = React.useRef(null);  // in-flight timetable request
 
     // ─── STEP 1: SIGN IN ───────────────────────────────────────────
     // Shared tail of both the trusted-login and OTP-verify paths: persist the
@@ -76,10 +86,19 @@ export default function ERPSetupScreen({ navigation }) {
     const finishWithSession = useCallback(async (sessionResult) => {
         setToken(sessionResult.token);
         tokenRef.current = sessionResult.token;
+        persistentRef.current = sessionResult.persistentToken || null;
         setStudentName(sessionResult.studentName || '');
         // The server decided whether this roll is an admin; the app just remembers it.
         dispatch({ type: 'UPDATE_SETTINGS', payload: { isAdmin: !!sessionResult.isAdmin } });
         await saveErpToken(sessionResult.token, sessionResult.studentName || '', sessionResult.persistentToken);
+
+        // The timetable is a different portal page and needs nothing from the
+        // register, so it goes out now and lands while the student picks a theme.
+        // Rejections are folded to null here rather than left for handleImport:
+        // nothing awaits this for several seconds, and a missing timetable has
+        // never been worth failing setup over.
+        timetableRef.current = erpFetchTimetable(sessionResult.token, sessionResult.persistentToken)
+            .then((data) => data, () => null);
 
         const attendanceResult = await erpFetchAttendance(sessionResult.token, sessionResult.persistentToken);
         if (!attendanceResult.subjects || attendanceResult.subjects.length === 0) {
@@ -90,7 +109,15 @@ export default function ERPSetupScreen({ navigation }) {
             });
             return;
         }
-        setErpSubjects(attendanceResult.subjects);
+        // The register the totals came from IS the calendar. Keeping it here is what
+        // removes the /api/erp-calendar round trip from onboarding entirely.
+        calendarRef.current = attendanceResult.calendar
+            ? {
+                calendar: attendanceResult.calendar,
+                subjects: attendanceResult.registerSubjects,
+                latestDate: attendanceResult.latestDate,
+            }
+            : null;
         const mapping = mapErpToAppState(attendanceResult.subjects, []);
         setMappingResult(mapping);
         setStep(STEP_THEME);
@@ -112,6 +139,7 @@ export default function ERPSetupScreen({ navigation }) {
                 return;
             }
             setAuthUserId(result.authUserId);
+            setOtpHint(result.otpHint || '');
             setStep(STEP_OTP);
         } catch (err) {
             logger.warn('Sign-in failed:', err.message);
@@ -135,6 +163,7 @@ export default function ERPSetupScreen({ navigation }) {
         try {
             const result = await erpLogin(username.trim(), password);
             setAuthUserId(result.authUserId);
+            setOtpHint(result.otpHint || '');
             setResendCooldown(30);
         } catch (err) {
             logger.warn('Resend failed:', err.message);
@@ -219,11 +248,13 @@ export default function ERPSetupScreen({ navigation }) {
             await settle();
             setImportStep(1);
 
-            // Try calendar sync in background
+            // The calendar normally arrived with the attendance answer; only the
+            // summary-card fallback still needs a request of its own.
             try {
                 const currentToken = tokenRef.current; // BUG-06 fix: use ref
-                if (currentToken) {
-                    const calData = await erpFetchCalendar(currentToken);
+                if (calendarRef.current || currentToken) {
+                    const calData = calendarRef.current
+                        || await erpFetchCalendar(currentToken, persistentRef.current);
                     if (calData.calendar && Object.keys(calData.calendar).length > 0) {
                         const step1NameMap = buildErpNameMap(mappingResult.matchedUpdates || [], mappingResult.newSubjects || []);
                         const result = mapCalendarToRecords(calData.calendar, calData.subjects, allSubjects, step1NameMap);
@@ -251,26 +282,25 @@ export default function ERPSetupScreen({ navigation }) {
             // Fetch the real timetable from the portal so Today shows actual classes
             // and times from day one — no reliance on the history-derived guess.
             try {
-                const currentToken = tokenRef.current;
-                if (currentToken) {
-                    const ttData = await erpFetchTimetable(currentToken);
-                    if (ttData?.success && ttData.source !== 'empty') {
-                        const mapped = mapTimetableToState(ttData.timetable, ttData.timeSlots, allSubjects);
-                        if (mapped.newSubjects.length > 0) {
-                            dispatch({ type: 'SET_SUBJECTS', payload: [...allSubjects, ...mapped.newSubjects] });
-                        }
-                        dispatch({
-                            type: 'ERP_SET_TIMETABLE',
-                            payload: {
-                                timetable: mapped.timetable,
-                                timeSlots: mapped.timeSlots,
-                                source: ttData.source,
-                                fetchedAt: ttData.fetchedAt,
-                                timesAreInferred: ttData.timesAreInferred || false,
-                                periodDefinitions: ttData.timeSlots,
-                            },
-                        });
+                // Started when the session landed, so this is normally an await on
+                // a promise that resolved while the theme step was on screen.
+                const ttData = await timetableRef.current;
+                if (ttData?.success && ttData.source !== 'empty') {
+                    const mapped = mapTimetableToState(ttData.timetable, ttData.timeSlots, allSubjects);
+                    if (mapped.newSubjects.length > 0) {
+                        dispatch({ type: 'SET_SUBJECTS', payload: [...allSubjects, ...mapped.newSubjects] });
                     }
+                    dispatch({
+                        type: 'ERP_SET_TIMETABLE',
+                        payload: {
+                            timetable: mapped.timetable,
+                            timeSlots: mapped.timeSlots,
+                            source: ttData.source,
+                            fetchedAt: ttData.fetchedAt,
+                            timesAreInferred: ttData.timesAreInferred || false,
+                            periodDefinitions: ttData.timeSlots,
+                        },
+                    });
                 }
             } catch (ttErr) {
                 logger.warn('Timetable fetch failed (non-critical):', ttErr.message);
@@ -292,9 +322,9 @@ export default function ERPSetupScreen({ navigation }) {
     const renderLogin = () => (
         <View style={styles.formSection}>
             <View style={styles.sectionHeader}>
-                <SetupIllustration name="signin" />
-                <Text style={styles.sectionTitle}>Sign in</Text>
-                <Text style={styles.sectionSub}>Use your college ID and password.</Text>
+                <View style={styles.brandPill}><BrandMark size={56} /></View>
+                <Text style={styles.brandName}>Presence</Text>
+                <Text style={styles.sectionSub}>Sign in with your college ID and password.</Text>
             </View>
 
             <View style={styles.card}>
@@ -348,6 +378,17 @@ export default function ERPSetupScreen({ navigation }) {
                     Your password is never stored.
                 </Text>
             </View>
+
+            <TouchableOpacity
+                style={styles.codeLink}
+                onPress={() => navigation.navigate('Login')}
+                accessibilityRole="button"
+                accessibilityLabel="I already have a login code"
+            >
+                <Text style={styles.codeLinkText}>
+                    Already have a login code? <Text style={styles.codeLinkHighlight}>Tap here</Text>
+                </Text>
+            </TouchableOpacity>
         </View>
     );
 
@@ -357,7 +398,9 @@ export default function ERPSetupScreen({ navigation }) {
             <View style={styles.sectionHeader}>
                 <SetupIllustration name="code" />
                 <Text style={styles.sectionTitle}>Enter the code</Text>
-                <Text style={styles.sectionSub}>Sent to your registered number.</Text>
+                <Text style={styles.sectionSub}>
+                    {otpHint ? `Sent to your ${otpHint}.` : 'Sent to your registered email or phone.'}
+                </Text>
             </View>
 
             <View style={styles.card}>
@@ -402,7 +445,7 @@ export default function ERPSetupScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            <Text style={styles.otpHelp}>Didn't get it? Check your SMS, then resend.</Text>
+            <Text style={styles.otpHelp}>Didn't get it? Check spam, then resend.</Text>
         </View>
     );
 
@@ -497,7 +540,17 @@ export default function ERPSetupScreen({ navigation }) {
 
     const button = getButton();
     const progressIndex = PROGRESS_STEPS.indexOf(step);
-    const showChrome = step !== STEP_IMPORTING;
+
+    // The back control is rendered only where it actually goes somewhere. Sign-in
+    // is the entry screen now, and once a session exists there is nothing behind
+    // the theme step either — an arrow that does nothing reads as a frozen app.
+    const backAction = step === STEP_OTP
+        ? () => { setStep(STEP_LOGIN); setOtp(''); setError(null); }
+        : step === STEP_FAILED
+            ? () => { setStep(STEP_THEME); setError(null); }
+            : step === STEP_LOGIN && navigation.canGoBack?.()
+                ? () => navigation.goBack()
+                : null;
 
     return (
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -510,14 +563,10 @@ export default function ERPSetupScreen({ navigation }) {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
-                    {showChrome && (
+                    {backAction && (
                         <View style={styles.topBar}>
                             <TouchableOpacity
-                                onPress={() => {
-                                    if (step === STEP_OTP) { setStep(STEP_LOGIN); setOtp(''); setError(null); }
-                                    else if (step === STEP_FAILED) { setStep(STEP_THEME); setError(null); }
-                                    else navigation.goBack();
-                                }}
+                                onPress={backAction}
                                 style={styles.topBarBack}
                                 accessibilityRole="button"
                                 accessibilityLabel="Go back"
@@ -637,6 +686,35 @@ const getStyles = () => StyleSheet.create({
         textAlign: 'center',
         lineHeight: 20,
         paddingHorizontal: SPACING.sm,
+    },
+    brandPill: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        marginBottom: SPACING.md,
+        ...SHADOWS.medium,
+    },
+    brandName: {
+        fontWeight: '700',
+        fontSize: 30,
+        lineHeight: 34,
+        letterSpacing: -0.5,
+        color: COLORS.textPrimary,
+        marginBottom: 6,
+    },
+    codeLink: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 44,
+        marginTop: SPACING.sm,
+    },
+    codeLinkText: {
+        ...TYPOGRAPHY.bodySmall,
+        color: COLORS.textSecondary,
+        textAlign: 'center',
+    },
+    codeLinkHighlight: {
+        ...TYPOGRAPHY.labelSmall,
+        color: COLORS.primaryDark,
     },
 
     // Card

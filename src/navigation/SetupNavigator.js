@@ -1,8 +1,6 @@
 import React from 'react';
 import { Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { useApp } from '../context/AppContext';
-import WelcomeScreen from '../screens/setup/WelcomeScreen';
 import LoginScreen from '../screens/setup/LoginScreen';
 import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
 
@@ -11,9 +9,10 @@ import { COLORS } from '../theme/theme';
 const Stack = createStackNavigator();
 
 export default function SetupNavigator() {
-    const { state } = useApp();
-    // Always start on Welcome — it has both Login (ERP) and manual setup options
-    const initialRoute = 'Welcome';
+    // Straight to sign-in. Welcome was a splash with a Get-started button: one
+    // full screen and one tap before anything could start loading. Its brand and
+    // its "already have a login code" link both live on the sign-in step now.
+    const initialRoute = 'ERPSetup';
 
     return (
         <Stack.Navigator
@@ -64,11 +63,6 @@ export default function SetupNavigator() {
             }}
             detachInactiveScreens={Platform.OS === 'web'}
         >
-            <Stack.Screen
-                name="Welcome"
-                component={WelcomeScreen}
-                options={{ headerShown: false }}
-            />
             <Stack.Screen
                 name="Login"
                 component={LoginScreen}

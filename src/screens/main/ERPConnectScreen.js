@@ -54,6 +54,10 @@ export default function ERPConnectScreen({ navigation }) {
     // Calendar sync state
     const [calendarSyncing, setCalendarSyncing] = useState(false);
     const [calendarResult, setCalendarResult] = useState(null);
+    // The register the totals came from IS the calendar, and /api/erp-attendance
+    // ships both. Keeping it here is what stops syncCalendar re-fetching the same
+    // portal page a second time.
+    const calendarRef = React.useRef(null);
 
     // Shared tail of the trusted-login and OTP-verify paths: persist the token,
     // pull attendance, and advance to preview.
@@ -68,6 +72,13 @@ export default function ERPConnectScreen({ navigation }) {
             setError(attendanceResult.warning || 'No attendance found. Your college may not have recorded any classes yet.');
             return;
         }
+        calendarRef.current = attendanceResult.calendar
+            ? {
+                calendar: attendanceResult.calendar,
+                subjects: attendanceResult.registerSubjects,
+                latestDate: attendanceResult.latestDate,
+            }
+            : null;
         setErpSubjects(attendanceResult.subjects);
         const mapping = mapErpToAppState(attendanceResult.subjects, state.subjects);
         setMappingResult(mapping);
@@ -185,11 +196,13 @@ export default function ERPConnectScreen({ navigation }) {
 
     // ─── CALENDAR SYNC (background after import) ────────────────────
     const syncCalendar = useCallback(async (justAddedSubjects = []) => {
-        if (!token) return;
+        if (!calendarRef.current && !token) return;
 
         setCalendarSyncing(true);
         try {
-            const calData = await erpFetchCalendar(token);
+            // Normally already in hand from the attendance answer; only the
+            // summary-card fallback needs a request of its own.
+            const calData = calendarRef.current || await erpFetchCalendar(token);
 
             if (calData.calendar && Object.keys(calData.calendar).length > 0) {
                 // Combine existing subjects with any just-added ones
@@ -240,6 +253,9 @@ export default function ERPConnectScreen({ navigation }) {
                 return;
             }
 
+            calendarRef.current = result.calendar
+                ? { calendar: result.calendar, subjects: result.registerSubjects, latestDate: result.latestDate }
+                : null;
             setErpSubjects(result.subjects);
             const mapping = mapErpToAppState(result.subjects, state.subjects);
             setMappingResult(mapping);

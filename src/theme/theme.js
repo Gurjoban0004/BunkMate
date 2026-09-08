@@ -429,6 +429,66 @@ export const applyTheme = (themeStr, paletteId) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// 1b. PAPER — the Today screen's locked visual direction
+// ─────────────────────────────────────────────────────────────
+// These are the exact tokens from ui-lab/today-replica.html, which is the
+// signed-off design for Today. It deliberately commits to one warm paper look
+// rather than riding the palette engine: the greeting wash, the bento tints
+// and the ink were chosen against each other, and re-tinting any one of them
+// per palette breaks the set. Everything else in the app still reads COLORS.
+export const PAPER = {
+    ink:          '#292737',
+    secondary:    '#666373',
+    muted:        '#85818d',
+    line:         '#e5e3e9',
+    surface:      '#ffffff',
+    background:   '#f9fafb',
+
+    primary:      '#5f668b',
+    primarySoft:  '#e8e9f5',
+
+    warning:      '#a27337',
+    warningSoft:  '#f9f0dc',
+    warningLine:  '#dfc589',
+    warningInk:   '#7e5c28',
+    warningInkSoft: '#806b48',
+    warningInkDeep: '#8a652c',
+
+    successSoft:  '#e4f1eb',
+    successLine:  '#7fb49b',
+
+    // Bento tints. Upcoming classes cycle sage → apricot → lavender; a class
+    // the college has already marked is stone.
+    sage:         '#e2f0ea',
+    sageInk:      '#326a55',
+    apricot:      '#fbe7de',
+    apricotInk:   '#914732',
+    lavender:     '#e8e7f6',
+    lavenderInk:  '#5e5a8f',
+    stone:        '#f0ebed',
+    stoneInk:     '#7b6170',
+
+    // The greeting's paper wash, drawn as SVG gradients (RN has no radial-gradient).
+    paperBase:    '#f8f7f2',
+    paperTopLeft: '#fdfcf8',
+    paperBottomRight: '#f2f1ea',
+    paperInk:     '#292b2b',
+    paperSubInk:  '#696a68',
+
+    nowCardBg:     '#fcfcff',
+    nowCardBorder: '#d9d9ee',
+    trackBg:       '#ecebf0',
+    blockBg:       '#f1f0f2',
+    nextBlockBg:   '#f7f3e8',
+    nextBlockLine: '#d7b87a',
+    lastBlockBg:   '#f0eef8',
+    lastBlockLine: '#c7b9e8',
+    countBorder:   '#d9d8e8',
+    riskInk:       '#8e692c',
+    pctRiskInk:    '#956c2b',
+};
+
+// ─────────────────────────────────────────────────────────────
 // 2. SPACING
 // ─────────────────────────────────────────────────────────────
 

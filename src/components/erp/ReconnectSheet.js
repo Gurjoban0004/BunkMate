@@ -28,12 +28,13 @@ export default function ReconnectSheet() {
 
     const [stage, setStage] = useState('intro');   // 'intro' | 'otp'
     const [ticket, setTicket] = useState('');
+    const [otpHint, setOtpHint] = useState('');   // the college's own masked destination
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        if (!visible) { setStage('intro'); setTicket(''); setOtp(''); setError(''); setLoading(false); }
+        if (!visible) { setStage('intro'); setTicket(''); setOtpHint(''); setOtp(''); setError(''); setLoading(false); }
     }, [visible]);
 
     const close = useCallback(() => dispatch({ type: 'ERP_RECONNECT_CLOSE' }), [dispatch]);
@@ -64,6 +65,7 @@ export default function ReconnectSheet() {
             const result = await erpRequestOtp(persistentToken);
             if (result.trusted && result.token) { await finish(result); return; }
             setTicket(result.authUserId);
+            setOtpHint(result.otpHint || '');
             setStage('otp');
         } catch (err) {
             if (err.data?.needsLogin) { await giveUpToSettings(); return; }
@@ -106,7 +108,7 @@ export default function ReconnectSheet() {
                     <Text style={styles.title}>{isOtp ? 'Enter the code' : 'Sign in again'}</Text>
                     <Text style={styles.subtitle}>
                         {isOtp
-                            ? 'Your college just sent a code to your registered number.'
+                            ? `Your college just sent a code to your ${otpHint || 'registered email or phone'}.`
                             : 'Your college signed this app out. Tap below and it will send you a code — the same as when you first set up.'}
                     </Text>
 

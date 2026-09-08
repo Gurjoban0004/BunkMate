@@ -309,7 +309,9 @@ export function mapTimetableToState(erpTimetable, erpTimeSlots, existingSubjects
             const subjectId = bestMatch.id;
 
             const slotId = erpTimeSlots[entry.period - 1]?.id || `erp-period-${entry.period}`;
-            timetable[dayName].push({ slotId, subjectId });
+            // The portal prints the room in every cell; Today shows it on the
+            // class tile, so carry it rather than dropping it here.
+            timetable[dayName].push({ slotId, subjectId, ...(entry.room ? { room: entry.room } : {}) });
         }
     }
 

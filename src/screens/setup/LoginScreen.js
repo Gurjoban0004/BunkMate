@@ -104,7 +104,7 @@ export default function LoginScreen({ navigation }) {
         // New account or no data — set userId, mark authenticated, then go to setup
         dispatch({ type: 'SET_USER_ID', payload: authenticatedUserId });
         dispatch({ type: 'SET_AUTHENTICATED', payload: true });
-        navigation.navigate('Welcome');
+        navigation.navigate('ERPSetup');
       }
     } catch (err) {
       logger.error('Login error:', err);

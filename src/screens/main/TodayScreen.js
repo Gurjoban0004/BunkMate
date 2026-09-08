@@ -1,7 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { COLORS, SPACING, PAPER } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
 import { getTodayClasses, getCurrentClassIndex } from '../../utils/attendance';
@@ -12,6 +12,8 @@ import { shortSubjectName } from '../../utils/subjectName';
 import TodayScheduleBar from '../../components/today/TodayScheduleBar';
 import SectionHeader from '../../components/today/SectionHeader';
 import ClassCard from '../../components/today/ClassCard';
+import ClassBento from '../../components/today/ClassBento';
+import PaperHeader from '../../components/today/PaperHeader';
 import RestDayView from '../../components/today/RestDayView';
 import HolidayCard from '../../components/today/HolidayCard';
 import DeletionWarningBanner from '../../components/today/DeletionWarningBanner';
@@ -20,8 +22,6 @@ import ReconnectCard from '../../components/today/ReconnectCard';
 import QuickAnswerCard from '../../components/planner/QuickAnswerCard';
 import ErpWelcomeCard from '../../components/today/ErpWelcomeCard';
 import { BannerHost } from '../../components/today/BannerSlot';
-import ProfileAvatar from '../../components/common/ProfileAvatar';
-import { DisplayMedium, BodyMedium, BodySmall } from '../../components/common/Typography';
 import { showAlert } from '../../utils/alert';
 
 const TodayScreen = ({ navigation }) => {
@@ -37,6 +37,13 @@ const TodayScreen = ({ navigation }) => {
     }, [state.devDate]);
 
     const greeting = getGreeting(state.userName || 'there', state.devDate);
+    // "Good evening, Gurjoban" is two lines on paper: the salutation, then the
+    // name at a larger size. getGreeting still owns the wording.
+    const [salutation, greetedName] = (() => {
+        const text = greeting.text || '';
+        const comma = text.lastIndexOf(', ');
+        return comma === -1 ? [text, ''] : [`${text.slice(0, comma)},`, text.slice(comma + 2)];
+    })();
     const today = state.devDate ? new Date(state.devDate) : new Date();
     const dateString = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     const todayKey = getTodayKey(state.devDate);
@@ -76,7 +83,7 @@ const TodayScreen = ({ navigation }) => {
     const handleHolidayPress = () => {
         showAlert(
             'Holiday today?',
-            'Today’s classes will not be expected in your plans. Your attendance is unchanged.',
+            'Today’s classes will not be expected in our plans. Our attendance is unchanged.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Mark holiday', onPress: () => dispatch({ type: 'MARK_HOLIDAY', payload: todayKey }) },
@@ -105,32 +112,39 @@ const TodayScreen = ({ navigation }) => {
     }, [todayClasses, currentClassIndex, currentTime]);
 
     const statusLine = isErpSyncing
-        ? 'Syncing with your college…'
+        ? 'Syncing with our college…'
         : state.isOnline === false ? 'Offline — showing what you had' : null;
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['left', 'right']}>
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
             >
-                <View style={styles.header}>
-                    <View style={{ flex: 1 }}>
-                        <DisplayMedium style={styles.greeting}>{greeting.text}</DisplayMedium>
-                        <BodyMedium color="textSecondary" style={styles.date}>{dateString}</BodyMedium>
-                        {statusLine && <BodySmall color="textMuted" style={{ marginTop: 4 }}>{statusLine}</BodySmall>}
+                <PaperHeader
+                    greeting={salutation}
+                    name={greetedName}
+                    dateString={dateString}
+                    statusLine={statusLine}
+                    initial={(state.userName || '?')[0].toUpperCase()}
+                    onAvatarPress={() => navigation.navigate('Settings')}
+                />
+
+                {/* The schedule card rides up over the paper's bottom edge —
+                    the seam in the replica that ties the two together. */}
+                <View style={styles.content}>
+                    <View style={styles.scheduleLift}>
+                        <TodayScheduleBar
+                            todayClasses={todayClasses}
+                            attendanceRecords={state.attendanceRecords}
+                            todayKey={todayKey}
+                            currentTime={currentTime}
+                            nextClassInfo={nextClassInfo}
+                        />
                     </View>
                 </View>
-
-                <TodayScheduleBar
-                    todayClasses={todayClasses}
-                    attendanceRecords={state.attendanceRecords}
-                    todayKey={todayKey}
-                    currentTime={currentTime}
-                    nextClassInfo={nextClassInfo}
-                />
 
                 {/* One banner at a time — see BannerSlot. */}
                 <BannerHost>
@@ -140,47 +154,71 @@ const TodayScreen = ({ navigation }) => {
                     <ErpWelcomeCard state={state} onDismiss={handleDismissWelcomeCard} />
                 </BannerHost>
 
-                {isHoliday ? (
-                    <HolidayCard onUndo={() => dispatch({ type: 'REMOVE_HOLIDAY', payload: todayKey })} />
-                ) : todayClasses.length === 0 ? (
-                    <RestDayView state={state} dayName={todayDayName} navigation={navigation} />
-                ) : (
-                    <>
-                        <QuickAnswerCard dayStatus={todaySkipStatus} compact={true} />
+                <View style={styles.content}>
+                    {isHoliday ? (
+                        <HolidayCard onUndo={() => dispatch({ type: 'REMOVE_HOLIDAY', payload: todayKey })} />
+                    ) : todayClasses.length === 0 ? (
+                        <RestDayView state={state} dayName={todayDayName} navigation={navigation} />
+                    ) : (
+                        <>
+                            <QuickAnswerCard dayStatus={todaySkipStatus} compact={true} />
 
-                        <SectionHeader title="Today" classCount={todayClasses.length} onHolidayPress={handleHolidayPress} />
+                            <SectionHeader title="Today" classCount={todayClasses.length} onHolidayPress={handleHolidayPress} />
 
-                        {now && (
-                            <View style={styles.sectionContainer}>
-                                <View style={styles.nowBadge}><Text style={styles.nowBadgeText}>NOW</Text></View>
-                                <ClassCard classInfo={now} state={state} isCurrentClass />
-                            </View>
-                        )}
-                        {upcoming.length > 0 && (
-                            <View style={styles.sectionContainer}>
-                                {(now || done.length > 0) && <Text style={styles.sectionLabel}>UPCOMING</Text>}
-                                {upcoming.map((c, i) => <ClassCard key={`${c.subjectId}-${i}`} classInfo={c} state={state} />)}
-                            </View>
-                        )}
-                        {done.length > 0 && (
-                            <View style={styles.sectionContainer}>
-                                <Text style={styles.sectionLabel}>EARLIER TODAY</Text>
-                                {done.map((c, i) => <ClassCard key={`${c.subjectId}-done-${i}`} classInfo={c} state={state} />)}
-                            </View>
-                        )}
-                    </>
-                )}
+                            {/* The class happening now keeps the full card. Every
+                                other class of the day is a bento tile — the same
+                                facts, two to a row. */}
+                            {now && (
+                                <>
+                                    <View style={styles.nowFlag}>
+                                        <View style={styles.nowDot} />
+                                        <Text style={styles.nowFlagText}>NOW</Text>
+                                    </View>
+                                    <ClassCard classInfo={now} state={state} isCurrentClass />
+                                </>
+                            )}
 
-                <TouchableOpacity
-                    style={styles.settingsFooter}
-                    onPress={() => navigation.navigate('Settings')}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityLabel="Open settings"
-                >
-                    <ProfileAvatar name={state.userName} size={24} onPress={() => navigation.navigate('Settings')} />
-                    <Text style={styles.settingsFooterText}>Settings</Text>
-                </TouchableOpacity>
+                            {upcoming.length > 0 && (
+                                <>
+                                    {(now || done.length > 0) && <Text style={styles.minorLabel}>UPCOMING</Text>}
+                                    <View style={styles.bento}>
+                                        {upcoming.map((c, i) => (
+                                            <ClassBento
+                                                key={`${c.subjectId}-${i}`}
+                                                classInfo={c}
+                                                state={state}
+                                                index={i}
+                                                // A lone trailing tile takes the
+                                                // whole row rather than sitting
+                                                // half-width against nothing.
+                                                wide={upcoming.length % 2 === 1 && i === upcoming.length - 1}
+                                                onPress={() => navigation.navigate('SubjectDetail', { subjectId: c.subjectId, subjectName: c.subjectName })}
+                                            />
+                                        ))}
+                                    </View>
+                                </>
+                            )}
+
+                            {done.length > 0 && (
+                                <>
+                                    <Text style={styles.minorLabel}>EARLIER TODAY</Text>
+                                    <View style={styles.bento}>
+                                        {done.map((c, i) => (
+                                            <ClassBento
+                                                key={`${c.subjectId}-done-${i}`}
+                                                classInfo={c}
+                                                state={state}
+                                                variant="done"
+                                                wide
+                                                onPress={() => navigation.navigate('SubjectDetail', { subjectId: c.subjectId, subjectName: c.subjectName })}
+                                            />
+                                        ))}
+                                    </View>
+                                </>
+                            )}
+                        </>
+                    )}
+                </View>
 
                 <View style={styles.bottomPadding} />
             </ScrollView>
@@ -189,25 +227,22 @@ const TodayScreen = ({ navigation }) => {
 };
 
 const getStyles = () => StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
+    container: { flex: 1, backgroundColor: PAPER.background },
     scrollView: { flex: 1 },
-    scrollContent: { paddingTop: SPACING.lg, paddingBottom: SPACING.xxl },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.screenPadding, paddingBottom: 40 },
-    greeting: { fontWeight: '700', fontSize: 22, color: COLORS.textPrimary, letterSpacing: -0.5 },
-    date: { fontSize: 12, color: COLORS.textSecondary, marginTop: 4, letterSpacing: 0.1 },
-    sectionContainer: { marginTop: SPACING.sm },
-    sectionLabel: {
-        ...TYPOGRAPHY.micro, color: COLORS.textMuted,
-        paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm,
-    },
-    nowBadge: {
-        alignSelf: 'flex-start', backgroundColor: COLORS.primary, paddingHorizontal: SPACING.sm, paddingVertical: 3,
-        borderRadius: BORDER_RADIUS.sm, marginLeft: SPACING.screenPadding, marginBottom: SPACING.sm,
-    },
-    nowBadgeText: { ...TYPOGRAPHY.micro, color: COLORS.textOnPrimary },
+    scrollContent: { paddingBottom: SPACING.xxl },
+
+    // 20px gutter, as in the replica's `.content`.
+    content: { paddingHorizontal: 20 },
+    scheduleLift: { marginTop: -17 },
+
+    nowFlag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, marginBottom: 7, marginLeft: 2 },
+    nowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PAPER.primary },
+    nowFlagText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.55, color: PAPER.primary },
+
+    minorLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6, color: PAPER.muted, marginTop: 16, marginBottom: 8 },
+    bento: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+
     bottomPadding: { height: 100 },
-    settingsFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: SPACING.xl, gap: SPACING.sm },
-    settingsFooterText: { ...TYPOGRAPHY.labelSmall, color: COLORS.textMuted, letterSpacing: 0.5 },
 });
 
 export default TodayScreen;

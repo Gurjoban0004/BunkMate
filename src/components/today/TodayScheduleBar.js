@@ -1,12 +1,20 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../theme/theme';
+import { PAPER } from '../../theme/theme';
 import { parseTimeToMinutes } from '../../utils/dateHelpers';
 import { shortSubjectName } from '../../utils/subjectName';
 
 // A block on a 4-class day is ~80px wide at micro size, which fits about this
 // many uppercase characters. Anything longer abbreviates rather than ellipses.
 const BLOCK_NAME_BUDGET = 8;
+
+// The track's four states, from ui-lab/today-replica.html's .schedule-block.
+const PHASE_TINT = {
+    done:  { backgroundColor: PAPER.successSoft,  borderTopColor: PAPER.successLine },
+    now:   { backgroundColor: PAPER.primarySoft,  borderTopColor: PAPER.primary },
+    next:  { backgroundColor: PAPER.nextBlockBg,  borderTopColor: PAPER.nextBlockLine },
+    later: { backgroundColor: PAPER.lastBlockBg,  borderTopColor: PAPER.lastBlockLine },
+};
 
 /**
  * Where "now" sits on the track, as a 0–100 percentage — or null when the day
@@ -47,6 +55,11 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
 
     if (!todayClasses || todayClasses.length === 0) return null;
 
+    const clock = currentTime || new Date();
+    const nowMinutes = clock.getHours() * 60 + clock.getMinutes();
+    // The first class still to start — the only one that gets the "next" tint.
+    const nextIndex = todayClasses.findIndex((c) => parseTimeToMinutes(c.startTime) > nowMinutes);
+
     return (
         <View style={styles.container}>
             <View style={styles.meta}>
@@ -65,27 +78,30 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
                     const record = dayRecords[c.subjectId];
                     const status = record?.status;
 
-                    const blockBg = status === 'present'
-                        ? COLORS.successLight
-                        : status === 'absent'
-                            ? COLORS.dangerLight
-                            : COLORS.inputBackground;
+                    // done → now → next → later, by the clock, exactly the four
+                    // states the replica's track shows. A class the college has
+                    // already marked counts as done whatever the time says.
+                    const startMins = parseTimeToMinutes(c.startTime);
+                    const endMins = parseTimeToMinutes(c.endTime);
+                    const marked = status === 'present' || status === 'absent';
+
+                    const phase = marked || nowMinutes >= endMins ? 'done'
+                        : nowMinutes >= startMins ? 'now'
+                            : idx === nextIndex ? 'next'
+                                : 'later';
+
+                    const tint = PHASE_TINT[phase];
+                    const isLive = phase === 'now';
 
                     return (
                         <View
                             key={`${c.subjectId}-${idx}`}
-                            style={[
-                                styles.classBlock,
-                                {
-                                    backgroundColor: blockBg,
-                                    borderTopColor: c.color || COLORS.textMuted,
-                                },
-                            ]}
+                            style={[styles.classBlock, tint]}
                         >
                             <Text
                                 style={[
                                     styles.blockLabel,
-                                    status && { color: COLORS.textPrimary },
+                                    isLive && { color: PAPER.primary },
                                 ]}
                                 numberOfLines={1}
                             >
@@ -106,35 +122,30 @@ const TodayScheduleBar = ({ todayClasses, attendanceRecords, todayKey, currentTi
     );
 };
 
+const SERIF = { fontFamily: 'Times New Roman' };
+
 const getStyles = () => StyleSheet.create({
     container: {
-        backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md,
-        marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.cardGap,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        borderRadius: 12,
+        padding: 15,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: PAPER.line,
     },
     meta: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 12,
+        gap: 8,
     },
-    label: {
-        ...TYPOGRAPHY.labelMedium,
-        color: COLORS.textPrimary,
-    },
-    timeInfo: {
-        ...TYPOGRAPHY.captionSmall,
-        color: COLORS.textSecondary,
-    },
+    label: { ...SERIF, fontSize: 14, fontWeight: '700', color: PAPER.ink },
+    timeInfo: { ...SERIF, fontSize: 10, color: PAPER.secondary, flexShrink: 1 },
     track: {
         flexDirection: 'row',
         height: 36,
         width: '100%',
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: 10,
         overflow: 'hidden',
         position: 'relative',
         gap: 2,
@@ -146,8 +157,12 @@ const getStyles = () => StyleSheet.create({
         borderTopWidth: 3,
     },
     blockLabel: {
-        ...TYPOGRAPHY.micro,
-        color: COLORS.textSecondary,
+        ...SERIF,
+        fontSize: 9,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+        color: PAPER.secondary,
         paddingHorizontal: 4,
         textAlign: 'center',
     },
@@ -163,13 +178,13 @@ const getStyles = () => StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: COLORS.primary,
+        backgroundColor: PAPER.primary,
         marginLeft: -3,
     },
     timeMarkerLine: {
         width: 2,
         flex: 1,
-        backgroundColor: COLORS.primary,
+        backgroundColor: PAPER.primary,
     },
 });
 

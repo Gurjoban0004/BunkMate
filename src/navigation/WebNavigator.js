@@ -4,7 +4,6 @@ import useRouteTransition from '../hooks/useRouteTransition';
 
 import LoginScreen from '../screens/setup/LoginScreen';
 import ERPSetupScreen from '../screens/setup/ERPSetupScreen';
-import WelcomeScreen from '../screens/setup/WelcomeScreen';
 
 
 import { COLORS } from '../theme/theme';
@@ -14,8 +13,8 @@ import { NavigationContext, NavigationRouteContext } from '@react-navigation/nat
 export default function WebNavigator() {
     const styles = getStyles();
     const { state } = useApp();
-    // Always start on Welcome — it has both Login (ERP) and manual setup options
-    const initialRoute = 'Welcome';
+    // Straight to sign-in — see SetupNavigator for why Welcome is no longer first.
+    const initialRoute = 'ERPSetup';
     const [history, setHistory] = useState([
         { name: initialRoute, params: {} }
     ]);
@@ -107,10 +106,7 @@ export default function WebNavigator() {
         let screen;
         switch (currentRoute.name) {
             case 'Login': screen = <LoginScreen {...props} />; break;
-            case 'ERPSetup': screen = <ERPSetupScreen {...props} />; break;
-            case 'Welcome': screen = <WelcomeScreen {...props} />; break;
-
-            default: screen = <WelcomeScreen {...props} />; break;
+            default: screen = <ERPSetupScreen {...props} />; break;
         }
 
         return (
