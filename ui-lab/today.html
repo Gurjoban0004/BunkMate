@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presence — Today, 1:1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..500&family=Inter:wght@300..700&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════
+   LAB CHROME
+   ════════════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{background:#111113;color:#e6e6e8;font:400 13px/1.5 "Inter",-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;min-height:100vh}
+.lab-bar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+  padding:14px 24px;background:rgba(17,17,19,.88);backdrop-filter:blur(20px) saturate(160%);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);border-bottom:1px solid #26262a}
+.lab-brand{display:flex;align-items:baseline;gap:9px;margin-right:6px}
+.lab-brand b{font-family:"Newsreader",serif;font-weight:600;font-size:17px;letter-spacing:-.01em}
+.lab-brand span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#6f6f78}
+.ctl{display:flex;align-items:center;gap:9px}
+.ctl>label{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:#6f6f78}
+.seg{display:flex;background:#1c1c20;border:1px solid #2a2a30;border-radius:9px;padding:3px;gap:2px}
+.seg button{appearance:none;border:0;background:transparent;color:#9a9aa4;font:600 12px/1 "Inter",sans-serif;
+  padding:7px 13px;border-radius:6px;cursor:pointer;transition:background .14s,color .14s}
+.seg button:hover{color:#d4d4dc}
+.seg button[aria-pressed="true"]{background:#35353d;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.4)}
+.lab-hint{margin-left:auto;font-size:11px;color:#5c5c66}
+.stage{padding:34px 24px 60px;display:flex;gap:40px;align-items:flex-start;justify-content:center;
+  overflow-x:auto;zoom:var(--zoom,.9)}
+.slot{flex:0 0 auto;display:flex;flex-direction:column;gap:16px;width:393px}
+.slot-name{font-family:"Newsreader",serif;font-size:21px;font-weight:600;color:#f2f2f4}
+.slot-tag{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:#7a7a85;margin-top:3px}
+.slot-note{font-size:12.5px;line-height:1.6;color:#8e8e99}
+.slot-note b{color:#c8c8d2;font-weight:600}
+.map{font-size:12px;line-height:1.7;color:#8e8e99;border-left:2px solid #2f2f36;padding-left:14px}
+.map b{color:#c8c8d2;font-weight:600}
+.map code{font-family:ui-monospace,monospace;font-size:11px;color:#7d7d88}
+
+.device{width:393px;height:852px;border-radius:56px;padding:11px;
+  background:linear-gradient(160deg,#3a3a40,#151518 32%,#0c0c0e 62%,#2e2e34);
+  box-shadow:0 40px 80px -24px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.06)}
+.viewport{position:relative;width:100%;height:100%;border-radius:46px;overflow:hidden;isolation:isolate}
+.screen{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+.statusbar{position:absolute;top:0;left:0;right:0;height:54px;z-index:30;display:flex;align-items:center;
+  justify-content:space-between;padding:16px 30px 0;font:600 15px/1 -apple-system,"SF Pro Text","Inter",sans-serif;
+  pointer-events:none;color:var(--ink);background:var(--paper)}
+.sb-right{display:flex;align-items:center;gap:6px}
+.sb-bars{display:flex;align-items:flex-end;gap:2px;height:11px}
+.sb-bars i{width:3px;background:currentColor;border-radius:1px;display:block}
+.sb-bars i:nth-child(1){height:4px}.sb-bars i:nth-child(2){height:6px}
+.sb-bars i:nth-child(3){height:8.5px}.sb-bars i:nth-child(4){height:11px}
+.sb-wifi{width:15px;height:11px;border-radius:0 0 2px 2px;
+  background:radial-gradient(circle at 50% 100%,currentColor 0 32%,transparent 33% 56%,currentColor 57% 72%,transparent 73%)}
+.sb-batt{width:25px;height:12px;border:1.4px solid currentColor;border-radius:3.5px;position:relative;opacity:.55}
+.sb-batt::after{content:"";position:absolute;inset:1.6px;width:62%;background:currentColor;border-radius:1.5px}
+.home-ind{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:139px;height:5px;
+  border-radius:3px;z-index:40;background:var(--hi)}
+
+/* ════════════════════════════════════════════════════════════
+   TOKENS — 4 sizes, 2 weights, 8pt grid, 24px card padding
+   ════════════════════════════════════════════════════════════ */
+.viewport{
+  --f:"Inter",-apple-system,sans-serif; --d:"Newsreader",Times,serif;
+  --t0:28px; --t1:20px; --t2:16px; --t3:13px;
+  --paper:#F6F2EA; --surf:#FFFDF9; --line:#E7E0D2; --fill:#EEE8DB;
+  --ink:#1D1A15; --ink2:#6B6355; --ink3:#9B9284;
+  --wash:13%; --grain:.40; --hi:rgba(29,26,21,.3);
+  --sh:0 4px 16px -8px rgba(29,26,21,.24);
+  font-family:var(--f);background:var(--paper);color:var(--ink);
+}
+[data-theme="dark"] .viewport{
+  --paper:#15120E; --surf:#1E1A15; --line:#332C22; --fill:#272119;
+  --ink:#F2ECE0; --ink2:#A79C8A; --ink3:#7A7161;
+  --wash:22%; --grain:.24; --hi:rgba(255,255,255,.4);
+  --sh:0 8px 24px -10px rgba(0,0,0,.72);
+}
+/* ── palette 1 · MEADOW — Presence sage/clay, warmer than Forest Sage ── */
+.viewport[data-palette="meadow"]{--acc:#3F6B52;--k1:#33604A;--k2:#35608F;--k3:#A75434;--k4:#8A6A22;
+  --pos:#3B6B52;--warn:#8B6820;--neg:#A64A2E}
+[data-theme="dark"] .viewport[data-palette="meadow"]{--acc:#8FBFA1;--k1:#8FBFA1;--k2:#88AEDC;--k3:#E0906C;--k4:#D6B667;
+  --pos:#8FBFA1;--warn:#D6B667;--neg:#E0906C}
+/* ── palette 2 · BLOOM — the pastel identity kept, pulled to our hues ── */
+.viewport[data-palette="bloom"]{--acc:#6B4A80;--k1:#27644A;--k2:#57499B;--k3:#9B5438;--k4:#9A4D69;
+  --pos:#27644A;--warn:#9B6A38;--neg:#A8455A}
+[data-theme="dark"] .viewport[data-palette="bloom"]{--acc:#C09AD6;--k1:#7FC0A0;--k2:#A99AE4;--k3:#E0956E;--k4:#DE93A7;
+  --pos:#7FC0A0;--warn:#E0AE7A;--neg:#E28399}
+/* ── palette 3 · DUSK — the experiment: deeper, moodier, still warm ── */
+.viewport[data-palette="dusk"]{--acc:#8A4B2E;--k1:#2C5747;--k2:#3A4C82;--k3:#9C4B2C;--k4:#856021;
+  --pos:#2C5747;--warn:#856021;--neg:#9C4B2C}
+[data-theme="dark"] .viewport[data-palette="dusk"]{--acc:#D98A62;--k1:#7BB09C;--k2:#8296D4;--k3:#DE8A64;--k4:#CFAC5C;
+  --pos:#7BB09C;--warn:#CFAC5C;--neg:#DE8A64}
+
+.t0{font-family:var(--d);font-size:var(--t0);font-weight:500;line-height:1.08;letter-spacing:-.02em}
+.t1{font-size:var(--t1);font-weight:600;line-height:1.2;letter-spacing:-.022em}
+.t2{font-size:var(--t2);font-weight:400;line-height:1.5;letter-spacing:-.01em}
+.t2b{font-size:var(--t2);font-weight:600;line-height:1.35;letter-spacing:-.015em}
+.t3{font-size:var(--t3);font-weight:600;line-height:1.35;letter-spacing:.1em;text-transform:uppercase}
+.t3n{font-size:var(--t3);font-weight:400;line-height:1.5}
+.grow{flex:1;min-width:0}
+.clip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tap{min-height:44px;display:flex;align-items:center}
+svg.gl{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.body{padding:0 0 132px}
+
+/* ════════════════════════════════════════════════════════════
+   HERO — the reference layout, but the photograph is replaced by
+   a generated surface. Three treatments, switchable in the bar.
+   ════════════════════════════════════════════════════════════ */
+.hero{position:relative;overflow:hidden;border-radius:28px;margin:54px 16px 0;box-shadow:var(--sh);isolation:isolate}
+.hero .lay{position:absolute;inset:0;pointer-events:none}
+.hero .grain{opacity:var(--grain);mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E")}
+[data-theme="dark"] .hero .grain{mix-blend-mode:screen}
+
+/* paper — warm stock, a shaft of light, the shadow of a window */
+[data-hero="paper"] .base{background:radial-gradient(120% 92% at 6% 0%,#FFFDF7,#F6F1E5 40%,#EDE5D4 72%,#E2D9C5)}
+[data-theme="dark"] [data-hero="paper"] .base{background:radial-gradient(120% 92% at 6% 0%,#2C251C,#221C16 44%,#1A1611 76%,#14110D)}
+[data-hero="paper"] .shaft{background:linear-gradient(102deg,rgba(255,255,255,.94),rgba(255,255,255,0) 58%);filter:blur(18px)}
+[data-theme="dark"] [data-hero="paper"] .shaft{background:linear-gradient(102deg,rgba(255,228,184,.16),rgba(255,228,184,0) 58%);filter:blur(18px)}
+[data-hero="paper"] .blinds{left:50%;filter:blur(5px);
+  background:repeating-linear-gradient(74deg,rgba(58,46,30,.14) 0 9px,rgba(58,46,30,0) 9px 30px)}
+[data-theme="dark"] [data-hero="paper"] .blinds{background:repeating-linear-gradient(74deg,rgba(0,0,0,.46) 0 9px,rgba(0,0,0,0) 9px 30px)}
+
+/* dawn — a soft mesh, no hard light source */
+[data-hero="dawn"] .base{background:
+  radial-gradient(70% 62% at 2% 4%,#FBE2CB,rgba(251,226,203,0) 62%),
+  radial-gradient(66% 64% at 98% 10%,#E4EDE4,rgba(228,237,228,0) 60%),
+  radial-gradient(84% 72% at 58% 104%,#F1E4CE,rgba(241,228,206,0) 66%),
+  linear-gradient(160deg,#FCF8F0,#EFE9DB)}
+[data-theme="dark"] [data-hero="dawn"] .base{background:
+  radial-gradient(70% 62% at 2% 4%,#3E2C1E,rgba(62,44,30,0) 62%),
+  radial-gradient(66% 64% at 98% 10%,#1E2B24,rgba(30,43,36,0) 60%),
+  radial-gradient(84% 72% at 58% 104%,#2C2418,rgba(44,36,24,0) 66%),
+  linear-gradient(160deg,#1E1913,#13100C)}
+[data-hero="dawn"] .shaft,[data-hero="dawn"] .blinds{display:none}
+
+/* linen — woven stock and a vignette */
+[data-hero="linen"] .base{background:linear-gradient(158deg,#F9F5ED,#ECE4D5)}
+[data-theme="dark"] [data-hero="linen"] .base{background:linear-gradient(158deg,#241E17,#14110D)}
+[data-hero="linen"] .shaft{background:
+  repeating-linear-gradient(90deg,rgba(120,98,66,.06) 0 1px,transparent 1px 4px),
+  repeating-linear-gradient(0deg,rgba(120,98,66,.06) 0 1px,transparent 1px 4px)}
+[data-theme="dark"] [data-hero="linen"] .shaft{background:
+  repeating-linear-gradient(90deg,rgba(255,232,196,.055) 0 1px,transparent 1px 4px),
+  repeating-linear-gradient(0deg,rgba(255,232,196,.055) 0 1px,transparent 1px 4px)}
+[data-hero="linen"] .blinds{background:radial-gradient(92% 82% at 46% 38%,transparent 42%,rgba(58,46,30,.18))}
+[data-theme="dark"] [data-hero="linen"] .blinds{background:radial-gradient(92% 82% at 46% 38%,transparent 42%,rgba(0,0,0,.55))}
+
+.hero-in{position:relative;z-index:2;display:flex;gap:16px;padding:24px}
+.hero .eyebrow{color:var(--ink2)}
+.hero .greet{margin:12px 0 0}
+.hero .quote{font-family:var(--d);font-style:italic;font-size:var(--t2);line-height:1.45;color:var(--ink2);margin:16px 0 0}
+.hero-r{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:24px;flex:0 0 auto;width:92px}
+.av{width:44px;height:44px;border-radius:50%;background:var(--acc);color:var(--surf);display:grid;place-items:center}
+[data-theme="dark"] .av{color:#15120E}
+.mantra{text-align:right;color:var(--ink3);font-size:11px;letter-spacing:.09em;line-height:1.95}
+.mantra span{display:block}
+.statusline{padding:12px 24px 0;color:var(--ink3)}
+
+/* ════════════════════════════════════════════════════════════
+   COMPONENTS — one per component in the real TodayScreen
+   ════════════════════════════════════════════════════════════ */
+/* TodayScheduleBar */
+.card{background:var(--surf);border:1px solid var(--line);border-radius:24px;padding:24px;
+  margin:16px 16px 0;box-shadow:var(--sh)}
+.railmeta{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+.rail{display:flex;gap:4px;height:44px;position:relative}
+.rblk{flex:1;border-radius:12px;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:6px 8px;
+  background:var(--fill)}
+.rblk.done{background:color-mix(in srgb,var(--pos) var(--wash),var(--surf))}
+.rblk i{position:absolute;top:0;left:0;right:0;height:3px;background:currentColor}
+.rblk span{font-size:11px;font-weight:600;letter-spacing:-.01em;color:var(--ink2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.marker{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--acc);border-radius:2px;z-index:3}
+.marker::before{content:"";position:absolute;top:-4px;left:-3px;width:8px;height:8px;border-radius:50%;
+  background:var(--acc);box-shadow:0 0 0 3px var(--surf)}
+
+/* QuickAnswerCard (compact) */
+.quick{display:flex;align-items:center;gap:16px;border-radius:24px;padding:20px 24px;margin:12px 16px 0;
+  border:1px solid var(--warn);background:color-mix(in srgb,var(--warn) 9%,var(--surf))}
+.quick .dot{width:10px;height:10px;border-radius:50%;background:var(--warn);flex:0 0 auto}
+
+/* SectionHeader + micro labels */
+.sect{display:flex;align-items:center;gap:12px;padding:32px 24px 12px}
+.sect u{flex:1;height:1px;background:var(--line);text-decoration:none}
+.sect .act{color:var(--acc);min-height:44px;display:flex;align-items:center;margin:-12px 0}
+.lab{padding:24px 24px 12px;color:var(--ink3)}
+
+/* NOW — the only class with a full-width surface */
+.nowwrap{margin:0 16px}
+.nowpill{display:inline-flex;align-items:center;gap:6px;background:var(--acc);color:var(--surf);
+  padding:5px 10px;border-radius:8px;margin-bottom:12px}
+[data-theme="dark"] .nowpill{color:#15120E}
+.nowpill i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.now{border-radius:24px;padding:24px;background:var(--surf);border:2px solid var(--acc);box-shadow:var(--sh)}
+.ntop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.tag{display:inline-flex;padding:4px 8px;border-radius:8px;background:var(--fill);color:var(--ink2);flex:0 0 auto}
+.tag.low{background:color-mix(in srgb,var(--neg) 14%,var(--surf));color:var(--neg)}
+.bar{height:8px;border-radius:4px;background:var(--fill);overflow:hidden;position:relative;flex:1}
+.bar i{display:block;height:100%;border-radius:4px}
+.bar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);opacity:.4;border-radius:2px}
+.prow{display:flex;align-items:center;gap:16px;margin-top:20px}
+
+/* bento — every class that is NOT happening now */
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px}
+.tile{border:0;text-align:left;font:inherit;border-radius:24px;padding:20px;min-height:158px;
+  display:flex;flex-direction:column;cursor:pointer;
+  background:color-mix(in srgb,var(--k) var(--wash),var(--surf));color:var(--k)}
+.tile.done{opacity:.66}
+.ttop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tname{margin-top:24px}
+.troom{margin-top:6px;opacity:.72}
+.tfoot{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:auto;padding-top:16px}
+.tfoot em{font-style:normal;opacity:.78}
+.tdot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.tile svg{width:18px;height:18px;flex:0 0 auto}
+
+.tile.wide{grid-column:span 2;min-height:0;flex-direction:row;align-items:center;gap:16px}
+.tile.wide .wmain{flex:1;min-width:0;display:flex;flex-direction:column}
+.tile.wide .tname{margin-top:0}
+.tile.wide .troom{margin-top:2px}
+.tile.wide .wend{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+
+/* settings footer + tab bar */
+.settings{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:32px;
+  min-height:44px;color:var(--ink3)}
+.settings .av{width:28px;height:28px;font-size:11px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:88px;z-index:25;display:flex;padding:10px 16px 0;
+  background:var(--surf);border-top:1px solid var(--line)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding-top:10px;color:var(--ink3)}
+.tab.on{color:var(--acc)}
+.tab svg{width:22px;height:22px}
+@media (prefers-reduced-motion:no-preference){
+  .tile{transition:transform .16s ease,filter .16s ease}
+  .tile:active{transform:scale(.985);filter:brightness(.97)}
+}
+</style>
+</head>
+<body data-theme="light">
+
+<div class="lab-bar">
+  <div class="lab-brand"><b>Presence</b><span>Today · 1:1 replica</span></div>
+  <div class="ctl"><label>Hero</label>
+    <div class="seg" id="segHero">
+      <button data-hero="paper" aria-pressed="true">Paper</button>
+      <button data-hero="dawn">Dawn</button>
+      <button data-hero="linen">Linen</button>
+    </div></div>
+  <div class="ctl"><label>Palette</label>
+    <div class="seg" id="segPal">
+      <button data-palette="meadow" aria-pressed="true">Meadow</button>
+      <button data-palette="bloom">Bloom</button>
+      <button data-palette="dusk">Dusk</button>
+    </div></div>
+  <div class="ctl"><label>Theme</label>
+    <div class="seg" id="segTheme">
+      <button data-theme="light" aria-pressed="true">Light</button>
+      <button data-theme="dark">Dark</button>
+    </div></div>
+  <div class="ctl"><label>Zoom</label>
+    <div class="seg" id="segZoom">
+      <button data-zoom="0.62">S</button>
+      <button data-zoom="0.9" aria-pressed="true">M</button>
+      <button data-zoom="1">L</button>
+    </div></div>
+  <div class="lab-hint">Mock only · nothing in presence/ is touched</div>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   Same data as the rest of the lab. Real maths:
+     skips = floor(attended/0.75) − total
+     recovery n solves (att+n)/(tot+n) ≥ 0.75
+   Rooms come from the ERP timetable cell (code / room / section / faculty).
+   ══════════════════════════════════════════════════════════════ */
+const D = {
+  student:'Gurjoban', initials:'G', greeting:'Good morning', date:'Monday, 7 September',
+  quote:'“Discipline today,\nfreedom tomorrow.”',
+  mantra:['Show up','Keep going','You’re doing great'],
+  clock:'10:41', markerPct:33.5, updated:'5 September', next:'Op. Systems at 13:00',
+  classes:[
+    {n:'Data Structures', short:'Data Struct.', room:'LT-118', from:'09:00', to:'10:00', hrs:1,
+     pct:88.6, k:'--k1', state:'done', verd:'Marked present by your college', chip:'Present', tone:'pos'},
+    {n:'Database Management Systems', short:'DBMS', room:'LT-204', from:'10:00', to:'12:00', hrs:2,
+     pct:68.2, k:'--k3', state:'now', verd:'Attend · 12 more to reach 75%', chip:'Attend', tone:'neg', tag:'LOW'},
+    {n:'Operating Systems', short:'Op. Systems', room:'LT-204', from:'13:00', to:'14:00', hrs:1,
+     pct:77.3, k:'--k4', state:'next', verd:'Safe to skip · 1 to spare', chip:'Free skip · 1 spare', tone:'warn'},
+    {n:'Computer Networks', short:'Networks', room:'LT-311', from:'14:00', to:'15:00', hrs:1,
+     pct:79.5, k:'--k2', state:'next', verd:'Safe to skip · 2 to spare', chip:'Free skip · 2 spare', tone:'pos'}
+  ]
+};
+const G = {
+  cal:'<rect x="3" y="5" width="18" height="16" rx="4"/><path d="M8 3v4M16 3v4M3 11h18"/>',
+  book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H19v3H6.5"/>',
+  chart:'<path d="M4 18l5-6 4 3.5L20 6"/><path d="M4 21h16"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7"/>'
+};
+const ic = k => `<svg class="gl" viewBox="0 0 24 24">${G[k]}</svg>`;
+const now  = D.classes.find(c => c.state === 'now');
+const next = D.classes.filter(c => c.state === 'next');
+const done = D.classes.filter(c => c.state === 'done');
+
+/* one bento tile — the reference's anatomy (time / gap / name / room),
+   plus the one line the reference card was missing: the verdict */
+const tile = c => `<button class="tile${c.state==='done'?' done':''}" style="--k:var(${c.k})">
+  <span class="ttop">
+    <span class="t2b">${c.from}</span>
+    <span class="t2b">${c.pct.toFixed(1)}%</span>
+  </span>
+  <span class="t1 tname">${c.n}</span>
+  <span class="t3n troom">${c.room}</span>
+  <span class="tfoot"><em class="t3n">${c.chip}</em></span>
+</button>`;
+
+/* a lone tile spans the grid rather than sitting half-width next to nothing */
+const wideTile = c => `<button class="tile wide${c.state==='done'?' done':''}" style="--k:var(${c.k})">
+  <span class="t2b" style="flex:0 0 auto">${c.from}</span>
+  <span class="wmain">
+    <span class="t1 tname">${c.n}</span>
+    <span class="t3n troom">${c.room}</span>
+  </span>
+  <span class="wend">${ic('check')}<span class="t2b">${c.pct.toFixed(1)}%</span></span>
+</button>`;
+
+const screen = `
+<div class="body">
+
+  <!-- header — greeting + date, on a generated surface instead of a photo -->
+  <div class="hero" data-hero="paper" id="hero">
+    <span class="lay base"></span><span class="lay shaft"></span>
+    <span class="lay blinds"></span><span class="lay grain"></span>
+    <div class="hero-in">
+      <div class="grow">
+        <div class="t3 eyebrow">${D.date}</div>
+        <h1 class="t0 greet">${D.greeting},<br>${D.student}</h1>
+        <p class="quote">${D.quote.replace('\n','<br>')}</p>
+      </div>
+      <div class="hero-r">
+        <div class="av"><span class="t2b">${D.initials}</span></div>
+        <div class="mantra t3">${D.mantra.map(m=>`<span>${m}</span>`).join('')}</div>
+      </div>
+    </div>
+  </div>
+  <div class="statusline t3n">Your college has updated through ${D.updated}.</div>
+
+  <!-- TodayScheduleBar -->
+  <div class="card">
+    <div class="railmeta"><span class="t2b">Today’s Schedule</span><span class="t3n" style="color:var(--ink2)">${D.next}</span></div>
+    <div class="rail">
+      ${D.classes.map(c=>`<div class="rblk${c.state==='done'?' done':''}" style="color:var(${c.k})">
+        <i></i><span>${c.short}</span></div>`).join('')}
+      <span class="marker" style="left:${D.markerPct}%"></span>
+    </div>
+  </div>
+
+  <!-- QuickAnswerCard -->
+  <div class="quick">
+    <span class="dot"></span>
+    <div class="grow">
+      <div class="t2b">Partial — skip some classes</div>
+      <div class="t3n" style="color:var(--ink2);margin-top:2px">2 safe to skip, 1 must attend</div>
+    </div>
+  </div>
+
+  <!-- SectionHeader -->
+  <div class="sect">
+    <span class="t1">Today</span>
+    <span class="t3n" style="color:var(--ink3)">${D.classes.length} classes</span>
+    <u></u>
+    <span class="act t3n">Mark holiday</span>
+  </div>
+
+  <!-- NOW -->
+  <div class="nowwrap">
+    <span class="nowpill t3"><i></i>Now</span>
+    <div class="now">
+      <div class="ntop">
+        <div class="grow">
+          <div class="t1">${now.n}</div>
+          <div class="t3n" style="color:var(--ink2);margin-top:6px">${now.from} – ${now.to} · ${now.room}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex:0 0 auto">
+          <span class="tag t3">${now.hrs} HR</span>
+          <span class="tag low t3">${now.tag}</span>
+        </div>
+      </div>
+      <div class="prow">
+        <span class="bar"><i style="width:${now.pct}%;background:var(--neg)"></i><u style="left:75%"></u></span>
+        <span class="t1" style="color:var(--neg)">${now.pct.toFixed(1)}%</span>
+      </div>
+      <div class="t2b" style="color:var(--neg);margin-top:16px">${now.verd}</div>
+    </div>
+  </div>
+
+  <!-- UPCOMING — bento, because none of these is happening yet -->
+  <div class="lab t3">Upcoming</div>
+  <div class="bento">${next.map(tile).join('')}</div>
+
+  <!-- EARLIER TODAY — same bento, dimmed and ticked -->
+  <div class="lab t3">Earlier today</div>
+  <div class="bento">${done.map(done.length===1?wideTile:tile).join('')}</div>
+
+  <div class="settings">
+    <span class="av"><span class="t3n">${D.initials}</span></span>
+    <span class="t3">Settings</span>
+  </div>
+</div>`;
+
+const tabbar = `<div class="tabbar">
+  <div class="tab on">${ic('cal')}<span class="t3n">Today</span></div>
+  <div class="tab">${ic('book')}<span class="t3n">Subjects</span></div>
+  <div class="tab">${ic('chart')}<span class="t3n">Planner</span></div>
+</div>`;
+
+const sbRight = '<span class="sb-right"><span class="sb-bars"><i></i><i></i><i></i><i></i></span><span class="sb-wifi"></span><span class="sb-batt"></span></span>';
+
+document.getElementById('stage').innerHTML = `
+  <div class="slot">
+    <div><div class="slot-name">Today</div><div class="slot-tag">1:1 with src/screens/main/TodayScreen.js</div></div>
+    <div class="device"><div class="viewport" data-palette="meadow" id="vp">
+      <div class="statusbar"><span>${D.clock}</span>${sbRight}</div>
+      <div class="screen">${screen}</div>
+      ${tabbar}
+      <div class="home-ind"></div>
+    </div></div>
+  </div>
+  <div class="slot" style="width:300px;padding-top:44px">
+    <div class="slot-note">
+      <b>What changed from the two references</b><br>
+      The hero keeps the reference layout — date, serif greeting, quote, avatar, mantra column — but the
+      photograph is gone. <b>Paper</b> is a warm stock with a light shaft, a blurred window shadow and an
+      SVG-turbulence grain; <b>Dawn</b> is a soft mesh; <b>Linen</b> is a woven weave with a vignette.<br><br>
+      The bento tiles keep your pastel anatomy exactly — time, a long gap, bold name, room — and only the
+      hues move onto Presence's sage / clay / gold / cobalt. They carry one extra line the originals were
+      missing: the verdict, which is the whole point of the app.<br><br>
+      Bento is used <b>only</b> for classes that are not happening. The live class keeps a full-width surface.
+    </div>
+    <div class="map">
+      <b>Component map</b><br>
+      <code>header</code> → hero (greeting, date, status line)<br>
+      <code>TodayScheduleBar</code> → track + time marker<br>
+      <code>QuickAnswerCard</code> → the day verdict<br>
+      <code>SectionHeader</code> → “Today”, count, Mark holiday<br>
+      <code>ClassCard isCurrentClass</code> → NOW card<br>
+      <code>ClassCard × upcoming</code> → bento<br>
+      <code>ClassCard × done</code> → bento, dimmed<br>
+      <code>settingsFooter</code> → avatar + Settings<br><br>
+      <b>Deviation:</b> 24-hour times, as in your reference tiles. The app formats 12-hour.
+    </div>
+  </div>`;
+
+const vp = document.getElementById('vp'), hero = document.getElementById('hero'), stage = document.getElementById('stage');
+function press(seg, fn){
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    [...seg.children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    fn(b.dataset);
+  });
+}
+press(document.getElementById('segHero'),  d => { hero.dataset.hero = d.hero; });
+press(document.getElementById('segPal'),   d => { vp.dataset.palette = d.palette; });
+press(document.getElementById('segTheme'), d => { document.body.dataset.theme = d.theme; });
+press(document.getElementById('segZoom'),  d => { stage.style.setProperty('--zoom', d.zoom); });
+</script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Presence — Today visual experiment</title>
+  <style>
+    :root {
+      --bg: #f9fafb;
+      --surface: #ffffff;
+      --ink: #292737;
+      --secondary: #666373;
+      --muted: #85818d;
+      --line: #e5e3e9;
+      --primary: #5f668b;
+      --primary-soft: #e8e9f5;
+      --success: #477b68;
+      --success-soft: #e4f1eb;
+      --warning: #a27337;
+      --warning-soft: #f9f0dc;
+      --danger: #a75b57;
+      --danger-soft: #f8e7e5;
+      --sage: #e2f0ea;
+      --sage-ink: #326a55;
+      --apricot: #fbe7de;
+      --apricot-ink: #914732;
+      --lavender: #e8e7f6;
+      --lavender-ink: #5e5a8f;
+      --stone: #f0ebed;
+      --stone-ink: #7b6170;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh; margin: 0; background: #15161a; color: #f5f5f7;
+      font: 14px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font: inherit; color: inherit; }
+    button:focus-visible { outline: 3px solid #9cbbf7; outline-offset: 3px; }
+    .labbar {
+      position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px;
+      padding: 14px max(20px, calc((100vw - 930px) / 2)); border-bottom: 1px solid #2d2e34;
+      background: rgba(21,22,26,.9); backdrop-filter: blur(16px);
+    }
+    .labbar b { margin-right: auto; font-size: 16px; letter-spacing: -.02em; }
+    .labbar span { color: #9c9da5; font-size: 12px; }
+    .tag { padding: 6px 9px; border: 1px solid #3b3c44; border-radius: 8px; color: #bebec5; font-size: 11px; }
+    .stage { display: flex; justify-content: center; padding: 38px 24px 72px; }
+    .note { width: 393px; margin-bottom: 17px; padding: 0 4px; }
+    .note h1 { margin: 0 0 5px; font-size: 19px; letter-spacing: -.03em; }
+    .note p { margin: 0; color: #aaaab2; font-size: 12px; line-height: 1.5; }
+
+    .phone {
+      width: 393px; height: 852px; padding: 10px; overflow: hidden; border-radius: 53px;
+      background: linear-gradient(145deg,#4b4c53,#16171a 23%,#111216 78%,#3d3e45);
+      box-shadow: 0 32px 72px rgba(0,0,0,.44), inset 0 0 0 1px rgba(255,255,255,.1);
+    }
+    .screen { position: relative; height: 100%; overflow: hidden; border-radius: 44px; background: var(--bg); color: var(--ink); }
+    .status {
+      position: absolute; z-index: 3; inset: 0 0 auto; height: 54px; display: flex; align-items: center; justify-content: space-between;
+      padding: 17px 29px 0; font-size: 15px; font-weight: 650; pointer-events: none;
+    }
+    .status-right { font-size: 12px; letter-spacing: 1px; }
+    .scroll { height: 100%; overflow-y: auto; padding-bottom: 44px; scrollbar-width: none; }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    /* The greeting is a CSS-only paper wash: no photo, no texture asset. */
+    .paper-header {
+      position: relative; isolation: isolate; min-height: 250px; overflow: hidden; padding: 82px 24px 27px;
+      background-color: #f8f7f2;
+      background-image:
+        radial-gradient(ellipse 116% 70% at -9% 23%, rgba(255,255,255,.98) 0 36%, transparent 69%),
+        radial-gradient(ellipse 74% 55% at 94% 29%, rgba(221,228,217,.56) 0 26%, transparent 71%),
+        radial-gradient(ellipse 64% 42% at 42% 116%, rgba(228,225,242,.5) 0 28%, transparent 75%),
+        linear-gradient(125deg, #fdfcf8 0%, #f2f1ea 100%);
+    }
+    .paper-header::after {
+      content: ""; position: absolute; z-index: -1; width: 280px; height: 118px; right: -100px; bottom: -58px;
+      border: 20px solid rgba(255,255,255,.36); border-radius: 50%; transform: rotate(-9deg);
+    }
+    .greeting { margin: 0; color: #292b2b; font-family: "Times New Roman", Times, serif; font-weight: 700; letter-spacing: -.032em; line-height: .96; }
+    .greeting span { display: block; }.greeting .salutation { font-size: 34px; }.greeting .name { margin-top: 3px; font-size: 37px; }
+    .date { margin: 6px 0 0; color: #696a68; font-family: "Times New Roman", Times, serif; font-size: 12px; letter-spacing: .1px; }
+    .profile-avatar { position: absolute; top: 76px; right: 24px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #e5e5f3; color: var(--primary); cursor: pointer; font-size: 13px; font-weight: 750; }
+
+    .content { padding: 0 20px; }
+    .schedule {
+      margin-top: -17px; padding: 15px; position: relative; border: 1px solid var(--line); border-radius: 12px;
+      background: rgba(255,255,255,.95); box-shadow: 0 5px 12px rgba(55,51,71,.06);
+    }
+    .schedule-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .schedule-meta b { font-family: "Times New Roman", Times, serif; font-size: 14px; }
+    .schedule-meta span { color: var(--secondary); font-size: 10px; }
+    .schedule-track { position: relative; display: flex; gap: 2px; height: 36px; overflow: hidden; border-radius: 10px; }
+    .schedule-block { flex: 1; display: grid; place-items: center; border-top: 3px solid; color: var(--secondary); background: #f1f0f2; font-size: 9px; font-weight: 700; }
+    .schedule-block.done { border-color: #7fb49b; background: var(--success-soft); }.schedule-block.live { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }.schedule-block.next { border-color: #d7b87a; background: #f7f3e8; }.schedule-block.last { border-color: #c7b9e8; background: #f0eef8; }
+    .schedule-marker { position: absolute; z-index: 2; left: 37%; top: -4px; bottom: 0; width: 2px; background: var(--primary); }.schedule-marker::before { content: ""; position: absolute; top: 0; left: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+
+    .quick-answer {
+      width: 100%; margin-top: 16px; padding: 13px 16px; border: 1px solid #dfc589; border-radius: 12px;
+      background: var(--warning-soft); color: #7e5c28; text-align: left; cursor: pointer;
+    }
+    .quick-answer__row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; }
+    .quick-answer small { display: block; margin-top: 4px; color: #806b48; font-size: 10px; font-weight: 500; }
+    .quick-answer__details { display: none; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(126,92,40,.2); color: #765d32; font-size: 11px; line-height: 1.55; }
+    .quick-answer[aria-expanded="true"] .quick-answer__details { display: block; }
+
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 10px; padding: 0 0 9px; border-bottom: 1px solid var(--line); }
+    .section-title { display: flex; align-items: center; gap: 7px; color: var(--ink); font-family: "Times New Roman", Times, serif; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+    .count { min-width: 18px; padding: 2px 6px; border: 1px solid #d9d8e8; border-radius: 99px; background: var(--primary-soft); color: var(--primary); text-align: center; font: 700 9px/1 -apple-system, sans-serif; }
+    .holiday { min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--secondary); cursor: pointer; font-family: "Times New Roman", Times, serif; font-size: 11px; font-weight: 700; }
+    .holiday[aria-pressed="true"] { color: var(--primary); }
+    .minor-label { margin: 16px 0 8px; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .6px; }
+
+    /* Current class retains all ClassCard information, but earns the dominant surface. */
+    .now-flag { display: flex; align-items: center; gap: 6px; margin: 0 0 7px 2px; color: var(--primary); font-size: 10px; font-weight: 750; letter-spacing: .55px; }
+    .now-flag i { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+    .now-card { padding: 15px; border: 1px solid #d9d9ee; border-radius: 18px; background: #fcfcff; box-shadow: 0 5px 13px rgba(81,79,129,.05); }
+    .class-top { display: flex; justify-content: space-between; gap: 10px; margin-top: 0; }
+    .class-name { min-width: 0; margin: 0; font-family: "Times New Roman", Times, serif; font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+    .time { margin: 4px 0 0; color: var(--secondary); font-family: "Times New Roman", Times, serif; font-size: 12px; }
+    .risk { align-self: start; padding: 4px 6px; border: 1px solid #dfc589; border-radius: 6px; background: var(--warning-soft); color: #8e692c; font-size: 9px; font-weight: 750; }
+    .progress { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .progress-track { flex: 1; height: 6px; overflow: hidden; border-radius: 4px; background: #ecebf0; }.progress-track i { display: block; height: 100%; border-radius: 4px; background: var(--warning); }
+    .pct { min-width: 46px; color: var(--ink); font-family: "Times New Roman", Times, serif; font-size: 18px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }.pct.risk-pct { color: #956c2b; }
+    .verdict { margin: 8px 0 0; color: #8a652c; font-family: "Times New Roman", Times, serif; font-size: 11px; font-weight: 700; }
+
+    /* Only non-live classes become a bento. Their original names, time, percentage and verdict remain present. */
+    .bento { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .bento-card { display: flex; min-height: 145px; padding: 15px; border: 0; border-radius: 18px; color: inherit; flex-direction: column; text-align: left; cursor: pointer; box-shadow: inset 0 1px rgba(255,255,255,.38); }
+    .bento-card.sage { background: var(--sage); color: var(--sage-ink); }.bento-card.apricot { background: var(--apricot); color: var(--apricot-ink); }.bento-card.stone { grid-column: span 2; min-height: 104px; background: var(--stone); color: var(--stone-ink); }
+    .bento-card__time { display: block; font-family: "Times New Roman", Times, serif; font-size: 12px; font-weight: 700; }
+    .bento-card__name { display: block; margin-top: 20px; font-family: "Times New Roman", Times, serif; font-size: 16px; font-weight: 700; letter-spacing: -.02em; line-height: 1.06; }
+    .bento-card__room { display: block; margin-top: 5px; font-family: "Times New Roman", Times, serif; font-size: 11px; opacity: .8; }
+    .bento-card__bottom { display: flex; justify-content: space-between; align-items: end; margin-top: auto; padding-top: 12px; }.bento-card__bottom span { font-family: "Times New Roman", Times, serif; font-size: 10px; font-weight: 700; }.bento-card__bottom b { font-family: "Times New Roman", Times, serif; font-size: 16px; font-variant-numeric: tabular-nums; }
+    .bento-card.stone .bento-card__name { margin-top: 13px; }.bento-card.stone .bento-card__bottom { margin-top: 8px; padding-top: 0; }
+    .home-indicator { position: absolute; z-index: 5; bottom: 8px; left: 50%; width: 134px; height: 5px; border-radius: 4px; transform: translateX(-50%); background: rgba(0,0,0,.32); }
+    .toast { position: absolute; z-index: 7; right: 20px; bottom: 32px; display: none; padding: 10px 13px; border-radius: 10px; background: var(--ink); color: #fff; font-size: 12px; box-shadow: 0 8px 22px rgba(0,0,0,.2); }.toast.show { display: block; }
+    @media (prefers-reduced-motion: no-preference) { .quick-answer, .holiday, .bento-card { transition: transform 160ms ease, filter 160ms ease; }.quick-answer:active, .bento-card:active { transform: scale(.985); filter: brightness(.98); } }
+    @media (max-width: 550px) { .labbar { padding: 11px 14px; }.labbar span { display: none; }.stage { justify-content: flex-start; padding: 24px 16px 50px; } }
+  </style>
+</head>
+<body>
+  <header class="labbar"><b>Presence UI Lab</b><span>Today screen · original structure, visual experiment only</span><i class="tag">No app files changed</i></header>
+  <main class="stage"><div>
+    <div class="note"><h1>Today / paper greeting + class bento</h1><p>Photo-free paper wash for the greeting. Current class stays full-width; completed and later classes compact into bento tiles.</p></div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span class="status-right">●●● &nbsp;◒ &nbsp;▰</span></div>
+      <div class="scroll">
+        <header class="paper-header"><button class="profile-avatar" aria-label="Open settings">G</button><h2 class="greeting"><span class="salutation">Good evening,</span><span class="name">Gurjoban</span></h2><p class="date">Sunday, September 8</p></header>
+        <main class="content">
+          <section class="schedule" aria-label="Today's schedule">
+            <div class="schedule-meta"><b>Today's Schedule</b><span>Database Systems at 11 AM</span></div>
+            <div class="schedule-track"><div class="schedule-block done">MATH</div><div class="schedule-block live">DBMS</div><div class="schedule-block next">CN</div><div class="schedule-block last">OS</div><i class="schedule-marker"></i></div>
+          </section>
+          <button class="quick-answer" id="quick-answer" aria-expanded="false">
+            <span class="quick-answer__row"><span>Can I skip today?</span><b>PARTIAL</b></span><small>Tap for details</small>
+            <span class="quick-answer__details">Computer Networks and Operating Systems are safe to skip. Database Systems needs attendance today.</span>
+          </button>
+          <div class="section-head"><div class="section-title">Today <span class="count">4</span></div><button class="holiday" id="holiday" aria-pressed="false">Holiday?</button></div>
+          <div class="now-flag"><i></i> NOW</div>
+          <section class="now-card" aria-label="Current class: Database Systems">
+            <div class="class-top"><div><h3 class="class-name">Database Systems</h3><p class="time">11:00 AM – 11:50 AM</p></div><span class="risk">LOW</span></div>
+            <div class="progress"><div class="progress-track"><i style="width:68.2%"></i></div><b class="pct risk-pct">68.2%</b></div><p class="verdict">Attend · 12 more to reach 75%</p>
+          </section>
+          <p class="minor-label">UPCOMING</p>
+          <section class="bento" aria-label="Upcoming classes">
+            <button class="bento-card sage" data-class="Computer Networks"><span class="bento-card__time">14:00</span><span class="bento-card__name">Computer<br>Networks</span><span class="bento-card__room">LT-204</span><span class="bento-card__bottom"><span>4 skips left</span><b>85.3%</b></span></button>
+            <button class="bento-card apricot" data-class="Operating Systems"><span class="bento-card__time">16:00</span><span class="bento-card__name">Operating<br>Systems</span><span class="bento-card__room">LT-204</span><span class="bento-card__bottom"><span>5 skips left</span><b>87.1%</b></span></button>
+          </section>
+          <p class="minor-label">EARLIER TODAY</p>
+          <section class="bento" aria-label="Completed classes">
+            <button class="bento-card stone" data-class="Discrete Mathematics"><span class="bento-card__time">09:00 – 09:50 · COMPLETED</span><span class="bento-card__name">Discrete Mathematics</span><span class="bento-card__bottom"><span>Marked present by your college</span><b>82.5%</b></span></button>
+          </section>
+        </main>
+      </div>
+      <div class="toast" id="toast" role="status"></div><div class="home-indicator"></div>
+    </div></div>
+  </div></main>
+  <script>
+    const quickAnswer = document.querySelector('#quick-answer');
+    const holiday = document.querySelector('#holiday');
+    const toast = document.querySelector('#toast');
+    let timer;
+    function say(message) { toast.textContent = message; toast.classList.add('show'); clearTimeout(timer); timer = setTimeout(() => toast.classList.remove('show'), 1700); }
+    quickAnswer.addEventListener('click', () => {
+      const expanded = quickAnswer.getAttribute('aria-expanded') === 'true';
+      quickAnswer.setAttribute('aria-expanded', String(!expanded));
+      quickAnswer.querySelector('small').textContent = expanded ? 'Tap for details' : 'Tap to collapse';
+    });
+    holiday.addEventListener('click', () => {
+      const marked = holiday.getAttribute('aria-pressed') === 'true';
+      holiday.setAttribute('aria-pressed', String(!marked));
+      holiday.textContent = marked ? 'Holiday?' : 'Holiday marked';
+      say(marked ? 'Holiday removed' : 'Holiday marked for this mock');
+    });
+    document.querySelectorAll('[data-class]').forEach(card => card.addEventListener('click', () => say(card.dataset.class)));
+  </script>
+</body>
+</html>
