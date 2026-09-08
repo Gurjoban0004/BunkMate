@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { formatPct } from '../../utils/attendance';
 import { shortSubjectName } from '../../utils/subjectName';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, TABULAR, subjectTint } from '../../theme/theme';
+import { SPACING, FONT_SIZES, TABULAR, subjectTint } from '../../theme/theme';
 import ProgressRing from '../common/ProgressRing';
 import usePressScale from '../../hooks/usePressScale';
 
@@ -23,7 +23,7 @@ export const skipVerdict = (status, skipCount) => {
     return `Can skip ${skipCount} class${skipCount === 1 ? '' : 'es'}`;
 };
 
-const SubjectRow = ({ subject, status, threshold, subjects, onPress }) => {
+const SubjectRow = ({ subject, status, subjects, onPress }) => {
     const styles = getStyles();
     const { scale, onPressIn, onPressOut } = usePressScale(0.97);
     const { name, percentage, attendedUnits, totalUnits, skipInfo } = subject;
@@ -38,29 +38,27 @@ const SubjectRow = ({ subject, status, threshold, subjects, onPress }) => {
     // and the words say HOW IT IS GOING. They were both saying the second thing.
     const tint = subjectTint(subject.id, subjects);
 
-    const statusColor = status === 'danger' ? COLORS.danger
-        : status === 'edge' ? COLORS.warning
-            : COLORS.success;
-    const verdictColor = status === 'danger' ? COLORS.dangerText
-        : status === 'edge' ? COLORS.warningText
-            : tint.ink;
-
     return (
         <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={0.95}>
             <Animated.View style={[
                 styles.container,
                 { backgroundColor: tint.bg, transform: [{ scale }] },
             ]}>
-                {/* The ring's track is the subject's accent at low weight, so the
-                    ring reads as belonging to the card rather than sitting on it. */}
+                {/* Ring and track are both the subject's accent — filled at full
+                    weight, unfilled at low. It used to fill green/amber/red, and
+                    a green ring inside a coral card said two different things
+                    about the same subject; worse, a red ring on a subject sitting
+                    comfortably above target read as an alarm that was not there.
+                    Status is not gone, it is where it belongs: the section this
+                    row sits under, and the sentence underneath the name. */}
                 <ProgressRing
                     percentage={percentage}
                     size={52}
                     strokeWidth={4}
-                    color={statusColor}
+                    color={tint.accent}
                     trackColor={tint.accent}
                 >
-                    <Text style={{ ...TABULAR, fontSize: 12, fontWeight: '700', color: statusColor }}>{formatPct(percentage)}%</Text>
+                    <Text style={{ ...TABULAR, fontSize: 12, fontWeight: '700', color: tint.ink }}>{formatPct(percentage)}%</Text>
                 </ProgressRing>
 
                 <View style={styles.content}>
@@ -68,7 +66,7 @@ const SubjectRow = ({ subject, status, threshold, subjects, onPress }) => {
                         <Text style={[styles.name, { color: tint.ink }]} numberOfLines={1}>{shortSubjectName(name)}</Text>
                         <Text style={[styles.countText, { color: tint.ink }]}>{attendedUnits} / {totalUnits}</Text>
                     </View>
-                    <Text style={[styles.verdict, { color: verdictColor }]} numberOfLines={1}>
+                    <Text style={[styles.verdict, { color: tint.ink }]} numberOfLines={1}>
                         {skipInfo ? skipVerdict(status, skipInfo.count) : '…'}
                     </Text>
                 </View>

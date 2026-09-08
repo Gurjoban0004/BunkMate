@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { PAPER, TABULAR, SERIF_FONT, subjectTint } from '../../theme/theme';
+import { TABULAR, SERIF_FONT, subjectTint } from '../../theme/theme';
 import { getSubjectSkipBudget } from '../../utils/attendance';
 import { shortSubjectName } from '../../utils/subjectName';
 import { getTodayKey } from '../../utils/dateHelpers';
@@ -18,8 +18,9 @@ import { getTodayKey } from '../../utils/dateHelpers';
  * bar, the subject list and the insights charts (see theme.js §1c), so the
  * colour becomes the subject's identity.
  *
- * A class the college has already marked drops to stone and goes full width:
- * it is history, and history should not compete with the day ahead.
+ * A class the college has already marked keeps its colour but goes full width
+ * and drops in opacity: it is history, and history should recede without
+ * changing identity.
  */
 
 /** "14:00", from the timetable's "14:00" or "14:00:00". */
@@ -30,10 +31,11 @@ export default function ClassBento({ classInfo, state, variant = 'upcoming', wid
     const { subjectId, subjectName, startTime, endTime, room } = classInfo;
 
     const done = variant === 'done';
-    // PAPER is a live token map — read it in render, never at module scope.
-    const tint = done
-        ? { bg: PAPER.stone, ink: PAPER.stoneInk }
-        : subjectTint(subjectId, state.subjects);
+    // A finished class keeps its SUBJECT's colour and simply recedes. It used to
+    // switch to stone, which meant the same subject was lavender on the subject
+    // list and grey here — the identity broke exactly where the student was
+    // most likely to be comparing the two screens.
+    const tint = subjectTint(subjectId, state.subjects);
 
     const budget = getSubjectSkipBudget(subjectId, state);
     const percentage = budget?.percentage || 0;
@@ -99,7 +101,9 @@ const getStyles = () => StyleSheet.create({
     // third tile wraps, and flexGrow then fills the row it lands on.
     card: { flexGrow: 1, flexBasis: '45%', padding: 15, borderRadius: 18 },
     cardTall: { minHeight: 145 },
-    cardDone: { minHeight: 104 },
+    // History recedes by weight, not by hue — the day ahead stays the loudest
+    // thing on the screen without a finished class changing colour.
+    cardDone: { minHeight: 104, opacity: 0.62 },
     cardWide: { flexBasis: '100%' },
     time: { ...SERIF, fontSize: 12, fontWeight: '700' },
     name: { ...SERIF, fontSize: 16, fontWeight: '700', letterSpacing: -0.3, lineHeight: 17, marginTop: 20 },

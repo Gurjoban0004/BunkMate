@@ -480,12 +480,13 @@ export const PALETTES = {
         },
     },
 
-    // From docs/design_system.md — "Warm Paper & Editorial Pastel". Coral is
-    // the primary accent there, not an alarm colour, so danger takes the deeper
-    // coral (#c45b3c) the doc reserves for coral TEXT and the two never collide.
+    // The app's DEFAULT. From docs/design_system.md — "Warm Paper & Editorial
+    // Pastel". Coral is the primary accent there, not an alarm colour, so danger
+    // takes the deeper coral (#c45b3c) the doc reserves for coral TEXT and the
+    // two never collide.
     editorial: {
         id: 'editorial',
-        name: 'Editorial Pastel',
+        name: 'Linen',
         description: 'Unbleached paper, coral and sage',
         swatches: ['#f8f6f2', '#e27d60', '#6b8e7f'],
         light: {
@@ -572,10 +573,10 @@ export const DARK_COLORS = PALETTES.nordic.dark;
 // COLORS is the live token map. Always read from this — never from
 // palette definitions directly in components.
 // Call applyTheme() once on app boot (and on theme toggle) to populate it.
-export const COLORS = { ...PALETTES.paper.light };
+export const COLORS = { ...PALETTES.editorial.light };
 
 export const applyTheme = (themeStr, paletteId) => {
-    const palette = PALETTES[paletteId] || PALETTES.paper;
+    const palette = PALETTES[paletteId] || PALETTES.editorial;
     const mode = palette.oledOnly ? 'dark' : themeStr;
     const source = mode === 'dark' ? palette.dark : palette.light;
     Object.assign(COLORS, source);
@@ -780,8 +781,10 @@ function derivePaper(c, isDark) {
     };
 }
 
-// Live token map, same contract as COLORS. Populated by applyTheme().
-export const PAPER = { ...PAPER_LOCKED };
+// Live token map, same contract as COLORS. Populated by applyTheme(); seeded
+// from the DEFAULT palette so the frame before that call is not a different
+// theme. PAPER_LOCKED is only reinstated when the student picks Paper itself.
+export const PAPER = derivePaper(PALETTES.editorial.light, false);
 
 // ─────────────────────────────────────────────────────────────
 // 1c. SUBJECT IDENTITY
@@ -792,7 +795,9 @@ export const PAPER = { ...PAPER_LOCKED };
 //
 // The accents come from the active palette's own subjectPalette, so the identity
 // re-tints with the theme but the ORDER never changes — a subject keeps its slot.
-export const SUBJECT_TINTS = [];
+// Seeded from the default palette for the same reason PAPER is: subjectTint()
+// is called on the first render, before applyTheme() has run.
+export const SUBJECT_TINTS = buildSubjectTints(PALETTES.editorial.light, false);
 
 function buildSubjectTints(c, isDark) {
     const accents = c.subjectPalette || [c.primary];

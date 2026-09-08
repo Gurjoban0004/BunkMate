@@ -435,7 +435,7 @@ export default function ERPSetupScreen({ navigation }) {
 
     // ─── RENDER: THEME (final onboarding step, before entering the app) ──
     const renderTheme = () => {
-        const activePalette = state?.settings?.uiPalette || 'paper';
+        const activePalette = state?.settings?.uiPalette || 'editorial';
         return (
             <View style={styles.formSection}>
                 <View style={styles.sectionHeader}>

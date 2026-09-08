@@ -77,7 +77,7 @@ function AppContent() {
     const [devReady, setDevReady] = useState(!DEV_MODE || !SKIP_SETUP);
 
     const currentTheme = state?.settings?.theme || 'light';
-    const currentPalette = state?.settings?.uiPalette || 'chalkpad';
+    const currentPalette = state?.settings?.uiPalette || 'editorial';
     applyTheme(currentTheme, currentPalette);
 
     useEffect(() => {

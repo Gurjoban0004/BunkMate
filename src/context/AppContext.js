@@ -40,7 +40,7 @@ const initialState = {
         smartAlertsEnabled: true,
         erpConnected: false,
         lastErpSync: null,
-        uiPalette: 'paper',
+        uiPalette: 'editorial',
         isAdmin: false,               // decided by the server at sign-in, never by the client
     },
 

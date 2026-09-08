@@ -47,7 +47,7 @@ const SettingsScreen = ({ navigation }) => {
         smartAlertsEnabled = true,
         notificationTime = '07:30',
         theme = 'light',
-        uiPalette = 'paper',
+        uiPalette = 'editorial',
         semesterEndDate = null,
     } = state.settings || {};
 

@@ -189,7 +189,6 @@ const SubjectsScreen = ({ navigation }) => {
                                         key={subject.id}
                                         subject={subject}
                                         status="danger"
-                                        threshold={dangerThreshold}
                                         subjects={state.subjects}
                                         onPress={() => handleSubjectPress(subject)}
                                     />
@@ -212,7 +211,6 @@ const SubjectsScreen = ({ navigation }) => {
                                         key={subject.id}
                                         subject={subject}
                                         status="edge"
-                                        threshold={dangerThreshold}
                                         subjects={state.subjects}
                                         onPress={() => handleSubjectPress(subject)}
                                     />
@@ -235,7 +233,6 @@ const SubjectsScreen = ({ navigation }) => {
                                         key={subject.id}
                                         subject={subject}
                                         status="safe"
-                                        threshold={dangerThreshold}
                                         subjects={state.subjects}
                                         onPress={() => handleSubjectPress(subject)}
                                     />
