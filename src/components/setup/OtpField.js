@@ -2,14 +2,14 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, Platform } from 'react-native';
 import { COLORS, BORDER_RADIUS, TABULAR } from '../../theme/theme';
 
-const LENGTH = 6;
+const LENGTH = 4;
 
 /**
- * The verification code, as six boxes.
+ * The verification code, as four boxes.
  *
  * It used to be one text field with `placeholder="• • • •"` and
  * `letterSpacing: 8`, which drew four grey blobs that were neither the right
- * count (the college sends six) nor aligned with the digits that replaced them.
+ * count (the college sends four) nor aligned with the digits that replaced them.
  *
  * There is still exactly ONE TextInput underneath — an input per box breaks
  * paste, breaks the iOS/Android one-time-code autofill, and turns backspace
