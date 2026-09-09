@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const platform = detectPlatform();
 
-    // ===== Install Segmented Picker =====
+    // ===== UI Elements =====
     const segIos = document.getElementById('seg-ios');
     const segAndroid = document.getElementById('seg-android');
     const panelIos = document.getElementById('panel-ios');
@@ -35,7 +35,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAndroid = document.getElementById('btn-android');
     const heroBtnAndroid = document.getElementById('hero-btn-android');
     const note = document.getElementById('install-note');
+    const stickyBar = document.getElementById('mobile-sticky-bar');
+    const stickyBtn = document.getElementById('sticky-download-btn');
+    const stickyMetaText = document.getElementById('sticky-meta-text');
 
+    // ===== Direct APK Download Function =====
+    const triggerApkDownload = () => {
+        const link = document.createElement('a');
+        link.href = APK_URL;
+        link.download = 'presence.apk';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // ===== Install Segmented Picker =====
     const selectPlatform = (p) => {
         const isIos = p === 'ios';
         if (segIos && segAndroid && panelIos && panelAndroid) {
@@ -54,30 +68,28 @@ document.addEventListener('DOMContentLoaded', () => {
         segAndroid.addEventListener('click', () => selectPlatform('android'));
     }
 
-    // Default to the visitor's device (Android default if on Android, else iOS)
+    // Default to the visitor's device
     selectPlatform(platform === 'android' ? 'android' : 'ios');
 
-    // ===== Direct APK Download Function =====
-    const triggerApkDownload = () => {
-        const link = document.createElement('a');
-        link.href = APK_URL;
-        link.download = 'presence.apk';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+    // Update sticky bar based on platform
+    if (stickyMetaText && stickyBtn) {
+        if (platform === 'ios') {
+            stickyMetaText.textContent = 'Safari Web App';
+            stickyBtn.innerHTML = '<span>Open App</span>';
+            stickyBtn.addEventListener('click', () => {
+                window.location.href = '/app';
+            });
+        } else {
+            stickyMetaText.textContent = 'v2.1 APK · 59 MB';
+            stickyBtn.innerHTML = '<span>Download APK</span>';
+            stickyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                triggerApkDownload();
+            });
+        }
+    }
 
-    // Verify APK file accessibility
-    fetch(APK_URL, { method: 'HEAD' })
-        .then((r) => {
-            if (!r.ok) throw new Error('no apk file');
-        })
-        .catch(() => {
-            // If the static server doesn't host the file yet, keep the button active
-            // but gracefully fallback without breaking the UI.
-            console.info('APK check: File will be served from build bundle.');
-        });
-
+    // Connect Android download buttons
     if (btnAndroid) {
         btnAndroid.addEventListener('click', (e) => {
             e.preventDefault();
@@ -91,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 triggerApkDownload();
             }
-            // If on desktop, let standard anchor link scroll down to #install
+            // On desktop/iOS, let the standard anchor link navigate or scroll down
         });
     }
 
@@ -101,30 +113,87 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ===== Interactive Screen Tabs (Mobile/Tablet Gallery) =====
+    // ===== Mobile Carousel & Sync =====
+    const gallery = document.getElementById('showcase-gallery');
     const screenTabs = document.querySelectorAll('.screen-tab');
     const showcaseCards = document.querySelectorAll('.showcase-card');
+    const dots = document.querySelectorAll('.showcase-dots .dot');
 
+    const updateActiveIndex = (index) => {
+        screenTabs.forEach((tab, i) => {
+            const isActive = i === index;
+            tab.classList.toggle('active', isActive);
+            tab.setAttribute('aria-selected', String(isActive));
+        });
+
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === index);
+        });
+
+        showcaseCards.forEach((card, i) => {
+            card.classList.toggle('active', i === index);
+        });
+    };
+
+    // Tab click navigation
     screenTabs.forEach((tab) => {
         tab.addEventListener('click', () => {
-            const targetId = tab.getAttribute('data-target');
+            const index = parseInt(tab.getAttribute('data-index'), 10);
+            updateActiveIndex(index);
 
-            screenTabs.forEach((t) => {
-                t.classList.remove('active');
-                t.setAttribute('aria-selected', 'false');
-            });
-            tab.classList.add('active');
-            tab.setAttribute('aria-selected', 'true');
-
-            showcaseCards.forEach((card) => {
-                if (card.id === targetId) {
-                    card.classList.add('active');
-                } else {
-                    card.classList.remove('active');
-                }
-            });
+            if (gallery && showcaseCards[index]) {
+                const targetCard = showcaseCards[index];
+                gallery.scrollTo({
+                    left: targetCard.offsetLeft - gallery.offsetLeft,
+                    behavior: 'smooth'
+                });
+            }
         });
     });
+
+    // Dot click navigation
+    dots.forEach((dot) => {
+        dot.addEventListener('click', () => {
+            const index = parseInt(dot.getAttribute('data-index'), 10);
+            updateActiveIndex(index);
+
+            if (gallery && showcaseCards[index]) {
+                const targetCard = showcaseCards[index];
+                gallery.scrollTo({
+                    left: targetCard.offsetLeft - gallery.offsetLeft,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Touch scroll synchronization in gallery (debounce for performance)
+    if (gallery) {
+        let scrollTimeout;
+        gallery.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                const scrollLeft = gallery.scrollLeft;
+                const cardWidth = showcaseCards[0] ? showcaseCards[0].offsetWidth + 16 : 300;
+                const currentIndex = Math.round(scrollLeft / cardWidth);
+                const boundedIndex = Math.max(0, Math.min(currentIndex, showcaseCards.length - 1));
+                updateActiveIndex(boundedIndex);
+            }, 60);
+        }, { passive: true });
+    }
+
+    // ===== Mobile Sticky Bar on Scroll =====
+    const heroSection = document.querySelector('.hero-section');
+    if (stickyBar && heroSection) {
+        window.addEventListener('scroll', () => {
+            const heroBottom = heroSection.getBoundingClientRect().bottom;
+            if (heroBottom < 60) {
+                stickyBar.classList.add('visible');
+            } else {
+                stickyBar.classList.remove('visible');
+            }
+        }, { passive: true });
+    }
 
     // ===== Scroll Entrance Animations =====
     const sections = document.querySelectorAll('.fade-up');
@@ -144,12 +213,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         },
-        { threshold: 0.08 }
+        { threshold: 0.06 }
     );
 
     sections.forEach((el, i) => {
         if (i < 2) {
-            setTimeout(() => el.classList.add('visible'), 60 + i * 100);
+            setTimeout(() => el.classList.add('visible'), 50 + i * 80);
         } else {
             observer.observe(el);
         }

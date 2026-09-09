@@ -62,14 +62,14 @@
       <a href="/" class="nav-brand">
         <span class="brand-stamp" aria-hidden="true">P</span>
         <span class="brand-text">Presence</span>
-        <span class="badge-linen">v2.1 · Linen</span>
+        <span class="badge-linen">v2.1</span>
       </a>
 
       <div class="nav-actions">
         <a href="#screens" class="nav-link hide-mobile">Screenshots</a>
         <a href="#features" class="nav-link hide-mobile">Pillars</a>
         <a href="#install" class="nav-link hide-mobile">Download</a>
-        <a href="/app" class="btn btn-sm btn-outline">Open App</a>
+        <a href="/app" class="btn btn-sm btn-outline nav-cta">Open App</a>
       </div>
     </div>
   </nav>
@@ -80,7 +80,7 @@
     <header class="hero-section fade-up">
       <div class="hero-badge">
         <span class="badge-dot"></span>
-        <span class="badge-text">CALM, UNCOMPROMISING ATTENDANCE TRACKING</span>
+        <span class="badge-text">CALM ATTENDANCE TRACKING</span>
       </div>
 
       <h1 class="hero-headline">
@@ -97,8 +97,8 @@
           <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M17.6 9.48l1.84-3.18a.4.4 0 0 0-.15-.55.4.4 0 0 0-.55.15l-1.87 3.23a11.4 11.4 0 0 0-8.55 0L6.45 5.9a.4.4 0 0 0-.55-.15.4.4 0 0 0-.15.55L7.6 9.48A10.8 10.8 0 0 0 2 18.5h20a10.8 10.8 0 0 0-4.4-9.02M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5" />
           </svg>
-          <span>Download for Android</span>
-          <span class="hero-btn-tag">v2.1 APK</span>
+          <span id="hero-btn-text">Download for Android</span>
+          <span class="hero-btn-tag" id="hero-btn-subtag">v2.1 APK</span>
         </a>
 
         <a href="/app" class="btn btn-secondary btn-hero" id="hero-btn-ios">
@@ -133,28 +133,28 @@
         <span class="section-eyebrow">A LOOK INSIDE</span>
         <h2 class="section-title-large">Editorial paper. Tuned for the truth.</h2>
         <p class="section-subtitle">
-          Designed with the Linen aesthetic — warm unbleached paper, tactile coral accents, and soothing sage tones. Never harsh, never noisy.
+          Designed with the Linen aesthetic — warm unbleached paper, tactile coral accents, and soothing sage tones.
         </p>
       </div>
 
-      <!-- Interactive Tab Controls for Mobile/Tablet -->
+      <!-- Interactive Tab Controls -->
       <div class="screen-tabs" role="tablist" aria-label="Explore App Screens">
-        <button class="screen-tab active" id="tab-today" role="tab" aria-selected="true" data-target="card-today">
+        <button class="screen-tab active" id="tab-today" role="tab" aria-selected="true" data-index="0">
           <span class="tab-label">1. Today</span>
-          <span class="tab-sub">Daily Schedule &amp; Skip Verdict</span>
+          <span class="tab-sub">Schedule &amp; Skips</span>
         </button>
-        <button class="screen-tab" id="tab-subjects" role="tab" aria-selected="false" data-target="card-subjects">
+        <button class="screen-tab" id="tab-subjects" role="tab" aria-selected="false" data-index="1">
           <span class="tab-label">2. Subjects</span>
-          <span class="tab-sub">Overall &amp; Safe Margins</span>
+          <span class="tab-sub">Overall &amp; Buffers</span>
         </button>
-        <button class="screen-tab" id="tab-insights" role="tab" aria-selected="false" data-target="card-insights">
+        <button class="screen-tab" id="tab-insights" role="tab" aria-selected="false" data-index="2">
           <span class="tab-label">3. Insights</span>
-          <span class="tab-sub">Trends &amp; Semester Outlook</span>
+          <span class="tab-sub">Runway &amp; Trends</span>
         </button>
       </div>
 
-      <!-- Showcase Display -->
-      <div class="showcase-gallery">
+      <!-- Showcase Display (Swipeable on Mobile, 3-Col Grid on Desktop) -->
+      <div class="showcase-gallery" id="showcase-gallery">
         
         <!-- Screen 1: Today -->
         <article class="showcase-card active" id="card-today">
@@ -229,6 +229,13 @@
         </article>
 
       </div>
+
+      <!-- Mobile Dots Pagination Indicator -->
+      <div class="showcase-dots" id="showcase-dots" aria-hidden="true">
+        <span class="dot active" data-index="0"></span>
+        <span class="dot" data-index="1"></span>
+        <span class="dot" data-index="2"></span>
+      </div>
     </section>
 
     <!-- ====== Get Presence Hub (Download & Install) ====== -->
@@ -291,8 +298,8 @@
           <div class="security-banner">
             <span class="sec-icon">🛡️</span>
             <div class="sec-text">
-              <strong>Cryptographically Signed &amp; Safe</strong>
-              <span>This APK is compiled with Hermes bytecode and signed with our verified release certificate. Zero telemetry bloat, zero advertising SDKs.</span>
+              <strong>Verified &amp; Safe</strong>
+              <span>Signed with our verified release certificate. Zero ads, zero background battery drain, and private on-device storage.</span>
             </div>
           </div>
         </div>
@@ -391,9 +398,9 @@
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
           </div>
-          <h3 class="bento-title">Hermes Native Speed</h3>
+          <h3 class="bento-title">Instant &amp; Offline Ready</h3>
           <p class="bento-desc">
-            Compiled with Hermes bytecode for instant startup. The app reads from your phone’s local cache first, so you can check your schedule inside basement classrooms with zero signal.
+            Opens in a flash. The app caches your timetable and attendance locally so you can check your schedule inside basement classrooms with zero signal.
           </p>
         </div>
       </div>
@@ -409,8 +416,8 @@
         <h3 class="changelog-title">What’s New in Presence 2.1</h3>
         <ul class="changelog-bullets">
           <li><strong>The Linen Design System:</strong> Rebuilt from the ground up with unbleached paper tones, editorial typography, and muted subject palettes.</li>
-          <li><strong>Hermes Android Bytecode:</strong> Standalone APK compiled directly into bytecode for instant launch and 60fps animations.</li>
-          <li><strong>Hardened Security:</strong> Admin modules stripped from student binaries; all storage encrypted on-device with zero ad tracking.</li>
+          <li><strong>Fast &amp; Fluid Startup:</strong> Built to launch instantly and animate smoothly with minimal battery consumption.</li>
+          <li><strong>Built for Privacy:</strong> Your credentials communicate directly with your college portal; all data is encrypted on your device with zero ad tracking.</li>
           <li><strong>Offline Resilience:</strong> Check today’s schedule, skip balances, and past classes completely offline.</li>
         </ul>
       </div>
@@ -429,6 +436,19 @@
     </footer>
 
   </main>
+
+  <!-- Mobile Floating Action Bar (appears when scrolled on small screens) -->
+  <aside class="mobile-sticky-bar" id="mobile-sticky-bar" aria-label="Quick download">
+    <div class="sticky-bar-inner">
+      <div class="sticky-bar-info">
+        <span class="sticky-app-name">Presence</span>
+        <span class="sticky-meta" id="sticky-meta-text">v2.1 APK · 59 MB</span>
+      </div>
+      <button class="btn btn-primary btn-sm sticky-btn" id="sticky-download-btn">
+        <span>Download APK</span>
+      </button>
+    </div>
+  </aside>
 
   <script src="script.js"></script>
 </body>
