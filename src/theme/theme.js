@@ -522,7 +522,7 @@ export const PALETTES = {
             // The doc's four accents first — they are the ones the charts and
             // badges are tuned for — then four muted extensions of the same set.
             subjectPalette: [
-                '#e27d60', '#6b8e7f', '#7f7aa8', '#c99355',
+                '#7b8fb5', '#6b8e7f', '#7f7aa8', '#c99355',
                 '#a8817a', '#5f8f8b', '#9c7fa8', '#8a9169',
             ],
         },
@@ -559,7 +559,7 @@ export const PALETTES = {
             shadow:          '#000000',
             overlay:         'rgba(0, 0, 0, 0.7)',
             subjectPalette: [
-                '#e8927a', '#8fb09f', '#9a95c2', '#d9a970',
+                '#96a8cc', '#8fb09f', '#9a95c2', '#d9a970',
                 '#c29b93', '#7aabA6', '#b79ac2', '#a3ab80',
             ],
         },
