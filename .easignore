@@ -4,3 +4,5 @@ node_modules
 dist
 MD
 .DS_Store
+*.apk
+public/releases

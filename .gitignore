@@ -3,6 +3,8 @@ node_modules/
 dist/
 npm-debug.*
 *.jks
+*.apk
+public/releases/
 *.keystore
 !android/app/debug.keystore
 credentials.json
