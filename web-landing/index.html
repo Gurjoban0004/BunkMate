@@ -7,8 +7,8 @@
   <title>Presence · Attendance, solved.</title>
 
   <meta name="description"
-    content="Presence keeps your attendance up to date on its own, so you always know exactly when you can skip a class. Calm, precise attendance tracking for students.">
-  <meta name="theme-color" content="#fdfcf8">
+    content="Presence pulls your college attendance directly from your institution's portal, giving you exact mathematical skip limits and safe buffers. Calm, precise, and beautiful.">
+  <meta name="theme-color" content="#F8F6F2">
 
   <link rel="canonical" href="https://presence.runs-on.dev/">
 
@@ -20,7 +20,7 @@
   <meta property="og:image" content="https://presence.runs-on.dev/og-image.png">
   <meta property="og:image:width" content="1024">
   <meta property="og:image:height" content="1024">
-  <meta name="twitter:card" content="summary">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Presence · Attendance, solved.">
   <meta name="twitter:description" content="Know exactly when you can skip, before you decide.">
   <meta name="twitter:image" content="https://presence.runs-on.dev/og-image.png">
@@ -43,227 +43,389 @@
   }
   </script>
 
-  <!-- Same two faces the app ships: Tinos (the libre Times clone) for display,
-       Inter for everything you operate. Both fall back to metrically-close
-       system faces, so the page is readable before the fonts land. -->
+  <!-- Editorial Linen Fonts: Tinos & Newsreader for editorial serif, Inter for UI controls -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Tinos:wght@400;700&family=Inter:wght@400;500;600;700&display=swap">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&family=Tinos:ital,wght@0,400;0,700;1,400&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-  <main class="container">
+  <!-- Ambient background wash for Linen paper feel -->
+  <div class="linen-background-wash" aria-hidden="true"></div>
 
-    <!-- ====== Hero ====== -->
-    <header class="hero fade-up">
-      <div class="brand-mark" aria-hidden="true">P</div>
-      <h1 class="app-name">Presence</h1>
-      <p class="tagline">Attendance, solved.</p>
-      <p class="value-prop">Know exactly when you can skip, before you decide.</p>
-    </header>
+  <!-- ====== Global Navigation ====== -->
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <span class="brand-stamp" aria-hidden="true">P</span>
+        <span class="brand-text">Presence</span>
+        <span class="badge-linen">v2.1 · Linen</span>
+      </a>
 
-    <!-- ====== Install ====== -->
-    <section class="install fade-up" id="install">
-      <h2 class="section-title">Get Presence</h2>
+      <div class="nav-actions">
+        <a href="#screens" class="nav-link hide-mobile">Screenshots</a>
+        <a href="#features" class="nav-link hide-mobile">Pillars</a>
+        <a href="#install" class="nav-link hide-mobile">Download</a>
+        <a href="/app" class="btn btn-sm btn-outline">Open App</a>
+      </div>
+    </div>
+  </nav>
 
-      <div class="segmented" role="tablist" aria-label="Choose your device">
-        <button class="seg-btn" id="seg-ios" role="tab" aria-selected="true">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-          </svg>
-          iPhone
-        </button>
-        <button class="seg-btn" id="seg-android" role="tab" aria-selected="false">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+  <main class="page-wrapper">
+
+    <!-- ====== Hero Section ====== -->
+    <header class="hero-section fade-up">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        <span class="badge-text">CALM, UNCOMPROMISING ATTENDANCE TRACKING</span>
+      </div>
+
+      <h1 class="hero-headline">
+        Your attendance, exactly as your college records it.<br>
+        <span class="headline-serif-italic">And what it lets you skip.</span>
+      </h1>
+
+      <p class="hero-lead">
+        No spreadsheets, manual tallying, or guessed percentages. Presence syncs directly with your institution’s portal to calculate your true safe margins with mathematical certainty.
+      </p>
+
+      <div class="hero-actions">
+        <a href="#install" class="btn btn-primary btn-hero" id="hero-btn-android">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M17.6 9.48l1.84-3.18a.4.4 0 0 0-.15-.55.4.4 0 0 0-.55.15l-1.87 3.23a11.4 11.4 0 0 0-8.55 0L6.45 5.9a.4.4 0 0 0-.55-.15.4.4 0 0 0-.15.55L7.6 9.48A10.8 10.8 0 0 0 2 18.5h20a10.8 10.8 0 0 0-4.4-9.02M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5" />
           </svg>
-          Android
+          <span>Download for Android</span>
+          <span class="hero-btn-tag">v2.1 APK</span>
+        </a>
+
+        <a href="/app" class="btn btn-secondary btn-hero" id="hero-btn-ios">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+          </svg>
+          <span>Open in Browser</span>
+        </a>
+      </div>
+
+      <div class="hero-guarantees">
+        <div class="guarantee-item">
+          <span class="guarantee-icon" aria-hidden="true">🏛️</span>
+          <span>Official Portal Sync</span>
+        </div>
+        <div class="guarantee-separator">·</div>
+        <div class="guarantee-item">
+          <span class="guarantee-icon" aria-hidden="true">🔒</span>
+          <span>No Password Storage</span>
+        </div>
+        <div class="guarantee-separator">·</div>
+        <div class="guarantee-item">
+          <span class="guarantee-icon" aria-hidden="true">⚡</span>
+          <span>Instant Offline Start</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ====== Real Screenshots Showcase ====== -->
+    <section class="showcase-section fade-up" id="screens">
+      <div class="section-header-center">
+        <span class="section-eyebrow">A LOOK INSIDE</span>
+        <h2 class="section-title-large">Editorial paper. Tuned for the truth.</h2>
+        <p class="section-subtitle">
+          Designed with the Linen aesthetic — warm unbleached paper, tactile coral accents, and soothing sage tones. Never harsh, never noisy.
+        </p>
+      </div>
+
+      <!-- Interactive Tab Controls for Mobile/Tablet -->
+      <div class="screen-tabs" role="tablist" aria-label="Explore App Screens">
+        <button class="screen-tab active" id="tab-today" role="tab" aria-selected="true" data-target="card-today">
+          <span class="tab-label">1. Today</span>
+          <span class="tab-sub">Daily Schedule &amp; Skip Verdict</span>
+        </button>
+        <button class="screen-tab" id="tab-subjects" role="tab" aria-selected="false" data-target="card-subjects">
+          <span class="tab-label">2. Subjects</span>
+          <span class="tab-sub">Overall &amp; Safe Margins</span>
+        </button>
+        <button class="screen-tab" id="tab-insights" role="tab" aria-selected="false" data-target="card-insights">
+          <span class="tab-label">3. Insights</span>
+          <span class="tab-sub">Trends &amp; Semester Outlook</span>
         </button>
       </div>
 
-      <!-- iPhone panel -->
-      <div class="install-panel" id="panel-ios">
-        <button class="btn btn-primary" id="btn-ios">Open in Safari to install</button>
-        <ol class="steps">
-          <li class="step">
-            <span class="step-num">1</span>
-            <div class="step-body">
-              <strong>Open in Safari</strong>
-              <span>Tap the button above. Presence must be added from Safari; other browsers can't install it.</span>
+      <!-- Showcase Display -->
+      <div class="showcase-gallery">
+        
+        <!-- Screen 1: Today -->
+        <article class="showcase-card active" id="card-today">
+          <div class="device-mockup">
+            <div class="device-bezel">
+              <div class="device-island"></div>
+              <div class="device-screen">
+                <img src="/screenshots/screenshot-today.png" alt="Presence Today Screen showing daily schedule and skip decision" class="screen-img" loading="eager">
+              </div>
             </div>
-          </li>
-          <li class="step">
-            <span class="step-num">2</span>
-            <div class="step-body">
-              <strong>Tap the Share icon</strong>
-              <span>It's the square with an upward arrow, at the bottom of Safari.</span>
-            </div>
-          </li>
-          <li class="step">
-            <span class="step-num">3</span>
-            <div class="step-body">
-              <strong>Add to Home Screen</strong>
-              <span>Scroll down the menu and choose <em>Add to Home Screen</em>.</span>
-            </div>
-          </li>
-          <li class="step">
-            <span class="step-num">4</span>
-            <div class="step-body">
-              <strong>Confirm</strong>
-              <span>Tap <em>Add</em>. Presence appears on your home screen like any app.</span>
-            </div>
-          </li>
-        </ol>
-      </div>
-
-      <!-- Android panel -->
-      <div class="install-panel" id="panel-android" hidden>
-        <button class="btn btn-primary" id="btn-android">Download for Android</button>
-        <ol class="steps">
-          <li class="step">
-            <span class="step-num">1</span>
-            <div class="step-body">
-              <strong>Download the app</strong>
-              <span>Tap the button above to get the latest Android build.</span>
-            </div>
-          </li>
-          <li class="step">
-            <span class="step-num">2</span>
-            <div class="step-body">
-              <strong>Open the file</strong>
-              <span>Tap the download. If asked, allow installs from this source. It's a one-time setting.</span>
-            </div>
-          </li>
-          <li class="step">
-            <span class="step-num">3</span>
-            <div class="step-body">
-              <strong>Install &amp; open</strong>
-              <span>Tap <em>Install</em>, then open Presence and sign in.</span>
-            </div>
-          </li>
-        </ol>
-      </div>
-
-      <p class="install-note" id="install-note"></p>
-    </section>
-
-    <!-- ====== Preview ====== -->
-    <section class="preview fade-up">
-      <h2 class="section-title">A look inside</h2>
-      <div class="phone">
-        <div class="phone-screen">
-          <div class="p-greeting">Good afternoon, Gurjoban</div>
-          <div class="p-date">Thursday, July 16</div>
-
-          <div class="p-answer">
-            <span class="p-answer-label">Can I skip today?</span>
-            <span class="p-answer-value">Yes — 3 to spare</span>
           </div>
+          <div class="card-caption">
+            <span class="caption-tag">THE MORNING VERDICT</span>
+            <h3 class="caption-title">Wake up knowing if you can skip.</h3>
+            <p class="caption-body">
+              An instant YES or NO answer right at the top of your day. The schedule timeline tracks your lectures in real-time, showing which classes you have completed and your remaining skip balance per subject.
+            </p>
+            <ul class="caption-points">
+              <li><strong>Real-time skip counter:</strong> "8 skips left in ADI, 3 in PAUJ."</li>
+              <li><strong>Block-by-block timeline:</strong> Color-tinted cards for every lecture.</li>
+              <li><strong>Zero anxiety:</strong> No mental math required before deciding to sleep in.</li>
+            </ul>
+          </div>
+        </article>
 
-          <div class="p-row">
-            <div class="p-ring p-ring-safe"><span>82%</span></div>
-            <div class="p-row-main">
-              <span class="p-subject">Mathematics</span>
-              <span class="p-meta">41 / 50 classes</span>
+        <!-- Screen 2: Subjects -->
+        <article class="showcase-card" id="card-subjects">
+          <div class="device-mockup">
+            <div class="device-bezel">
+              <div class="device-island"></div>
+              <div class="device-screen">
+                <img src="/screenshots/screenshot-subjects.png" alt="Presence Subjects Screen showing overall attendance and subject progress rings" class="screen-img" loading="lazy">
+              </div>
             </div>
-            <span class="p-tag p-tag-safe">Skip 3</span>
           </div>
-          <div class="p-row">
-            <div class="p-ring p-ring-warn"><span>76%</span></div>
-            <div class="p-row-main">
-              <span class="p-subject">Data Structures</span>
-              <span class="p-meta">38 / 50 classes</span>
+          <div class="card-caption">
+            <span class="caption-tag">EXACT METRICS</span>
+            <h3 class="caption-title">Every class counted. Every buffer visible.</h3>
+            <p class="caption-body">
+              Your overall attendance ring measured against your college’s 75% requirement. Each subject features a tactile progress ring indicating exactly how many classes you can skip before dipping below the safe zone.
+            </p>
+            <ul class="caption-points">
+              <li><strong>Safe Subject Tally:</strong> Clear badge count ("6 Safe") showing subjects in the clear.</li>
+              <li><strong>Precision Hours:</strong> "224 of 258 hours" tracked to the exact period.</li>
+              <li><strong>Earthy Accent Palette:</strong> Soft sage, lavender, terracotta, and ochre indicators.</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- Screen 3: Insights -->
+        <article class="showcase-card" id="card-insights">
+          <div class="device-mockup">
+            <div class="device-bezel">
+              <div class="device-island"></div>
+              <div class="device-screen">
+                <img src="/screenshots/screenshot-insights.png" alt="Presence Insights Screen showing weekly review and semester countdown" class="screen-img" loading="lazy">
+              </div>
             </div>
-            <span class="p-tag p-tag-warn">Skip 1</span>
           </div>
-          <div class="p-row">
-            <div class="p-ring p-ring-danger"><span>68%</span></div>
-            <div class="p-row-main">
-              <span class="p-subject">Physics</span>
-              <span class="p-meta">34 / 50 classes</span>
-            </div>
-            <span class="p-tag p-tag-danger">Attend 4</span>
+          <div class="card-caption">
+            <span class="caption-tag">LONG TERM HORIZON</span>
+            <h3 class="caption-title">Honest feedback before it’s too late.</h3>
+            <p class="caption-body">
+              The Week in Review flags slipping trends before you risk debarment. The Semester Outlook gives you a clear runway: how many classes remain, how many you must attend, and how many you can afford to skip.
+            </p>
+            <ul class="caption-points">
+              <li><strong>Early Warning System:</strong> "One more week like this costs you a subject."</li>
+              <li><strong>Best vs. Needs Work:</strong> Instantly compare attendance strengths and weaknesses.</li>
+              <li><strong>Semester Runway:</strong> "21 classes left · 5 must attend · 16 can skip."</li>
+            </ul>
           </div>
-        </div>
+        </article>
+
       </div>
     </section>
 
-    <!-- ====== Features ====== -->
-    <section class="features fade-up">
-      <div class="feature">
-        <span class="feature-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-            <polyline points="21 3 21 8 16 8" /><polyline points="3 21 3 16 8 16" />
-          </svg>
-        </span>
-        <div class="feature-text">
-          <strong>Exactly what your college has</strong>
-          <span>Your subjects, timetable and attendance come straight from your college — never a guess.</span>
+    <!-- ====== Get Presence Hub (Download & Install) ====== -->
+    <section class="install-section fade-up" id="install">
+      <div class="install-box">
+        <div class="install-header">
+          <span class="section-eyebrow">INSTALL PRESENCE</span>
+          <h2 class="install-headline">Get Presence on your phone</h2>
+          <p class="install-desc">Available directly for Android as a standalone APK, and for iPhone as a zero-bloat home screen app.</p>
         </div>
-      </div>
-      <div class="feature">
-        <span class="feature-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" /><path d="M9.5 12l1.8 1.8 3.5-3.6" />
-          </svg>
-        </span>
-        <div class="feature-text">
-          <strong>Sign in once</strong>
-          <span>Your password goes straight to your college. One code the first time, and you're in.</span>
+
+        <div class="segmented-picker" role="tablist" aria-label="Choose your operating system">
+          <button class="seg-btn" id="seg-android" role="tab" aria-selected="true">
+            <svg class="seg-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M17.6 9.48l1.84-3.18a.4.4 0 0 0-.15-.55.4.4 0 0 0-.55.15l-1.87 3.23a11.4 11.4 0 0 0-8.55 0L6.45 5.9a.4.4 0 0 0-.55-.15.4.4 0 0 0-.15.55L7.6 9.48A10.8 10.8 0 0 0 2 18.5h20a10.8 10.8 0 0 0-4.4-9.02M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5" />
+            </svg>
+            <span>Android (APK)</span>
+          </button>
+          <button class="seg-btn" id="seg-ios" role="tab" aria-selected="false">
+            <svg class="seg-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+            </svg>
+            <span>iPhone / Safari</span>
+          </button>
         </div>
-      </div>
-      <div class="feature">
-        <span class="feature-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="5" y="3" width="14" height="18" rx="2" /><line x1="9" y1="7" x2="15" y2="7" />
-            <line x1="9" y1="11" x2="9.01" y2="11" /><line x1="12" y1="11" x2="12.01" y2="11" /><line x1="15" y1="11" x2="15.01" y2="11" />
-            <line x1="9" y1="15" x2="9.01" y2="15" /><line x1="12" y1="15" x2="12.01" y2="15" />
-          </svg>
-        </span>
-        <div class="feature-text">
-          <strong>Skip &amp; recovery planner</strong>
-          <span>Simulate exactly how many classes you can skip, or how many you must attend to recover.</span>
+
+        <!-- Android Panel -->
+        <div class="panel-card" id="panel-android">
+          <div class="download-action-card">
+            <div class="action-card-text">
+              <h3 class="action-card-title">Presence for Android</h3>
+              <p class="action-card-sub">Release build · Version 2.1.0 · 59 MB · Android 8.0+</p>
+            </div>
+            <button class="btn btn-primary btn-large" id="btn-android">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+              </svg>
+              <span>Download APK</span>
+            </button>
+          </div>
+
+          <div class="install-steps-grid">
+            <div class="step-item">
+              <span class="step-badge">Step 1</span>
+              <h4>Download the APK</h4>
+              <p>Tap the button above. The <code>presence.apk</code> file downloads straight to your phone.</p>
+            </div>
+            <div class="step-item">
+              <span class="step-badge">Step 2</span>
+              <h4>Open &amp; Allow Source</h4>
+              <p>Tap the file notification or find it in Downloads / WhatsApp. If Android asks, tap <em>Settings</em> and toggle <em>Allow from this source</em>.</p>
+            </div>
+            <div class="step-item">
+              <span class="step-badge">Step 3</span>
+              <h4>Install &amp; Sync</h4>
+              <p>Tap <em>Install</em>. Launch Presence, sign in with your college roll number, and your attendance syncs immediately.</p>
+            </div>
+          </div>
+
+          <div class="security-banner">
+            <span class="sec-icon">🛡️</span>
+            <div class="sec-text">
+              <strong>Cryptographically Signed &amp; Safe</strong>
+              <span>This APK is compiled with Hermes bytecode and signed with our verified release certificate. Zero telemetry bloat, zero advertising SDKs.</span>
+            </div>
+          </div>
         </div>
+
+        <!-- iPhone Panel -->
+        <div class="panel-card" id="panel-ios" hidden>
+          <div class="download-action-card">
+            <div class="action-card-text">
+              <h3 class="action-card-title">Presence for iPhone &amp; iPad</h3>
+              <p class="action-card-sub">Safari Progressive Web App · No App Store account required</p>
+            </div>
+            <button class="btn btn-primary btn-large" id="btn-ios">
+              <span>Open in Safari to Install</span>
+            </button>
+          </div>
+
+          <div class="install-steps-grid">
+            <div class="step-item">
+              <span class="step-badge">Step 1</span>
+              <h4>Open in Safari</h4>
+              <p>Presence must be installed from Apple Safari (Chrome or Firefox cannot pin apps on iOS).</p>
+            </div>
+            <div class="step-item">
+              <span class="step-badge">Step 2</span>
+              <h4>Tap Share Icon</h4>
+              <p>Tap the square icon with the upward arrow at the bottom of Safari's navigation toolbar.</p>
+            </div>
+            <div class="step-item">
+              <span class="step-badge">Step 3</span>
+              <h4>Add to Home Screen</h4>
+              <p>Scroll down the menu, select <em>Add to Home Screen</em>, and tap <em>Add</em> in the top corner.</p>
+            </div>
+          </div>
+        </div>
+
+        <p class="install-footnote" id="install-note">Android 8.0 and up. Open source, verified, and safe to install.</p>
       </div>
-      <div class="feature">
-        <span class="feature-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="4" y1="20" x2="4" y2="12" /><line x1="10" y1="20" x2="10" y2="4" />
-            <line x1="16" y1="20" x2="16" y2="9" /><line x1="20" y1="20" x2="4" y2="20" />
-          </svg>
-        </span>
-        <div class="feature-text">
-          <strong>Honest insights</strong>
-          <span>Weekday patterns, subject trends, and a clear Week in Review.</span>
+    </section>
+
+    <!-- ====== Editorial Features (Bento Grid) ====== -->
+    <section class="features-section fade-up" id="features">
+      <div class="section-header-center">
+        <span class="section-eyebrow">BUILT DIFFERENTLY</span>
+        <h2 class="section-title-large">Engineered around college reality.</h2>
+        <p class="section-subtitle">Most apps ask you to tap a button every time you attend a class. Presence automates the entire loop.</p>
+      </div>
+
+      <div class="bento-grid">
+        <!-- Card 1 -->
+        <div class="bento-card bento-card-sage">
+          <div class="bento-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 0 1-15 6.7L3 16" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+              <polyline points="21 3 21 8 16 8" /><polyline points="3 21 3 16 8 16" />
+            </svg>
+          </div>
+          <h3 class="bento-title">Official Portal Truth</h3>
+          <p class="bento-desc">
+            Your attendance is pulled directly from your university’s ERP records. Teachers submit marks; Presence reflects them within hours. What you see is what the registrar sees.
+          </p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="bento-card bento-card-coral">
+          <div class="bento-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="3" width="14" height="18" rx="2" /><line x1="9" y1="7" x2="15" y2="7" />
+              <line x1="9" y1="11" x2="9.01" y2="11" /><line x1="12" y1="11" x2="12.01" y2="11" /><line x1="15" y1="11" x2="15.01" y2="11" />
+              <line x1="9" y1="15" x2="9.01" y2="15" /><line x1="12" y1="15" x2="12.01" y2="15" />
+            </svg>
+          </div>
+          <h3 class="bento-title">Skip &amp; Recovery Math</h3>
+          <p class="bento-desc">
+            Never guess how many lectures you can miss. If you are safe, Presence shows your exact skip buffer. If you fall below 75%, it calculates the exact consecutive classes needed to recover.
+          </p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bento-card">
+          <div class="bento-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+              <path d="M9.5 12l1.8 1.8 3.5-3.6" />
+            </svg>
+          </div>
+          <h3 class="bento-title">One-Time Sign In</h3>
+          <p class="bento-desc">
+            Authenticate once with your student roll number. Your credentials communicate directly with your college. No recurring CAPTCHA walls and no surprise session timeouts.
+          </p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="bento-card">
+          <div class="bento-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+          </div>
+          <h3 class="bento-title">Hermes Native Speed</h3>
+          <p class="bento-desc">
+            Compiled with Hermes bytecode for instant startup. The app reads from your phone’s local cache first, so you can check your schedule inside basement classrooms with zero signal.
+          </p>
         </div>
       </div>
     </section>
 
-    <!-- ====== What's New ====== -->
-    <section class="whats-new fade-up">
-      <h2 class="section-title">What's new</h2>
-      <div class="changelog">
-        <div class="changelog-head">
-          <span class="version-badge">v2.1</span>
-          <span class="version-date">September 2026</span>
+    <!-- ====== Changelog ====== -->
+    <section class="changelog-section fade-up">
+      <div class="changelog-card">
+        <div class="changelog-badge-row">
+          <span class="changelog-badge">RELEASE v2.1.0</span>
+          <span class="changelog-date">September 2026 · Linen Edition</span>
         </div>
-        <ul class="changelog-list">
-          <li><strong>Your numbers are your college's numbers:</strong> nothing in the app can push them above what the college records.</li>
-          <li><strong>Sign in once:</strong> no more surprise "session expired" codes.</li>
-          <li><strong>Faster start:</strong> the app opens from your phone first and syncs behind the scenes.</li>
-          <li><strong>Days off, done right:</strong> a rest day shows where you stand, what's next, and which subject needs you most.</li>
+        <h3 class="changelog-title">What’s New in Presence 2.1</h3>
+        <ul class="changelog-bullets">
+          <li><strong>The Linen Design System:</strong> Rebuilt from the ground up with unbleached paper tones, editorial typography, and muted subject palettes.</li>
+          <li><strong>Hermes Android Bytecode:</strong> Standalone APK compiled directly into bytecode for instant launch and 60fps animations.</li>
+          <li><strong>Hardened Security:</strong> Admin modules stripped from student binaries; all storage encrypted on-device with zero ad tracking.</li>
+          <li><strong>Offline Resilience:</strong> Check today’s schedule, skip balances, and past classes completely offline.</li>
         </ul>
       </div>
     </section>
 
     <!-- ====== Footer ====== -->
-    <footer class="footer">
-      <div class="brand-mark brand-mark-sm" aria-hidden="true">P</div>
-      <p class="footer-tagline">Presence · attendance, solved.</p>
-      <p class="footer-version">Version 2.1</p>
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="brand-stamp-sm">P</span>
+          <span class="footer-title">Presence</span>
+        </div>
+        <p class="footer-copy">Attendance, exactly as your college records it. Crafted for students.</p>
+        <p class="footer-version">v2.1.0 · Build 8 · Linen Release</p>
+      </div>
     </footer>
 
   </main>

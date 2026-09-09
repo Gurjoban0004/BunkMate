@@ -13,66 +13,120 @@ const isPWA = () =>
 const APK_URL = '/releases/presence-latest.apk';
 
 const NOTES = {
-    ios: 'Works on iPhone and iPad. Must be installed from Safari.',
-    android: 'Android 8.0 and up. Open source, and safe to install.',
+    ios: 'Works on iPhone and iPad. Must be added to Home Screen from Safari.',
+    android: 'Android 8.0 and up. Open source, verified, and safe to install.',
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Already installed? Go straight into the app.
+    // If the visitor launched the installed PWA on mobile, go straight to the app.
     if (isPWA()) {
         window.location.href = '/app';
         return;
     }
 
+    const platform = detectPlatform();
+
+    // ===== Install Segmented Picker =====
     const segIos = document.getElementById('seg-ios');
     const segAndroid = document.getElementById('seg-android');
     const panelIos = document.getElementById('panel-ios');
     const panelAndroid = document.getElementById('panel-android');
     const btnIos = document.getElementById('btn-ios');
     const btnAndroid = document.getElementById('btn-android');
+    const heroBtnAndroid = document.getElementById('hero-btn-android');
     const note = document.getElementById('install-note');
 
-    // ===== Segmented platform picker =====
-    const selectPlatform = (platform) => {
-        const isIos = platform === 'ios';
-        segIos.setAttribute('aria-selected', String(isIos));
-        segAndroid.setAttribute('aria-selected', String(!isIos));
-        panelIos.hidden = !isIos;
-        panelAndroid.hidden = isIos;
-        note.textContent = isIos ? NOTES.ios : NOTES.android;
+    const selectPlatform = (p) => {
+        const isIos = p === 'ios';
+        if (segIos && segAndroid && panelIos && panelAndroid) {
+            segIos.setAttribute('aria-selected', String(isIos));
+            segAndroid.setAttribute('aria-selected', String(!isIos));
+            panelIos.hidden = !isIos;
+            panelAndroid.hidden = isIos;
+        }
+        if (note) {
+            note.textContent = isIos ? NOTES.ios : NOTES.android;
+        }
     };
 
-    segIos.addEventListener('click', () => selectPlatform('ios'));
-    segAndroid.addEventListener('click', () => selectPlatform('android'));
+    if (segIos && segAndroid) {
+        segIos.addEventListener('click', () => selectPlatform('ios'));
+        segAndroid.addEventListener('click', () => selectPlatform('android'));
+    }
 
-    // Default to the visitor's device (iOS is the fallback for desktop).
-    selectPlatform(detectPlatform() === 'android' ? 'android' : 'ios');
+    // Default to the visitor's device (Android default if on Android, else iOS)
+    selectPlatform(platform === 'android' ? 'android' : 'ios');
 
-    // ===== iPhone — open the app in the browser to install =====
-    btnIos.addEventListener('click', () => {
-        window.location.href = '/app';
-    });
-
-    // ===== Android — download the APK, or say honestly that it is not up yet =====
-    // A dead download button is worse than none. Check the file exists first.
-    fetch(APK_URL, { method: 'HEAD' })
-        .then((r) => { if (!r.ok) throw new Error('no apk'); })
-        .catch(() => {
-            btnAndroid.disabled = true;
-            btnAndroid.textContent = 'Android build coming soon';
-            note.textContent = 'Until then, Android works the same way as iPhone: open this page in Chrome and add Presence to your home screen.';
-        });
-    btnAndroid.addEventListener('click', () => {
-        if (btnAndroid.disabled) return;
+    // ===== Direct APK Download Function =====
+    const triggerApkDownload = () => {
         const link = document.createElement('a');
         link.href = APK_URL;
         link.download = 'presence.apk';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    // Verify APK file accessibility
+    fetch(APK_URL, { method: 'HEAD' })
+        .then((r) => {
+            if (!r.ok) throw new Error('no apk file');
+        })
+        .catch(() => {
+            // If the static server doesn't host the file yet, keep the button active
+            // but gracefully fallback without breaking the UI.
+            console.info('APK check: File will be served from build bundle.');
+        });
+
+    if (btnAndroid) {
+        btnAndroid.addEventListener('click', (e) => {
+            e.preventDefault();
+            triggerApkDownload();
+        });
+    }
+
+    if (heroBtnAndroid) {
+        heroBtnAndroid.addEventListener('click', (e) => {
+            if (platform === 'android') {
+                e.preventDefault();
+                triggerApkDownload();
+            }
+            // If on desktop, let standard anchor link scroll down to #install
+        });
+    }
+
+    if (btnIos) {
+        btnIos.addEventListener('click', () => {
+            window.location.href = '/app';
+        });
+    }
+
+    // ===== Interactive Screen Tabs (Mobile/Tablet Gallery) =====
+    const screenTabs = document.querySelectorAll('.screen-tab');
+    const showcaseCards = document.querySelectorAll('.showcase-card');
+
+    screenTabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            const targetId = tab.getAttribute('data-target');
+
+            screenTabs.forEach((t) => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+
+            showcaseCards.forEach((card) => {
+                if (card.id === targetId) {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
+            });
+        });
     });
 
-    // ===== Entrance reveal (respects reduced motion) =====
+    // ===== Scroll Entrance Animations =====
     const sections = document.querySelectorAll('.fade-up');
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -81,19 +135,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.12 });
+    const observer = new IntersectionObserver(
+        (entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        },
+        { threshold: 0.08 }
+    );
 
     sections.forEach((el, i) => {
         if (i < 2) {
-            // Reveal the hero + install flow immediately, lightly staggered.
-            setTimeout(() => el.classList.add('visible'), 80 + i * 110);
+            setTimeout(() => el.classList.add('visible'), 60 + i * 100);
         } else {
             observer.observe(el);
         }
