@@ -18,7 +18,7 @@
     "redirects": [
         {
             "source": "/releases/presence-latest.apk",
-            "destination": "https://github.com/Gurjoban0004/BunkMate/releases/download/v2.1.0/presence-latest.apk",
+            "destination": "https://github.com/Gurjoban0004/presence-releases/releases/download/v2.1.0/presence-latest.apk",
             "permanent": false
         }
     ],

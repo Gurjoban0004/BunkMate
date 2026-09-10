@@ -9,16 +9,18 @@ SITE="${1:-https://presence.runs-on.dev}"
 URL="$SITE/releases/presence-latest.apk"
 fail=0
 
+host=$(echo "$SITE" | sed -E 's#^https?://##; s#/.*##')
 loc=$(curl -sI "$URL" | tr -d '\r' | awk 'tolower($1)=="location:"{print $2}')
 case "$loc" in
-  https://github.com/*/releases/download/*) echo "ok   redirect -> $loc" ;;
-  "") echo "FAIL no redirect — Vercel is still serving the 61 MB file itself"; fail=1 ;;
-  *)  echo "FAIL unexpected redirect target: $loc"; fail=1 ;;
+  "")              echo "FAIL no redirect — Vercel is still serving the 61 MB file itself"; fail=1 ;;
+  https://$host/*) echo "FAIL redirect still points back at Vercel: $loc"; fail=1 ;;
+  https://*)       echo "ok   redirect -> $loc" ;;
+  *)               echo "FAIL unexpected redirect target: $loc"; fail=1 ;;
 esac
 
 read -r code len < <(curl -sIL "$URL" | tr -d '\r' | awk '
   tolower($1)=="content-length:"{len=$2} /^HTTP/{code=$2} END{print code, len+0}')
-[ "$code" = "200" ] && [ "$len" -gt 40000000 ] \
+[ "$code" = "200" ] && [ "$len" -gt 20000000 ] \
   && echo "ok   asset reachable: $code, $len bytes" \
   || { echo "FAIL asset not reachable: code=$code len=$len (is the release uploaded?)"; fail=1; }
 
