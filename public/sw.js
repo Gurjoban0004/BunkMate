@@ -3,7 +3,7 @@
  * Provides offline support and install capability.
  */
 
-const CACHE_NAME = 'presence-v4';
+const CACHE_NAME = 'presence-v5';
 const STATIC_ASSETS = ['/', '/index.html', '/app'];
 
 // Install: cache static shell
@@ -75,7 +75,13 @@ self.addEventListener('fetch', (event) => {
         url.hostname.includes('googleapis.com') ||
         // Vercel Web Analytics — never cache the beacon or its script, or the
         // offline cache would start replaying stale analytics assets.
-        url.pathname.startsWith('/_vercel/')
+        url.pathname.startsWith('/_vercel/') ||
+        // APK download — must never touch the worker. respondWith() would make
+        // the browser stream 60 MB through here (and response.clone() buffers
+        // the whole body to cache it), which stalls the download partway. Left
+        // alone, Chrome's download manager handles it natively, with range
+        // requests, resume, and the off-origin redirect to GitHub Releases.
+        url.pathname.startsWith('/releases/')
     ) {
         return;
     }

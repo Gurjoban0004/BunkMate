@@ -42,6 +42,8 @@ for (const f of ['dist/app.html', 'dist/index.html']) {
 }
 "
 
-# Copy APK if it exists
-mkdir -p dist/releases
-cp public/releases/presence-latest.apk dist/releases/presence-latest.apk 2>/dev/null || true
+# The APK is NOT deployed with the site. Vercel shaped the 61 MB download to
+# ~300 KB/s, which made it stall on phones. /releases/presence-latest.apk is a
+# redirect (see vercel.json) to the GitHub Releases asset instead.
+# To ship a new build: upload the APK to a GitHub release, then point the
+# redirect at the new tag.
