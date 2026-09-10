@@ -39,14 +39,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const stickyBtn = document.getElementById('sticky-download-btn');
     const stickyMetaText = document.getElementById('sticky-meta-text');
 
-    // ===== Direct APK Download Function =====
-    const triggerApkDownload = () => {
-        const link = document.createElement('a');
-        link.href = APK_URL;
-        link.download = 'presence.apk';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    // ===== Single Download Guard (prevents mobile double-taps & Chrome multi-file prompt) =====
+    let isDownloading = false;
+    const attachDownloadGuard = (el) => {
+        if (!el) return;
+        el.addEventListener('click', (e) => {
+            if (isDownloading) {
+                // If a download was already triggered within the last 4s, block duplicate taps
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            isDownloading = true;
+
+            const label = el.querySelector('.btn-label') || el.querySelector('span');
+            const originalText = label ? label.textContent : '';
+            if (label) {
+                label.textContent = 'Starting download...';
+            }
+            el.classList.add('is-downloading');
+
+            // Reset after 4 seconds so the user can re-download if genuinely needed
+            setTimeout(() => {
+                isDownloading = false;
+                el.classList.remove('is-downloading');
+                if (label) {
+                    label.textContent = originalText;
+                }
+            }, 4000);
+        });
     };
 
     // ===== Install Segmented Picker =====
@@ -68,50 +89,37 @@ document.addEventListener('DOMContentLoaded', () => {
         segAndroid.addEventListener('click', () => selectPlatform('android'));
     }
 
-    // Default to the visitor's device
-    selectPlatform(platform === 'android' ? 'android' : 'ios');
+    // Default to the visitor's device and wire up platform-specific actions
+    const isIosVisitor = platform === 'ios';
+    selectPlatform(isIosVisitor ? 'ios' : 'android');
 
-    // Update sticky bar based on platform
-    if (stickyMetaText && stickyBtn) {
-        if (platform === 'ios') {
+    if (isIosVisitor) {
+        // Adapt sticky bar for Safari / iPhone
+        if (stickyBtn && stickyMetaText) {
             stickyMetaText.textContent = 'Safari Web App';
-            stickyBtn.innerHTML = '<span>Open App</span>';
-            stickyBtn.addEventListener('click', () => {
-                window.location.href = '/app';
-            });
-        } else {
-            stickyMetaText.textContent = 'v2.1 APK · 59 MB';
-            stickyBtn.innerHTML = '<span>Download APK</span>';
-            stickyBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                triggerApkDownload();
-            });
+            stickyBtn.href = '/app';
+            stickyBtn.removeAttribute('download');
+            stickyBtn.classList.remove('apk-download-link');
+            const stickyLabel = stickyBtn.querySelector('.btn-label') || stickyBtn.querySelector('span');
+            if (stickyLabel) stickyLabel.textContent = 'Open App';
+        }
+
+        // Adapt hero button to guide iPhone users to Safari install steps
+        if (heroBtnAndroid) {
+            heroBtnAndroid.href = '#install';
+            heroBtnAndroid.removeAttribute('download');
+            heroBtnAndroid.classList.remove('apk-download-link');
+            const heroText = document.getElementById('hero-btn-text');
+            if (heroText) heroText.textContent = 'Install for iPhone';
+            const heroSubtag = document.getElementById('hero-btn-subtag');
+            if (heroSubtag) heroSubtag.textContent = 'Safari PWA';
         }
     }
 
-    // Connect Android download buttons
-    if (btnAndroid) {
-        btnAndroid.addEventListener('click', (e) => {
-            e.preventDefault();
-            triggerApkDownload();
-        });
-    }
-
-    if (heroBtnAndroid) {
-        heroBtnAndroid.addEventListener('click', (e) => {
-            if (platform === 'android') {
-                e.preventDefault();
-                triggerApkDownload();
-            }
-            // On desktop/iOS, let the standard anchor link navigate or scroll down
-        });
-    }
-
-    if (btnIos) {
-        btnIos.addEventListener('click', () => {
-            window.location.href = '/app';
-        });
-    }
+    // Wire up single-download guards on all direct APK links
+    document.querySelectorAll('.apk-download-link').forEach((el) => {
+        attachDownloadGuard(el);
+    });
 
     // ===== Mobile Carousel & Sync =====
     const gallery = document.getElementById('showcase-gallery');
