@@ -322,7 +322,14 @@ body {
 .guarantee-item {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+}
+
+.guarantee-svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-sage-dark);
+  flex-shrink: 0;
 }
 
 .guarantee-separator {
@@ -804,9 +811,12 @@ body {
   padding: 14px 18px;
 }
 
-.sec-icon {
-  font-size: 1.3rem;
-  line-height: 1;
+.sec-svg {
+  width: 20px;
+  height: 20px;
+  color: var(--accent-sage-dark);
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .sec-text {
