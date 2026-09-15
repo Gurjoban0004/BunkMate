@@ -22,17 +22,21 @@
  *      and the first block of `overview`.
  *
  * Metrics:
- *   live              — who has the app open right now, plus the known roster
+ *   live              — who has the app open right now (cheap: reads only them)
+ *   daily             — { day? } one college day: who opened the app, when, for
+ *                       how long, and which screens they used
+ *   usage             — the last 14 days: students per day and screen views
+ *   student           — { roll } everything known about one student
  *   loginEvents       — every sign-in attempt against the college, success or not
- *   overview          — the hero: students, activity, sync health, sign-in events, attendance
- *   userRoster        — { users: [real students], unfinished: { count, olderThan7d } — legacy only }
+ *   overview          — attendance and sync health across students
+ *   userRoster        — every student the server has seen, merged with what
+ *                       their phone wrote; unfinished = legacy login-code docs
  *   sessionEvents     — who was asked to sign in again in the last 7 days, and why
  *   subjectDifficulty — aggregate attendance per subject across students
  *   bunkCulture       — day-of-week miss rates from the register
  *   batchDistribution — cohort breakdown
  *   endpointHealth    — 24h endpoint success/fail rates
  *   parserFailures    — recent parser errors
- *   rateLimit         — per-student sync frequency
  *   downtime          — live college outages inferred from sync telemetry
  */
 
@@ -40,6 +44,7 @@ const { setCorsHeaders, decodeSessionRollNumber, getClientIp } = require('./_ses
 const { tooManyAttempts } = require('./_rate-limit');
 const { adminDb, isAdminRoll } = require('./_firebase-admin');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
+const { dayKey, dayStartMs, sessionsFromBeats, safeRoll } = require('./_activity');
 
 const IP_POLICY = { max: 120, windowMs: 10 * 60 * 1000 };
 
@@ -53,6 +58,9 @@ const MAX_LOGINS    = 500;
 // Live panels refresh often; the heavy aggregates less so.
 const TTL_MS = {
     live: 20 * 1000,
+    daily: 60 * 1000,
+    usage: 5 * 60 * 1000,
+    student: 60 * 1000,
     loginEvents: 60 * 1000,
     overview: 60 * 1000,
     userRoster: 2 * 60 * 1000,
@@ -60,26 +68,38 @@ const TTL_MS = {
     endpointHealth: 5 * 60 * 1000,
     downtime: 2 * 60 * 1000,
     parserFailures: 5 * 60 * 1000,
-    rateLimit: 5 * 60 * 1000,
     subjectDifficulty: 30 * 60 * 1000,
     bunkCulture: 30 * 60 * 1000,
     batchDistribution: 30 * 60 * 1000,
 };
 
 const DAY = 86400000;
+const HOUR = 3600000;
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const USAGE_DAYS = 14;
+const STUDENT_DAYS = 30;
 const REAL_ROLL = /^\d{6,}$/;
 const isRealRoll = (roll) => !!roll && REAL_ROLL.test(String(roll).trim());
 
 const millis = (v) => (v && typeof v.toMillis === 'function') ? v.toMillis()
     : (typeof v === 'string' || typeof v === 'number') ? new Date(v).getTime() : 0;
 const finiteMillis = (v) => { const m = millis(v); return Number.isFinite(m) && m > 0 ? m : null; };
+const sum = (values) => values.reduce((a, b) => a + (Number(b) || 0), 0);
+const countOf = async (query) => (await query.count().get()).data().count;
+
+/** 'Batch 2024' from a roll number that starts with the admission year. */
+function batchOf(roll) {
+    const prefix = String(roll).substring(0, 2);
+    return `Batch ${parseInt(prefix, 10) >= 50 ? '19' : '20'}${prefix}`;
+}
 
 // ── Cache: one doc per metric ────────────────────────────────────────
-const cacheRef = (metric) => adminDb.doc(`admin/analyticsCache/metrics/${metric}`);
+// Parameterised metrics (a day, a student) cache under `${metric}-${param}`.
+const cacheRef = (key) => adminDb.doc(`admin/analyticsCache/metrics/${key}`);
 
-async function getCached(metric) {
+async function getCached(key, metric) {
     try {
-        const snap = await cacheRef(metric).get();
+        const snap = await cacheRef(key).get();
         if (!snap.exists) return null;
         const entry = snap.data();
         if (!entry || !entry.cachedAt) return null;
@@ -91,11 +111,11 @@ async function getCached(metric) {
     }
 }
 
-async function setCache(metric, data) {
+async function setCache(key, data) {
     try {
-        await cacheRef(metric).set({ data, cachedAt: FieldValue.serverTimestamp() });
+        await cacheRef(key).set({ data, cachedAt: FieldValue.serverTimestamp() });
     } catch (e) {
-        console.warn(`Cache write failed for ${metric}:`, e.message);
+        console.warn(`Cache write failed for ${key}:`, e.message);
     }
 }
 
@@ -194,77 +214,130 @@ function summarise(semester) {
 // which is why it is the section that is actually populated.
 
 const ONLINE_WINDOW_MS = 5 * 60 * 1000;      // the app syncs every 3 minutes
-const RECENT_WINDOW_MS = 30 * 60 * 1000;
 
 const activityCol = () => adminDb.collection('admin/activity/students');
 const loginsCol   = () => adminDb.collection('admin/activity/logins');
+const dayStudents = (day) => adminDb.collection(`admin/activity/days/${day}/students`);
+
+function ledgerRow(d) {
+    const v = d.data() || {};
+    return {
+        rollNumber: v.rollNumber || d.id,
+        studentName: v.studentName || null,
+        firstSeen: finiteMillis(v.createdAt),
+        lastLoginAt: finiteMillis(v.lastLoginAt),
+        lastSuccessAt: finiteMillis(v.lastSuccessAt),
+        lastSeenAt: finiteMillis(v.lastSeenAt),
+        lastLoginOutcome: v.lastLoginOutcome || null,
+        loginCount: Number(v.loginCount) || 0,
+        loginAttempts: Number(v.loginAttempts) || 0,
+        syncCount: Number(v.syncCount) || 0,
+        devices: Array.isArray(v.deviceIds) ? v.deviceIds.length : 0,
+        appVersion: v.appVersion || null,
+        platform: v.platform || null,
+        isMock: !!v.isMock,
+    };
+}
 
 /** Every roster row the ledger holds. One bounded read. */
 async function loadLedger() {
     const snap = await activityCol().limit(MAX_ACTIVITY).get();
     const rows = [];
-    snap.forEach((d) => {
-        const v = d.data() || {};
-        rows.push({
-            rollNumber: v.rollNumber || d.id,
-            studentName: v.studentName || null,
-            firstSeen: finiteMillis(v.createdAt),
-            lastLoginAt: finiteMillis(v.lastLoginAt),
-            lastSuccessAt: finiteMillis(v.lastSuccessAt),
-            lastSeenAt: finiteMillis(v.lastSeenAt),
-            lastLoginOutcome: v.lastLoginOutcome || null,
-            loginCount: Number(v.loginCount) || 0,
-            loginAttempts: Number(v.loginAttempts) || 0,
-            syncCount: Number(v.syncCount) || 0,
-            devices: Array.isArray(v.deviceIds) ? v.deviceIds.length : 0,
-            appVersion: v.appVersion || null,
-            platform: v.platform || null,
-            isMock: !!v.isMock,
-        });
-    });
+    snap.forEach((d) => rows.push(ledgerRow(d)));
     return rows.filter((r) => !r.isMock);
 }
 
 /**
- * Who has the app open right now, and who has used it lately.
- * "Online" means the app called a data endpoint inside the last five minutes,
- * which it does every three while it is in the foreground.
+ * Who has the app open right now. A range query, so it reads only the students
+ * seen in the last five minutes — the panel polls this, and reading the whole
+ * roster every tick is what would eat the daily read quota.
  */
 async function computeLive() {
     const now = Date.now();
-    const rows = await loadLedger();
-    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
-
-    const online = rows.filter((r) => r.lastSeenAt && now - r.lastSeenAt <= ONLINE_WINDOW_MS);
-    const recent = rows.filter((r) => r.lastSeenAt && now - r.lastSeenAt <= RECENT_WINDOW_MS);
-    const seenToday = rows.filter((r) => r.lastSeenAt && r.lastSeenAt >= startOfToday.getTime());
-
-    const byVersion = {};
-    const byPlatform = {};
-    rows.forEach((r) => {
-        if (r.appVersion) byVersion[r.appVersion] = (byVersion[r.appVersion] || 0) + 1;
-        if (r.platform) byPlatform[r.platform] = (byPlatform[r.platform] || 0) + 1;
+    const snap = await activityCol()
+        .where('lastSeenAt', '>=', Timestamp.fromMillis(now - ONLINE_WINDOW_MS))
+        .limit(MAX_ACTIVITY).get();
+    const online = [];
+    snap.forEach((d) => {
+        const r = ledgerRow(d);
+        if (r.isMock || !r.lastSeenAt || now - r.lastSeenAt > ONLINE_WINDOW_MS) return;
+        online.push({ rollNumber: r.rollNumber, studentName: r.studentName, lastSeenAt: r.lastSeenAt, appVersion: r.appVersion, platform: r.platform });
     });
+    online.sort((a, b) => b.lastSeenAt - a.lastSeenAt);
+    return { onlineNow: online.length, online, generatedAt: now };
+}
 
+/**
+ * One college day, per student: when they first opened the app, each session
+ * (derived from per-minute beats, see api/_activity.js), total minutes, and the
+ * screens they opened. Plus the day's totals and an hour-by-hour histogram of
+ * distinct students.
+ */
+async function computeDaily({ day } = {}) {
+    const key = DAY_RE.test(day || '') ? day : dayKey();
+    const start = dayStartMs(key);
+    const snap = await dayStudents(key).limit(MAX_ACTIVITY).get();
+
+    const hours = Array(24).fill(0);
+    const screens = {};
+    const people = [];
+    snap.forEach((d) => {
+        const v = d.data() || {};
+        const beats = Array.isArray(v.beats) ? v.beats : [];
+        const sessions = sessionsFromBeats(beats);
+        if (!sessions.length) return;
+        new Set(beats.map((m) => Math.floor((m * 60000 - start) / HOUR)).filter((h) => h >= 0 && h < 24))
+            .forEach((h) => { hours[h]++; });
+        const mine = v.screens && typeof v.screens === 'object' ? v.screens : {};
+        Object.entries(mine).forEach(([k, n]) => { screens[k] = (screens[k] || 0) + (Number(n) || 0); });
+        people.push({
+            rollNumber: v.rollNumber || d.id,
+            studentName: v.studentName || null,
+            platform: v.platform || null,
+            appVersion: v.appVersion || null,
+            firstOpenAt: sessions[0].start,
+            lastSeenAt: sessions[sessions.length - 1].end,
+            sessions,
+            minutes: sum(sessions.map((x) => x.minutes)),
+            screens: mine,
+        });
+    });
+    people.sort((a, b) => b.lastSeenAt - a.lastSeenAt);
+
+    const minutes = sum(people.map((p) => p.minutes));
+    const sessionCount = sum(people.map((p) => p.sessions.length));
     return {
-        onlineNow: online.length,
-        activeLast30m: recent.length,
-        activeToday: seenToday.length,
-        knownStudents: rows.length,
-        neverSynced: rows.filter((r) => !r.lastSeenAt).length,
-        byVersion,
-        byPlatform,
-        online: online
-            .sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0))
-            .map((r) => ({
-                rollNumber: r.rollNumber, studentName: r.studentName,
-                lastSeenAt: r.lastSeenAt, appVersion: r.appVersion, platform: r.platform,
-            })),
-        roster: rows
-            .sort((a, b) => (b.lastSeenAt || b.lastLoginAt || 0) - (a.lastSeenAt || a.lastLoginAt || 0))
-            .slice(0, 200),
-        generatedAt: now,
+        day: key,
+        dayStart: start,
+        isToday: key === dayKey(),
+        users: people.length,
+        sessions: sessionCount,
+        minutes,
+        avgMinutes: people.length ? Math.round(minutes / people.length) : 0,
+        hours,
+        screens,
+        people,
     };
+}
+
+/**
+ * The last USAGE_DAYS college days: distinct students per day (a count query —
+ * one read, not one per student) and screen views from the day's aggregate doc.
+ */
+async function computeUsage() {
+    const now = Date.now();
+    const days = Array.from({ length: USAGE_DAYS }, (_, i) => dayKey(now - (USAGE_DAYS - 1 - i) * DAY));
+    const rows = await Promise.all(days.map(async (day) => {
+        const [users, doc] = await Promise.all([
+            countOf(dayStudents(day)),
+            adminDb.doc(`admin/activity/days/${day}`).get(),
+        ]);
+        const screens = (doc.exists && doc.data()?.screens) || {};
+        return { day, users, views: sum(Object.values(screens)), screens };
+    }));
+    const screens = {};
+    rows.forEach((r) => Object.entries(r.screens).forEach(([k, n]) => { screens[k] = (screens[k] || 0) + (Number(n) || 0); }));
+    return { days: rows, screens };
 }
 
 /**
@@ -288,6 +361,7 @@ async function computeLoginEvents() {
         events.push({
             id: d.id,
             rollNumber: v.rollNumber || null,
+            studentName: v.studentName || null,
             outcome: v.outcome || 'unknown',
             method: v.method || 'password',
             at: finiteMillis(v.at),
@@ -300,13 +374,13 @@ async function computeLoginEvents() {
     events.sort((a, b) => (b.at || 0) - (a.at || 0));
 
     const now = Date.now();
-    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+    const startOfToday = dayStartMs(dayKey(now));
     const succeeded = (e) => e.outcome === 'trusted' || e.outcome === 'otp-verified';
 
     const byOutcome = {};
     events.forEach((e) => { byOutcome[e.outcome] = (byOutcome[e.outcome] || 0) + 1; });
 
-    const todays = events.filter((e) => e.at && e.at >= startOfToday.getTime());
+    const todays = events.filter((e) => e.at && e.at >= startOfToday);
     return {
         events: events.slice(0, 200),
         total: events.length,
@@ -315,43 +389,18 @@ async function computeLoginEvents() {
         studentsToday: new Set(todays.filter(succeeded).map((e) => e.rollNumber)).size,
         logins24h: events.filter((e) => e.at && now - e.at <= DAY && succeeded(e)).length,
         failed24h: events.filter((e) => e.at && now - e.at <= DAY && e.outcome === 'rejected').length,
-        firstTimers7d: 0,   // filled in by the roster; kept for shape stability
     };
 }
 
 // ── Metrics ──────────────────────────────────────────────────────────
 
+/** Attendance and sync health across students — what their phones wrote. */
 async function computeOverview() {
     const now = Date.now();
-
-    // The ledger is the half that is always populated (see _activity.js), so
-    // it is read first and never allowed to take the rest of the panel down
-    // with it — a blank hero row is what made this screen useless before.
-    let ledger = null;
-    try {
-        ledger = await computeLive();
-    } catch (err) {
-        console.warn('[ANALYTICS] activity ledger unavailable:', err.message);
-    }
-    let logins = null;
-    try {
-        logins = await computeLoginEvents();
-    } catch (err) {
-        console.warn('[ANALYTICS] login events unavailable:', err.message);
-    }
-
     const { students, unfinished, semesters } = await loadPeople();
 
-    let dau = 0, wau = 0, mau = 0;
     let withNumbers = 0, pctSum = 0, belowGoalStudents = 0, connected = 0;
     students.forEach((u, id) => {
-        const last = finiteMillis(u.lastActive);
-        if (last) {
-            const diff = now - last;
-            if (diff <= DAY) dau++;
-            if (diff <= 7 * DAY) wau++;
-            if (diff <= 30 * DAY) mau++;
-        }
         const sem = semesters.get(id);
         if (!sem) return;
         const s = summarise(sem.latest);
@@ -363,20 +412,14 @@ async function computeOverview() {
         }
     });
 
-    // Last 7 days of sync telemetry: activity per day, success rate, sign-in events.
-    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
-    const windowStart = startOfToday.getTime() - 6 * DAY;
-    const syncsSnap = await recentSyncs(windowStart);
-    const perDay = Array.from({ length: 7 }, () => new Set());
-    let syncs24h = 0, ok24h = 0, attempts24h = 0, otp7d = 0, login7d = 0, syncs7d = 0;
+    const syncsSnap = await recentSyncs(now - 7 * DAY);
+    let syncs24h = 0, ok24h = 0, attempts24h = 0, otp7d = 0, login7d = 0;
     syncsSnap.forEach((d) => {
         const data = d.data();
         const ts = syncMillis(data);
-        if (ts < windowStart) return;
+        if (ts < now - 7 * DAY) return;
         const userId = ownerOf(d);
         if (!userId || !students.has(userId)) return;
-        syncs7d++;
-        perDay[Math.min(6, Math.max(0, Math.floor((ts - windowStart) / DAY)))].add(userId);
         if (now - ts <= DAY) {
             syncs24h++;
             (data.endpoints || []).forEach((ep) => { if (!ep) return; attempts24h++; if (ep.status === 'ok') ok24h++; });
@@ -387,53 +430,54 @@ async function computeOverview() {
 
     const sevenDaysAgo = now - 7 * DAY;
     return {
-        // ── Live, from the server-side ledger ──
-        onlineNow: ledger ? ledger.onlineNow : null,
-        activeLast30m: ledger ? ledger.activeLast30m : null,
-        activeToday: ledger ? ledger.activeToday : null,
-        signedInStudents: ledger ? ledger.knownStudents : null,
-        loginsToday: logins ? logins.loginsToday : null,
-        studentsSignedInToday: logins ? logins.studentsToday : null,
-        logins24h: logins ? logins.logins24h : null,
-        failedLogins24h: logins ? logins.failed24h : null,
-        ledgerAvailable: !!ledger,
-
-        // ── From the app's own cloud writes ──
         students: students.size,
         connected,
         unfinishedSignups: unfinished.length,
         unfinishedOlderThan7d: unfinished.filter((u) => !u.lastActive || u.lastActive < sevenDaysAgo).length,
-        dau, wau, mau,
         syncs24h,
-        syncs7d,
         successRate24h: attempts24h > 0 ? (ok24h * 100) / attempts24h : null,
         signInPrompts7d: otp7d,
         signInLost7d: login7d,
         avgAttendancePct: withNumbers > 0 ? Math.round((pctSum / withNumbers) * 10) / 10 : null,
         belowGoalStudents,
         studentsWithNumbers: withNumbers,
-        sparkline: perDay.map((s) => s.size),
-        sparklineStart: windowStart,
     };
 }
 
+/**
+ * Every student the server has seen (the ledger: anyone who signed in or
+ * synced) merged with what their phone wrote (users/ + semesters). A student
+ * whose phone never completed a Firebase sign-in used to be invisible here;
+ * now they are listed with `inCloud: false` and no attendance figures.
+ */
 async function computeUserRoster() {
-    const { students, unfinished, semesters } = await loadPeople();
+    const [{ students, unfinished, semesters }, ledger] = await Promise.all([loadPeople(), loadLedger()]);
     const now = Date.now();
-    const users = [];
+    const byRoll = new Map();
+
+    ledger.forEach((r) => {
+        if (!isRealRoll(r.rollNumber)) return;
+        byRoll.set(r.rollNumber, {
+            userId: r.rollNumber, rollNumber: r.rollNumber, studentName: r.studentName,
+            lastActive: r.lastSeenAt || r.lastLoginAt, firstSeen: r.firstSeen, lastLoginAt: r.lastLoginAt,
+            loginCount: r.loginCount, syncCount: r.syncCount, devices: r.devices,
+            version: r.appVersion, platform: r.platform, inCloud: false,
+        });
+    });
+
     students.forEach((u, id) => {
-        const sem = semesters.get(id);
-        const s = summarise(sem?.latest);
-        users.push({
+        const s = summarise(semesters.get(id)?.latest);
+        const prev = byRoll.get(u.erpRollNumber) || { rollNumber: u.erpRollNumber };
+        byRoll.set(u.erpRollNumber, {
+            ...prev,
             userId: id,
-            rollNumber: u.erpRollNumber,
-            studentName: u.studentName || s.userName || 'Student',
-            batchGroup: u.batchGroup || null,
-            lastActive: finiteMillis(u.lastActive),
-            version: u.version || null,
+            studentName: prev.studentName || u.studentName || s.userName || null,
+            lastActive: Math.max(prev.lastActive || 0, finiteMillis(u.lastActive) || 0) || null,
+            version: prev.version || u.version || null,
+            inCloud: true,
             setupComplete: !!u.setupComplete || s.setupComplete,
             erpConnected: s.erpConnected,
-            semesterCount: sem?.count || 0,
+            semesterCount: semesters.get(id)?.count || 0,
             totalSubjects: s.subjects.length,
             totalClasses: s.totalClasses,
             totalAttended: s.totalAttended,
@@ -445,13 +489,105 @@ async function computeUserRoster() {
             subjects: s.subjects,
         });
     });
+
+    const byVersion = {};
+    const byPlatform = {};
+    const users = [...byRoll.values()].map((u) => {
+        if (u.version) byVersion[u.version] = (byVersion[u.version] || 0) + 1;
+        if (u.platform) byPlatform[u.platform] = (byPlatform[u.platform] || 0) + 1;
+        return { totalSubjects: 0, belowGoal: 0, subjects: [], overallAttendancePct: null, ...u, batchGroup: batchOf(u.rollNumber) };
+    });
     users.sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0));
     return {
         users,
+        byVersion,
+        byPlatform,
         unfinished: {
             count: unfinished.length,
             olderThan7d: unfinished.filter((u) => !u.lastActive || u.lastActive < now - 7 * DAY).length,
         },
+    };
+}
+
+/**
+ * Everything about one student: the ledger row, the phone's cloud copy and
+ * attendance, 30 days of usage sessions, their sign-in attempts and their last
+ * 50 syncs with per-endpoint results.
+ */
+async function computeStudent({ roll } = {}) {
+    const now = Date.now();
+    const days = Array.from({ length: STUDENT_DAYS }, (_, i) => dayKey(now - i * DAY));
+    const [rosterSnap, userSnap, semSnap, daySnaps, loginSnap, syncSnap, revokedSnap] = await Promise.all([
+        adminDb.doc(`admin/activity/students/${roll}`).get(),
+        adminDb.doc(`users/${roll}`).get(),
+        adminDb.collection(`users/${roll}/semesters`).limit(20).get(),
+        adminDb.getAll(...days.map((day) => adminDb.doc(`admin/activity/days/${day}/students/${roll}`))),
+        // No orderBy with the where: that needs a composite index. Sorted below.
+        loginsCol().where('rollNumber', '==', roll).limit(100).get(),
+        adminDb.collection(`telemetry/${roll}/syncs`).orderBy('timestamp', 'desc').limit(50).get(),
+        adminDb.doc(`admin/revokedUsers/items/${roll}`).get(),
+    ]);
+
+    const ledger = rosterSnap.exists ? ledgerRow(rosterSnap) : null;
+    const user = userSnap.exists ? (userSnap.data() || {}) : null;
+
+    let latest = null, latestAt = -1, semesterCount = 0;
+    semSnap.forEach((d) => {
+        const v = d.data() || {};
+        if (v._deleted) return;
+        semesterCount++;
+        const at = finiteMillis(v._lastModified) || 0;
+        if (at >= latestAt) { latest = v; latestAt = at; }
+    });
+    const attendance = summarise(latest);
+
+    const usage = [];
+    daySnaps.forEach((d) => {
+        if (!d.exists) return;
+        const v = d.data() || {};
+        const sessions = sessionsFromBeats(v.beats);
+        if (!sessions.length) return;
+        usage.push({
+            day: d.ref.parent.parent.id,
+            sessions,
+            minutes: sum(sessions.map((x) => x.minutes)),
+            screens: v.screens || {},
+            platform: v.platform || null,
+            appVersion: v.appVersion || null,
+        });
+    });
+
+    const logins = [];
+    loginSnap.forEach((d) => {
+        const v = d.data() || {};
+        logins.push({ id: d.id, outcome: v.outcome || 'unknown', method: v.method || 'password', at: finiteMillis(v.at),
+            platform: v.platform || null, appVersion: v.appVersion || null, deviceId: v.deviceId ? String(v.deviceId).slice(0, 8) : null, ipHash: v.ipHash || null });
+    });
+    logins.sort((a, b) => (b.at || 0) - (a.at || 0));
+
+    const syncs = [];
+    syncSnap.forEach((d) => {
+        const v = d.data() || {};
+        syncs.push({ at: syncMillis(v) || null, endpoints: v.endpoints || [], parserErrors: v.parserErrors || [], sessionEvent: v.sessionEvent || null });
+    });
+
+    const revoked = revokedSnap.exists ? revokedSnap.data() || {} : null;
+    return {
+        rollNumber: roll,
+        studentName: ledger?.studentName || user?.studentName || attendance.userName || null,
+        batchGroup: batchOf(roll),
+        ledger,
+        cloud: user ? {
+            lastActive: finiteMillis(user.lastActive),
+            setupComplete: !!user.setupComplete,
+            semesterCount,
+        } : null,
+        attendance,
+        revoked: revoked ? { reason: revoked.reason || '', revokedAt: finiteMillis(revoked.revokedAt), revokedBy: revoked.revokedBy || null } : null,
+        usage,
+        usageMinutes30d: sum(usage.map((u) => u.minutes)),
+        logins,
+        syncs,
     };
 }
 
@@ -475,6 +611,7 @@ async function computeSessionEvents() {
         recent.push({
             userId,
             rollNumber: data.rollNumber || students.get(userId)?.erpRollNumber || null,
+            studentName: students.get(userId)?.studentName || null,
             type: ev.type,
             reason: ev.reason || 'unknown',
             at: ts,
@@ -547,15 +684,10 @@ async function computeBunkCulture() {
 }
 
 async function computeBatchDistribution() {
-    const { students } = await loadPeople();
+    const { users } = await computeUserRoster();
     const batches = {};
-    students.forEach((u) => {
-        const rn = String(u.erpRollNumber);
-        const yearPrefix = rn.substring(0, 2);
-        const fullYear = parseInt(yearPrefix, 10) >= 50 ? `19${yearPrefix}` : `20${yearPrefix}`;
-        batches[`Batch ${fullYear}`] = (batches[`Batch ${fullYear}`] || 0) + 1;
-    });
-    const total = Object.values(batches).reduce((a, b) => a + b, 0);
+    users.forEach((u) => { batches[u.batchGroup] = (batches[u.batchGroup] || 0) + 1; });
+    const total = users.length;
     return Object.entries(batches)
         .map(([batch, count]) => ({ batch, count, percentage: total > 0 ? (count / total) * 100 : 0 }))
         .sort((a, b) => b.count - a.count);
@@ -634,33 +766,13 @@ async function computeParserFailures() {
     return failures.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0)).slice(0, 20);
 }
 
-async function computeRateLimit() {
-    const hourAgo = Date.now() - 3600000;
-    const dayAgo = Date.now() - DAY;
-    const [{ students }, syncsSnap] = await Promise.all([loadPeople(), recentSyncs(dayAgo)]);
-    const userSyncs = {};
-    syncsSnap.forEach((d) => {
-        const userId = ownerOf(d);
-        if (!userId) return;
-        const ts = syncMillis(d.data());
-        if (ts < dayAgo) return;
-        if (!userSyncs[userId]) userSyncs[userId] = { hourly: 0, daily: 0 };
-        if (ts > hourAgo) userSyncs[userId].hourly++;
-        userSyncs[userId].daily++;
-    });
-    return Object.entries(userSyncs)
-        .map(([userId, s]) => ({
-            rollNumber: students.get(userId)?.erpRollNumber || `(unknown: ${userId.slice(0, 8)})`,
-            userId, hourly: s.hourly, daily: s.daily,
-            status: s.hourly >= 15 ? 'restricted' : s.hourly >= 10 ? 'warning' : 'normal',
-        }))
-        .sort((a, b) => b.hourly - a.hourly || b.daily - a.daily);
-}
-
 // ── Handler ──────────────────────────────────────────────────────────
 
 const METRIC_HANDLERS = {
     live: computeLive,
+    daily: computeDaily,
+    usage: computeUsage,
+    student: computeStudent,
     loginEvents: computeLoginEvents,
     overview: computeOverview,
     userRoster: computeUserRoster,
@@ -670,38 +782,52 @@ const METRIC_HANDLERS = {
     batchDistribution: computeBatchDistribution,
     endpointHealth: computeEndpointHealth,
     parserFailures: computeParserFailures,
-    rateLimit: computeRateLimit,
     downtime: computeDowntime,
-    // Kept for older clients; the overview supersedes it.
-    activeUsers: async () => {
-        const o = await computeOverview();
-        return { dau: o.dau, wau: o.wau, mau: o.mau, total: o.students, sparkline: o.sparkline, sparklineStart: o.sparklineStart };
-    },
 };
+
+/**
+ * Validated parameters for a metric, or { error }. Only `daily` and `student`
+ * take any; the value also names the cache doc, so it must be a safe id.
+ */
+function metricParams(metric, body) {
+    if (metric === 'daily') {
+        if (body.day != null && !DAY_RE.test(String(body.day))) return { error: 'day must look like 2026-09-14' };
+        return { params: { day: body.day || dayKey() }, key: `daily-${body.day || dayKey()}` };
+    }
+    if (metric === 'student') {
+        const roll = safeRoll(body.roll);
+        if (!roll) return { error: 'roll is required' };
+        return { params: { roll }, key: `student-${roll}` };
+    }
+    return { params: {}, key: metric };
+}
 
 module.exports = async function handler(req, res) {
     setCorsHeaders(res, req);
     if (req.method === 'OPTIONS') return res.status(204).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { token, metric, forceRefresh } = req.body || {};
+    const body = req.body || {};
+    const { token, metric, forceRefresh } = body;
 
     const rollNumber = decodeSessionRollNumber(token);
     if (!rollNumber || !isAdminRoll(rollNumber)) return res.status(403).json({ error: 'Unauthorized' });
 
     if (await tooManyAttempts(res, 'admin-analytics-ip', getClientIp(req), IP_POLICY)) return;
 
-    if (!metric || !METRIC_HANDLERS[metric]) {
+    if (!metric || !Object.prototype.hasOwnProperty.call(METRIC_HANDLERS, metric)) {
         return res.status(400).json({ error: `Unknown metric: ${metric}. Valid: ${Object.keys(METRIC_HANDLERS).join(', ')}` });
     }
+    const { params, key, error } = metricParams(metric, body);
+    if (error) return res.status(400).json({ error });
 
     try {
         if (!forceRefresh) {
-            const cached = await getCached(metric);
+            const cached = await getCached(key, metric);
             if (cached) return res.json({ data: cached.data, cached: true, cachedAt: cached.cachedAt });
         }
-        const data = await METRIC_HANDLERS[metric]();
-        await setCache(metric, data);
+        const data = await METRIC_HANDLERS[metric](params);
+        await setCache(key, data);
         return res.json({ data, cached: false, cachedAt: Date.now() });
     } catch (err) {
         console.error(`Analytics computation failed for ${metric}:`, err);
@@ -710,4 +836,7 @@ module.exports = async function handler(req, res) {
     }
 };
 
+// The local dashboard (scripts/admin-dashboard.js) runs the very same metrics.
+module.exports.METRICS = METRIC_HANDLERS;
+module.exports.metricParams = metricParams;
 module.exports.isRealRoll = isRealRoll;

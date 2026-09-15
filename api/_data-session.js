@@ -98,7 +98,9 @@ async function openSession(req, res) {
     // app syncs every three minutes while it is in the foreground, so this is
     // what makes "students with the app open right now" a real number. Not
     // awaited: a telemetry write must never sit in front of a student's sync.
-    touchActive(session.rollNumber, { ip: getClientIp(req), ...clientMeta(req) });
+    touchActive(session.rollNumber, {
+        ip: getClientIp(req), studentName: session.studentName, isMock: session.isMock, ...clientMeta(req),
+    });
 
     return { session, persistentToken };
 }

@@ -18,13 +18,13 @@ case "$loc" in
   *)               echo "FAIL unexpected redirect target: $loc"; fail=1 ;;
 esac
 
-read -r code len < <(curl -sIL "$URL" | tr -d '\r' | awk '
+read -r code len < <(curl -sIL --max-time 15 "$URL" | tr -d '\r' | awk '
   tolower($1)=="content-length:"{len=$2} /^HTTP/{code=$2} END{print code, len+0}')
 [ "$code" = "200" ] && [ "$len" -gt 20000000 ] \
   && echo "ok   asset reachable: $code, $len bytes" \
   || { echo "FAIL asset not reachable: code=$code len=$len (is the release uploaded?)"; fail=1; }
 
-rcode=$(curl -sL -o /dev/null -r 0-1023 -w '%{http_code}' "$URL")
+rcode=$(curl -sL --max-time 15 -o /dev/null -r 0-1023 -w '%{http_code}' "$URL")
 [ "$rcode" = "206" ] && echo "ok   range requests supported (downloads can resume)" \
   || { echo "FAIL no range support: $rcode"; fail=1; }
 

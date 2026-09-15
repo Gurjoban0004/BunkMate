@@ -78,47 +78,29 @@ export const unrevokeUser = async (rollNumber, targetRollNumber) => {
 
 // ─── ANALYTICS (computed server-side) ───────────────────────────
 
-async function fetchAnalyticsMetric(rollNumber, metric, forceRefresh = false) {
-    const result = await adminApiCall('/api/admin-analytics', { rollNumber, metric, forceRefresh });
+async function metric(name, params, forceRefresh = false) {
+    const result = await adminApiCall('/api/admin-analytics', { metric: name, ...params, forceRefresh });
     return result.data;
 }
 
-export const fetchOverview = (forceRefresh) =>
-    fetchAnalyticsMetric(null, 'overview', forceRefresh);
+// From the server-side activity ledger (api/_activity.js) — populated whether
+// or not a student's phone ever completed a Firebase sign-in.
+export const fetchLive = (force) => metric('live', {}, force);
+/** One college day; `day` is 'YYYY-MM-DD' (IST) or null for today. */
+export const fetchDaily = (day, force) => metric('daily', day ? { day } : {}, force);
+export const fetchUsage = (force) => metric('usage', {}, force);
+export const fetchStudent = (roll, force) => metric('student', { roll }, force);
+export const fetchLoginEvents = (force) => metric('loginEvents', {}, force);
+/** { users, byVersion, byPlatform, unfinished: { count, olderThan7d } } */
+export const fetchUserRoster = (force) => metric('userRoster', {}, force);
 
-// Live and login history come from the server-side activity ledger, not from
-// what the app managed to write to Firestore — see api/_activity.js.
-export const fetchLive = (forceRefresh) =>
-    fetchAnalyticsMetric(null, 'live', forceRefresh);
-
-export const fetchLoginEvents = (forceRefresh) =>
-    fetchAnalyticsMetric(null, 'loginEvents', forceRefresh);
-
-export const fetchSessionEvents = (forceRefresh) =>
-    fetchAnalyticsMetric(null, 'sessionEvents', forceRefresh);
-
-export const fetchSubjectDifficulty = (rollNumber, forceRefresh) =>
-    fetchAnalyticsMetric(rollNumber, 'subjectDifficulty', forceRefresh);
-
-export const fetchBunkCultureIndex = (rollNumber, forceRefresh) =>
-    fetchAnalyticsMetric(rollNumber, 'bunkCulture', forceRefresh);
-
-export const fetchEndpointHealth = (rollNumber, forceRefresh) =>
-    fetchAnalyticsMetric(rollNumber, 'endpointHealth', forceRefresh);
-
-export const fetchParserFailures = (rollNumber, forceRefresh) =>
-    fetchAnalyticsMetric(rollNumber, 'parserFailures', forceRefresh);
-
-export const fetchRateLimitData = (rollNumber, forceRefresh) =>
-    fetchAnalyticsMetric(rollNumber, 'rateLimit', forceRefresh);
-
-/** { users: [real students], unfinished: { count, olderThan7d } } */
-export const fetchUserRoster = (rollNumber, forceRefresh) =>
-    fetchAnalyticsMetric(rollNumber, 'userRoster', forceRefresh);
-
-export const fetchBatchDistribution = (forceRefresh) =>
-    fetchAnalyticsMetric(null, 'batchDistribution', forceRefresh);
-
+// From what the app writes to the cloud (users/, semesters/, sync telemetry).
+export const fetchOverview = (force) => metric('overview', {}, force);
+export const fetchSessionEvents = (force) => metric('sessionEvents', {}, force);
+export const fetchSubjectDifficulty = (force) => metric('subjectDifficulty', {}, force);
+export const fetchBunkCultureIndex = (force) => metric('bunkCulture', {}, force);
+export const fetchBatchDistribution = (force) => metric('batchDistribution', {}, force);
+export const fetchEndpointHealth = (force) => metric('endpointHealth', {}, force);
+export const fetchParserFailures = (force) => metric('parserFailures', {}, force);
 // Outages are inferred from the same telemetry that powers Endpoint Health.
-export const fetchDowntime = (rollNumber, forceRefresh) =>
-    fetchAnalyticsMetric(rollNumber, 'downtime', forceRefresh);
+export const fetchDowntime = (force) => metric('downtime', {}, force);

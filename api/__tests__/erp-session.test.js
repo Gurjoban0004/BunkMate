@@ -50,3 +50,25 @@ describe('ERP session check', () => {
         }));
     });
 });
+
+describe('ERP session ping', () => {
+    test('records usage for the roll sealed in the token, not one the body claims', async () => {
+        jest.resetModules();
+        const recordPing = jest.fn(async () => true);
+        jest.doMock('../_activity', () => ({ recordPing, touchActive: async () => {}, clientMeta: () => ({ platform: 'web' }) }));
+        const { encryptSession } = require('../_session-utils');
+        const handler = require('../erp-session');
+        const token = encryptSession({ rollNumber: '2410990296', studentName: 'Asha' });
+
+        const res = makeRes();
+        await handler(makeReq({ action: 'ping', token, rollNumber: '9999999999', screens: { TodayMain: 2 } }), res);
+        expect(res.body).toEqual({ ok: true });
+        expect(recordPing).toHaveBeenCalledWith('2410990296', expect.objectContaining({ studentName: 'Asha', platform: 'web' }), { TodayMain: 2 });
+
+        const bad = makeRes();
+        await handler(makeReq({ action: 'ping', token: 'forged' }), bad);
+        expect(bad.body).toEqual({ ok: false });
+        expect(recordPing).toHaveBeenCalledTimes(1);
+        jest.dontMock('../_activity');
+    });
+});

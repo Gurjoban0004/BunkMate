@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presence Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f5f1; --card: #ffffff; --inset: #f4f3f7; --ink: #292737; --ink2: #666373; --muted: #85818d;
+  --line: #e5e3e9; --line2: rgba(95,102,139,.14); --accent: #5f668b; --accent-soft: #e8e9f5;
+  --good: #4f8f74; --good-soft: #e4f1eb; --bad: #b5674e; --bad-soft: #fbe7de; --warn: #c08f45; --warn-soft: #f9f0dc;
+  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16151b; --card: #1f1e26; --inset: #27262f; --ink: #eceaf1; --ink2: #a8a4b3; --muted: #8b8797;
+    --line: #33313d; --line2: rgba(154,162,204,.14); --accent: #9aa2cc; --accent-soft: #2a2a3d;
+    --good: #7fc0a3; --good-soft: #1b2a24; --bad: #d9967d; --bad-soft: #2f231e; --warn: #dfb877; --warn-soft: #2d2718;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--accent); }
+.num { font-variant-numeric: tabular-nums; }
+
+header { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.bar { max-width: 1320px; margin: 0 auto; padding: 14px 24px 0; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.brand { font: 600 22px/1 var(--serif); letter-spacing: -.01em; }
+.brand small { font: 500 11px var(--sans); color: var(--muted); letter-spacing: .12em; text-transform: uppercase; margin-left: 8px; }
+.status { margin-left: auto; color: var(--muted); font-size: 12px; display: flex; gap: 10px; align-items: center; }
+nav { max-width: 1320px; margin: 0 auto; padding: 10px 24px 0; display: flex; gap: 2px; overflow-x: auto; }
+nav a { padding: 8px 12px 10px; color: var(--ink2); text-decoration: none; font-weight: 500; border-bottom: 2px solid transparent; white-space: nowrap; }
+nav a.on { color: var(--ink); border-color: var(--ink); }
+
+main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 80px; }
+h2 { font: 600 26px/1.15 var(--serif); margin: 0 0 4px; letter-spacing: -.01em; }
+.lede { color: var(--ink2); margin: 0 0 18px; max-width: 72ch; }
+.grid { display: grid; gap: 16px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0; }
+.card h3 { font: 600 13px var(--sans); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+.card h3 .hint { margin-left: auto; font-weight: 400; color: var(--muted); font-size: 12px; }
+.mt { margin-top: 16px; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.kpi b { display: block; font: 600 26px/1.1 var(--serif); font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.kpi.good b { color: var(--good); } .kpi.bad b { color: var(--bad); } .kpi.warn b { color: var(--warn); }
+
+.controls { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.btn { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+input[type=date], input[type=search], select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+input[type=search] { min-width: 260px; }
+
+.table-wrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; padding: 6px 10px 8px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th[data-sort] { cursor: pointer; } th[data-sort]:hover { color: var(--ink); }
+td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line2); vertical-align: top; }
+tr.click { cursor: pointer; } tr.click:hover td { background: var(--inset); }
+td .sub { display: block; color: var(--muted); font-size: 12px; }
+.name { font-weight: 600; }
+.right { text-align: right; }
+
+.chip { display: inline-block; padding: 1px 8px; border-radius: 99px; background: var(--inset); color: var(--ink2); font-size: 12px; margin: 0 4px 4px 0; white-space: nowrap; }
+.chip.good { background: var(--good-soft); color: var(--good); } .chip.bad { background: var(--bad-soft); color: var(--bad); } .chip.warn { background: var(--warn-soft); color: var(--warn); } .chip.accent { background: var(--accent-soft); color: var(--accent); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+.hbar { display: grid; grid-template-columns: minmax(110px, 180px) 1fr 70px; gap: 10px; align-items: center; padding: 5px 0; }
+.hbar .track { height: 10px; background: var(--inset); border-radius: 5px; overflow: hidden; }
+.hbar .fill { height: 100%; border-radius: 5px; background: var(--accent); }
+
+.timeline { font-size: 12px; }
+.tl-row { display: grid; grid-template-columns: 200px 1fr 64px; gap: 12px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line2); }
+.tl-row.head { border: 0; color: var(--muted); padding-bottom: 2px; }
+.tl-row:not(.head):hover { background: var(--inset); cursor: pointer; }
+.tl-track { position: relative; height: 16px; background: repeating-linear-gradient(90deg, transparent 0 calc(12.5% - 1px), var(--line2) calc(12.5% - 1px) 12.5%); border-radius: 4px; }
+.tl-seg { position: absolute; top: 2px; bottom: 2px; min-width: 4px; border-radius: 3px; background: var(--accent); }
+.tl-now { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--bad); }
+.tl-scale { position: relative; height: 14px; }
+.tl-scale span { position: absolute; transform: translateX(-50%); }
+.tl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 10px; font-family: var(--sans); }
+.chart .val { fill: var(--ink2); }
+.chart rect.col { fill: var(--accent); } .chart rect.col.zero { fill: var(--line); } .chart rect.col.sel { fill: var(--ink); }
+.chart g.pick { cursor: pointer; } .chart g.pick:hover rect.col { opacity: .75; }
+
+.empty { color: var(--muted); padding: 18px 0; text-align: center; }
+.error { background: var(--bad-soft); color: var(--bad); border-radius: 10px; padding: 10px 14px; }
+.loading { color: var(--muted); padding: 18px 0; }
+details summary { cursor: pointer; color: var(--ink2); }
+pre { background: var(--inset); padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; max-height: 420px; }
+
+.drawer-bg { position: fixed; inset: 0; background: rgba(20,19,26,.35); z-index: 10; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100%); background: var(--bg); z-index: 11; overflow-y: auto; box-shadow: -12px 0 40px rgba(0,0,0,.18); padding: 22px 26px 60px; }
+.drawer .close { position: sticky; top: 0; float: right; }
+.heat { display: grid; grid-template-columns: repeat(30, 1fr); gap: 3px; margin: 4px 0 8px; }
+.heat i { aspect-ratio: 1; border-radius: 3px; background: var(--inset); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 2px 18px; margin: 0; }
+.facts div { padding: 6px 0; border-bottom: 1px solid var(--line2); }
+.facts dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.facts dd { margin: 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand">Presence<small>Admin</small></div>
+    <div class="status"><span id="loaded"></span><button class="btn" id="refresh">Refresh</button></div>
+  </div>
+  <nav id="nav"></nav>
+</header>
+<main id="view"></main>
+<div id="drawer"></div>
+
+<script>
+'use strict';
+// ── Plumbing ─────────────────────────────────────────────────────────
+const TZ = 'Asia/Kolkata';
+const DAY = 86400000;
+const $ = (sel) => document.querySelector(sel);
+
+class Raw { constructor(s) { this.s = s; } }
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const part = (v) => (v instanceof Raw ? v.s : Array.isArray(v) ? v.map(part).join('') : v == null || v === false ? '' : esc(v));
+/** Template tag: every interpolation is escaped unless it is itself html`…`. Student names are untrusted. */
+const html = (strings, ...vals) => new Raw(strings.reduce((out, s, i) => out + s + (i < vals.length ? part(vals[i]) : ''), ''));
+
+const memo = new Map();
+function api(path) {
+  if (!memo.has(path)) {
+    memo.set(path, fetch(path).then(async (r) => {
+      const body = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+      if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+      return body;
+    }));
+    memo.get(path).catch(() => memo.delete(path));
+  }
+  return memo.get(path);
+}
+const metric = (name, params = {}) => api(`/api/metric/${name}?${new URLSearchParams(params)}`);
+
+// ── Formatting ───────────────────────────────────────────────────────
+const istDay = (ms = Date.now()) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(ms));
+const dayStart = (day) => Date.parse(`${day}T00:00:00+05:30`);
+const shift = (day, n) => istDay(dayStart(day) + 12 * 3600000 + n * DAY);
+const clock = (ms) => (ms ? new Date(ms).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', timeZone: TZ }) : '—');
+const dateTime = (ms) => (ms ? new Date(ms).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: TZ }) : '—');
+const dayLabel = (day) => new Date(dayStart(day) + 12 * 3600000).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TZ });
+const mins = (m) => { m = Math.round(m || 0); const h = Math.floor(m / 60); return h ? `${h}h ${m % 60}m` : `${m}m`; };
+const ago = (ms) => {
+  if (!ms) return '—';
+  const s = (Date.now() - ms) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+};
+const pct = (v, d = 0) => (v == null ? '—' : `${Number(v).toFixed(d)}%`);
+const SCREENS = { TodayMain: 'Today', SubjectsList: 'Subjects', SubjectDetail: 'Subject detail', SubjectPlanner: 'Planner', Insights: 'Insights', InsightsMain: 'Insights', Settings: 'Settings', EditTimetable: 'Edit timetable', EditSubjects: 'Edit subjects', ERPConnect: 'Connect college', AdminMain: 'Admin' };
+function features(screens) {
+  const out = {};
+  Object.entries(screens || {}).forEach(([k, n]) => { const l = SCREENS[k] || k; out[l] = (out[l] || 0) + (Number(n) || 0); });
+  return Object.entries(out).sort((a, b) => b[1] - a[1]);
+}
+const OUTCOME = { trusted: ['Signed in · trusted device', 'good'], 'otp-verified': ['Signed in · OTP verified', 'good'], 'otp-sent': ['OTP sent', 'warn'], rejected: ['Rejected by college', 'bad'], error: ['College unreachable', 'bad'] };
+const REASON = { dead: 'college ended the session', stale: 'session older than a year', invalid_token: 'token from an older app', no_persistent: 'no saved sign-in', expired: 'saved sign-in expired' };
+
+// Names: the roster knows most; anything else carries its own.
+let NAMES = new Map();
+const nameOf = (roll, fallback) => NAMES.get(String(roll)) || fallback || null;
+const who = (roll, fallback) => html`<span class="name">${nameOf(roll, fallback) || 'Name not reported'}</span><span class="sub num">${roll}</span>`;
+
+// ── Pieces ───────────────────────────────────────────────────────────
+const kpi = (label, value, tone = '') => html`<div class="kpi ${tone}"><b>${value ?? '—'}</b><span>${label}</span></div>`;
+const empty = (text) => html`<div class="empty">${text}</div>`;
+const hbars = (rows, { color, fmt = (v) => v } = {}) => {
+  const max = Math.max(1, ...rows.map((r) => r[1]));
+  return rows.length ? rows.map(([label, v]) => html`<div class="hbar"><span>${label}</span><div class="track"><div class="fill" style="width:${(v / max) * 100}%;${color ? `background:${color}` : ''}"></div></div><span class="right num">${fmt(v)}</span></div>`) : empty('Nothing recorded yet.');
+};
+/** Column chart. `pick(i)` returns a data-day to make columns clickable. */
+function columns(values, labels, { selected = -1, pick } = {}) {
+  // Sized for a half-width card: SVG text scales with the viewBox, so a wider box shrinks the labels.
+  const W = 420, H = 170, pad = 18, gap = 3;
+  const n = values.length, max = Math.max(1, ...values);
+  const w = (W - gap * (n - 1)) / n;
+  const cols = values.map((v, i) => {
+    const h = v ? Math.max(3, (v / max) * (H - pad * 2)) : 2;
+    const x = i * (w + gap), y = H - pad - h;
+    return html`<g class="${pick ? 'pick' : ''}" ${pick ? html`data-day="${pick(i)}"` : ''}>
+      <rect class="col ${v ? '' : 'zero'} ${i === selected ? 'sel' : ''}" x="${x}" y="${y}" width="${w}" height="${h}" rx="3"><title>${labels[i]}: ${v}</title></rect>
+      ${v ? html`<text class="val" x="${x + w / 2}" y="${y - 4}" text-anchor="middle">${v}</text>` : ''}
+      <text x="${x + w / 2}" y="${H - 3}" text-anchor="middle">${labels[i]}</text></g>`;
+  });
+  return html`<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img">${cols}</svg></div>`;
+}
+function load(target, fn) {
+  target.innerHTML = '<div class="loading">Loading…</div>';
+  return fn().then((out) => { target.innerHTML = part(out); }, (e) => { target.innerHTML = part(html`<div class="error">${e.message}</div>`); });
+}
+const slot = (id) => html`<div id="${id}"><div class="loading">Loading…</div></div>`;
+
+// ── Views ────────────────────────────────────────────────────────────
+const VIEWS = {};
+
+VIEWS.today = async (view, q) => {
+  const day = q.day || istDay();
+  const isToday = day === istDay();
+  view.innerHTML = part(html`
+    <h2>${isToday ? 'Today' : dayLabel(day)}</h2>
+    <p class="lede">Who opened the app, when, for how long, and what they used. Times are IST; a session is foreground time to the minute, and beats more than five minutes apart start a new one.</p>
+    <div class="controls">
+      <button class="btn" data-go="#today?day=${shift(day, -1)}">‹ Previous</button>
+      <input type="date" id="day" value="${day}" max="${istDay()}">
+      <button class="btn" data-go="#today?day=${shift(day, 1)}" ${isToday ? 'disabled' : ''}>Next ›</button>
+      ${isToday ? '' : html`<button class="btn" data-go="#today">Back to today</button>`}
+    </div>
+    ${slot('t-kpis')}
+    <div class="card"><h3>Session timeline <span class="hint">one row per student · hover a bar for times</span></h3>${slot('t-timeline')}</div>
+    <div class="grid g2 mt">
+      <div class="card"><h3>Activity by hour <span class="hint">distinct students</span></h3>${slot('t-hours')}</div>
+      <div class="card"><h3>What's used most <span class="hint">screen views</span></h3>${slot('t-features')}</div>
+    </div>
+    <div class="card mt"><h3>Everyone who opened the app</h3>${slot('t-table')}</div>`);
+  $('#day').onchange = (e) => { location.hash = `#today?day=${e.target.value}`; };
+
+  const [d, live, logins] = await Promise.all([
+    metric('daily', { day }),
+    isToday ? metric('live').catch(() => null) : null,
+    isToday ? metric('loginEvents').catch(() => null) : null,
+  ]).catch((e) => { $('#t-kpis').innerHTML = part(html`<div class="error">${e.message}</div>`); throw e; });
+
+  $('#t-kpis').innerHTML = part(html`<div class="kpis">
+    ${isToday ? kpi('Online now', live?.onlineNow, live?.onlineNow ? 'good' : '') : ''}
+    ${kpi('Students', d.users)}${kpi('Sessions', d.sessions)}${kpi('Time in app', mins(d.minutes))}
+    ${kpi('Avg per student', mins(d.avgMinutes))}
+    ${isToday ? kpi('Sign-ins today', logins?.loginsToday) : ''}
+    ${isToday ? kpi('Failed sign-ins 24h', logins?.failed24h, logins?.failed24h ? 'warn' : '') : ''}
+  </div>`);
+
+  const people = [...d.people].sort((a, b) => a.firstOpenAt - b.firstOpenAt);
+  const at = (ms) => Math.min(100, Math.max(0, ((ms - d.dayStart) / DAY) * 100));
+  $('#t-timeline').innerHTML = part(people.length ? html`<div class="timeline">
+    <div class="tl-row head"><span></span><div class="tl-scale">${[0, 3, 6, 9, 12, 15, 18, 21].map((h) => html`<span style="left:${(h / 24) * 100}%">${h % 12 || 12}${h < 12 ? 'am' : 'pm'}</span>`)}</div><span class="right">time</span></div>
+    ${people.map((p) => html`<div class="tl-row" data-student="${p.rollNumber}">
+      <span class="tl-name"><span class="name">${nameOf(p.rollNumber, p.studentName) || p.rollNumber}</span></span>
+      <div class="tl-track">
+        ${p.sessions.map((s) => html`<div class="tl-seg" style="left:${at(s.start)}%;width:${Math.max(0.3, at(s.end) - at(s.start))}%" title="${clock(s.start)} – ${clock(s.end)} · ${mins(s.minutes)}"></div>`)}
+        ${isToday ? html`<div class="tl-now" style="left:${at(Date.now())}%" title="now"></div>` : ''}
+      </div>
+      <span class="right num">${mins(p.minutes)}</span></div>`)}
+  </div>` : empty(isToday ? 'Nobody has opened the app yet today.' : 'Nobody opened the app on this day.'));
+
+  $('#t-hours').innerHTML = part(columns(d.hours, d.hours.map((_, h) => (h % 3 ? '' : `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`))));
+  $('#t-features').innerHTML = part(features(d.screens).length ? hbars(features(d.screens), { color: 'var(--good)' }) : empty('No screen views yet — they come from app versions with usage pings.'));
+
+  $('#t-table').innerHTML = part(people.length ? html`<div class="table-wrap"><table>
+    <tr><th>Student</th><th>First opened</th><th>Last seen</th><th class="right">Sessions</th><th class="right">Time</th><th>Device</th><th>Used</th></tr>
+    ${people.map((p) => html`<tr class="click" data-student="${p.rollNumber}">
+      <td>${who(p.rollNumber, p.studentName)}</td><td class="num">${clock(p.firstOpenAt)}</td><td class="num">${clock(p.lastSeenAt)}</td>
+      <td class="right num">${p.sessions.length}</td><td class="right num">${mins(p.minutes)}</td>
+      <td>${p.platform || '—'}<span class="sub">${p.appVersion ? `v${p.appVersion}` : ''}</span></td>
+      <td>${features(p.screens).map(([l, n]) => html`<span class="chip">${l} ×${n}</span>`)}</td></tr>`)}
+  </table></div>` : empty('—'));
+};
+
+VIEWS.trends = async (view) => {
+  view.innerHTML = part(html`<h2>Trends</h2><p class="lede">The last 14 college days. Click a column to open that day.</p>
+    <div class="grid g2"><div class="card"><h3>Students per day</h3>${slot('r-users')}</div><div class="card"><h3>Screen views per day</h3>${slot('r-views')}</div></div>
+    <div class="grid g2 mt"><div class="card"><h3>Features, last 14 days</h3>${slot('r-features')}</div><div class="card"><h3>By day</h3>${slot('r-table')}</div></div>`);
+  const u = await metric('usage');
+  const labels = u.days.map((x) => String(Number(x.day.slice(8))));
+  const pick = (i) => u.days[i].day;
+  $('#r-users').innerHTML = part(columns(u.days.map((x) => x.users), labels, { pick, selected: u.days.length - 1 }));
+  $('#r-views').innerHTML = part(columns(u.days.map((x) => x.views), labels, { pick }));
+  $('#r-features').innerHTML = part(hbars(features(u.screens), { color: 'var(--good)' }));
+  $('#r-table').innerHTML = part(html`<div class="table-wrap"><table><tr><th>Day</th><th class="right">Students</th><th class="right">Views</th><th>Top screen</th></tr>
+    ${[...u.days].reverse().map((x) => html`<tr class="click" data-go="#today?day=${x.day}"><td>${dayLabel(x.day)}</td><td class="right num">${x.users}</td><td class="right num">${x.views}</td><td>${features(x.screens)[0]?.[0] || '—'}</td></tr>`)}
+  </table></div>`);
+};
+
+VIEWS.students = async (view, q) => {
+  view.innerHTML = part(html`<h2>Students</h2><p class="lede">Everyone the server has seen sign in or sync, merged with what their phone backed up. Click a row for the full profile.</p>
+    ${slot('s-kpis')}<div class="controls">
+      <input type="search" id="s-q" placeholder="Search name or roll number" value="${q.q || ''}">
+      <select id="s-f"><option value="">Everyone</option><option value="7d">Active in the last 7 days</option><option value="nocloud">No cloud copy</option><option value="below">Below goal</option><option value="revoked">Revoked</option></select>
+    </div><div class="card">${slot('s-table')}</div>`);
+  const [r, revoked] = await Promise.all([metric('userRoster'), api('/api/raw/revoked').catch(() => [])]);
+  const revokedSet = new Set(revoked.map((x) => x.id));
+  const week = Date.now() - 7 * DAY;
+  $('#s-kpis').innerHTML = part(html`<div class="kpis">${kpi('Students', r.users.length)}${kpi('Active 7 days', r.users.filter((u) => u.lastActive >= week).length)}
+    ${kpi('With cloud copy', r.users.filter((u) => u.inCloud).length)}${kpi('Below goal', r.users.filter((u) => u.belowGoal > 0).length, 'warn')}${kpi('Revoked', revokedSet.size, revokedSet.size ? 'bad' : '')}</div>
+    <div class="controls">${Object.entries(r.byPlatform).map(([k, n]) => html`<span class="chip accent">${k} · ${n}</span>`)}${Object.entries(r.byVersion).sort((a, b) => b[1] - a[1]).map(([k, n]) => html`<span class="chip">v${k} · ${n}</span>`)}
+    ${r.unfinished.count ? html`<span class="chip warn">${r.unfinished.count} legacy login-code accounts not listed</span>` : ''}</div>`);
+
+  let sort = { key: 'lastActive', dir: -1 };
+  const cols = [['studentName', 'Student'], ['batchGroup', 'Batch'], ['lastActive', 'Last seen'], ['firstSeen', 'First seen'], ['loginCount', 'Logins'], ['syncCount', 'Syncs'], ['overallAttendancePct', 'Attendance'], ['belowGoal', 'Below goal'], ['platform', 'Device']];
+  const draw = () => {
+    const needle = $('#s-q').value.trim().toLowerCase();
+    const f = $('#s-f').value;
+    const rows = r.users.filter((u) => (!needle || `${u.studentName || ''} ${u.rollNumber}`.toLowerCase().includes(needle))
+      && (!f || (f === '7d' && u.lastActive >= week) || (f === 'nocloud' && !u.inCloud) || (f === 'below' && u.belowGoal > 0) || (f === 'revoked' && revokedSet.has(u.rollNumber))))
+      .sort((a, b) => { const x = a[sort.key] ?? '', y = b[sort.key] ?? ''; return (x > y ? 1 : x < y ? -1 : 0) * sort.dir; });
+    $('#s-table').innerHTML = part(rows.length ? html`<div class="table-wrap"><table>
+      <tr>${cols.map(([k, l]) => html`<th data-sort="${k}">${l}${sort.key === k ? (sort.dir > 0 ? ' ↑' : ' ↓') : ''}</th>`)}<th>Status</th></tr>
+      ${rows.map((u) => html`<tr class="click" data-student="${u.rollNumber}">
+        <td>${who(u.rollNumber, u.studentName)}</td><td>${u.batchGroup}</td>
+        <td class="num">${ago(u.lastActive)}</td><td class="num">${u.firstSeen ? new Date(u.firstSeen).toLocaleDateString('en-IN') : '—'}</td>
+        <td class="num">${u.loginCount ?? '—'}</td><td class="num">${u.syncCount ?? '—'}</td>
+        <td class="num">${pct(u.overallAttendancePct, 1)}</td><td class="num">${u.inCloud ? u.belowGoal : '—'}</td>
+        <td>${u.platform || '—'}<span class="sub">${u.version ? `v${u.version}` : ''}</span></td>
+        <td>${revokedSet.has(u.rollNumber) ? html`<span class="chip bad">revoked</span>` : !u.inCloud ? html`<span class="chip">no cloud copy</span>` : u.erpConnected ? html`<span class="chip good">active</span>` : html`<span class="chip warn">disconnected</span>`}</td></tr>`)}
+    </table></div>` : empty('No match.'));
+    view.querySelectorAll('th[data-sort]').forEach((th) => { th.onclick = () => { const k = th.dataset.sort; sort = { key: k, dir: sort.key === k ? -sort.dir : -1 }; draw(); }; });
+  };
+  $('#s-q').oninput = draw;
+  $('#s-f').onchange = draw;
+  draw();
+};
+
+VIEWS.signins = async (view) => {
+  view.innerHTML = part(html`<h2>Sign-ins</h2><p class="lede">Every sign-in attempt against the college, recorded by the server on the login path itself.</p>${slot('l-body')}`);
+  const l = await metric('loginEvents');
+  $('#l-body').innerHTML = part(html`<div class="kpis">${kpi('Sign-ins today', l.loginsToday)}${kpi('Students today', l.studentsToday)}${kpi('Sign-ins 24h', l.logins24h)}${kpi('Rejected 24h', l.failed24h, l.failed24h ? 'warn' : '')}${kpi('Events on record', l.total)}</div>
+    <div class="controls">${Object.entries(l.byOutcome).map(([k, n]) => html`<span class="chip ${OUTCOME[k]?.[1] || ''}">${OUTCOME[k]?.[0] || k} · ${n}</span>`)}</div>
+    <div class="card"><div class="table-wrap"><table><tr><th>When</th><th>Student</th><th>Outcome</th><th>Device</th><th>Device id</th><th>Network</th></tr>
+    ${l.events.map((e) => html`<tr class="click" data-student="${e.rollNumber}"><td class="num">${dateTime(e.at)}<span class="sub">${ago(e.at)}</span></td><td>${who(e.rollNumber, e.studentName)}</td>
+      <td><span class="chip ${OUTCOME[e.outcome]?.[1] || ''}">${OUTCOME[e.outcome]?.[0] || e.outcome}</span></td>
+      <td>${e.platform || '—'}<span class="sub">${e.appVersion ? `v${e.appVersion}` : ''}</span></td><td class="num">${e.deviceId || '—'}</td><td class="num">${e.ipHash || '—'}</td></tr>`)}
+    </table></div></div>`);
+};
+
+VIEWS.attendance = async (view) => {
+  view.innerHTML = part(html`<h2>Attendance</h2><p class="lede">Across the students whose phones back their attendance up to the cloud.</p>${slot('a-kpis')}
+    <div class="card"><h3>Subjects by miss rate <span class="hint">subjects with two or more students</span></h3>${slot('a-subjects')}</div>
+    <div class="grid g2 mt"><div class="card"><h3>Misses by weekday <span class="hint">from the register</span></h3>${slot('a-week')}</div><div class="card"><h3>Batches <span class="hint">every student</span></h3>${slot('a-batch')}</div></div>`);
+  load($('#a-kpis'), async () => { const o = await metric('overview'); return html`<div class="kpis">${kpi('Avg attendance', pct(o.avgAttendancePct, 1), o.avgAttendancePct < 75 ? 'bad' : 'good')}${kpi('Below goal', o.belowGoalStudents, o.belowGoalStudents ? 'warn' : '')}${kpi('With numbers', o.studentsWithNumbers)}${kpi('College connected', o.connected)}${kpi('Cloud copies', o.students)}</div>`; });
+  load($('#a-subjects'), async () => {
+    const s = await metric('subjectDifficulty');
+    return s.length ? html`<div class="table-wrap"><table><tr><th>Subject</th><th class="right">Students</th><th class="right">Attended</th><th class="right">Missed</th><th style="width:40%">Miss rate</th></tr>
+      ${s.map((x) => html`<tr><td class="name">${x.name}<span class="sub">${x.code}</span></td><td class="right num">${x.students}</td><td class="right num">${x.totalPresent}</td><td class="right num">${x.totalAbsent}</td>
+      <td><div class="hbar" style="grid-template-columns:1fr 60px;padding:0"><div class="track"><div class="fill" style="width:${Math.min(100, x.bunkRate)}%;background:${x.bunkRate >= 35 ? 'var(--bad)' : x.bunkRate >= 15 ? 'var(--warn)' : 'var(--good)'}"></div></div><span class="right num">${pct(x.bunkRate)}</span></div></td></tr>`)}</table></div>` : empty('Needs at least two students on a subject.');
+  });
+  load($('#a-week'), async () => { const b = await metric('bunkCulture'); return b.every((x) => !x.total) ? empty('No register data yet.') : hbars(b.map((x) => [x.day, x.bunkRate]), { color: 'var(--bad)', fmt: (v) => pct(v) }); });
+  load($('#a-batch'), async () => { const b = await metric('batchDistribution'); return hbars(b.map((x) => [x.batch, x.count])); });
+};
+
+VIEWS.health = async (view) => {
+  view.innerHTML = part(html`<h2>Health</h2><p class="lede">From the sync telemetry phones write after a cloud sign-in. Empty here while the Today tab is busy means phones are not completing that sign-in.</p>
+    <div class="card"><h3>College outages <span class="hint">last hour</span></h3>${slot('h-out')}</div>
+    <div class="grid g2 mt"><div class="card"><h3>Endpoints <span class="hint">24 hours</span></h3>${slot('h-ep')}</div><div class="card"><h3>Sign-in prompts <span class="hint">7 days</span></h3>${slot('h-sess')}</div></div>
+    <div class="card mt"><h3>Parser failures <span class="hint">recent syncs</span></h3>${slot('h-parse')}</div>`);
+  load($('#h-out'), async () => { const d = await metric('downtime'); return d.length ? d.map((x) => html`<div class="hbar" style="grid-template-columns:1fr auto"><span><span class="dot" style="background:var(--bad)"></span><b>${x.type}</b> — ${x.failures}/${x.attempts} calls failed, ${x.affectedUsers} students, since ${clock(x.startedAt)}<span class="sub">${x.sampleError || ''}</span></span><b class="num">${pct(x.failRate)}</b></div>`) : empty('Nothing failing. Outages appear on their own and clear when the college recovers.'); });
+  load($('#h-ep'), async () => {
+    const [e, o] = await Promise.all([metric('endpointHealth'), metric('overview')]);
+    return html`<div class="kpis">${kpi('Syncs 24h', o.syncs24h)}${kpi('Success 24h', pct(o.successRate24h), o.successRate24h == null ? '' : o.successRate24h >= 95 ? 'good' : 'warn')}</div>
+      ${e.length ? html`<div class="table-wrap"><table><tr><th>Endpoint</th><th class="right">Calls</th><th class="right">Failed</th><th class="right">Avg</th><th class="right">Success</th></tr>${e.map((x) => html`<tr><td class="name">${x.name}</td><td class="right num">${x.count}</td><td class="right num">${x.fail}</td><td class="right num">${x.avgDuration}ms</td><td class="right num">${pct(x.successRate, 1)}</td></tr>`)}</table></div>` : empty('No sync telemetry in 24 hours.')}`;
+  });
+  load($('#h-sess'), async () => {
+    const s = await metric('sessionEvents');
+    return html`<div class="controls">${Object.entries(s.byReason).map(([k, n]) => html`<span class="chip warn">${REASON[k] || k} · ${n}</span>`)}</div>
+      ${s.recent.length ? html`<div class="table-wrap"><table><tr><th>Student</th><th>Asked to</th><th>Why</th><th>When</th></tr>${s.recent.map((x) => html`<tr class="click" data-student="${x.rollNumber || x.userId}"><td>${who(x.rollNumber || x.userId, x.studentName)}</td><td>${x.type === 'needsOtp' ? 'enter a code' : 'sign in again'}</td><td>${REASON[x.reason] || x.reason}</td><td class="num">${ago(x.at)}</td></tr>`)}</table></div>` : empty('Nobody was asked to sign in again this week.')}`;
+  });
+  load($('#h-parse'), async () => { const p = await metric('parserFailures'); return p.length ? p.map((f) => html`<details><summary>${nameOf(f.rollNumber) || ''} ${f.rollNumber} · ${dateTime(f.timestampMs)} · ${f.errors.length} error(s)</summary><pre>${JSON.stringify(f.errors, null, 2)}</pre></details>`) : empty('No parser errors.'); });
+};
+
+VIEWS.controls = async (view) => {
+  view.innerHTML = part(html`<h2>Controls</h2><p class="lede">Read-only here. Change these from the admin panel in the app, where every write is authorised and audited.</p>
+    <div class="grid g2"><div class="card"><h3>Remote config</h3>${slot('c-config')}</div><div class="card"><h3>Revoked access</h3>${slot('c-revoked')}</div></div>
+    <div class="card mt"><h3>Announcements</h3>${slot('c-ann')}</div><div class="card mt"><h3>Audit log <span class="hint">last 200 admin actions</span></h3>${slot('c-audit')}</div>`);
+  load($('#c-config'), async () => { const c = await api('/api/raw/config'); return c ? html`<dl class="facts">${Object.entries(c).map(([k, v]) => html`<div><dt>${k}</dt><dd>${typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd></div>`)}</dl>` : empty('No config document — the app runs on defaults.'); });
+  load($('#c-revoked'), async () => { const r = await api('/api/raw/revoked'); return r.length ? html`<table><tr><th>Student</th><th>Reason</th><th>When</th></tr>${r.map((x) => html`<tr class="click" data-student="${x.id}"><td>${who(x.id)}</td><td>${x.reason}</td><td class="num">${dateTime(x.revokedAt)}<span class="sub">by ${x.revokedBy || '—'}</span></td></tr>`)}</table>` : empty('Nobody is revoked.'); });
+  load($('#c-ann'), async () => { const a = await api('/api/raw/announcements'); return a.length ? html`<div class="table-wrap"><table><tr><th>Title</th><th>Type</th><th>State</th><th>Published</th><th>Expires</th></tr>${a.map((x) => html`<tr><td class="name">${x.title}<span class="sub">${x.message}</span></td><td>${x.type}</td><td>${x.active && (!x.expiry || x.expiry > Date.now()) ? html`<span class="chip good">live</span>` : html`<span class="chip">off</span>`}</td><td class="num">${dateTime(x.createdAt)}</td><td class="num">${x.expiry ? dateTime(x.expiry) : 'never'}</td></tr>`)}</table></div>` : empty('No announcements.'); });
+  load($('#c-audit'), async () => { const a = await api('/api/raw/audit'); return a.length ? html`<div class="table-wrap"><table><tr><th>When</th><th>Admin</th><th>Action</th><th>Detail</th></tr>${a.map((x) => html`<tr><td class="num">${dateTime(x.at)}</td><td>${nameOf(x.actor) || x.actor}</td><td class="name">${x.action}</td><td><code>${JSON.stringify(x.detail)}</code></td></tr>`)}</table></div>` : empty('No admin actions yet.'); });
+};
+
+// ── Student drawer ───────────────────────────────────────────────────
+async function openStudent(roll) {
+  const box = $('#drawer');
+  box.innerHTML = part(html`<div class="drawer-bg" data-close></div><aside class="drawer"><button class="btn close" data-close>Close ✕</button><div id="d-body"><div class="loading">Loading ${roll}…</div></div></aside>`);
+  try {
+    const s = await metric('student', { roll });
+    const l = s.ledger || {};
+    const a = s.attendance;
+    const byDay = new Map(s.usage.map((u) => [u.day, u]));
+    const days = Array.from({ length: 30 }, (_, i) => shift(istDay(), i - 29));
+    const maxMin = Math.max(1, ...s.usage.map((u) => u.minutes));
+    const fact = (k, v) => html`<div><dt>${k}</dt><dd>${v ?? '—'}</dd></div>`;
+    $('#d-body').innerHTML = part(html`
+      <h2>${s.studentName || 'Name not reported'}</h2>
+      <p class="lede num">${s.rollNumber} · ${s.batchGroup}${l.platform ? ` · ${l.platform}` : ''}${l.appVersion ? ` v${l.appVersion}` : ''}
+        ${s.revoked ? html` <span class="chip bad">revoked — ${s.revoked.reason}</span>` : ''}${s.cloud ? '' : html` <span class="chip">no cloud copy</span>`}</p>
+      <div class="kpis">${kpi('Time · 30 days', mins(s.usageMinutes30d))}${kpi('Days used', s.usage.length)}${kpi('Per active day', mins(s.usage.length ? s.usageMinutes30d / s.usage.length : 0))}${kpi('Sign-ins', l.loginCount)}${kpi('Syncs', l.syncCount)}${kpi('Attendance', pct(a.overallAttendancePct, 1), a.overallAttendancePct == null ? '' : a.belowGoal ? 'warn' : 'good')}</div>
+
+      <div class="card"><h3>Last 30 days <span class="hint">darker = longer in the app</span></h3>
+        <div class="heat">${days.map((day) => { const u = byDay.get(day); return html`<i title="${dayLabel(day)} · ${u ? mins(u.minutes) : 'not opened'}" style="${u ? `background:color-mix(in srgb, var(--accent) ${25 + 75 * (u.minutes / maxMin)}%, var(--inset))` : ''}"></i>`; })}</div>
+        ${s.usage.length ? html`<div class="table-wrap"><table><tr><th>Day</th><th>Sessions</th><th class="right">Time</th><th>Used</th></tr>
+          ${s.usage.map((u) => html`<tr><td>${dayLabel(u.day)}</td><td>${u.sessions.map((x) => html`<span class="chip num">${clock(x.start)}–${clock(x.end)}</span>`)}</td><td class="right num">${mins(u.minutes)}</td><td>${features(u.screens).map(([k, n]) => html`<span class="chip">${k} ×${n}</span>`)}</td></tr>`)}</table></div>` : empty('No recorded app openings in 30 days.')}
+      </div>
+
+      <div class="card mt"><h3>Profile</h3><dl class="facts">
+        ${fact('First seen', l.firstSeen ? dateTime(l.firstSeen) : null)}${fact('Last seen', l.lastSeenAt ? `${dateTime(l.lastSeenAt)} (${ago(l.lastSeenAt)})` : null)}
+        ${fact('Last sign-in', l.lastLoginAt ? `${dateTime(l.lastLoginAt)} · ${OUTCOME[l.lastLoginOutcome]?.[0] || l.lastLoginOutcome}` : null)}${fact('Last successful sign-in', l.lastSuccessAt ? dateTime(l.lastSuccessAt) : null)}
+        ${fact('Sign-in attempts', l.loginAttempts)}${fact('Devices', l.devices)}
+        ${fact('Cloud copy updated', s.cloud?.lastActive ? dateTime(s.cloud.lastActive) : null)}${fact('Setup complete', s.cloud ? (s.cloud.setupComplete ? 'yes' : 'no') : null)}
+        ${fact('Semesters', s.cloud?.semesterCount)}${fact('College connected', s.cloud ? (a.erpConnected ? 'yes' : 'no') : null)}
+        ${fact('Register through', a.latestErpDate)}${fact('Last college sync', a.lastErpSync ? dateTime(Date.parse(a.lastErpSync)) : null)}
+      </dl></div>
+
+      <div class="card mt"><h3>Attendance <span class="hint">goal ${a.goal}% · ${a.totalAttended}/${a.totalClasses} hours</span></h3>
+        ${a.subjects.length ? html`<div class="table-wrap"><table><tr><th>Subject</th><th class="right">Attended</th><th class="right">Held</th><th class="right">Now</th><th class="right">Goal</th></tr>
+          ${[...a.subjects].sort((x, y) => x.pct - y.pct).map((x) => html`<tr><td class="name">${x.name}<span class="sub">${x.code}</span></td><td class="right num">${x.attended}</td><td class="right num">${x.total}</td><td class="right num" style="color:${x.pct >= x.target ? 'var(--good)' : 'var(--bad)'}">${pct(x.pct, 1)}</td><td class="right num">${x.target}%</td></tr>`)}</table></div>` : empty(s.cloud ? 'No subjects synced yet.' : 'This phone has not backed attendance up to the cloud.')}
+      </div>
+
+      <div class="card mt"><h3>Sign-in history</h3>
+        ${s.logins.length ? html`<div class="table-wrap"><table><tr><th>When</th><th>Outcome</th><th>Device</th><th>Device id</th><th>Network</th></tr>${s.logins.map((e) => html`<tr><td class="num">${dateTime(e.at)}</td><td><span class="chip ${OUTCOME[e.outcome]?.[1] || ''}">${OUTCOME[e.outcome]?.[0] || e.outcome}</span></td><td>${e.platform || '—'} ${e.appVersion ? `v${e.appVersion}` : ''}</td><td class="num">${e.deviceId || '—'}</td><td class="num">${e.ipHash || '—'}</td></tr>`)}</table></div>` : empty('No sign-in attempts on record.')}
+      </div>
+
+      <div class="card mt"><h3>Recent syncs <span class="hint">last 50, from the phone</span></h3>
+        ${s.syncs.length ? html`<div class="table-wrap"><table><tr><th>When</th><th>Endpoints</th><th>Problems</th></tr>${s.syncs.map((x) => html`<tr><td class="num">${dateTime(x.at)}</td>
+          <td>${x.endpoints.map((ep) => html`<span class="chip ${ep.status === 'ok' ? 'good' : 'bad'}" title="${ep.error || ''}">${ep.name} ${ep.durationMs}ms</span>`)}</td>
+          <td>${x.sessionEvent ? html`<span class="chip warn">${x.sessionEvent.type} · ${REASON[x.sessionEvent.reason] || x.sessionEvent.reason}</span>` : ''}${x.parserErrors.map((p) => html`<span class="sub">${p.endpoint || p.component || 'sync'}: ${p.message || p.error}</span>`)}</td></tr>`)}</table></div>` : empty('No sync telemetry from this phone.')}
+      </div>
+
+      <details class="mt"><summary>Raw data</summary><pre>${JSON.stringify(s, null, 2)}</pre></details>`);
+  } catch (e) {
+    $('#d-body').innerHTML = part(html`<div class="error">${e.message}</div>`);
+  }
+}
+
+// ── Routing ──────────────────────────────────────────────────────────
+const TABS = [['today', 'Today'], ['trends', 'Trends'], ['students', 'Students'], ['signins', 'Sign-ins'], ['attendance', 'Attendance'], ['health', 'Health'], ['controls', 'Controls']];
+
+async function render() {
+  const [name, qs] = (location.hash.slice(1) || 'today').split('?');
+  const q = Object.fromEntries(new URLSearchParams(qs));
+  const tab = VIEWS[name] ? name : 'today';
+  $('#nav').innerHTML = part(TABS.map(([k, l]) => html`<a href="#${k}" class="${k === tab ? 'on' : ''}">${l}</a>`));
+  const view = $('#view');
+  try {
+    await VIEWS[tab](view, q);
+  } catch (e) {
+    if (!view.querySelector('.error')) view.insertAdjacentHTML('beforeend', part(html`<div class="error mt">${e.message}</div>`));
+  }
+  $('#loaded').textContent = `Loaded ${new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
+}
+
+document.addEventListener('click', (e) => {
+  const close = e.target.closest('[data-close]');
+  if (close) { $('#drawer').innerHTML = ''; return; }
+  const go = e.target.closest('[data-go]');
+  if (go && !go.disabled) { location.hash = go.dataset.go; return; }
+  const day = e.target.closest('[data-day]');
+  if (day) { location.hash = `#today?day=${day.dataset.day}`; return; }
+  const student = e.target.closest('[data-student]');
+  if (student && student.dataset.student) openStudent(student.dataset.student);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#drawer').innerHTML = ''; });
+$('#refresh').onclick = async () => { memo.clear(); await loadNames(); render(); };
+window.addEventListener('hashchange', render);
+
+async function loadNames() {
+  try {
+    const r = await metric('userRoster');
+    NAMES = new Map(r.users.filter((u) => u.studentName).map((u) => [String(u.rollNumber), u.studentName]));
+  } catch { /* lists fall back to the names they carry */ }
+}
+loadNames().then(render);
+</script>
+</body>
+</html>

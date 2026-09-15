@@ -13,6 +13,10 @@
  *              "Sign in again". Trusted device → fresh tokens straight back.
  *              Otherwise → a sealed ticket for `refresh`.
  * refresh    — completes the OTP with that ticket.
+ * ping       — { action: 'ping', token, screens? } the app is open: a usage
+ *              beat plus the screens viewed since the last ping (admin panel
+ *              "who used it today, for how long, and what"). Rides on this
+ *              endpoint because the project is at Vercel Hobby's 12-function cap.
  */
 
 const {
@@ -33,6 +37,7 @@ const {
 const { getRevocation, blockIfRevoked } = require('./_revocation');
 const { tooManyAttempts } = require('./_rate-limit');
 const { isAdminRoll } = require('./_firebase-admin');
+const { touchActive, recordPing, clientMeta } = require('./_activity');
 
 // The per-username caps are the real ceilings; the per-IP ones only stop a spray
 // across accounts. A client IP is a whole lecture hall on campus WiFi or behind
@@ -85,7 +90,14 @@ module.exports = async function handler(req, res) {
             return res.status(200).json({ valid: false, reason: 'incomplete_session' });
         }
 
-        const revocation = await getRevocation(session.rollNumber);
+        // Launch is an app opening even when nothing needs syncing, and it is
+        // the one signal APKs from before the usage ping send on every start.
+        const [revocation] = await Promise.all([
+            getRevocation(session.rollNumber),
+            touchActive(session.rollNumber, {
+                ip: getClientIp(req), studentName: session.studentName, isMock: session.isMock, ...clientMeta(req),
+            }),
+        ]);
         return res.status(200).json({
             valid: true,
             reason: 'session_available',
@@ -94,6 +106,21 @@ module.exports = async function handler(req, res) {
             isAdmin: isAdminRoll(session.rollNumber),
             ...(revocation && { revoked: { reason: revocation.reason || 'Your access to Presence has been revoked.' } }),
         });
+    }
+
+    if (action === 'ping') {
+        let session;
+        try {
+            session = decryptSession(cleanString(body.token, 16384));
+        } catch {
+            return res.status(200).json({ ok: false });
+        }
+        // Analytics only: no revocation or rate-limit round trip. recordPing
+        // floors repeats per student and whitelists what it will store.
+        const ok = await recordPing(session.rollNumber, {
+            studentName: session.studentName, isMock: session.isMock, ...clientMeta(req),
+        }, body.screens);
+        return res.status(200).json({ ok });
     }
 
     if (action === 'requestOtp') {
@@ -187,5 +214,5 @@ module.exports = async function handler(req, res) {
         }
     }
 
-    return res.status(400).json({ error: 'Invalid action. Use "check", "requestOtp" or "refresh".' });
+    return res.status(400).json({ error: 'Invalid action. Use "check", "ping", "requestOtp" or "refresh".' });
 };

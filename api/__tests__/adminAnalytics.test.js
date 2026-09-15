@@ -44,6 +44,25 @@ const userDocs = [
     { id: 'userC', data: { erpRollNumber: '2510990003', studentName: 'C', lastActive: ts(now - 20 * DAY), setupComplete: false, version: '1.0.0' } },
 ];
 
+// The server-side ledger (api/_activity.js).
+const ledgerDocs = [
+    { id: '2410990001', data: { rollNumber: '2410990001', studentName: 'Asha', lastSeenAt: ts(now - 60000), syncCount: 4, platform: 'android', appVersion: '2.1.0' } },
+    { id: '2410990004', data: { rollNumber: '2410990004', studentName: 'Dev', lastSeenAt: ts(now - 2 * HOUR), loginCount: 1, platform: 'web' } },
+    { id: 'mock', data: { rollNumber: 'mock', isMock: true, lastSeenAt: ts(now - 30000) } },
+];
+const { dayKey, dayStartMs } = require('../_activity');
+const today = dayKey(now);
+const minuteOf = (h, m) => Math.floor((dayStartMs(today) + h * HOUR + m * 60000) / 60000);
+const dayDocs = [
+    // two sessions: 09:00–09:04 and 14:00
+    { id: '2410990001', data: { rollNumber: '2410990001', studentName: 'Asha', beats: [minuteOf(9, 0), minuteOf(9, 2), minuteOf(9, 4), minuteOf(14, 0)], screens: { TodayMain: 3, SubjectDetail: 1 } } },
+    { id: '2410990004', data: { rollNumber: '2410990004', studentName: 'Dev', beats: [minuteOf(9, 30)], screens: { TodayMain: 1 } } },
+    { id: '2410990009', data: { rollNumber: '2410990009' } },   // no beats: not a visit
+];
+const plainDocs = {
+    [`admin/activity/days/${today}`]: { day: today, screens: { TodayMain: 4, SubjectDetail: 1 } },
+};
+
 const mkDoc = (d) => {
     const parts = (d.path || '').split('/');
     return {
@@ -62,18 +81,26 @@ let usersThrow = false;
 
 const adminDb = {
     doc: (path) => ({
-        get: async () => ({ exists: !!cache[path], data: () => cache[path] }),
+        get: async () => ({ exists: !!(cache[path] || plainDocs[path]), data: () => cache[path] || plainDocs[path] }),
         set: async (v) => { cache[path] = v; },
     }),
     collection: (name) => {
-        const col = {
-            limit: () => col,
-            get: async () => {
-                if (usersThrow) throw new Error('permission denied');
-                return name === 'users' ? mkSnap(userDocs) : mkSnap([]);
-            },
+        const rows = name === 'users' ? userDocs
+            : name === 'admin/activity/students' ? ledgerDocs
+                : name === `admin/activity/days/${today}/students` ? dayDocs : [];
+        const col = (list) => {
+            const c = {
+                where: (_f, _op, val) => col(list.filter((d) => d.data.lastSeenAt.toMillis() >= val.toMillis())),
+                limit: () => c,
+                count: () => ({ get: async () => ({ data: () => ({ count: list.length }) }) }),
+                get: async () => {
+                    if (usersThrow) throw new Error('permission denied');
+                    return mkSnap(list);
+                },
+            };
+            return c;
         };
-        return col;
+        return col(rows);
     },
     collectionGroup: (name) => {
         const base = name === 'syncs' ? syncDocs : name === 'semesters' ? semDocs : [];
@@ -113,7 +140,7 @@ jest.mock('firebase-admin/firestore', () => ({
 
 const handler = require('../admin-analytics');
 
-function call(metric, { token = '2410990296', forceRefresh = true } = {}) {
+function call(metric, { token = '2410990296', forceRefresh = true, ...params } = {}) {
     return new Promise(resolve => {
         const res = {
             _code: 200,
@@ -122,7 +149,7 @@ function call(metric, { token = '2410990296', forceRefresh = true } = {}) {
             json(body) { resolve({ code: this._code, body }); },
             end() { resolve({ code: this._code, body: null }); },
         };
-        handler({ method: 'POST', body: { token, metric, forceRefresh } }, res);
+        handler({ method: 'POST', body: { token, metric, forceRefresh, ...params } }, res);
     });
 }
 
@@ -132,25 +159,57 @@ beforeEach(() => { cache = {}; usersThrow = false; });
 
 describe('authorization', () => {
     it('rejects a non-admin token', async () => {
-        expect((await call('activeUsers', { token: '2410990999' })).code).toBe(403);
+        expect((await call('overview', { token: '2410990999' })).code).toBe(403);
     });
     it('rejects an unknown metric', async () => {
         expect((await call('nope')).code).toBe(400);
+        expect((await call('toString')).code).toBe(400);
+    });
+    it('rejects parameters that would name a bad cache doc', async () => {
+        expect((await call('daily', { day: '../x' })).code).toBe(400);
+        expect((await call('student', { roll: 'a/b' })).code).toBe(400);
     });
 });
 
-describe('activeUsers', () => {
-    it('reports the real user total, not a stand-in', async () => {
-        const au = await dataOf('activeUsers');
-        expect(au.total).toBe(3);
-        expect([au.dau, au.wau, au.mau]).toEqual([1, 2, 3]);
+describe('live', () => {
+    it('lists only students seen in the last five minutes, never the mock account', async () => {
+        const lv = await dataOf('live');
+        expect(lv.onlineNow).toBe(1);
+        expect(lv.online[0]).toMatchObject({ rollNumber: '2410990001', studentName: 'Asha' });
+    });
+});
+
+describe('daily', () => {
+    it('turns beats into sessions, minutes and first-open time per student', async () => {
+        const d = await dataOf('daily');
+        expect(d.day).toBe(today);
+        expect(d.users).toBe(2);                       // the doc with no beats is not a visit
+        const asha = d.people.find((p) => p.rollNumber === '2410990001');
+        expect(asha.studentName).toBe('Asha');
+        expect(asha.sessions).toHaveLength(2);
+        expect(asha.minutes).toBe(6);                  // 09:00–09:04 is 5, 14:00 is 1
+        expect(asha.firstOpenAt).toBe(dayStartMs(today) + 9 * HOUR);
+        expect(d.sessions).toBe(3);
+        expect(d.minutes).toBe(7);
     });
 
-    it('trends distinct users per day rather than bucketing by last-seen', async () => {
-        const { sparkline, total } = await dataOf('activeUsers');
-        expect(sparkline).toHaveLength(7);
-        expect(sparkline[6]).toBe(3); // three users synced today
-        sparkline.forEach(v => expect(v).toBeLessThanOrEqual(total));
+    it('counts distinct students per IST hour and sums screen views', async () => {
+        const d = await dataOf('daily');
+        expect(d.hours[9]).toBe(2);
+        expect(d.hours[14]).toBe(1);
+        expect(d.screens).toEqual({ TodayMain: 4, SubjectDetail: 1 });
+    });
+});
+
+describe('usage', () => {
+    it('trends students per day from a count, and views from the day aggregate', async () => {
+        const u = await dataOf('usage');
+        expect(u.days).toHaveLength(14);
+        // count() counts documents. writeDay never creates one without a beat,
+        // so in real data this equals daily's `users`; the fixture's beatless doc is the difference.
+        expect(u.days[13]).toMatchObject({ day: today, users: 3, views: 5 });
+        expect(u.days[0].users).toBe(0);
+        expect(u.screens.TodayMain).toBe(4);
     });
 });
 
@@ -182,14 +241,6 @@ describe('downtime', () => {
     });
 });
 
-describe('rateLimit', () => {
-    it('counts only the last 24 hours per user', async () => {
-        const rl = await dataOf('rateLimit');
-        expect(rl.find(r => r.rollNumber === '2410990001').daily).toBe(1);
-        expect(rl.every(r => r.status === 'normal')).toBe(true);
-    });
-});
-
 describe('parserFailures', () => {
     it('returns only syncs that recorded an error, with a usable timestamp', async () => {
         const pf = await dataOf('parserFailures');
@@ -201,7 +252,7 @@ describe('parserFailures', () => {
 describe('userRoster', () => {
     it('aggregates every semester without a read per user', async () => {
         const { users: ur, unfinished } = await dataOf('userRoster');
-        expect(ur).toHaveLength(3);
+        expect(ur).toHaveLength(4);   // three cloud users + one the ledger saw
         expect(unfinished).toEqual({ count: 0, olderThan7d: 0 });
         const a = ur.find(u => u.userId === 'userA');
         expect(a.totalSubjects).toBe(2);
@@ -212,6 +263,14 @@ describe('userRoster', () => {
     it('keeps users who have no semesters yet', async () => {
         const { users: ur } = await dataOf('userRoster');
         expect(ur.find(u => u.userId === 'userC').totalSubjects).toBe(0);
+    });
+
+    it('lists a student whose phone never wrote to the cloud, by name', async () => {
+        const { users: ur } = await dataOf('userRoster');
+        const dev = ur.find((u) => u.rollNumber === '2410990004');
+        expect(dev).toMatchObject({ studentName: 'Dev', inCloud: false, batchGroup: 'Batch 2024' });
+        expect(ur.find((u) => u.rollNumber === '2410990001')).toMatchObject({ studentName: 'Asha', inCloud: true, version: '2.1.0' });
+        expect(ur.some((u) => u.rollNumber === 'mock')).toBe(false);
     });
 
     it('sorts by most recently active', async () => {
@@ -247,7 +306,7 @@ describe('failure honesty', () => {
     it('reports a broken query as an error instead of returning invented numbers', async () => {
         usersThrow = true;
         jest.spyOn(console, 'error').mockImplementation(() => {});
-        const res = await call('activeUsers');
+        const res = await call('overview');
         expect(res.code).toBe(500);
         expect(res.body.data).toBeUndefined();
         expect(res.body.error).toMatch(/permission denied/);

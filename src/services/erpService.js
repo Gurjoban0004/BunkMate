@@ -107,6 +107,11 @@ export async function erpCheckSession(token) {
     return apiCall('/api/erp-session', { action: 'check', token });
 }
 
+/** The app is open: a usage beat plus the screens viewed since the last ping. Returns { ok }. */
+export async function erpPing(token, screens) {
+    return apiCall('/api/erp-session', { action: 'ping', token, screens });
+}
+
 /**
  * The student tapped "Sign in again". This is the one call after onboarding
  * that can make the college send a code.

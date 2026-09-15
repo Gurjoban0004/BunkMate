@@ -19,6 +19,7 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../theme/th
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { isAdminUser } from '../services/adminService';
+import { trackScreen } from '../services/usage';
 
 // Web only — AdminTab.native.js is an empty stub, so the panel is not in the APK.
 import { ADMIN_AVAILABLE, AdminScreen } from './AdminTab';
@@ -39,6 +40,7 @@ export default function WebTabNavigator() {
     const activeStack = stacks[currentTab];
     const currentRoute = activeStack[activeStack.length - 1];
     const transitionStyle = useRouteTransition(`${currentTab}:${currentRoute.name}`);
+    useEffect(() => { trackScreen(currentRoute.name); }, [currentTab, currentRoute.name]);
 
     // Refs so navigation callbacks always see current values without stale closures
     const stacksRef = React.useRef(stacks);

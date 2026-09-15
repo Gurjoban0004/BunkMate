@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Platform, AppState } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { MaintenanceGate, UpdateGate, RevokedGate } from '../components/common/GateOverlay';
 import BrandLoader from '../components/common/BrandLoader';
 import { getAdminConfig, isAdminUser } from '../services/adminService';
 import { APP_VERSION } from '../config/version';
+import { startUsagePings, trackScreen } from '../services/usage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import SetupNavigator from './SetupNavigator';
@@ -61,6 +62,15 @@ export default function AppNavigator() {
         return () => sub.remove();
     }, [isLoading, state.isAuthenticated, isAdmin, checkGates]);
 
+    // Usage pings for the admin panel (who used the app, when, for how long).
+    useEffect(() => {
+        if (isLoading || !state.isAuthenticated) return undefined;
+        return startUsagePings();
+    }, [isLoading, state.isAuthenticated]);
+
+    const navRef = useNavigationContainerRef();
+    const trackCurrent = useCallback(() => trackScreen(navRef.getCurrentRoute()?.name), [navRef]);
+
     if (isLoading) return <BrandLoader />;
 
     // The server's verdict wins over anything cached.
@@ -73,7 +83,7 @@ export default function AppNavigator() {
     }
 
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navRef} onReady={trackCurrent} onStateChange={trackCurrent}>
             {state.isAuthenticated && state.setupComplete ? <TabNavigator /> : <SetupNavigator />}
         </NavigationContainer>
     );

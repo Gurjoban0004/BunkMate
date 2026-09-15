@@ -14,7 +14,7 @@
  * jurisdiction sections in particular.
  */
 
-export const LEGAL_LAST_UPDATED = '8 September 2026';
+export const LEGAL_LAST_UPDATED = '14 September 2026';
 export const LEGAL_CONTACT = 'gurjobanpanjeta@gmail.com';
 
 export const TERMS = {
@@ -74,7 +74,7 @@ export const PRIVACY = {
         {
             heading: 'What is stored',
             body:
-                'Your roll number and name as the college reports them, the attendance and timetable read from the portal, the settings you choose in the app, and a record of when the app signed in and last synced.\n\n' +
+                'Your roll number and name as the college reports them, the attendance and timetable read from the portal, the settings you choose in the app, and a record of when the app signed in, when it was open and for how long, and which of its screens were used.\n\n' +
                 'Your college password is not stored. Session tokens are encrypted and kept in your device’s secure storage.',
         },
         {

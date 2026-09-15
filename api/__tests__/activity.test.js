@@ -29,7 +29,9 @@ jest.mock('firebase-admin/firestore', () => ({
     },
 }));
 
-const { recordLogin, touchActive, clientMeta, safeRoll, hashIp } = require('../_activity');
+const {
+    recordLogin, touchActive, recordPing, clientMeta, safeRoll, hashIp, dayKey, dayStartMs, sessionsFromBeats, pickScreens,
+} = require('../_activity');
 
 beforeEach(() => { writes.sets.length = 0; writes.adds.length = 0; });
 
@@ -100,7 +102,21 @@ describe('touchActive', () => {
         touchActive('2410990111');
         touchActive('2410990111');
         touchActive('2410990111');
-        expect(writes.sets.filter((s) => s.path.endsWith('2410990111'))).toHaveLength(1);
+        expect(writes.sets.filter((s) => s.path === 'admin/activity/students/2410990111')).toHaveLength(1);
+    });
+
+    test('carries the name sealed in the session and leaves a beat on today', () => {
+        touchActive('2410990333', { studentName: 'Asha K', platform: 'web' });
+        const roster = writes.sets.find((s) => s.path === 'admin/activity/students/2410990333');
+        expect(roster.data.studentName).toBe('Asha K');
+        const day = writes.sets.find((s) => s.path === `admin/activity/days/${dayKey()}/students/2410990333`);
+        expect(day.data.beats).toEqual({ __union: Math.floor(Date.now() / 60000) });
+        expect(day.data.studentName).toBe('Asha K');
+    });
+
+    test('a mock session is not a student', () => {
+        touchActive('mock', { isMock: true });
+        expect(writes.sets).toHaveLength(0);
     });
 
     test('is synchronous and never throws, whatever Firestore does', () => {
@@ -112,6 +128,46 @@ describe('touchActive', () => {
         const { touchActive: ta } = require('../_activity');
         expect(() => ta('2410990222')).not.toThrow();
         jest.resetModules();
+    });
+});
+
+describe('recordPing', () => {
+    test('stores whitelisted screen views on the student-day and the day aggregate', async () => {
+        const ok = await recordPing('2410990444', { studentName: 'B' }, { TodayMain: 3, SubjectDetail: 1, Hacker: 9, Settings: -2 });
+        expect(ok).toBe(true);
+        const mine = writes.sets.find((s) => s.path.endsWith('/students/2410990444'));
+        expect(mine.data.screens).toEqual({ TodayMain: { __inc: 3 }, SubjectDetail: { __inc: 1 } });
+        const agg = writes.sets.find((s) => s.path === `admin/activity/days/${dayKey()}`);
+        expect(agg.data.screens).toEqual({ TodayMain: { __inc: 3 }, SubjectDetail: { __inc: 1 } });
+    });
+
+    test('a repeat inside the floor is refused so the app keeps its counts', async () => {
+        expect(await recordPing('2410990555', {}, { TodayMain: 1 })).toBe(true);
+        expect(await recordPing('2410990555', {}, { TodayMain: 1 })).toBe(false);
+    });
+});
+
+describe('usage helpers', () => {
+    const at = (iso) => Math.floor(Date.parse(iso) / 60000);
+
+    test('beats within five minutes are one session; a longer gap starts another', () => {
+        const s = sessionsFromBeats([at('2026-09-14T09:00:00+05:30'), at('2026-09-14T09:03:00+05:30'),
+            at('2026-09-14T09:03:00+05:30'), at('2026-09-14T09:05:00+05:30'), at('2026-09-14T13:40:00+05:30')]);
+        expect(s).toHaveLength(2);
+        expect(s[0]).toMatchObject({ start: Date.parse('2026-09-14T09:00:00+05:30'), minutes: 6 });
+        expect(s[1].minutes).toBe(1);
+        expect(sessionsFromBeats(undefined)).toEqual([]);
+    });
+
+    test('the day is the college day in IST, not UTC', () => {
+        // 20:00 UTC on the 13th is 01:30 on the 14th in India.
+        expect(dayKey(Date.parse('2026-09-13T20:00:00Z'))).toBe('2026-09-14');
+        expect(dayStartMs('2026-09-14')).toBe(Date.parse('2026-09-13T18:30:00Z'));
+    });
+
+    test('pickScreens drops unknown names, junk and huge counts', () => {
+        expect(pickScreens({ TodayMain: 1e9, __proto__: 1, x: 2 })).toEqual({ TodayMain: 50 });
+        expect(pickScreens('nope')).toEqual({});
     });
 });
 
