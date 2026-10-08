@@ -150,3 +150,16 @@ describe('assertNotLoginFailure', () => {
         }
     });
 });
+
+describe('official profile portrait endpoint', () => {
+    const originalFetch = global.fetch;
+    afterEach(() => { global.fetch = originalFetch; });
+    test('uses the current authenticated session and reads array photo without returning personal fields', async () => {
+        global.fetch = jest.fn().mockResolvedValue({ ok: true, text: async () => JSON.stringify([{ photo: '/resources/photo.jpg', firstName: 'Student', address: 'private' }]) });
+        const { fetchStudentPhotoV2 } = require('../_erp-provider');
+        const photo = await fetchStudentPhotoV2({ userId: 'own-user', sessionId: 'current', roleId: '4', apiKey: 'key', securityToken: 'token' });
+        expect(photo).toBe('/resources/photo.jpg');
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/mobilev2/getUserDetails'), expect.objectContaining({ method: 'POST', body: expect.stringContaining('securityToken=token') }));
+        expect(global.fetch.mock.calls[0][1].body).toContain('userId=own-user');
+    });
+});

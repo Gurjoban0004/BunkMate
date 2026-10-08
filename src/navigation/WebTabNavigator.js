@@ -79,7 +79,9 @@ export default function WebTabNavigator() {
 
             window.addEventListener('popstate', handlePopState);
             const tab = initialWebTab(window.location.search, isAdmin);
-            window.history.replaceState({ tab, index: 0 }, '', `${window.location.pathname}?tab=${tab}`);
+            const params = new URLSearchParams(window.location.search);
+            params.set('tab', tab);
+            window.history.replaceState({ tab, index: 0 }, '', `${window.location.pathname}?${params}`);
 
             return () => window.removeEventListener('popstate', handlePopState);
         }
@@ -206,7 +208,7 @@ export default function WebTabNavigator() {
     return (
         <View style={styles.container}>
             <Animated.View style={[styles.content, transitionStyle]}>
-                <SafeAreaInsetsContext.Provider value={{ ...insets, top: 0, bottom: 0 }}>
+                <SafeAreaInsetsContext.Provider value={{ ...insets, bottom: 0 }}>
                     {renderScreen()}
                 </SafeAreaInsetsContext.Provider>
             </Animated.View>

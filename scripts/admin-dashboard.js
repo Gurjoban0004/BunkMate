@@ -11,8 +11,8 @@
  *
  * The numbers come from the very same functions api/admin-analytics.js serves
  * (its METRICS export), run here against Firestore with the Admin SDK — so the
- * dashboard and the panel cannot disagree. Read-only: it never writes, not
- * even the analytics cache.
+ * dashboard and the panel cannot disagree. Firestore is read-only: it never
+ * writes the database or analytics cache. Portrait originals are cached locally.
  *
  * It listens on 127.0.0.1 only. Anyone who can reach it reads every student's
  * data, with no sign-in, so never bind it to another interface.
@@ -37,6 +37,7 @@ process.env.ENCRYPTION_SECRET = process.env.ENCRYPTION_SECRET || require('crypto
 
 const analytics = require('../api/admin-analytics');
 const { adminDb } = require('../api/_firebase-admin');
+const { cachedPhoto } = require('./admin-photo-cache');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 4545;
@@ -95,6 +96,18 @@ const server = http.createServer(async (req, res) => {
     }
     const started = Date.now();
     try {
+        if (url.pathname === '/api/photo') {
+            const roll = url.searchParams.get('roll') || '';
+            if (!/^[A-Za-z0-9_-]{1,64}$/.test(roll)) { res.writeHead(400).end('Invalid student'); return; }
+            const student = await adminDb.doc(`admin/activity/students/${roll}`).get();
+            if (!student.exists || !student.data().studentPhoto) { res.writeHead(404).end('No college photo'); return; }
+            try {
+                const photo = await cachedPhoto(roll, student.data().studentPhoto, path.join(__dirname, '../.admin-photos'));
+                res.writeHead(200, { 'Content-Type': photo.type, 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+                res.end(photo.bytes);
+            } catch { res.writeHead(502).end('College photo unavailable'); }
+            return;
+        }
         const [status, body] = await route(url);
         res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
         res.end(JSON.stringify(body));
@@ -108,5 +121,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
     console.log(`Presence admin dashboard → http://${HOST}:${PORT}`);
-    console.log('Read-only. Every page load reads Firestore, so it counts against the daily quota.');
+    console.log('Firestore read-only; portraits cached locally. Page loads count against the daily quota.');
 });

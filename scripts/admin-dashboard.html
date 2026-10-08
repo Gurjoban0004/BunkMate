@@ -115,6 +115,14 @@ pre { background: var(--inset); padding: 12px; border-radius: 8px; overflow: aut
 .student-identity { display: flex; align-items: center; gap: 10px; }
 .student-avatar { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .student-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+button.student-avatar { width: 44px; height: 44px; border: 0; padding: 0; cursor: zoom-in; font: inherit; }
+button.student-avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.photo-dialog { padding: 20px; max-width: min(840px, calc(100% - 40px)); max-height: calc(100% - 40px); background: var(--bg); color: var(--ink); border: 0; border-radius: 12px; overflow: auto; }
+.photo-dialog::backdrop { background: rgba(20,19,26,.7); }
+.photo-dialog header { position: static; display: flex; gap: 24px; align-items: center; justify-content: space-between; padding: 0 0 16px; }
+.photo-dialog h2 { margin: 0; font-size: 20px; }
+.photo-dialog img { display: block; max-width: 100%; max-height: calc(100svh - 160px); width: auto; height: auto; margin: auto; object-fit: contain; }
+.photo-dialog .btn { min-height: 44px; }
 .student-profile { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
 .student-profile .student-avatar { width: 56px; height: 56px; font-size: 22px; }
 .student-profile h2 { margin: 0; }
@@ -130,6 +138,11 @@ pre { background: var(--inset); padding: 12px; border-radius: 8px; overflow: aut
 </header>
 <main id="view"></main>
 <div id="drawer"></div>
+<dialog id="photo-dialog" class="photo-dialog" aria-labelledby="photo-title">
+  <header><h2 id="photo-title">Student photo</h2><button class="btn" data-close-photo>Close photo</button></header>
+  <div id="photo-image"></div>
+  <p id="photo-error" hidden>The college photo could not be loaded. Close this view and try again.</p>
+</dialog>
 
 <script>
 'use strict';
@@ -188,17 +201,27 @@ const REASON = { dead: 'college ended the session', stale: 'session older than a
 let NAMES = new Map();
 let PHOTOS = new Map();
 const nameOf = (roll, fallback) => NAMES.get(String(roll)) || fallback || null;
+function photoSource(photo) {
+  if (typeof photo === 'string' && /^\/api\/photo\?roll=[A-Za-z0-9_-]{1,64}$/.test(photo)) return photo;
+  try { const url = new URL(photo); if (url.protocol === 'https:' && !url.username && !url.password) return url.href; } catch { /* no usable photo */ }
+  return null;
+}
 function avatar(roll, name, photo = PHOTOS.get(String(roll))) {
-  let src = null;
-  try { const url = new URL(photo); if (url.protocol === 'https:' && !url.username && !url.password) src = url.href; } catch { /* no usable photo */ }
-  return html`<span class="student-avatar"><span aria-hidden="true">${(name || '?').trim().charAt(0).toUpperCase()}</span>${src ? html`<img data-student-photo src="${src}" alt="Photo of ${name || 'student'}" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>`;
+  const src = photoSource(photo) && /^[A-Za-z0-9_-]{1,64}$/.test(String(roll)) ? `/api/photo?roll=${encodeURIComponent(roll)}` : null;
+  const initial = html`<span aria-hidden="true">${(name || '?').trim().charAt(0).toUpperCase()}</span>`;
+  return src ? html`<button class="student-avatar" data-view-photo="${src}" data-photo-name="${name || 'Student'}" aria-label="View full photo of ${name || 'student'}">${initial}<img data-student-photo src="${src}" alt="Photo of ${name || 'student'}" loading="lazy" referrerpolicy="no-referrer"></button>` : html`<span class="student-avatar">${initial}</span>`;
 }
 const who = (roll, fallback) => {
   const name = nameOf(roll, fallback);
   return html`<span class="student-identity">${avatar(roll, name)}<span><span class="name">${name || 'Name not reported'}</span><span class="sub num">${roll}</span></span></span>`;
 };
 document.addEventListener('error', (event) => {
-  if (event.target.matches?.('img[data-student-photo]')) event.target.remove();
+  if (event.target.matches?.('img[data-student-photo]')) {
+    const button = event.target.closest?.('button[data-view-photo]');
+    if (button) { button.disabled = true; button.removeAttribute('data-view-photo'); button.setAttribute('aria-label', 'College photo unavailable'); }
+    event.target.remove();
+  }
+  if (event.target.matches?.('img[data-full-photo]')) { event.target.remove(); document.querySelector('#photo-error').hidden = false; }
 }, true);
 
 // ── Pieces ───────────────────────────────────────────────────────────
@@ -310,7 +333,7 @@ VIEWS.trends = async (view) => {
 };
 
 VIEWS.students = async (view, q) => {
-  view.innerHTML = part(html`<h2>Students</h2><p class="lede">Everyone the server has seen sign in or sync, merged with what their phone backed up. Click a row for the full profile.</p>
+  view.innerHTML = part(html`<h2>Students</h2><p class="lede">Everyone the server has seen sign in or sync, merged with what their phone backed up. Click a row for the full profile, or a photo to view it in full. Missing photos appear after the student's next college sync.</p>
     ${slot('s-kpis')}<div class="controls">
       <input type="search" id="s-q" placeholder="Search name or roll number" value="${q.q || ''}">
       <select id="s-f"><option value="">Everyone</option><option value="7d">Active in the last 7 days</option><option value="nocloud">No cloud copy</option><option value="below">Below goal</option><option value="revoked">Revoked</option></select>
@@ -319,7 +342,7 @@ VIEWS.students = async (view, q) => {
   const revokedSet = new Set(revoked.map((x) => x.id));
   const week = Date.now() - 7 * DAY;
   $('#s-kpis').innerHTML = part(html`<div class="kpis">${kpi('Students', r.users.length)}${kpi('Active 7 days', r.users.filter((u) => u.lastActive >= week).length)}
-    ${kpi('With cloud copy', r.users.filter((u) => u.inCloud).length)}${kpi('Below goal', r.users.filter((u) => u.belowGoal > 0).length, 'warn')}${kpi('Revoked', revokedSet.size, revokedSet.size ? 'bad' : '')}</div>
+    ${kpi('With cloud copy', r.users.filter((u) => u.inCloud).length)}${kpi('Photos saved', r.users.filter((u) => photoSource(u.studentPhoto)).length)}${kpi('Below goal', r.users.filter((u) => u.belowGoal > 0).length, 'warn')}${kpi('Revoked', revokedSet.size, revokedSet.size ? 'bad' : '')}</div>
     <div class="controls">${Object.entries(r.byPlatform).map(([k, n]) => html`<span class="chip accent">${k} · ${n}</span>`)}${Object.entries(r.byVersion).sort((a, b) => b[1] - a[1]).map(([k, n]) => html`<span class="chip">v${k} · ${n}</span>`)}
     ${r.unfinished.count ? html`<span class="chip warn">${r.unfinished.count} legacy login-code accounts not listed</span>` : ''}</div>`);
 
@@ -476,6 +499,20 @@ async function render() {
 }
 
 document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-close-photo]')) { $('#photo-dialog').close(); return; }
+  const photo = e.target.closest('[data-view-photo]');
+  if (photo && photoSource(photo.dataset.viewPhoto)) {
+    $('#photo-title').textContent = photo.dataset.photoName;
+    $('#photo-error').hidden = true;
+    const image = document.createElement('img');
+    image.setAttribute('data-full-photo', '');
+    image.referrerPolicy = 'no-referrer';
+    image.alt = `Photo of ${photo.dataset.photoName}`;
+    image.src = photo.dataset.viewPhoto;
+    $('#photo-image').replaceChildren(image);
+    $('#photo-dialog').showModal();
+    return;
+  }
   const close = e.target.closest('[data-close]');
   if (close) { $('#drawer').innerHTML = ''; return; }
   const go = e.target.closest('[data-go]');
@@ -485,7 +522,7 @@ document.addEventListener('click', (e) => {
   const student = e.target.closest('[data-student]');
   if (student && student.dataset.student) openStudent(student.dataset.student);
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#drawer').innerHTML = ''; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#photo-dialog').open) $('#drawer').innerHTML = ''; });
 $('#refresh').onclick = async () => { memo.clear(); await loadNames(); render(); };
 window.addEventListener('hashchange', render);
 

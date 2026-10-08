@@ -32,6 +32,7 @@ export function createViewportDebug() {
             `visual ${viewport?.width}×${viewport?.height} top=${viewport?.offsetTop} left=${viewport?.offsetLeft} scale=${viewport?.scale}`,
             `safe T/R/B/L ${probe('padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);').padding.join('/')}`,
             `svh/lvh/dvh ${['svh', 'lvh', 'dvh'].map((unit) => probe(`height:100${unit}`).height).join('/')}`,
+            `root height ${document.getElementById('root')?.getBoundingClientRect().height} · bar bottom ${document.querySelector('.ios26-tabbar')?.getBoundingClientRect().bottom}`,
             `scrollTop ${document.scrollingElement?.scrollTop || 0} · kb-inset ${root.style.getPropertyValue('--kb-inset')} · keyboard ${root.dataset.keyboard}`,
         ].join('\n');
     }

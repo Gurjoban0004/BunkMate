@@ -103,12 +103,11 @@ const styles = StyleSheet.create({
 /**
  * The gap between the status bar and the first line of a paper header.
  *
- * The replica's 82px top padding was measured under a fixed 54px status bar,
- * i.e. the design intent is "~26px below the bar" — so it is measured, not
- * hardcoded, or Android's 24dp bar leaves a hole and a tall notch leaves none.
+ * Use the measured status-bar/notch inset plus a 20px content gap. Web pages
+ * whose status bar is outside the viewport naturally receive a zero inset.
  * Screens using a paper header must leave `top` off their SafeAreaView edges.
  */
-export const usePaperTopPadding = (gap = 26) => {
+export const usePaperTopPadding = (gap = 20) => {
     const { top } = useSafeAreaInsets();
     return (Platform.OS === 'web' ? top : Math.max(top, 14)) + gap;
 };

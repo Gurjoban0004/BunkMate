@@ -39,26 +39,42 @@ college-authoritative; this feature does not provide a manual attendance edit.
 
 ## Student photos in the web admin panel
 
-The existing ERP session already supplies `studentPhoto`. Successful password
-and OTP logins save its normalized HTTPS URL to the existing server activity
-roster. Session checks and ordinary data syncs backfill photos from existing
-authenticated sessions without a new login or a new student database.
-Relative photo paths resolve against `ERP_BASE_URL`; missing photos do not
-erase previously saved photos.
+The source endpoint is **POST `/mobilev2/getUserDetails`**. The college's official
+app calls it in `research/apk-new/assets/www/js/init-app.js:4178` for the personal
+information page, using userId, sessionId, apiKey, roleId, and securityToken.
+The response is an array of profile objects; the portrait URL is `photo`.
+`getProfileMenu` receives the URL and is not the profile-photo source.
+The captured website also contains a real JPEG URL under
+`https://s3.amazonaws.com/cbrig-assets/cuiet/resources/Student/`.
 
-The existing admin analytics roster and student-detail responses include the
-photo. The web admin student cards, activity rows, and profile header render
-it, with initials on missing or failed images. The dense Mac-local dashboard at
-[127.0.0.1:4545](http://127.0.0.1:4545/) also renders existing roster photos in
-student identity rows and profile headers through `scripts/admin-dashboard.html`
-(served by `scripts/admin-dashboard.js`). It uses the `userRoster` response's
-`studentPhoto`, keyed by roll number, and the student-detail photo for profiles.
-URLs must be HTTPS without embedded credentials; names and URLs are escaped.
-Images load lazily without a referrer and fall back to initials when unavailable.
-The dashboard remains read-only; rendering photos adds no datastore writes.
-Older sessions that contain no photo need a future ERP login
-to obtain one. College photo URLs requiring cookies may fail to load and use
-the initials fallback.
+Successful password/OTP logins already save the session's normalized HTTPS
+`studentPhoto` in the existing `admin/activity/students/{rollNumber}` roster.
+Normal attendance sync now backfills missing photos through `getUserDetails`
+using the student's own authenticated session. No new login or student database
+is required. Missing/unavailable photos are retried at most once per day;
+a five-second portrait timeout or storage failure cannot fail attendance sync.
+Only portrait metadata is merged, preserving attendance and existing identity.
+The request shape is source-verified and unit-tested; no live authenticated
+`getUserDetails` call was made during this run.
+
+The dense local web admin is
+[Students — 127.0.0.1:4545](http://127.0.0.1:4545/#students), served by
+`scripts/admin-dashboard.js` and `scripts/admin-dashboard.html`. It uses the
+existing analytics roster and student-detail responses. The local `/api/photo`
+route reads an existing student's saved URL and caches the original image bytes
+in git-ignored `.admin-photos/`. Only the verified college S3 image store or the
+configured ERP origin is accepted, redirects are rejected, and images have
+bounded size and timeouts. Cache directories/files use private permissions.
+Firestore stays read-only in the local dashboard.
+
+Identity photos are accessible buttons opening a full, uncropped original in a
+focused viewer with a Close action and Escape support. Failed/missing photos
+use initials. Names and URLs are escaped; images do not send a referrer.
+The Students page reports photos saved. Existing portraits can be displayed
+immediately; students without one receive their photo after their next
+successful authenticated sync once the API changes are deployed. The admin
+roster has no ERP credentials with which to fetch every missing face itself.
+Never infer a student's portrait filename or enumerate the college's image store.
 
 ## Verification
 
@@ -68,8 +84,9 @@ requirements, holidays, empty/perfect records, invalid pair counts, selection
 and reset flows, baseline updates after sync, photo persistence, and roster
 photo responses. Unit-test fixtures never seed application attendance state.
 
-The latest integration run reports 345 passing tests and one skipped test across
-48 suites, plus successful production web and native bundle exports. Read-only
-requests to the local dashboard and roster returned HTTP 200; the observed
-roster contained 77 students and one saved photo. Students without saved photos
-use initials. These checks do not verify physical iPhone or native rendering.
+The October 8 integration run reports 353 passing tests and one skipped test
+across 51 suites. New tests cover source-endpoint authentication, old-session
+photo backfill, retry cooldown, safe original-image caching, and credential-free
+attendance backup. Browser checks opened a saved real college portrait in the
+dense dashboard's full viewer and verified the local cache served it successfully.
+These checks do not verify physical iPhone or native rendering.

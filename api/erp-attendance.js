@@ -23,6 +23,7 @@
 const { setCorsHeaders, isSessionDead, checkSessionAlive, ERP_BASE } = require('./_session-utils');
 const { openSession, fetchWithLiveSession } = require('./_data-session');
 const { saveResearch, RESEARCH_ID } = require('./_research');
+const { saveStudentPhoto } = require('./_student-photo');
 const { fetchSummaryV2, fetchRegisterLegacy, isRegisterTable } = require('./_erp-provider');
 const { parseRegisterHTML, mockCalendar } = require('./erp-calendar');
 
@@ -216,6 +217,9 @@ module.exports = async function handler(req, res) {
         const withToken = refreshedToken ? { token: refreshedToken } : {};
 
         if (keepAlive) return res.status(200).json({ success: true, alive: true, ...withToken });
+
+        // Await the portrait write before the serverless response freezes this instance.
+        await saveStudentPhoto(live.session);
 
         const htmlContent = result.htmlBody;
         if (!htmlContent) {

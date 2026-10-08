@@ -274,6 +274,20 @@ async function warmup(session) {
 
 const withCookies = (cookies) => (cookies ? { Cookie: cookies } : {});
 
+/** Official app's personalInformation request; returns only the portrait URL. */
+async function fetchStudentPhotoV2(session) {
+    const response = await fetch(`${ERP_BASE}/mobilev2/getUserDetails`, {
+        method: 'POST',
+        headers: LEGACY_HEADERS,
+        body: encodeForm(sessionForm(session)),
+        signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return null;
+    const payload = await readErpPayload(response);
+    const profile = firstDataItem(payload?.data || payload);
+    return typeof profile?.photo === 'string' ? profile.photo : null;
+}
+
 /** Attendance summary cards (commonPage 28). Fallback when the register is unavailable. */
 async function fetchSummaryV2(session) {
     const cookies = await warmup(session);
@@ -331,5 +345,6 @@ module.exports = {
     fetchSummaryV2,
     fetchTimetableV2,
     fetchRegisterLegacy,
+    fetchStudentPhotoV2,
     isRegisterTable,
 };

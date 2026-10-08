@@ -50,7 +50,7 @@ const EditSubjectsScreen = () => {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['bottom']}>
+        <SafeAreaView style={styles.container} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
             <TabScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <ScreenHeader title="Subjects" bleed={{ top: SPACING.md }} />
                 <Text style={styles.intro}>

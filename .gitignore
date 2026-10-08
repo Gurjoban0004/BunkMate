@@ -37,3 +37,6 @@ skills-lock.json
 *.code-workspace
 
 .npm/
+
+# Private college portraits cached by the local admin dashboard.
+.admin-photos/

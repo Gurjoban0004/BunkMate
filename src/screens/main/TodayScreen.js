@@ -117,7 +117,7 @@ const TodayScreen = ({ navigation }) => {
         : state.isOnline === false ? 'Offline — showing what you had' : null;
 
     return (
-        <SafeAreaView style={styles.container} edges={['left', 'right']}>
+        <SafeAreaView style={styles.container} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
             <TabScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}

@@ -49,7 +49,7 @@ export default function SubjectPlannerScreen({ route }) {
 
     if (!planner) {
         return (
-            <SafeAreaView style={styles.screen} edges={['bottom']}>
+            <SafeAreaView style={styles.screen} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
                 <ScreenHeader title="Plan classes" />
                 <View style={styles.emptyWrap}>
                     <Text style={styles.emptyTitle}>Subject not found</Text>
@@ -190,7 +190,7 @@ export default function SubjectPlannerScreen({ route }) {
     const hasPlannable = plannable.length > 0;
 
     return (
-        <SafeAreaView style={styles.screen} edges={['bottom']}>
+        <SafeAreaView style={styles.screen} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
             <TabScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <ScreenHeader
                     title={shortSubjectName(name)}

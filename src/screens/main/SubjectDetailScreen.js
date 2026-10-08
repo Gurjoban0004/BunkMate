@@ -69,7 +69,7 @@ export default function SubjectDetailScreen({ route, navigation }) {
     };
 
     return (
-        <SafeAreaView style={styles.container} edges={['bottom']}>
+        <SafeAreaView style={styles.container} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
             <TabScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}

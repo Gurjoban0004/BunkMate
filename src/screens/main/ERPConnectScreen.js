@@ -518,7 +518,7 @@ export default function ERPConnectScreen({ navigation }) {
 
     // ─── MAIN RENDER ────────────────────────────────────────────────
     return (
-        <SafeAreaView style={styles.container} edges={['bottom']}>
+        <SafeAreaView style={styles.container} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}

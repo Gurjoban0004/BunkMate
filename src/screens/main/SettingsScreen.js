@@ -25,6 +25,7 @@ import { syncDailyPlanNotifications, cancelAllReminders } from '../../utils/noti
 import { formatRelativeTime, formatTime } from '../../utils/dateHelpers';
 import { APP_VERSION } from '../../config/version';
 import LegalSheet from '../../components/common/LegalSheet';
+import { downloadAttendanceBackup } from '../../storage/attendanceBackup';
 const SettingsScreen = ({ navigation }) => {
     const styles = getStyles();
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
@@ -197,7 +198,7 @@ const SettingsScreen = ({ navigation }) => {
     const needsSignIn = !!state.erpSessionExpired && !!state.settings?.erpConnected;
 
     return (
-        <SafeAreaView style={styles.container} edges={['left', 'right']}>
+        <SafeAreaView style={styles.container} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
             <TabScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <PaperScreenHeader
                     title="Settings"
@@ -510,6 +511,19 @@ const SettingsScreen = ({ navigation }) => {
                             )}
                         </View>
                         <View style={styles.divider} />
+                        {Platform.OS === 'web' && <>
+                            <TouchableOpacity style={styles.groupItem} accessibilityRole="button" accessibilityLabel="Download attendance backup" onPress={() => {
+                                try { downloadAttendanceBackup(state); }
+                                catch { showAlert('Backup unavailable', 'The download could not start. Please try again before removing the Home Screen app.'); }
+                            }}>
+                                <View style={styles.settingInfo}>
+                                    <Text style={styles.cardTitle}>Download attendance backup</Text>
+                                    <Text style={styles.cardDescription}>Save our records and settings before reinstalling</Text>
+                                </View>
+                                <Text style={styles.chevron}>›</Text>
+                            </TouchableOpacity>
+                            <View style={styles.divider} />
+                        </>}
                         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                             <View style={styles.accountButtonContent}>
                                 <View style={styles.accountButtonTextContainer}>

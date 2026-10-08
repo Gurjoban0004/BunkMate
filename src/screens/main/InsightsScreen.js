@@ -94,7 +94,7 @@ export default function InsightsScreen() {
     const maxDayTotal = Math.max(...Object.values(weekdayPatterns?.byDay || {}).map(d => d.total), 1);
 
     return (
-        <SafeAreaView style={styles.container} edges={['left', 'right']}>
+        <SafeAreaView style={styles.container} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
             {/* Tab bar — commented out to consolidate screens into a single view */}
             {/*
             <View style={styles.tabBar}>

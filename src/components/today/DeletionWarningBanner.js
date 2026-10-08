@@ -5,7 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useApp } from '../../context/AppContext';
 import { getCurrentSemesterId } from '../../utils/firebaseHelpers';
-import { Typography } from '../common/Typography';
+import { HeadingSmall, BodySmall, CaptionMedium, LabelMedium } from '../common/Typography';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../theme/theme';
 import { logger } from '../../utils/logger';
 import { useBannerSlot, BANNER_PRIORITY } from './BannerSlot';
@@ -51,19 +51,19 @@ export default function DeletionWarningBanner() {
       onPress={() => navigation.navigate('Settings')}
     >
       <View style={styles.content}>
-        <Typography variant="h3" style={styles.title}>
+        <HeadingSmall style={styles.title}>
           Data Deletion Warning
-        </Typography>
-        <Typography variant="body2" style={styles.message}>
+        </HeadingSmall>
+        <BodySmall style={styles.message}>
           This semester's data will be deleted in {warningData.daysRemaining} days ({warningData.deletionDate}).
-        </Typography>
-        <Typography variant="caption" style={styles.reminder}>
+        </BodySmall>
+        <CaptionMedium style={styles.reminder}>
           Please export your data from Settings if you wish to keep it.
-        </Typography>
+        </CaptionMedium>
         <View style={styles.button}>
-          <Typography variant="label" style={styles.buttonText}>
+          <LabelMedium style={styles.buttonText}>
             GO TO SETTINGS →
-          </Typography>
+          </LabelMedium>
         </View>
       </View>
     </TouchableOpacity>

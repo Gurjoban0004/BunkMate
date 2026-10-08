@@ -17,7 +17,8 @@ test('dense dashboard identities use saved roster photos and escape student text
     const { run } = helpers();
     run("NAMES.set('student', '<Student>'); PHOTOS.set('student', 'https://college.example/photo.jpg');");
     const markup = run("who('student').s");
-    expect(markup).toContain('src="https://college.example/photo.jpg"');
+    expect(markup).toContain('src="/api/photo?roll=student"');
+    expect(markup).toContain('aria-label="View full photo of &lt;Student&gt;"');
     expect(markup).toContain('&lt;Student&gt;');
     expect(markup).toContain('referrerpolicy="no-referrer"');
 });
@@ -26,7 +27,7 @@ test('unusable photo URLs leave initials rather than a broken or unsafe image', 
     for (const url of ['javascript:alert(1)', 'https://user:secret@college.example/image', null]) {
         expect(run(`avatar('student', 'Student', ${JSON.stringify(url)}).s`)).not.toContain('<img');
     }
-    const image = { matches: () => true, remove: jest.fn() };
+    const image = { matches: (selector) => selector === 'img[data-student-photo]', remove: jest.fn() };
     handlers.error({ target: image });
     expect(image.remove).toHaveBeenCalled();
 });
