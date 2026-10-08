@@ -1,10 +1,10 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useMemo, useCallback } from 'react';
 import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
     TouchableOpacity,
     RefreshControl,
     Platform,
@@ -132,7 +132,7 @@ const SubjectsScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
-            <ScrollView
+            <TabScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -253,8 +253,7 @@ const SubjectsScreen = ({ navigation }) => {
                 )}
 
                 {/* Bottom Padding */}
-                <View style={styles.bottomPadding} />
-            </ScrollView>
+            </TabScrollView>
 
         </SafeAreaView>
     );
@@ -344,9 +343,6 @@ const getStyles = () => StyleSheet.create({
         fontSize: FONT_SIZES.xs,
         letterSpacing: 0.5,
         color: COLORS.textMuted,
-    },
-    bottomPadding: {
-        height: 100,
     },
 });
 

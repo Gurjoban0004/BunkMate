@@ -48,8 +48,15 @@ erase previously saved photos.
 
 The existing admin analytics roster and student-detail responses include the
 photo. The web admin student cards, activity rows, and profile header render
-it, with initials on missing or failed images. The Mac-local scripts dashboard
-is unchanged. Older sessions that contain no photo need a future ERP login
+it, with initials on missing or failed images. The dense Mac-local dashboard at
+[127.0.0.1:4545](http://127.0.0.1:4545/) also renders existing roster photos in
+student identity rows and profile headers through `scripts/admin-dashboard.html`
+(served by `scripts/admin-dashboard.js`). It uses the `userRoster` response's
+`studentPhoto`, keyed by roll number, and the student-detail photo for profiles.
+URLs must be HTTPS without embedded credentials; names and URLs are escaped.
+Images load lazily without a referrer and fall back to initials when unavailable.
+The dashboard remains read-only; rendering photos adds no datastore writes.
+Older sessions that contain no photo need a future ERP login
 to obtain one. College photo URLs requiring cookies may fail to load and use
 the initials fallback.
 
@@ -60,3 +67,9 @@ aggregation without counting history twice, subject isolation, configured
 requirements, holidays, empty/perfect records, invalid pair counts, selection
 and reset flows, baseline updates after sync, photo persistence, and roster
 photo responses. Unit-test fixtures never seed application attendance state.
+
+The latest integration run reports 345 passing tests and one skipped test across
+48 suites, plus successful production web and native bundle exports. Read-only
+requests to the local dashboard and roster returned HTTP 200; the observed
+roster contained 77 students and one saved photo. Students without saved photos
+use initials. These checks do not verify physical iPhone or native rendering.

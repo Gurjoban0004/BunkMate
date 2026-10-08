@@ -1,5 +1,6 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, LayoutAnimation } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import ScreenHeader from '../../components/common/ScreenHeader';
@@ -190,7 +191,7 @@ export default function SubjectPlannerScreen({ route }) {
 
     return (
         <SafeAreaView style={styles.screen} edges={['bottom']}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <TabScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <ScreenHeader
                     title={shortSubjectName(name)}
                     bleed={{ horizontal: SPACING.screenPadding, top: SPACING.md }}
@@ -355,7 +356,7 @@ export default function SubjectPlannerScreen({ route }) {
                 )}
 
                 <View style={{ height: SPACING.xl }} />
-            </ScrollView>
+            </TabScrollView>
         </SafeAreaView>
     );
 }

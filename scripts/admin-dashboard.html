@@ -112,6 +112,12 @@ pre { background: var(--inset); padding: 12px; border-radius: 8px; overflow: aut
 .facts div { padding: 6px 0; border-bottom: 1px solid var(--line2); }
 .facts dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
 .facts dd { margin: 0; }
+.student-identity { display: flex; align-items: center; gap: 10px; }
+.student-avatar { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.student-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.student-profile { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.student-profile .student-avatar { width: 56px; height: 56px; font-size: 22px; }
+.student-profile h2 { margin: 0; }
 </style>
 </head>
 <body>
@@ -180,8 +186,20 @@ const REASON = { dead: 'college ended the session', stale: 'session older than a
 
 // Names: the roster knows most; anything else carries its own.
 let NAMES = new Map();
+let PHOTOS = new Map();
 const nameOf = (roll, fallback) => NAMES.get(String(roll)) || fallback || null;
-const who = (roll, fallback) => html`<span class="name">${nameOf(roll, fallback) || 'Name not reported'}</span><span class="sub num">${roll}</span>`;
+function avatar(roll, name, photo = PHOTOS.get(String(roll))) {
+  let src = null;
+  try { const url = new URL(photo); if (url.protocol === 'https:' && !url.username && !url.password) src = url.href; } catch { /* no usable photo */ }
+  return html`<span class="student-avatar"><span aria-hidden="true">${(name || '?').trim().charAt(0).toUpperCase()}</span>${src ? html`<img data-student-photo src="${src}" alt="Photo of ${name || 'student'}" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>`;
+}
+const who = (roll, fallback) => {
+  const name = nameOf(roll, fallback);
+  return html`<span class="student-identity">${avatar(roll, name)}<span><span class="name">${name || 'Name not reported'}</span><span class="sub num">${roll}</span></span></span>`;
+};
+document.addEventListener('error', (event) => {
+  if (event.target.matches?.('img[data-student-photo]')) event.target.remove();
+}, true);
 
 // ── Pieces ───────────────────────────────────────────────────────────
 const kpi = (label, value, tone = '') => html`<div class="kpi ${tone}"><b>${value ?? '—'}</b><span>${label}</span></div>`;
@@ -399,7 +417,7 @@ async function openStudent(roll) {
     const maxMin = Math.max(1, ...s.usage.map((u) => u.minutes));
     const fact = (k, v) => html`<div><dt>${k}</dt><dd>${v ?? '—'}</dd></div>`;
     $('#d-body').innerHTML = part(html`
-      <h2>${s.studentName || 'Name not reported'}</h2>
+      <div class="student-profile">${avatar(s.rollNumber, s.studentName, s.studentPhoto)}<h2>${s.studentName || 'Name not reported'}</h2></div>
       <p class="lede num">${s.rollNumber} · ${s.batchGroup}${l.platform ? ` · ${l.platform}` : ''}${l.appVersion ? ` v${l.appVersion}` : ''}
         ${s.revoked ? html` <span class="chip bad">revoked — ${s.revoked.reason}</span>` : ''}${s.cloud ? '' : html` <span class="chip">no cloud copy</span>`}</p>
       <div class="kpis">${kpi('Time · 30 days', mins(s.usageMinutes30d))}${kpi('Days used', s.usage.length)}${kpi('Per active day', mins(s.usage.length ? s.usageMinutes30d / s.usage.length : 0))}${kpi('Sign-ins', l.loginCount)}${kpi('Syncs', l.syncCount)}${kpi('Attendance', pct(a.overallAttendancePct, 1), a.overallAttendancePct == null ? '' : a.belowGoal ? 'warn' : 'good')}</div>
@@ -475,6 +493,7 @@ async function loadNames() {
   try {
     const r = await metric('userRoster');
     NAMES = new Map(r.users.filter((u) => u.studentName).map((u) => [String(u.rollNumber), u.studentName]));
+    PHOTOS = new Map(r.users.filter((u) => u.studentPhoto).map((u) => [String(u.rollNumber), u.studentPhoto]));
   } catch { /* lists fall back to the names they carry */ }
 }
 loadNames().then(render);

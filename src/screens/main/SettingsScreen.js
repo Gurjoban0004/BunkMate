@@ -1,10 +1,10 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
     TouchableOpacity,
     TextInput,
     Platform,
@@ -198,7 +198,7 @@ const SettingsScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <TabScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <PaperScreenHeader
                     title="Settings"
                     bleed={{ top: SPACING.md }}
@@ -548,9 +548,7 @@ const SettingsScreen = ({ navigation }) => {
                 </View>
 
                 <LegalSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />
-
-                <View style={styles.bottomPadding} />
-            </ScrollView>
+            </TabScrollView>
 
 
 
@@ -935,7 +933,6 @@ const getStyles = () => StyleSheet.create({
     legalRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: SPACING.sm },
     legalLink: { fontSize: FONT_SIZES.xs, color: COLORS.primary, textDecorationLine: 'underline' },
     legalDot: { fontSize: FONT_SIZES.xs, color: COLORS.textMuted },
-    bottomPadding: { height: 100 },
 
     // Sync button styles
     syncButton: {

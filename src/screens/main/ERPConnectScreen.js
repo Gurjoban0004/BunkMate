@@ -1,6 +1,7 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TextInput,
+    View, Text, StyleSheet, TextInput,
     TouchableOpacity, Platform, KeyboardAvoidingView,
     ActivityIndicator,
 } from 'react-native';
@@ -522,7 +523,7 @@ export default function ERPConnectScreen({ navigation }) {
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                <ScrollView
+                <TabScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
@@ -595,9 +596,7 @@ export default function ERPConnectScreen({ navigation }) {
                             </Text>
                         </View>
                     )}
-
-                    <View style={{ height: 120 }} />
-                </ScrollView>
+                </TabScrollView>
             </KeyboardAvoidingView>
 
             {/* Bottom action button */}

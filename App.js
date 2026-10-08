@@ -4,7 +4,7 @@ import { Platform, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
-import { applyTheme } from './src/theme/theme';
+import { applyTheme, COLORS } from './src/theme/theme';
 import { DEV_MODE, SKIP_SETUP, MOCK_SCENARIO } from './src/dev/config';
 import ErrorBoundary from './src/components/common/ErrorBoundary';
 import BrandLoader from './src/components/common/BrandLoader';
@@ -57,6 +57,7 @@ if (Platform.OS === 'web') {
             overflow: hidden;
             overscroll-behavior: none;
             touch-action: pan-y;
+            background-color: var(--presence-background, #f8f6f2);
         }
         #root { height: 100%; min-height: 0; overflow: hidden; }
         html[data-keyboard='open'] #root {
@@ -92,6 +93,10 @@ function AppContent() {
     const currentTheme = state?.settings?.theme || 'light';
     const currentPalette = state?.settings?.uiPalette || 'editorial';
     applyTheme(currentTheme, currentPalette);
+
+    useEffect(() => {
+        if (Platform.OS === 'web') document.documentElement.style.setProperty('--presence-background', COLORS.background);
+    }, [currentTheme, currentPalette]);
 
     useEffect(() => {
         if (DEV_MODE && SKIP_SETUP && !isLoading && !devReady) {

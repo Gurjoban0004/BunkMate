@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, RadialGradient, Stop, Rect, Ellipse } from 'react-native-svg';
 import { PAPER } from '../../theme/theme';
@@ -108,4 +108,7 @@ const styles = StyleSheet.create({
  * hardcoded, or Android's 24dp bar leaves a hole and a tall notch leaves none.
  * Screens using a paper header must leave `top` off their SafeAreaView edges.
  */
-export const usePaperTopPadding = (gap = 26) => Math.max(useSafeAreaInsets().top, 14) + gap;
+export const usePaperTopPadding = (gap = 26) => {
+    const { top } = useSafeAreaInsets();
+    return (Platform.OS === 'web' ? top : Math.max(top, 14)) + gap;
+};

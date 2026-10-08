@@ -1,5 +1,6 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, LayoutAnimation } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, getErpCoverageDateForSubject } from '../../utils/attendance';
@@ -69,7 +70,7 @@ export default function SubjectDetailScreen({ route, navigation }) {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <ScrollView
+            <TabScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
@@ -162,7 +163,7 @@ export default function SubjectDetailScreen({ route, navigation }) {
                         )}
                     </View>
                 )}
-            </ScrollView>
+            </TabScrollView>
 
         </SafeAreaView>
     );

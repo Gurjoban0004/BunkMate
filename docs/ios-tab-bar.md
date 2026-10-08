@@ -18,24 +18,33 @@ choices, not official Apple measurements.
   reduced motion disables capsule sliding. Android retains its existing bar.
 - Today, Subjects, and Insights remain the main destinations. Admin is a
   web-only destination gated by the existing authenticated admin capability.
-- Web reserves the capsule's footprint through `--ios-tabbar-reserved` and
-  hides navigation while the software keyboard is open. Native height is
-  reported to React Navigation for screen content layout.
+- The capsule overlays the page without a full-width backing strip. Shared
+  `TabScrollView` adds clearance to scrolling content on ten main screens:
+  `--ios-tabbar-reserved` on web and measured tab-bar height on iOS. The outer
+  web screen no longer reserves a blank footer; old fixed footer spacers are
+  removed. Navigation hides while the software keyboard is open.
+- Web avoids applying safe-area padding twice, and its header omits the native
+  14px top floor. The document background follows the active theme. The capsule
+  bottom inset is `max(8px, safe-area-bottom - 16px)` on web/iOS; the native
+  wrapper is an absolute transparent overlay. Physical-device placement still
+  needs verification.
 
 ## Evidence and remaining checks
 
-The integration run reports 340 passing tests across 46 suites, a successful web
-build, and successful native bundle exports. These checks establish code and
-bundle viability; they do not establish native rendering or installed iPhone
+The corrected integration run reports 345 passing tests and one skipped test
+across 48 suites, a successful production web build, and successful final native
+bundle exports. These checks establish code and bundle viability; they do not
+establish native rendering or installed iPhone
 Home Screen behavior.
 
-Browser captures at `/private/tmp/presence-tabbar-review/` cover light mobile,
-dark mobile with Admin, small dark mobile with Admin, and dark desktop with
-Admin. They show navigation-only previews using the actual web component and
-theme; no attendance data is loaded. The capsule keeps the incumbent warm
-background/ink relationship, Times labels, restrained boundary, and theme-aware
-selection surface. This evidence does not cover authenticated attendance
-screens or physical device safe areas.
+Current browser captures at `/private/tmp/presence-layout-fix-review/` cover
+mobile top and end-of-scroll positions, dark mobile, and dark desktop. They
+use the actual header, scroll, and navigation components without attendance
+data. Content extends behind the capsule and the last item scrolls above it.
+The capsule preserves the incumbent warm background/ink relationship, Times
+labels, restrained boundary, and theme-aware selection surface. A fresh finish
+review returned **ship**, scoped to these web layout previews. Authenticated
+Today, physical iPhone safe areas, and native rendering are outside that verdict.
 
 Physical iPhone/Home Screen and native iOS verification remain pending; an iOS
 simulator was unavailable during this run. Check portrait and landscape safe
@@ -43,9 +52,11 @@ areas, keyboard opening/closing, screen scrolling above navigation, tab changes,
 reduced motion/transparency, and each supported appearance. The supplied
 project's `ios-pwa-engineering-standard-v2.md` describes its device procedure.
 
-The web shell now sets Apple status-bar metadata to `default` instead of
-`black-translucent`. Reinstall the Home Screen app after deploying this metadata
-change before comparing device behavior. For an opt-in device readout, open the
+The preceding integration changed Apple status-bar metadata from
+`black-translucent` to `default`; this layout correction makes no further metadata
+change. Reinstall the Home Screen app before comparing device behavior: an older
+installation may retain its prior metadata and a white bottom strip. This has
+not been verified on a physical iPhone. For an opt-in device readout, open the
 app with `?debug=viewport` (or append `&debug=viewport` to an existing query).
 The readout shows display mode, viewport sizes, safe-area values, keyboard state,
 and Presence cache names to help identify viewport or stale-install differences.

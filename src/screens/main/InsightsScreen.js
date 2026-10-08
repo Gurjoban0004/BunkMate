@@ -1,3 +1,4 @@
+import TabScrollView from '../../components/common/TabScrollView';
 /**
  * InsightsScreen — ERP intelligence dashboard + End Game calculator.
  * Two tabs: Insights | End Game
@@ -106,7 +107,7 @@ export default function InsightsScreen() {
             </View>
             */}
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <TabScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <PaperScreenHeader
                     title="Insights"
                     subtitle={intel.hasData
@@ -496,8 +497,7 @@ export default function InsightsScreen() {
                             : 'Estimated based on weekly timetable × weeks remaining. Set semester end date in Settings for exact numbers.'}
                     </Text>
                 </View>}
-                <View style={{ height: 100 }} />
-            </ScrollView>
+            </TabScrollView>
         </SafeAreaView>
     );
 }

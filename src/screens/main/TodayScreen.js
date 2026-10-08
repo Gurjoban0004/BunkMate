@@ -1,6 +1,7 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, RefreshControl } from 'react-native';
 import { COLORS, SPACING, PAPER } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
@@ -117,7 +118,7 @@ const TodayScreen = ({ navigation }) => {
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
-            <ScrollView
+            <TabScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -219,9 +220,7 @@ const TodayScreen = ({ navigation }) => {
                         </>
                     )}
                 </View>
-
-                <View style={styles.bottomPadding} />
-            </ScrollView>
+            </TabScrollView>
         </SafeAreaView>
     );
 };
@@ -241,8 +240,6 @@ const getStyles = () => StyleSheet.create({
 
     minorLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6, color: PAPER.muted, marginTop: 16, marginBottom: 8 },
     bento: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-
-    bottomPadding: { height: 100 },
 });
 
 export default TodayScreen;

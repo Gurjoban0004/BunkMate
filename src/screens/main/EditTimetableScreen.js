@@ -1,3 +1,4 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useMemo } from 'react';
 import {
@@ -153,7 +154,7 @@ const EditTimetableScreen = ({ navigation }) => {
                 </ScrollView>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <TabScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.dayTitle}>{activeDay}'s Classes</Text>
 
                 {orderedTimeSlots.length === 0 ? (
@@ -240,9 +241,7 @@ const EditTimetableScreen = ({ navigation }) => {
                 >
                     <Text style={styles.addSlotButtonText}>+ Add New Time Slot</Text>
                 </TouchableOpacity>
-
-                <View style={{ height: 100 }} />
-            </ScrollView>
+            </TabScrollView>
 
             {/* Class Edit/Add Modal */}
             <Modal

@@ -1,3 +1,4 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -529,7 +530,7 @@ export default function AdminScreen() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <TabScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={styles.hero}>
                     <View style={styles.heroControlsRow}>
@@ -996,9 +997,7 @@ export default function AdminScreen() {
                         </Panel>
                     </>
                 )}
-
-                <View style={{ height: 100 }} />
-            </ScrollView>
+            </TabScrollView>
 
             {selected && (
                 <StudentSheet

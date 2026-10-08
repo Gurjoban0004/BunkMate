@@ -206,7 +206,7 @@ export default function WebTabNavigator() {
     return (
         <View style={styles.container}>
             <Animated.View style={[styles.content, transitionStyle]}>
-                <SafeAreaInsetsContext.Provider value={{ ...insets, bottom: 0 }}>
+                <SafeAreaInsetsContext.Provider value={{ ...insets, top: 0, bottom: 0 }}>
                     {renderScreen()}
                 </SafeAreaInsetsContext.Provider>
             </Animated.View>
@@ -221,7 +221,6 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
         backgroundColor: COLORS.background,
         minHeight: 0,
-        paddingBottom: 'var(--ios-tabbar-reserved)',
     },
     content: {
         flex: 1,

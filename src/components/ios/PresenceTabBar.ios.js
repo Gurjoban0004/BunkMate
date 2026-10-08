@@ -41,7 +41,7 @@ export default function PresenceTabBar({ state, descriptors, navigation, insets 
     const tabWidth = (width - BAR_PADDING * 2) / state.routes.length;
     if (keyboardOpen) return null;
 
-    return <View onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)} style={[styles.layer, { backgroundColor: COLORS.background, paddingBottom: Math.max(insets.bottom, 10), paddingHorizontal: Math.max(insets.left, insets.right, 20) }]}>
+    return <View pointerEvents="box-none" onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)} style={[styles.layer, { paddingBottom: Math.max(insets.bottom - 16, 8), paddingHorizontal: Math.max(insets.left, insets.right, 20) }]}>
         <View style={[styles.shadow, { shadowColor: COLORS.shadow }]}>
             <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={[styles.capsule, { backgroundColor: reduceTransparency ? COLORS.cardBackground : 'transparent' }]}>
                 {!reduceTransparency && <BlurView pointerEvents="none" intensity={85} tint={dark ? 'systemMaterialDark' : 'systemMaterialLight'} style={StyleSheet.absoluteFill} />}
@@ -76,7 +76,7 @@ export default function PresenceTabBar({ state, descriptors, navigation, insets 
 }
 
 const styles = StyleSheet.create({
-    layer: { paddingTop: 12, alignItems: 'center', backgroundColor: 'transparent' },
+    layer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 12, alignItems: 'center', backgroundColor: 'transparent' },
     shadow: { width: '100%', maxWidth: 420, borderRadius: 36, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12 },
     capsule: { minHeight: BAR_HEIGHT, borderRadius: 36, overflow: 'hidden', padding: BAR_PADDING, flexDirection: 'row', alignItems: 'stretch' },
     pill: { position: 'absolute', left: 7, top: 5, bottom: 5, borderRadius: 28 },

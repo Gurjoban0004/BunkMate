@@ -1,6 +1,7 @@
+import TabScrollView from '../../components/common/TabScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, TYPOGRAPHY, TABULAR } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, roundPct } from '../../utils/attendance';
@@ -50,7 +51,7 @@ const EditSubjectsScreen = () => {
 
     return (
         <SafeAreaView style={styles.container} edges={['bottom']}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <TabScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <ScreenHeader title="Subjects" bleed={{ top: SPACING.md }} />
                 <Text style={styles.intro}>
                     Our subjects and their numbers come from our college. Rename them, pick a colour, or set a goal for one that needs a different target.
@@ -80,8 +81,7 @@ const EditSubjectsScreen = () => {
                         );
                     })
                 )}
-                <View style={{ height: 100 }} />
-            </ScrollView>
+            </TabScrollView>
 
             <Modal visible={!!editing} animationType="slide" transparent onRequestClose={() => setEditing(null)}>
                 <View style={styles.modalOverlay}>
