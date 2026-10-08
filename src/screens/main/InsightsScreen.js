@@ -19,6 +19,7 @@ import { generateWeeklyReport } from '../../utils/insights';
 import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import PaperScreenHeader from '../../components/common/PaperScreenHeader';
 import { shortSubjectName } from '../../utils/subjectName';
+import AttendanceImpactCard from '../../components/insights/AttendanceImpactCard';
 
 // Semester-scale horizons (a term runs months, not a couple of weeks).
 const WEEK_OPTIONS = [8, 12, 16, 20];
@@ -30,6 +31,7 @@ const TABS = [
     { key: 'overview', label: 'Overview' },
     { key: 'patterns', label: 'Patterns' },
     { key: 'subjects', label: 'Subjects' },
+    { key: 'impact', label: 'Impact' },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -111,7 +113,7 @@ export default function InsightsScreen() {
                         ? `${formatDate(semesterSummary.earliestDate)} — ${formatDate(semesterSummary.latestDate)} · ${semesterSummary.totalDays} days tracked`
                         : null}
                 >
-                    {intel.hasData && (
+                    {state.subjects.length > 0 && (
                         <View style={styles.tabBar}>
                             {TABS.map((t) => {
                                 const on = activeTab === t.key;
@@ -132,7 +134,7 @@ export default function InsightsScreen() {
                     )}
                 </PaperScreenHeader>
 
-                {!intel.hasData ? (
+                {activeTab === 'impact' ? <View style={{ marginHorizontal: SPACING.screenPadding }}><AttendanceImpactCard initialMode="today" /></View> : !intel.hasData ? (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>No insights yet</Text>
                         <Text style={styles.emptyText}>Insights appear once our college has recorded a few days of classes.{'\n'}Pull down on Today to sync now.</Text>
@@ -143,6 +145,14 @@ export default function InsightsScreen() {
                            full-height retrospective sitting above the day's
                            classes. It belongs with the other retrospectives. */}
                         {activeTab === 'overview' && (<>
+                        <TouchableOpacity
+                            style={styles.emptyCard}
+                            accessibilityRole="button"
+                            onPress={() => setActiveTab('impact')}
+                        >
+                            <Text style={styles.emptyTitle}>What if I skip today?</Text>
+                            <Text style={styles.emptyText}>Preview your combined attendance and the class pairs needed to recover.</Text>
+                        </TouchableOpacity>
                         <WeeklyReportCard report={weeklyReport} subjects={state.subjects} />
 
                         {/* 1. Overall verdict (Semester Outlook) */}
@@ -479,13 +489,13 @@ export default function InsightsScreen() {
                 )}
 
                 {/* Footer Note */}
-                <View style={styles.footerNote}>
+                {activeTab !== 'impact' && <View style={styles.footerNote}>
                     <Text style={styles.footerNoteText}>
                         {endGameStats.isExactMath
                             ? 'Exact calculation based on our timetable until the semester end date.'
                             : 'Estimated based on weekly timetable × weeks remaining. Set semester end date in Settings for exact numbers.'}
                     </Text>
-                </View>
+                </View>}
                 <View style={{ height: 100 }} />
             </ScrollView>
         </SafeAreaView>
@@ -509,6 +519,8 @@ const getStyles = () => StyleSheet.create({
     },
     tab: {
         flex: 1,
+        minHeight: 48,
+        justifyContent: 'center',
         paddingVertical: SPACING.sm,
         alignItems: 'center',
         borderRadius: BORDER_RADIUS.md,

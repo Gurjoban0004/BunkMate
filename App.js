@@ -14,6 +14,7 @@ import ReconnectSheet from './src/components/erp/ReconnectSheet';
 import ResearchPrompt from './src/components/research/ResearchPrompt';
 import { syncDailyPlanNotifications, cancelAllReminders, checkSmartAlerts } from './src/utils/notifications';
 import { getSubjectAttendance } from './src/utils/attendance';
+import useWebViewport from './src/hooks/useWebViewport';
 
 // Dev tooling (time travel, mock scenarios, date-fns) is only compiled into
 // development builds. A production export drops the whole branch.
@@ -51,8 +52,19 @@ if (Platform.OS === 'web') {
             font-family: 'Times New Roman', Times, serif !important;
         }
         html, body {
-            overscroll-behavior-y: none;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
             touch-action: pan-y;
+        }
+        #root { height: 100%; min-height: 0; overflow: hidden; }
+        html[data-keyboard='open'] #root {
+            position: fixed;
+            top: var(--presence-vv-top, 0px);
+            left: 0;
+            right: 0;
+            height: var(--presence-vv-height, 100%);
         }
         /* RN Web sets user-select:none globally; Safari treats that as
            "do not focus". Inputs must behave like normal web fields. */
@@ -73,6 +85,7 @@ if (Platform.OS === 'web') {
 }
 
 function AppContent() {
+    useWebViewport();
     const { state, dispatch, isLoading, erpLastSynced } = useApp();
     const [devReady, setDevReady] = useState(!DEV_MODE || !SKIP_SETUP);
 

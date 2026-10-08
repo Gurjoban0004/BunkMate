@@ -253,12 +253,21 @@ describe('M3 — token expiry', () => {
 describe('C3 — push-send fails closed', () => {
     beforeEach(() => jest.resetModules());
     const originalSecret = process.env.CRON_SECRET;
-    afterEach(() => { if (originalSecret === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = originalSecret; });
+    const originalRecipients = process.env.PUSH_ALLOWED_USER_IDS;
+    const originalMaxTargets = process.env.PUSH_MAX_TARGETS;
+    afterEach(() => {
+        if (originalSecret === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = originalSecret;
+        if (originalRecipients === undefined) delete process.env.PUSH_ALLOWED_USER_IDS; else process.env.PUSH_ALLOWED_USER_IDS = originalRecipients;
+        if (originalMaxTargets === undefined) delete process.env.PUSH_MAX_TARGETS; else process.env.PUSH_MAX_TARGETS = originalMaxTargets;
+    });
 
-    const load = () => {
+    const load = (docs = []) => {
         jest.doMock('web-push', () => ({ setVapidDetails: jest.fn(), sendNotification: jest.fn(async () => {}) }));
         jest.doMock('../_firebase-admin', () => ({
-            adminDb: { collectionGroup: () => ({ where: () => ({ limit: () => ({ get: async () => ({ forEach: () => {} }) }) }) }) },
+            adminDb: {
+                doc: () => ({ get: async () => ({ exists: false }) }),
+                collectionGroup: () => ({ where: () => ({ limit: () => ({ get: async () => ({ forEach: (fn) => docs.forEach(fn) }) }) }) }),
+            },
         }));
         return require('../push-send');
     };
@@ -270,7 +279,7 @@ describe('C3 — push-send fails closed', () => {
         expect(res.statusCode).toBe(401);
     });
 
-    test('wrong bearer → 401; right bearer → runs', async () => {
+    test('wrong bearer → 401; no recipient allowlist → sends to nobody', async () => {
         process.env.CRON_SECRET = 'top-secret';
         process.env.VAPID_PUBLIC_KEY = 'pub'; process.env.VAPID_PRIVATE_KEY = 'priv'; process.env.VAPID_SUBJECT = 'mailto:a@b.c';
         const handler = load();
@@ -278,9 +287,63 @@ describe('C3 — push-send fails closed', () => {
         await handler({ method: 'GET', headers: { authorization: 'Bearer nope' } }, bad);
         expect(bad.statusCode).toBe(401);
         const good = makeRes();
-        await handler({ method: 'GET', headers: { authorization: 'Bearer top-secret' } }, good);
-        expect(good.statusCode).toBe(200);
-        expect(good.body).toEqual({ ok: true, sent: 0, pruned: 0, failed: 0 });
+        await handler({ method: 'GET', headers: { authorization: 'Bearer top-secret' }, query: { slot: 'morning' } }, good);
+        expect(good.statusCode).toBe(503);
+        expect(good.body).toEqual({ error: 'No push recipients configured' });
+    });
+
+    test('an explicit recipient allowlist permits a dry run without sending', async () => {
+        process.env.CRON_SECRET = 'top-secret';
+        process.env.VAPID_PUBLIC_KEY = 'pub'; process.env.VAPID_PRIVATE_KEY = 'priv'; process.env.VAPID_SUBJECT = 'mailto:a@b.c';
+        process.env.PUSH_ALLOWED_USER_IDS = '2410990296';
+        const res = makeRes();
+        await load()({ method: 'GET', headers: { authorization: 'Bearer top-secret' }, query: { slot: 'morning', dryRun: '1' } }, res);
+        expect(res.statusCode).toBe(200);
+        expect(res.body).toEqual(expect.objectContaining({ ok: true, slot: 'morning', dryRun: true, matched: 0, sent: 0, skipped: 0, pruned: 0, failed: 0 }));
+    });
+
+    test('only an allowlisted user can reach the push service', async () => {
+        process.env.CRON_SECRET = 'top-secret';
+        process.env.VAPID_PUBLIC_KEY = 'pub'; process.env.VAPID_PRIVATE_KEY = 'priv'; process.env.VAPID_SUBJECT = 'mailto:a@b.c';
+        process.env.PUSH_ALLOWED_USER_IDS = '2410990296';
+        const subscription = { endpoint: 'https://push.example/device', keys: { p256dh: 'key', auth: 'auth' } };
+        const timetable = {};
+        for (const day of ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
+            timetable[day] = [{ slotId: 'one', subjectId: 'math' }];
+        }
+        const profile = {
+            subjects: [{ id: 'math', name: 'Mathematics', initialAttended: 9, initialTotal: 10 }],
+            timeSlots: [{ id: 'one', start: '08:30', end: '09:30' }],
+            timetable,
+            settings: { dangerThreshold: 75 },
+            dataSyncedAt: new Date().toISOString(),
+        };
+        const docs = ['2410990296', '2410990002'].map((userId) => ({
+            data: () => ({ subscription, profile, profileUpdatedAt: new Date() }),
+            ref: { path: `users/${userId}/push/sub`, delete: jest.fn() },
+        }));
+        const handler = load(docs);
+        const res = makeRes();
+        await handler({ method: 'GET', headers: { authorization: 'Bearer top-secret' }, query: { slot: 'morning' } }, res);
+        expect(require('web-push').sendNotification).toHaveBeenCalledTimes(1);
+        expect(res.body).toEqual(expect.objectContaining({ ok: true, slot: 'morning', dryRun: false, matched: 1, sent: 1, skipped: 0, pruned: 0, failed: 0 }));
+    });
+
+    test('the first-device ceiling blocks multiple subscriptions before sending', async () => {
+        process.env.CRON_SECRET = 'top-secret';
+        process.env.VAPID_PUBLIC_KEY = 'pub'; process.env.VAPID_PRIVATE_KEY = 'priv'; process.env.VAPID_SUBJECT = 'mailto:a@b.c';
+        process.env.PUSH_ALLOWED_USER_IDS = '2410990296';
+        const subscription = { endpoint: 'https://push.example/device', keys: { p256dh: 'key', auth: 'auth' } };
+        const docs = ['one', 'two'].map((id) => ({
+            data: () => ({ subscription }),
+            ref: { path: `users/2410990296/push/${id}`, delete: jest.fn() },
+        }));
+        const handler = load(docs);
+        const res = makeRes();
+        await handler({ method: 'GET', headers: { authorization: 'Bearer top-secret' }, query: { slot: 'morning' } }, res);
+        expect(require('web-push').sendNotification).not.toHaveBeenCalled();
+        expect(res.statusCode).toBe(409);
+        expect(res.body).toEqual({ error: 'Push target limit exceeded', matched: 2, limit: 1 });
     });
 });
 

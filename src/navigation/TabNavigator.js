@@ -2,6 +2,7 @@ import React, { useRef, Suspense } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Platform, Pressable, Animated, Easing } from 'react-native';
+import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import TodayScreen from '../screens/main/TodayScreen';
 import SubjectsScreen from '../screens/main/SubjectsScreen';
 import SubjectDetailScreen from '../screens/main/SubjectDetailScreen';
@@ -13,6 +14,7 @@ import InsightsScreen from '../screens/main/InsightsScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import BrandLoader from '../components/common/BrandLoader';
 import TabIcon from './TabIcon';
+import PresenceTabBar from '../components/ios/PresenceTabBar';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { COLORS } from '../theme/theme';
 import { useApp } from '../context/AppContext';
@@ -26,6 +28,12 @@ const TodayStack = createStackNavigator();
 const SubjectsStack = createStackNavigator();
 const InsightsStack = createStackNavigator();
 const AdminStack = createStackNavigator();
+
+function TabScene({ children }) {
+    const insets = useSafeAreaInsets();
+    // The iOS capsule owns the home-indicator inset; screens keep their top/side insets.
+    return <SafeAreaInsetsContext.Provider value={Platform.OS === 'ios' ? { ...insets, bottom: 0 } : insets}>{children}</SafeAreaInsetsContext.Provider>;
+}
 
 // Screens reachable from every tab.
 const sharedScreens = (Stack) => (
@@ -41,11 +49,11 @@ const sharedScreens = (Stack) => (
 function TodayStackScreen() {
     return (
         <ErrorBoundary screen screenName="Today">
-            <TodayStack.Navigator screenOptions={{ headerShown: false }}>
+            <TabScene><TodayStack.Navigator screenOptions={{ headerShown: false }}>
                 <TodayStack.Screen name="TodayMain" component={TodayScreen} />
                 <TodayStack.Screen name="Insights" component={InsightsScreen} />
                 {sharedScreens(TodayStack)}
-            </TodayStack.Navigator>
+            </TodayStack.Navigator></TabScene>
         </ErrorBoundary>
     );
 }
@@ -53,11 +61,11 @@ function TodayStackScreen() {
 function SubjectsStackScreen() {
     return (
         <ErrorBoundary screen screenName="Subjects">
-            <SubjectsStack.Navigator screenOptions={{ headerShown: false }}>
+            <TabScene><SubjectsStack.Navigator screenOptions={{ headerShown: false }}>
                 <SubjectsStack.Screen name="SubjectsList" component={SubjectsScreen} />
                 <SubjectsStack.Screen name="SubjectPlanner" component={SubjectPlannerScreen} />
                 {sharedScreens(SubjectsStack)}
-            </SubjectsStack.Navigator>
+            </SubjectsStack.Navigator></TabScene>
         </ErrorBoundary>
     );
 }
@@ -65,10 +73,10 @@ function SubjectsStackScreen() {
 function InsightsStackScreen() {
     return (
         <ErrorBoundary screen screenName="Insights">
-            <InsightsStack.Navigator screenOptions={{ headerShown: false }}>
+            <TabScene><InsightsStack.Navigator screenOptions={{ headerShown: false }}>
                 <InsightsStack.Screen name="InsightsMain" component={InsightsScreen} />
                 {sharedScreens(InsightsStack)}
-            </InsightsStack.Navigator>
+            </InsightsStack.Navigator></TabScene>
         </ErrorBoundary>
     );
 }
@@ -117,6 +125,7 @@ export default function TabNavigator() {
     return (
         <Tab.Navigator
             initialRouteName="Today"
+            tabBar={Platform.OS === 'ios' ? (props) => <PresenceTabBar {...props} /> : undefined}
             screenOptions={({ route }) => ({
                 tabBarButton: (props) => <AnimatedTabButton {...props} />,
                 tabBarIcon: ({ focused }) => <TabIcon label={route.name} focused={focused} />,

@@ -9,17 +9,19 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { shortSubjectName } from '../../utils/subjectName';
 import SubjectSummaryCard from '../../components/planner/SubjectDetail/SubjectSummaryCard';
+import AttendanceImpactCard from '../../components/insights/AttendanceImpactCard';
 import WhatIfSimulator from '../../components/planner/SubjectDetail/WhatIfSimulator';
 import PatternsInsights from '../../components/planner/SubjectDetail/PatternsInsights';
 import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
 import { simulateAttendance } from '../../utils/planner/attendanceCalculations';
 
-export default function SubjectDetailScreen({ route }) {
+export default function SubjectDetailScreen({ route, navigation }) {
     const styles = getStyles();
     const { subjectId } = route.params;
     const { state } = useApp();
     const [showAllHistory, setShowAllHistory] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const [simulationOffset, setSimulationOffset] = useState(0);
 
     const subject = state.subjects.find((s) => s.id === subjectId);
     const stats = useMemo(() => getSubjectAttendance(subjectId, state), [subjectId, state]);
@@ -27,18 +29,10 @@ export default function SubjectDetailScreen({ route }) {
     // How far the college has updated this subject.
     const coverageDate = useMemo(() => getErpCoverageDateForSubject(subjectId, state), [subjectId, state]);
 
-    if (!subject || !stats) {
-        return (
-            <SafeAreaView style={styles.container}>
-                <Text style={styles.errorText}>Subject not found</Text>
-            </SafeAreaView>
-        );
-    }
-
     // The last 14 recorded days for this subject, newest first.
     const recentRecords = useMemo(() => {
         const records = [];
-        const sortedDates = Object.keys(state.attendanceRecords).sort().reverse();
+        const sortedDates = Object.keys(state.attendanceRecords || {}).sort().reverse();
         for (const dateKey of sortedDates) {
             const dayRecord = state.attendanceRecords[dateKey];
             if (!dayRecord || dayRecord._holiday) continue;
@@ -51,13 +45,18 @@ export default function SubjectDetailScreen({ route }) {
 
     // Planner data for merged components
     const plannerData = useMemo(() => getSubjectPlannerData(subjectId, state), [subjectId, state]);
-    const [simulationOffset, setSimulationOffset] = useState(0);
+    const pairPlannerData = useMemo(() => plannerData ? { ...plannerData, unitsPerClass: 2 } : null, [plannerData]);
     const simulatedData = useMemo(() => {
-        if (!plannerData || simulationOffset === 0) return plannerData;
-        // The simulator stepper counts classes, so each step costs a whole session.
-        const sim = simulateAttendance(plannerData.attended, plannerData.total, simulationOffset, plannerData.unitsPerClass);
-        return { ...plannerData, attended: sim.attended, total: sim.total, percentage: sim.percentage };
-    }, [plannerData, simulationOffset]);
+        if (!pairPlannerData || simulationOffset === 0) return pairPlannerData;
+        return { ...pairPlannerData, ...simulateAttendance(pairPlannerData.attended, pairPlannerData.total, simulationOffset, 2) };
+    }, [pairPlannerData, simulationOffset]);
+    if (!subject || !stats) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <Text style={styles.errorText}>Subject not found</Text>
+            </SafeAreaView>
+        );
+    }
 
     // Format date nicely — use parseDate to avoid timezone shift on Android/Safari
     const formatRecordDate = (dateStr) => {
@@ -80,17 +79,27 @@ export default function SubjectDetailScreen({ route }) {
                     bleed={{ horizontal: SPACING.screenPadding, top: SPACING.md }}
                 />
                 {/* Where it stands + what the next class does + the way back */}
+                {simulationOffset > 0 && <Text style={styles.syncNote}>Attend preview · {simulationOffset * 2} future lectures · records unchanged</Text>}
                 {simulatedData && <SubjectSummaryCard subjectData={simulatedData} />}
+                {pairPlannerData && <WhatIfSimulator
+                    subjectData={pairPlannerData}
+                    initialMode="attend"
+                    allowSkip={false}
+                    title="Attend preview"
+                    classLabel="pairs · 2 lectures"
+                    simulationOffset={simulationOffset}
+                    setSimulationOffset={setSimulationOffset}
+                />}
 
                 {/* Planner: What-If Simulator */}
-                {plannerData && (
-                    <WhatIfSimulator
-                        subjectData={plannerData}
-                        simulatedSubjectData={simulatedData}
-                        simulationOffset={simulationOffset}
-                        setSimulationOffset={setSimulationOffset}
-                    />
-                )}
+                <AttendanceImpactCard key={subjectId} subjectId={subjectId} />
+                <TouchableOpacity
+                    style={styles.showMoreButton}
+                    accessibilityRole="button"
+                    onPress={() => navigation.navigate('SubjectPlanner', { subjectId, subjectName: subject.name, initialMode: 'skip' })}
+                >
+                    <Text style={styles.showMoreText}>Plan specific classes on a calendar</Text>
+                </TouchableOpacity>
 
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>

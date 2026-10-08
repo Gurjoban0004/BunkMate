@@ -20,7 +20,7 @@ import { clearErpToken } from '../../storage/erpTokenStorage';
 import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
 import PaperScreenHeader from '../../components/common/PaperScreenHeader';
-import { enableWebPush, disableWebPush, isWebPushSupported } from '../../utils/webPush';
+import { enableWebPush, disableWebPush, isWebPushEnabled } from '../../utils/webPush';
 import { syncDailyPlanNotifications, cancelAllReminders } from '../../utils/notifications';
 import { formatRelativeTime, formatTime } from '../../utils/dateHelpers';
 import { APP_VERSION } from '../../config/version';
@@ -30,6 +30,11 @@ const SettingsScreen = ({ navigation }) => {
     const { state, dispatch, triggerErpSync, isErpSyncing } = useApp();
     const [editingName, setEditingName] = useState(false);
     const [tempName, setTempName] = useState(state.userName || '');
+    const [webReminderEnabled, setWebReminderEnabled] = useState(false);
+
+    useEffect(() => {
+        if (Platform.OS === 'web') isWebPushEnabled().then(setWebReminderEnabled);
+    }, []);
 
     // Import Modal State (Removed)
     // Reset Modal State (Removed)
@@ -130,22 +135,28 @@ const SettingsScreen = ({ navigation }) => {
         updateSetting('notificationEnabled', value);
     };
 
-    // Web/PWA daily reminder — subscribes this browser to server-sent push.
+    // Web/PWA class guidance — subscribes this browser to server-sent push.
     const handleWebReminderToggle = async (value) => {
         if (value) {
-            const result = await enableWebPush(state.userId);
+            const result = await enableWebPush(state);
             if (!result.ok) {
+                const messages = {
+                    denied: 'Notifications are blocked. Turn them on for Presence in Settings, then try again.',
+                    unsupported: 'This version of Presence is missing its notification key. Close and reopen the app, then try again.',
+                    'push-unavailable': 'Web Push is unavailable here. Open Presence from its Home Screen icon, then try again.',
+                    unauthenticated: 'Your session needs refreshing. Sign in again, then try once more.',
+                    server: 'Your device subscribed, but Presence could not save or test it. Please try again.',
+                };
                 showAlert(
                     "Couldn't enable reminders",
-                    result.reason === 'denied'
-                        ? 'Notifications are blocked. Turn them on for Presence in your browser settings, then try again.'
-                        : 'Reminders need Presence installed to your home screen. Add it, then try again.'
+                    messages[result.reason] || 'Something went wrong while enabling notifications. Please try again.'
                 );
                 return;
             }
         } else {
             await disableWebPush(state.userId);
         }
+        setWebReminderEnabled(value);
         updateSetting('notificationEnabled', value);
     };
 
@@ -451,19 +462,19 @@ const SettingsScreen = ({ navigation }) => {
                             </>
                         )}
 
-                        {Platform.OS === 'web' && isWebPushSupported() && (
+                        {Platform.OS === 'web' && (
                             <>
                                 <View style={styles.divider} />
                                 <View style={[styles.settingRow, styles.groupItem]}>
                                     <View style={styles.settingInfo}>
-                                        <Text style={styles.cardTitle}>Daily summary</Text>
-                                        <Text style={styles.cardDescription}>Where you stand, every evening.</Text>
+                                        <Text style={styles.cardTitle}>Class guidance</Text>
+                                        <Text style={styles.cardDescription}>Personalised guidance before key classes, based on your timetable and attendance.</Text>
                                     </View>
                                     <Switch
-                                        value={notificationEnabled}
+                                        value={webReminderEnabled}
                                         onValueChange={handleWebReminderToggle}
                                         trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-                                        thumbColor={notificationEnabled ? COLORS.primary : COLORS.textMuted}
+                                        thumbColor={webReminderEnabled ? COLORS.primary : COLORS.textMuted}
                                     />
                                 </View>
                             </>

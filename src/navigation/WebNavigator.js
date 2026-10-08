@@ -43,7 +43,8 @@ export default function WebNavigator() {
 
             window.addEventListener('popstate', handlePopState);
             // Initialize base state
-            window.history.replaceState({ index: 0 }, '', window.location.pathname);
+            // Preserve the requested tab through sign-in, including the admin link.
+            window.history.replaceState({ index: 0 }, '', window.location.pathname + window.location.search);
 
             return () => window.removeEventListener('popstate', handlePopState);
         }
@@ -128,4 +129,3 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.background,
     },
 });
-

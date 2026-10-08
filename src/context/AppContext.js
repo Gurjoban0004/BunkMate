@@ -6,6 +6,8 @@ import { COLORS as THEME_COLORS } from '../theme/theme';
 import { useErpAutoSync } from '../hooks/useErpAutoSync';
 import { getErpToken } from '../storage/erpTokenStorage';
 import { erpCheckSession } from '../services/erpService';
+import { Platform } from 'react-native';
+import { syncWebPushProfile } from '../utils/webPush';
 
 const AppContext = createContext();
 
@@ -580,6 +582,25 @@ export function AppProvider({ children }) {
 
     // ─── COLLEGE SYNC ────────────────────────────────────────────
     const { isSyncing: isErpSyncing, lastSyncedAt: erpLastSynced, syncError: erpSyncError, triggerSync: triggerErpSync } = useErpAutoSync(state, safeDispatch);
+
+    // Keep the server-side decision inputs current after a college sync or a
+    // timetable/goal edit. This is a no-op unless this PWA is already subscribed.
+    useEffect(() => {
+        if (Platform.OS !== 'web' || isLoading || !state.isAuthenticated) return undefined;
+        const timer = setTimeout(() => syncWebPushProfile(state), 3000);
+        return () => clearTimeout(timer);
+    }, [
+        isLoading,
+        state.isAuthenticated,
+        state.userId,
+        state.subjects,
+        state.timeSlots,
+        state.timetable,
+        state.holidays,
+        state.settings?.dangerThreshold,
+        state.timetableMeta?.timesAreInferred,
+        erpLastSynced,
+    ]);
 
     useEffect(() => {
         if (!isLoading && state.isAuthenticated && state.settings?.erpConnected) {

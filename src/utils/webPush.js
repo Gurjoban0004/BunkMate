@@ -1,14 +1,10 @@
 /**
  * Web Push for the installed PWA.
  *
- * Native uses expo-notifications (local schedule). The web/PWA build can't run JS
- * while closed, so the daily reminder is server-pushed: the browser subscribes,
- * the subscription is stored server-side, and the daily cron (api/push-send)
- * delivers it. The service worker (public/sw.js) shows the notification.
- *
- * There is one reminder time for everyone (18:00 IST) — the cron is daily and
- * the app never had a working time picker, so the per-user time was dropped
- * rather than shipped as a control that silently did nothing (audit H2).
+ * Native uses expo-notifications (local schedule). The web/PWA build can't run
+ * JS while closed, so the browser subscription plus a small attendance and
+ * timetable profile are stored server-side. Three daily cron windows then send
+ * class-specific guidance without needing the app open.
  *
  * Requires EXPO_PUBLIC_VAPID_PUBLIC_KEY (the public half of the server's VAPID pair).
  */
@@ -16,6 +12,7 @@
 import { buildApiUrl } from '../services/apiConfig';
 import { auth } from '../config/firebase';
 import { ensureAuthenticated } from './firebaseHelpers';
+import { getErpToken } from '../storage/erpTokenStorage';
 import { logger } from './logger';
 
 const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY;
@@ -25,6 +22,12 @@ const VAPID_PUBLIC_KEY = process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY;
  * @returns {Promise<Object|null>} null when no Firebase session can be established.
  */
 async function pushHeaders(userId) {
+    // The sealed ERP session is already the app's proof of identity and works
+    // reliably in iOS Home Screen apps where Firebase Auth persistence may not.
+    const erpToken = await getErpToken();
+    if (erpToken) return { 'Content-Type': 'application/json', Authorization: `Bearer ${erpToken}` };
+
+    // Keep Firebase as a fallback for existing sessions and non-ERP test users.
     if (auth?.currentUser?.uid !== userId) await ensureAuthenticated(userId);
     const idToken = await auth?.currentUser?.getIdToken?.();
     if (!idToken) return null;
@@ -35,10 +38,19 @@ export function isWebPushSupported() {
     return (
         typeof window !== 'undefined' &&
         'serviceWorker' in navigator &&
-        'PushManager' in window &&
         'Notification' in window &&
         !!VAPID_PUBLIC_KEY
     );
+}
+
+export async function isWebPushEnabled() {
+    if (!isWebPushSupported() || Notification.permission !== 'granted') return false;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        return !!reg.pushManager && !!(await reg.pushManager.getSubscription());
+    } catch {
+        return false;
+    }
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -54,8 +66,38 @@ function urlBase64ToUint8Array(base64String) {
  * Ask for permission, subscribe, and register the subscription server-side.
  * @returns {Promise<{ ok: boolean, reason?: string }>}
  */
-export async function enableWebPush(userId) {
+function notificationProfile(state) {
+    return {
+        subjects: state.subjects,
+        timeSlots: state.timeSlots,
+        timetable: state.timetable,
+        holidays: state.holidays,
+        settings: { dangerThreshold: state.settings?.dangerThreshold },
+        timetableMeta: { timesAreInferred: state.timetableMeta?.timesAreInferred === true },
+        dataSyncedAt: state.erpSync?.lastGlobalSyncAt || state.settings?.lastErpSync || null,
+    };
+}
+
+async function saveSubscription(userId, sub, state, sendTest = false) {
+    const headers = await pushHeaders(userId);
+    if (!headers) return { ok: false, reason: 'unauthenticated' };
+    const res = await fetch(buildApiUrl('/api/push-subscribe', 'web'), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            userId,
+            subscription: sub.toJSON(),
+            enabled: true,
+            sendTest,
+            ...(state ? { profile: notificationProfile(state) } : {}),
+        }),
+    });
+    return res.ok ? { ok: true } : { ok: false, reason: 'server' };
+}
+
+export async function enableWebPush(state) {
     if (!isWebPushSupported()) return { ok: false, reason: 'unsupported' };
+    const userId = state?.userId;
     if (!userId) return { ok: false, reason: 'no-user' };
 
     try {
@@ -63,6 +105,7 @@ export async function enableWebPush(userId) {
         if (permission !== 'granted') return { ok: false, reason: 'denied' };
 
         const reg = await navigator.serviceWorker.ready;
+        if (!reg.pushManager) return { ok: false, reason: 'push-unavailable' };
         let sub = await reg.pushManager.getSubscription();
         if (!sub) {
             sub = await reg.pushManager.subscribe({
@@ -71,19 +114,22 @@ export async function enableWebPush(userId) {
             });
         }
 
-        const headers = await pushHeaders(userId);
-        if (!headers) return { ok: false, reason: 'unauthenticated' };
-
-        const res = await fetch(buildApiUrl('/api/push-subscribe', 'web'), {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ userId, subscription: sub.toJSON(), enabled: true }),
-        });
-        if (!res.ok) return { ok: false, reason: 'server' };
-        return { ok: true };
+        return saveSubscription(userId, sub, state, true);
     } catch (e) {
         logger.warn('⚠️ enableWebPush failed:', e.message);
         return { ok: false, reason: 'error' };
+    }
+}
+
+/** Refresh the server's notification inputs after attendance/timetable changes. */
+export async function syncWebPushProfile(state) {
+    if (!state?.userId || !isWebPushSupported() || Notification.permission !== 'granted') return;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = reg.pushManager && await reg.pushManager.getSubscription();
+        if (sub) await saveSubscription(state.userId, sub, state, false);
+    } catch (e) {
+        logger.warn('⚠️ syncWebPushProfile failed:', e.message);
     }
 }
 

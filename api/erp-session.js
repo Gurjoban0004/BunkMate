@@ -95,7 +95,7 @@ module.exports = async function handler(req, res) {
         const [revocation] = await Promise.all([
             getRevocation(session.rollNumber),
             touchActive(session.rollNumber, {
-                ip: getClientIp(req), studentName: session.studentName, isMock: session.isMock, ...clientMeta(req),
+                ip: getClientIp(req), studentName: session.studentName, studentPhoto: session.studentPhoto, isMock: session.isMock, ...clientMeta(req),
             }),
         ]);
         return res.status(200).json({

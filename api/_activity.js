@@ -34,6 +34,7 @@
 const crypto = require('crypto');
 const { adminDb } = require('./_firebase-admin');
 const { FieldValue } = require('firebase-admin/firestore');
+const { studentPhotoUrl } = require('./_student-photo');
 
 // Roll numbers become document ids, so they must be a single safe path segment.
 const ROLL_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -81,7 +82,7 @@ const trim = (v, max) => {
  * @param {boolean} [p.isMock]
  */
 async function recordLogin({
-    rollNumber, outcome, method = 'password', studentName = null, deviceId = null,
+    rollNumber, outcome, method = 'password', studentName = null, studentPhoto = null, deviceId = null,
     ip = null, userAgent = null, appVersion = null, platform = null, isMock = false,
 }) {
     const roll = safeRoll(rollNumber);
@@ -92,6 +93,7 @@ async function recordLogin({
     // A failed attempt is a real signal (wrong password, revoked, college down)
     // but it is not a sign-in: only a success advances the roster's counters.
     const succeeded = outcome === 'trusted' || outcome === 'otp-verified';
+    const photo = succeeded ? studentPhotoUrl(studentPhoto) : null;
 
     const event = {
         rollNumber: roll,
@@ -110,6 +112,7 @@ async function recordLogin({
 
     const roster = {
         rollNumber: roll,
+        ...(photo ? { studentPhoto: photo } : {}),
         lastLoginAt: now,
         lastLoginOutcome: outcome,
         lastSeenAt: now,
@@ -246,8 +249,9 @@ function stampedRecently(map, roll, windowMs) {
     return false;
 }
 
-const cleanMeta = ({ studentName = null, appVersion = null, platform = null } = {}) => ({
+const cleanMeta = ({ studentName = null, studentPhoto = null, appVersion = null, platform = null } = {}) => ({
     studentName: trim(studentName, 120),
+    studentPhoto: studentPhotoUrl(studentPhoto),
     appVersion: trim(appVersion, 32),
     platform: trim(platform, 32),
 });
@@ -278,6 +282,7 @@ function touchActive(rollNumber, { ip = null, isMock = false, ...rest } = {}) {
                 lastSeenAt: FieldValue.serverTimestamp(),
                 syncCount: FieldValue.increment(1),
                 ...(meta.studentName ? { studentName: meta.studentName } : {}),
+                ...(meta.studentPhoto ? { studentPhoto: meta.studentPhoto } : {}),
                 ...(meta.appVersion ? { appVersion: meta.appVersion } : {}),
                 ...(meta.platform ? { platform: meta.platform } : {}),
                 ...(ipHash ? { lastIpHash: ipHash } : {}),

@@ -28,15 +28,17 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Push: show the notification delivered by the server (daily reminder / smart alert).
+// Push: show the notification delivered by the server.
 self.addEventListener('push', (event) => {
     let data = {};
     try {
         data = event.data ? event.data.json() : {};
     } catch (e) {
-        data = { title: 'Presence', body: event.data ? event.data.text() : '' };
+        data = { title: '', body: event.data ? event.data.text() : '' };
     }
-    const title = data.title || 'Presence';
+    // The OS already displays the installed app name (Presence). Keeping the
+    // payload title blank avoids the awkward "Presence / Presence" duplicate.
+    const title = typeof data.title === 'string' ? data.title : '';
     const options = {
         body: data.body || '',
         icon: '/icon192.png',

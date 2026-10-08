@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    TextInput, Switch, ActivityIndicator, Platform, Modal,
+    TextInput, Switch, ActivityIndicator, Platform, Modal, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Polyline, Path, Circle, Line, Rect } from 'react-native-svg';
@@ -26,6 +26,17 @@ const TABS = [
     { key: 'health', label: 'Health' },
     { key: 'controls', label: 'Controls' },
 ];
+
+function StudentAvatar({ photo, name, size = 44 }) {
+    const [failed, setFailed] = useState(false);
+    useEffect(() => { setFailed(false); }, [photo]);
+    const style = { width: size, height: size, borderRadius: size / 2, flexShrink: 0 };
+    if (photo && !failed) {
+        return <Image source={{ uri: photo }} style={style} resizeMode="cover" accessibilityLabel={`Photo of ${name || 'student'}`} onError={() => setFailed(true)} />;
+    }
+    const initials = String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+    return <View style={[style, { alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.inputBackground }]} accessibilityLabel="Student photo unavailable"><Text style={{ ...TYPOGRAPHY.labelMedium, color: COLORS.textSecondary }}>{initials || '?'}</Text></View>;
+}
 
 // Route names the app reports (api/_activity.js SCREENS) → what a person calls them.
 const SCREEN_LABELS = {
@@ -389,6 +400,7 @@ export default function AdminScreen() {
         return m;
     }, [roster.data, daily.data, live.data, logins.data]);
     const nameOf = (r) => names.get(String(r)) || null;
+    const photos = useMemo(() => new Map((roster.data?.users || []).map((u) => [String(u.rollNumber), u.studentPhoto])), [roster.data]);
 
     // ── Actions ──────────────────────────────────────────────────
     const run = async (mutate, successMessage) => {
@@ -505,6 +517,7 @@ export default function AdminScreen() {
     // A plain function, not a component: defined in render, a component would remount every tick.
     const personLine = ({ key, rollNumber, fallback, sub, right, dot }) => (
         <TouchableOpacity key={key} style={styles.liveRow} onPress={() => setSelected({ rollNumber, studentName: nameOf(rollNumber) || fallback })} activeOpacity={0.7}>
+            <StudentAvatar photo={photos.get(String(rollNumber))} name={nameOf(rollNumber) || fallback} size={36} />
             {dot}
             <View style={{ flex: 1 }}>
                 <Text style={styles.liveRowName} numberOfLines={1}>{nameOf(rollNumber) || fallback || rollNumber || 'Unknown'}</Text>
@@ -727,8 +740,9 @@ export default function AdminScreen() {
                                         : !u.erpConnected ? ['DISCONNECTED', COLORS.warningLight, COLORS.warningDark]
                                             : ['ACTIVE', COLORS.successLight, COLORS.successDark];
                                 return (
-                                    <TouchableOpacity key={u.rollNumber} style={styles.userCard} onPress={() => setSelected({ rollNumber: u.rollNumber, studentName: u.studentName })} activeOpacity={0.7}>
+                                    <TouchableOpacity key={u.rollNumber} style={styles.userCard} onPress={() => setSelected({ rollNumber: u.rollNumber, studentName: u.studentName, studentPhoto: u.studentPhoto })} activeOpacity={0.7}>
                                         <View style={styles.userCardHeader}>
+                                            <StudentAvatar photo={u.studentPhoto} name={u.studentName} />
                                             <View style={{ flex: 1 }}>
                                                 <Text style={styles.userCardTitle} numberOfLines={1}>{u.studentName || 'Name not reported'}</Text>
                                                 <Text style={styles.userCardSub} numberOfLines={1}>
@@ -1014,6 +1028,7 @@ function StudentSheet({ student, isRevoked, onClose, onRevoke, onUnrevoke }) {
             <View style={styles.modalOverlay}>
                 <View style={styles.modalCard}>
                     <View style={styles.modalHeader}>
+                        <StudentAvatar photo={s?.studentPhoto || student.studentPhoto} name={s?.studentName || student.studentName} size={64} />
                         <View style={{ flex: 1 }}>
                             <Text style={styles.modalTitle}>{s?.studentName || student.studentName || 'Name not reported'}</Text>
                             <Text style={styles.modalSub}>{student.rollNumber}{s ? ` · ${s.batchGroup}` : ''}{l?.platform ? ` · ${l.platform}` : ''}{l?.appVersion ? ` v${l.appVersion}` : ''}</Text>

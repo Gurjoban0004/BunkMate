@@ -41,6 +41,7 @@
  */
 
 const { setCorsHeaders, decodeSessionRollNumber, getClientIp } = require('./_session-utils');
+const { studentPhotoUrl } = require('./_student-photo');
 const { tooManyAttempts } = require('./_rate-limit');
 const { adminDb, isAdminRoll } = require('./_firebase-admin');
 const { FieldValue, Timestamp } = require('firebase-admin/firestore');
@@ -224,6 +225,7 @@ function ledgerRow(d) {
     return {
         rollNumber: v.rollNumber || d.id,
         studentName: v.studentName || null,
+        studentPhoto: studentPhotoUrl(v.studentPhoto),
         firstSeen: finiteMillis(v.createdAt),
         lastLoginAt: finiteMillis(v.lastLoginAt),
         lastSuccessAt: finiteMillis(v.lastSuccessAt),
@@ -458,7 +460,7 @@ async function computeUserRoster() {
     ledger.forEach((r) => {
         if (!isRealRoll(r.rollNumber)) return;
         byRoll.set(r.rollNumber, {
-            userId: r.rollNumber, rollNumber: r.rollNumber, studentName: r.studentName,
+            userId: r.rollNumber, rollNumber: r.rollNumber, studentName: r.studentName, studentPhoto: r.studentPhoto,
             lastActive: r.lastSeenAt || r.lastLoginAt, firstSeen: r.firstSeen, lastLoginAt: r.lastLoginAt,
             loginCount: r.loginCount, syncCount: r.syncCount, devices: r.devices,
             version: r.appVersion, platform: r.platform, inCloud: false,
@@ -472,6 +474,7 @@ async function computeUserRoster() {
             ...prev,
             userId: id,
             studentName: prev.studentName || u.studentName || s.userName || null,
+            studentPhoto: prev.studentPhoto || studentPhotoUrl(u.studentPhoto),
             lastActive: Math.max(prev.lastActive || 0, finiteMillis(u.lastActive) || 0) || null,
             version: prev.version || u.version || null,
             inCloud: true,
@@ -575,6 +578,7 @@ async function computeStudent({ roll } = {}) {
     return {
         rollNumber: roll,
         studentName: ledger?.studentName || user?.studentName || attendance.userName || null,
+        studentPhoto: ledger?.studentPhoto || studentPhotoUrl(user?.studentPhoto),
         batchGroup: batchOf(roll),
         ledger,
         cloud: user ? {

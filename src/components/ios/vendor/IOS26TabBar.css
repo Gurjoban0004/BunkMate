@@ -1,0 +1,329 @@
+/* ==========================================================================
+   IOS26TabBar — iOS 26 floating capsule tab bar
+   --------------------------------------------------------------------------
+   Dimensions and their provenance are documented in docs/TAB-BAR-SPEC.md.
+   Nothing here is a magic number; every value reads a token.
+
+   Consumes tokens from src/tokens/ios-tokens.css. That file must be imported
+   once by the host app (usually via 'ios26-components/styles.css').
+   ========================================================================== */
+
+/* Space a screen must reserve so its content clears the floating bar.
+   [E] Defined globally because scroll containers in the host app need it and
+   cannot read a token scoped to the bar. */
+:root {
+  --ios-tabbar-reserved: calc(
+    var(--tabbar-height) + var(--tabbar-inset-bottom) + 16px
+  );
+}
+
+/* --------------------------------------------------------------------------
+   Layer
+   The layer spans the full width for positioning, but must not swallow taps
+   meant for the content behind it. Only the capsule itself takes pointer
+   events.
+   -------------------------------------------------------------------------- */
+.ios26-tabbar-layer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  /* bottom is driven by the safe-area token, which already encodes
+     max(env(safe-area-inset-bottom), 10px) — see ios-tokens.css */
+  bottom: var(--tabbar-inset-bottom);
+  z-index: var(--ios-z-tabbar);
+
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--tabbar-inset-x);
+
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* --------------------------------------------------------------------------
+   Capsule
+   -------------------------------------------------------------------------- */
+.ios26-tabbar {
+  position: relative;
+  pointer-events: auto;
+
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+
+  box-sizing: border-box;
+  height: var(--tabbar-height);
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 4px;
+
+  border-radius: var(--tabbar-radius);
+
+  /* --- the Liquid Glass material -------------------------------------- */
+  background: var(--ios-glass-tint);
+  -webkit-backdrop-filter: blur(var(--ios-glass-blur))
+    saturate(var(--ios-glass-saturate));
+  backdrop-filter: blur(var(--ios-glass-blur))
+    saturate(var(--ios-glass-saturate));
+
+  /* 1px rim. Two layers: an outer ring for definition against light content,
+     and an inner top highlight for the specular "lit from above" edge that
+     sells the material as glass rather than frosted plastic. */
+  box-shadow:
+    var(--ios-glass-shadow),
+    inset 0 0 0 0.5px var(--ios-glass-rim),
+    inset 0 0.5px 0 0 var(--ios-glass-specular);
+
+  transition:
+    height var(--ios-duration-base) var(--ios-ease-standard),
+    background-color var(--ios-duration-base) var(--ios-ease-standard);
+}
+
+/* Solid variant — escape hatch for very busy backgrounds behind the bar, or
+   for a Reduce Transparency fallback on browsers that ignore the media
+   query. Opt in with variant="solid". */
+.ios26-tabbar[data-variant='solid'] {
+  background: var(--ios-surface-elevated);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow:
+    var(--ios-glass-shadow),
+    inset 0 0 0 0.5px var(--ios-separator);
+}
+
+/* --------------------------------------------------------------------------
+   Selected pill
+   A sibling of the buttons, absolutely positioned, so it can animate
+   between tabs rather than being recreated per tab. Position and width are
+   written by the component from measured geometry (--pill-x, --pill-w);
+   see measurePill() in IOS26TabBar.tsx.
+   -------------------------------------------------------------------------- */
+.ios26-tabbar__pill {
+  position: absolute;
+  top: var(--pill-inset-y);
+  bottom: var(--pill-inset-y);
+  left: 0;
+
+  width: var(--pill-w, 0px);
+  transform: translate3d(var(--pill-x, 0px), 0, 0);
+
+  border-radius: var(--pill-radius);
+  background: color-mix(in srgb, var(--ios-accent) var(--pill-tint-strength), transparent);
+  box-shadow:
+    inset 0 0 0 0.5px var(--pill-rim),
+    0 1px 3px color-mix(in srgb, var(--ios-accent) 22%, transparent);
+
+  /* No pointer events — the button underneath owns the hit area. */
+  pointer-events: none;
+
+  transition:
+    transform var(--ios-duration-emphasis) var(--ios-ease-standard),
+    width var(--ios-duration-emphasis) var(--ios-ease-standard),
+    background-color var(--ios-duration-base) var(--ios-ease-standard);
+}
+
+/* Solid variant keeps the pill opaque rather than glassy. */
+.ios26-tabbar[data-variant='solid'] .ios26-tabbar__pill {
+  background: color-mix(in srgb, var(--ios-accent) 16%, var(--ios-surface-elevated));
+  box-shadow: inset 0 0 0 0.5px var(--pill-rim);
+}
+
+/* --------------------------------------------------------------------------
+   Items
+   -------------------------------------------------------------------------- */
+.ios26-tabbar__item {
+  position: relative;
+  z-index: 1; /* above the pill */
+
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tabbar-icon-label-gap);
+
+  box-sizing: border-box;
+  min-width: var(--tabbar-item-min-height);
+  min-height: var(--tabbar-item-min-height);
+  padding-inline: var(--tabbar-item-padding-x);
+
+  appearance: none;
+  border: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ios-text-secondary);
+  cursor: pointer;
+
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+
+  transition:
+    color var(--ios-duration-base) var(--ios-ease-standard),
+    opacity var(--ios-duration-fast) linear;
+}
+
+.ios26-tabbar__item[aria-selected='true'] {
+  color: var(--ios-accent);
+}
+
+.ios26-tabbar__item:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* iOS 26 swells the glyph slightly on the active tab. Small, but it is part of
+   why the bar reads as "liquid" rather than merely translucent. */
+.ios26-tabbar__glyph {
+  display: block;
+  flex: none;
+  width: var(--tabbar-icon-size);
+  height: var(--tabbar-icon-size);
+  transition: transform var(--ios-duration-emphasis) var(--ios-ease-standard);
+}
+
+.ios26-tabbar__item[aria-selected='true'] .ios26-tabbar__glyph {
+  transform: scale(1.08);
+}
+
+.ios26-tabbar__glyph > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ios26-tabbar__label {
+  font-family: var(--ios-font-family);
+  font-size: var(--tabbar-label-size);
+  line-height: var(--tabbar-label-line-height);
+  font-weight: var(--tabbar-label-weight);
+  letter-spacing: 0.006em;
+  white-space: nowrap;
+
+  /* Long labels must truncate rather than force the capsule wider than the
+     screen. Matches iOS behaviour. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 96px;
+}
+
+.ios26-tabbar__item[aria-selected='true'] .ios26-tabbar__label {
+  font-weight: var(--tabbar-label-weight-active);
+}
+
+/* Label visibility modes.
+   'selected'  — only the active item shows its label. This is the iOS 26
+                 minimise-on-scroll resting state; the bar gets narrow.
+   'never'     — icons only. Useful at 5 destinations on small screens. */
+.ios26-tabbar[data-labels='never'] .ios26-tabbar__label,
+.ios26-tabbar[data-labels='selected'] .ios26-tabbar__item:not([aria-selected='true']) .ios26-tabbar__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Badge
+   -------------------------------------------------------------------------- */
+.ios26-tabbar__badge {
+  position: absolute;
+  top: 2px;
+  right: max(2px, calc(50% - 22px));
+
+  min-width: 16px;
+  height: 16px;
+  padding-inline: 4px;
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+  background: var(--ios-destructive);
+  color: #fff;
+  font-family: var(--ios-font-family);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+
+  /* The badge is a content element, not chrome — let VoiceOver read it via
+     the button's aria-label, and keep it out of the a11y tree. */
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Focus
+   Visible focus is a hard requirement (engineering standard §10.2). iOS
+   itself has no focus ring for taps, but a PWA is also used with keyboards
+   and assistive switch control, so :focus-visible is honoured.
+   -------------------------------------------------------------------------- */
+.ios26-tabbar__item:focus {
+  outline: none;
+}
+
+.ios26-tabbar__item:focus-visible {
+  outline: 2px solid var(--ios-accent);
+  outline-offset: -2px;
+  border-radius: var(--pill-radius);
+}
+
+/* --------------------------------------------------------------------------
+   Keyboard
+   iOS hides the tab bar when the software keyboard is up. The host app's
+   visualViewport binding sets data-keyboard="open" on <html> — see the
+   engineering standard §3.5.
+
+   This is NOT the keyboard strategy. The bar is never used to size or track
+   the keyboard; it only reacts to a state the app already computes.
+   -------------------------------------------------------------------------- */
+html[data-keyboard='open'] .ios26-tabbar-layer {
+  transform: translate3d(
+    0,
+    calc(var(--tabbar-height) + var(--tabbar-inset-bottom)),
+    0
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--ios-duration-base) var(--ios-ease-standard),
+    opacity var(--ios-duration-fast) linear;
+}
+
+.ios26-tabbar-layer {
+  transition:
+    transform var(--ios-duration-base) var(--ios-ease-standard),
+    opacity var(--ios-duration-fast) linear;
+}
+
+/* --------------------------------------------------------------------------
+   Reduce Motion / Reduce Transparency
+   Durations are already collapsed to 1ms in the token file. What is left to
+   handle here is the scale bump on the active glyph and the layer slide.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ios26-tabbar__glyph,
+  .ios26-tabbar__pill,
+  .ios26-tabbar-layer,
+  .ios26-tabbar {
+    transition-duration: 1ms !important;
+  }
+
+  .ios26-tabbar__item[aria-selected='true'] .ios26-tabbar__glyph {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ios26-tabbar {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

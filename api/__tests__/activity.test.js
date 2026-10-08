@@ -36,6 +36,17 @@ const {
 beforeEach(() => { writes.sets.length = 0; writes.adds.length = 0; });
 
 describe('recordLogin', () => {
+    test('saves the college photo on successful sign-in without storing it in every login event', async () => {
+        await recordLogin({ rollNumber: '2410990420', outcome: 'trusted', studentPhoto: 'https://college.example.edu/student.jpg' });
+        expect(writes.sets[0].data.studentPhoto).toBe('https://college.example.edu/student.jpg');
+        expect(writes.adds[0].data.studentPhoto).toBeUndefined();
+    });
+    test('missing photos preserve the saved roster photo and failed logins cannot replace it', async () => {
+        await recordLogin({ rollNumber: '2410990420', outcome: 'trusted' });
+        expect(writes.sets[0].data).not.toHaveProperty('studentPhoto');
+        await recordLogin({ rollNumber: '2410990420', outcome: 'rejected', studentPhoto: 'https://college.example.edu/student.jpg' });
+        expect(writes.sets[1].data).not.toHaveProperty('studentPhoto');
+    });
     test('a trusted sign-in writes one event and advances the roster', async () => {
         await recordLogin({ rollNumber: '2410990296', outcome: 'trusted', studentName: 'A Student', deviceId: 'D1' });
 
@@ -90,6 +101,11 @@ describe('recordLogin', () => {
 });
 
 describe('touchActive', () => {
+    test('existing authenticated sessions backfill the photo during normal syncs', async () => {
+        await touchActive('2410990550', { studentPhoto: 'https://college.example.edu/existing.jpg' });
+        const roster = writes.sets.find((s) => s.path === 'admin/activity/students/2410990550');
+        expect(roster.data.studentPhoto).toBe('https://college.example.edu/existing.jpg');
+    });
     test('stamps a student as seen', () => {
         touchActive('2410990296', { platform: 'android', appVersion: '2.1.0' });
         const row = writes.sets.find((s) => s.path === 'admin/activity/students/2410990296');

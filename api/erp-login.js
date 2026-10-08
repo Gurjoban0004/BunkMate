@@ -79,6 +79,7 @@ module.exports = async function handler(req, res) {
                 ...meta,
                 outcome: 'trusted',
                 studentName: result.session.studentName,
+                studentPhoto: result.session.studentPhoto,
                 isMock: !!result.session.isMock,
             });
             return res.status(200).json({

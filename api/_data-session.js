@@ -99,6 +99,7 @@ async function openSession(req, res) {
     // what makes "students with the app open right now" a real number. Not
     // awaited: a telemetry write must never sit in front of a student's sync.
     touchActive(session.rollNumber, {
+        studentPhoto: session.studentPhoto,
         ip: getClientIp(req), studentName: session.studentName, isMock: session.isMock, ...clientMeta(req),
     });
 

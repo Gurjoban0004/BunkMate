@@ -40,13 +40,13 @@ const semDocs = [
 
 const userDocs = [
     { id: 'userA', data: { erpRollNumber: '2410990001', studentName: 'A', lastActive: ts(now - HOUR), setupComplete: true, version: '2.0.0' } },
-    { id: 'userB', data: { erpRollNumber: '2410990002', studentName: 'B', lastActive: ts(now - 3 * DAY), setupComplete: true, version: '2.0.0' } },
+    { id: 'userB', data: { erpRollNumber: '2410990002', studentName: 'B', studentPhoto: 'https://college.example.edu/b.jpg', lastActive: ts(now - 3 * DAY), setupComplete: true, version: '2.0.0' } },
     { id: 'userC', data: { erpRollNumber: '2510990003', studentName: 'C', lastActive: ts(now - 20 * DAY), setupComplete: false, version: '1.0.0' } },
 ];
 
 // The server-side ledger (api/_activity.js).
 const ledgerDocs = [
-    { id: '2410990001', data: { rollNumber: '2410990001', studentName: 'Asha', lastSeenAt: ts(now - 60000), syncCount: 4, platform: 'android', appVersion: '2.1.0' } },
+    { id: '2410990001', data: { rollNumber: '2410990001', studentName: 'Asha', studentPhoto: 'https://college.example.edu/asha.jpg', lastSeenAt: ts(now - 60000), syncCount: 4, platform: 'android', appVersion: '2.1.0' } },
     { id: '2410990004', data: { rollNumber: '2410990004', studentName: 'Dev', lastSeenAt: ts(now - 2 * HOUR), loginCount: 1, platform: 'web' } },
     { id: 'mock', data: { rollNumber: 'mock', isMock: true, lastSeenAt: ts(now - 30000) } },
 ];
@@ -250,6 +250,12 @@ describe('parserFailures', () => {
 });
 
 describe('userRoster', () => {
+    it('includes real student photos from the ledger or the existing cloud profile', async () => {
+        const { users } = await dataOf('userRoster');
+        expect(users.find((u) => u.rollNumber === '2410990001').studentPhoto).toBe('https://college.example.edu/asha.jpg');
+        expect(users.find((u) => u.rollNumber === '2410990002').studentPhoto).toBe('https://college.example.edu/b.jpg');
+        expect(users.find((u) => u.rollNumber === '2410990004').studentPhoto).toBeNull();
+    });
     it('aggregates every semester without a read per user', async () => {
         const { users: ur, unfinished } = await dataOf('userRoster');
         expect(ur).toHaveLength(4);   // three cloud users + one the ledger saw

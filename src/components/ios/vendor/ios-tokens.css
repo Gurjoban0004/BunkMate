@@ -1,0 +1,225 @@
+/* ==========================================================================
+   ios26-components — design tokens
+   --------------------------------------------------------------------------
+   Import ONCE at the root of a consuming app:
+
+     import 'ios26-components/styles.css';
+
+   Every value is either
+     [P] published/primary-source fact,
+     [F] field-measured convention (no official spec exists), or
+     [E] an engineering decision made by this library.
+
+   IMPORTANT — read docs/TAB-BAR-SPEC.md before changing any dimension.
+   Apple publishes NO iPhone tab bar metrics for iOS 26. Numbers tagged [F]
+   are reverse-engineered convention. Calibrate on a real device.
+   ========================================================================== */
+
+:root {
+  /* ------------------------------------------------------------------------
+     Safe areas  [P]  env(safe-area-inset-*) requires viewport-fit=cover in the
+     viewport meta tag, otherwise every value resolves to 0.
+     --ios-kb-inset is written by the host app's keyboard binding (see the
+     engineering standard §3.5); it is declared here so the fallback works.
+     --------------------------------------------------------------------- */
+  --ios-safe-top: env(safe-area-inset-top, 0px);
+  --ios-safe-right: env(safe-area-inset-right, 0px);
+  --ios-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ios-safe-left: env(safe-area-inset-left, 0px);
+  --ios-kb-inset: 0px;
+
+  /* ------------------------------------------------------------------------
+     Type
+     --------------------------------------------------------------------- */
+  --ios-font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+    'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+  /* ------------------------------------------------------------------------
+     Colour — light  [P] for system colours, [E] for the iOS system palette
+     values (Apple's UIKit constants, reproduced in CSS).
+     --------------------------------------------------------------------- */
+  --ios-bg: #ffffff;
+  --ios-surface: #f2f2f7;
+  --ios-surface-elevated: #ffffff;
+  --ios-text-primary: #000000;
+  --ios-text-secondary: #8a8a8e;
+  --ios-text-tertiary: #aeaeb2;
+  --ios-separator: rgba(60, 60, 67, 0.29);
+  --ios-accent: #007aff;
+  --ios-destructive: #ff3b30;
+  --ios-success: #34c759;
+
+  /* ------------------------------------------------------------------------
+     Liquid Glass material
+     Modelled on iOS 26 `.regular` glass: a translucent tint, a blur +
+     saturate of whatever sits behind it, a bright specular rim on the top
+     edge, and a soft drop shadow that lifts the element off the content.
+
+     [E] The blur radius is deliberately moderate. Safari 27 fixed an
+     extremely slow iPhone page load caused by large-radius blur filters
+     (engineering standard §10.3). Do not raise --ios-glass-blur past ~30px
+     without measuring load time on a real device.
+     --------------------------------------------------------------------- */
+  --ios-glass-tint: rgba(255, 255, 255, 0.16);
+  --ios-glass-blur: 20px;
+  --ios-glass-saturate: 180%;
+  --ios-glass-rim: rgba(255, 255, 255, 0.5);
+  --ios-glass-specular: rgba(255, 255, 255, 0.55);
+  --ios-glass-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  /* ------------------------------------------------------------------------
+     Tab bar geometry
+     See docs/TAB-BAR-SPEC.md for the full provenance table.
+     --------------------------------------------------------------------- */
+
+  /* [E] Capsule height, composed rather than magic:
+         8px top pad + 25px icon + 3px gap + 13px label + 8px bottom pad = 57
+         Rounded to 58 for a whole-pixel edge. */
+  --tabbar-height: 58px;
+
+  /* [E] Stadium shape. Half the height is 29px; 30px reads as a capsule
+     without the corners touching. */
+  --tabbar-radius: 30px;
+
+  /* [F] iOS 26 insets the floating bar ~21pt from the left and right edges.
+     Convention, not published spec. */
+  --tabbar-inset-x: 21px;
+
+  /* [E] Bottom clearance. On a home-indicator device the bar's bottom edge
+     lands exactly on the safe-area boundary (34pt on current iPhones), which
+     leaves the home indicator glyph visible in the gap beneath it — the same
+     relationship iOS 26 uses. On a device with no home indicator the inset
+     is 0, so a 10px floor keeps the bar off the screen edge. */
+  --tabbar-inset-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
+
+  /* [F] ~25pt glyph, ~11pt label. Convention, not published spec.
+     11px rather than 10px: two independent iOS 26 teardowns report 11pt. */
+  --tabbar-icon-size: 25px;
+  --tabbar-label-size: 11px;
+  --tabbar-label-weight: 400;
+  --tabbar-label-weight-active: 600;
+  --tabbar-label-line-height: 13px;
+  --tabbar-icon-label-gap: 3px;
+
+  /* [P] 44pt minimum hit target (Apple HIG; engineering standard §10.2). */
+  --tabbar-item-min-height: 44px;
+  --tabbar-item-padding-x: 6px;
+
+  /* [E] The selected item's glass pill. Not a stadium — iOS 26 uses a
+     rounded rectangle here. */
+  --pill-radius: 15px;
+  --pill-inset-y: 3px;
+  --pill-inset-x: 3px;
+  --pill-tint-strength: 26%;
+  --pill-rim: rgba(255, 255, 255, 0.55);
+
+  /* ------------------------------------------------------------------------
+     Motion  [E]
+     cubic-bezier(0.32, 0.72, 0, 1) is the standard approximation of the
+     iOS spring used for navigation transitions.
+     --------------------------------------------------------------------- */
+  --ios-duration-fast: 140ms;
+  --ios-duration-base: 240ms;
+  --ios-duration-emphasis: 380ms;
+  --ios-ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --ios-ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* ------------------------------------------------------------------------
+     Layers  [E]
+     --------------------------------------------------------------------- */
+  --ios-z-tabbar: 100;
+  --ios-z-overlay: 200;
+  --ios-z-sheet: 300;
+}
+
+/* --------------------------------------------------------------------------
+   Dark  [P] iOS dark system colours.
+   -------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ios-bg: #000000;
+    --ios-surface: #1c1c1e;
+    --ios-surface-elevated: #2c2c2e;
+    --ios-text-primary: #ffffff;
+    --ios-text-secondary: #98989f;
+    --ios-text-tertiary: #6c6c70;
+    --ios-separator: rgba(84, 84, 88, 0.65);
+    --ios-accent: #0a84ff;
+    --ios-destructive: #ff453a;
+    --ios-success: #30d158;
+
+    --ios-glass-tint: rgba(28, 28, 30, 0.46);
+    --ios-glass-rim: rgba(255, 255, 255, 0.16);
+    --ios-glass-specular: rgba(255, 255, 255, 0.22);
+    --ios-glass-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Forced theme — lets a host app pin light or dark regardless of the OS.
+   Apply to <html> or any ancestor:  <html data-theme="dark">
+   -------------------------------------------------------------------------- */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ios-bg: #000000;
+  --ios-surface: #1c1c1e;
+  --ios-surface-elevated: #2c2c2e;
+  --ios-text-primary: #ffffff;
+  --ios-text-secondary: #98989f;
+  --ios-text-tertiary: #6c6c70;
+  --ios-separator: rgba(84, 84, 88, 0.65);
+  --ios-accent: #0a84ff;
+  --ios-destructive: #ff453a;
+  --ios-success: #30d158;
+
+  --ios-glass-tint: rgba(28, 28, 30, 0.46);
+  --ios-glass-rim: rgba(255, 255, 255, 0.16);
+  --ios-glass-specular: rgba(255, 255, 255, 0.22);
+  --ios-glass-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* --------------------------------------------------------------------------
+   Accessibility
+
+   Reduce Transparency — replace the glass with an opaque surface. The
+   engineering standard requires an appearance pass for every app
+   (§10.2 accessibility, §3.8 checklist item 9).
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --ios-glass-tint: rgba(255, 255, 255, 0.94);
+    --ios-glass-blur: 0px;
+    --ios-glass-saturate: 100%;
+    --ios-glass-rim: rgba(0, 0, 0, 0.08);
+    --ios-glass-specular: rgba(255, 255, 255, 0);
+    --ios-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --pill-rim: rgba(0, 0, 0, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ios-glass-tint: rgba(28, 28, 30, 0.94);
+      --ios-glass-rim: rgba(255, 255, 255, 0.12);
+      --ios-glass-specular: rgba(255, 255, 255, 0);
+      --ios-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --pill-rim: rgba(255, 255, 255, 0.12);
+    }
+  }
+}
+
+/* Reduced Motion — keep the state change, drop the travel.
+   Engineering standard §10.2. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ios-duration-fast: 1ms;
+    --ios-duration-base: 1ms;
+    --ios-duration-emphasis: 1ms;
+  }
+}

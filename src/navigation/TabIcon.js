@@ -6,8 +6,8 @@ import { COLORS } from '../theme/theme';
 // Single source of truth for tab-bar icons, used by both the native (TabNavigator)
 // and web (WebTabNavigator) shells. Built on react-native-svg, which renders
 // identically on Android and web — so the APK is a pixel copy of the PWA.
-export default function TabIcon({ label, focused }) {
-    const color = focused ? COLORS.primary : COLORS.textSecondary;
+export default function TabIcon({ label, focused, color: tint }) {
+    const color = tint || (focused ? COLORS.primary : COLORS.textSecondary);
     const strokeWidth = focused ? 2 : 1.5;
 
     const common = {

@@ -10,7 +10,7 @@ import { getPlannerEndDate, getPlannableSubjectClasses } from '../../../utils/pl
 /**
  * Interactive What-If Simulator with Skip/Attend stepper and dynamic predictions.
  */
-export default function WhatIfSimulator({ subjectData, initialMode = 'skip', simulationOffset = 0, setSimulationOffset }) {
+export default function WhatIfSimulator({ subjectData, initialMode = 'skip', simulationOffset = 0, setSimulationOffset, allowSkip = true, title = 'Simulator', classLabel = 'classes' }) {
     const styles = getStyles();
     const { attended, total, target, unitsPerClass = 1 } = subjectData;
 
@@ -137,11 +137,11 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Simulator</Text>
+                <Text style={styles.title}>{title}</Text>
                 <View style={styles.modeSwitch}>
-                    <TouchableOpacity style={[styles.modeBtn, mode === 'skip' && styles.modeBtnActive]} onPress={() => handleModeChange('skip')}>
+                    {allowSkip && <TouchableOpacity style={[styles.modeBtn, mode === 'skip' && styles.modeBtnActive]} onPress={() => handleModeChange('skip')}>
                         <Text style={[styles.modeBtnText, mode === 'skip' && styles.modeBtnTextActive]}>SKIP</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity>}
                     <TouchableOpacity style={[styles.modeBtn, mode === 'attend' && styles.modeBtnActive]} onPress={() => handleModeChange('attend')}>
                         <Text style={[styles.modeBtnText, mode === 'attend' && styles.modeBtnTextActive]}>ATTEND</Text>
                     </TouchableOpacity>
@@ -151,14 +151,14 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
             {/* Compact result + stepper in one block */}
             <View style={styles.compactResultRow}>
                 <View style={styles.stepperWrapper}>
-                    <TouchableOpacity style={[styles.stepperBtn, manualSteps <= 0 && styles.stepperBtnDisabled]} onPress={() => handleStep(-1)} disabled={manualSteps <= 0}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove one simulated class pair" style={[styles.stepperBtn, manualSteps <= 0 && styles.stepperBtnDisabled]} onPress={() => handleStep(-1)} disabled={manualSteps <= 0}>
                         <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>-</Text>
                     </TouchableOpacity>
                     <View style={styles.stepperValueContainer}>
                         <Text style={styles.stepperValue}>{activeSteps}</Text>
-                        <Text style={styles.stepperUnit}>classes</Text>
+                        <Text style={styles.stepperUnit}>{classLabel}</Text>
                     </View>
-                    <TouchableOpacity style={[styles.stepperBtn, activeSteps >= maxSimulatorSteps && styles.stepperBtnDisabled]} onPress={() => handleStep(1)} disabled={activeSteps >= maxSimulatorSteps}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add one simulated class pair" style={[styles.stepperBtn, activeSteps >= maxSimulatorSteps && styles.stepperBtnDisabled]} onPress={() => handleStep(1)} disabled={activeSteps >= maxSimulatorSteps}>
                         <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>+</Text>
                     </TouchableOpacity>
                 </View>
@@ -275,8 +275,8 @@ const getStyles = () => StyleSheet.create({
         gap: 12,
     },
     stepperBtn: {
-        width: 40,
-        height: 40,
+        width: 48,
+        height: 48,
         borderRadius: 16,
         backgroundColor: COLORS.cardBackground,
         justifyContent: 'center',

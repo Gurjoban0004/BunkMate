@@ -69,6 +69,7 @@ module.exports = async function handler(req, res) {
             ...meta,
             outcome: 'otp-verified',
             studentName: session.studentName,
+            studentPhoto: session.studentPhoto,
             isMock: !!session.isMock,
         });
 
