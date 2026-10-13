@@ -15,6 +15,7 @@ import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import InsightsScreen from '../screens/main/InsightsScreen';
+import SkipPlanScreen from '../screens/main/SkipPlanScreen';
 import BrandLoader from '../components/common/BrandLoader';
 import { COLORS } from '../theme/theme';
 import { NavigationContext, NavigationRouteContext } from '@react-navigation/native';
@@ -31,10 +32,13 @@ export default function WebTabNavigator() {
     const { state: appState } = useApp();
     const isAdmin = ADMIN_AVAILABLE && isAdminUser(appState);
     const [currentTab, setCurrentTab] = useState(() => initialWebTab(window.location.search, isAdmin));
+    const urlParams = new URLSearchParams(window.location.search);
+    const restoreCalendar = urlParams.get('section') === 'plan' || urlParams.get('screen') === 'SkipPlan';
+    const calendarRoute = { name: 'SkipPlan', params: { subjectId: urlParams.get('subject') || undefined } };
     const [stacks, setStacks] = useState({
-        Today: [{ name: 'TodayMain', params: {} }],
-        Subjects: [{ name: 'SubjectsList', params: {} }],
-        Insights: [{ name: 'InsightsMain', params: new URLSearchParams(window.location.search).get('section') === 'plan' ? { section: 'plan', subjectId: new URLSearchParams(window.location.search).get('subject') || undefined } : {} }],
+        Today: [{ name: 'TodayMain', params: {} }, ...(restoreCalendar && currentTab === 'Today' ? [calendarRoute] : [])],
+        Subjects: [{ name: 'SubjectsList', params: {} }, ...(restoreCalendar && currentTab === 'Subjects' ? [calendarRoute] : [])],
+        Insights: [{ name: 'InsightsMain', params: {} }, ...(restoreCalendar && currentTab === 'Insights' ? [calendarRoute] : [])],
         Admin: [{ name: 'AdminMain', params: {} }],
     });
 
@@ -81,7 +85,7 @@ export default function WebTabNavigator() {
             const tab = initialWebTab(window.location.search, isAdmin);
             const params = new URLSearchParams(window.location.search);
             params.set('tab', tab);
-            window.history.replaceState({ tab, index: 0 }, '', `${window.location.pathname}?${params}`);
+            window.history.replaceState({ tab, index: stacks[tab].length - 1 }, '', `${window.location.pathname}?${params}`);
 
             return () => window.removeEventListener('popstate', handlePopState);
         }
@@ -96,9 +100,9 @@ export default function WebTabNavigator() {
             if (['Today', 'Subjects', 'Insights', 'Admin'].includes(screenOrTabName)) {
                 if (allowedWebTab(screenOrTabName, isAdmin) !== screenOrTabName) return;
                 if (screenOrTabName === 'Insights' && params.section === 'plan') {
-                    setStacks(prev => ({ ...prev, Insights: [{ name: 'InsightsMain', params: { section: 'plan', subjectId: params.subjectId } }] }));
+                    setStacks(prev => ({ ...prev, Insights: [{ name: 'InsightsMain', params: {} }, { name: 'SkipPlan', params: { subjectId: params.subjectId } }] }));
                     setCurrentTab('Insights');
-                    window.history.pushState({ tab: 'Insights', index: 0 }, '', `?tab=Insights&section=plan${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}`);
+                    window.history.pushState({ tab: 'Insights', index: 1 }, '', `?tab=Insights&screen=SkipPlan${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}`);
                     return;
                 }
                 // Tapping the already-active tab pops its stack to root (native tab behavior)
@@ -122,7 +126,7 @@ export default function WebTabNavigator() {
                     const tab = currentTabRef.current;
                     const newStack = [...prev[tab], { name: screenOrTabName, params }];
                     if (Platform.OS === 'web') {
-                        window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}`);
+                        window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}`);
                     }
                     return { ...prev, [tab]: newStack };
                 });
@@ -133,7 +137,7 @@ export default function WebTabNavigator() {
                 const tab = currentTabRef.current;
                 const newStack = [...prev[tab], { name: screenOrTabName, params }];
                 if (Platform.OS === 'web') {
-                    window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}`);
+                    window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}`);
                 }
                 return { ...prev, [tab]: newStack };
             });
@@ -192,6 +196,7 @@ export default function WebTabNavigator() {
             case 'TodayMain': screen = <TodayScreen {...props} />; break;
             case 'SubjectsList': screen = <SubjectsScreen {...props} />; break;
             case 'SubjectDetail': screen = <SubjectDetailScreen {...props} />; break;
+            case 'SkipPlan': screen = <SkipPlanScreen {...props} />; break;
             case 'SubjectPlanner': screen = <SubjectPlannerScreen {...props} />; break;
             case 'Settings': screen = <SettingsScreen {...props} />; break;
             case 'EditTimetable': screen = <EditTimetableScreen {...props} />; break;

@@ -17,8 +17,8 @@ beforeEach(() => {
             { id: 'physics', name: 'Physics', initialAttended: 44, initialTotal: 54, target: 75 },
         ],
         settings: {}, attendanceRecords: {}, holidays: [], devDate: '2026-10-08T12:00:00',
-        timeSlots: [{ id: 'p1', start: '09:00', end: '11:00' }, { id: 'p2', start: '13:00', end: '15:00' }],
-        timetable: { Thursday: [{ slotId: 'p1', subjectId: 'math' }, { slotId: 'p2', subjectId: 'physics' }] },
+        timeSlots: [{ id: 'p1', start: '09:00', end: '10:00' }, { id: 'p2', start: '10:00', end: '11:00' }, { id: 'p3', start: '13:00', end: '14:00' }, { id: 'p4', start: '14:00', end: '15:00' }],
+        timetable: { Thursday: [{ slotId: 'p1', subjectId: 'math' }, { slotId: 'p2', subjectId: 'math' }, { slotId: 'p3', subjectId: 'physics' }, { slotId: 'p4', subjectId: 'physics' }] },
     };
 });
 

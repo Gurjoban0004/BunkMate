@@ -13,6 +13,8 @@ import { shortSubjectName } from '../../utils/subjectName';
 import TodayScheduleBar from '../../components/today/TodayScheduleBar';
 import SectionHeader from '../../components/today/SectionHeader';
 import ClassCard from '../../components/today/ClassCard';
+import G4TimetablePrompt from '../../components/today/G4TimetablePrompt';
+import { getSavedSkipPlan } from '../../utils/planner/combinedSkipPlan';
 import ClassBento from '../../components/today/ClassBento';
 import PaperHeader from '../../components/today/PaperHeader';
 import RestDayView from '../../components/today/RestDayView';
@@ -51,6 +53,8 @@ const TodayScreen = ({ navigation }) => {
     const todayDayName = getTodayDayName(state.devDate);
 
     const todayClasses = useMemo(() => getTodayClasses(state, state.devDate), [state]);
+    const savedPlan = useMemo(() => getSavedSkipPlan(state), [state, todayKey]);
+    const plannedToday = savedPlan?.warnings.length ? [] : savedPlan?.weeks.flatMap((week) => week.classes).filter((cls) => cls.dateKey === todayKey) || [];
     const currentClassIndex = getCurrentClassIndex(todayClasses, state.devDate);
     const isHoliday = (state.holidays || []).includes(todayKey) || !!state.attendanceRecords[todayKey]?._holiday;
 
@@ -154,15 +158,13 @@ const TodayScreen = ({ navigation }) => {
                     <ReconnectCard />
                     <AnnouncementBanner />
                     <ErpWelcomeCard state={state} onDismiss={handleDismissWelcomeCard} />
+                    <G4TimetablePrompt />
                 </BannerHost>
 
                 <View style={styles.content}>
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open combined weekly skip plan" onPress={() => {
-                        if (Platform.OS === 'web') navigation.navigate('Insights', { section: 'plan' });
-                        else navigation.getParent()?.navigate('Insights', { screen: 'InsightsMain', params: { section: 'plan' } });
-                    }} style={{ paddingVertical: 16, minHeight: 48, borderBottomWidth: 1, borderBottomColor: PAPER.line, marginBottom: 16 }}>
-                        <Text style={{ fontFamily: SERIF_FONT, fontSize: 17, fontWeight: '700', color: COLORS.textPrimary }}>Your weekly skip plan</Text>
-                        <Text style={{ fontFamily: SERIF_FONT, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary, marginTop: 4 }}>Choose a weekly budget. Keep every subject on track.</Text>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open combined weekly skip plan" onPress={() => navigation.navigate('SkipPlan')} style={{ padding: 12, minHeight: 48, backgroundColor: PAPER.lavender, borderRadius: 12, marginBottom: 16 }}>
+                        <Text style={{ fontFamily: SERIF_FONT, fontSize: 17, fontWeight: '700', color: PAPER.apricotInk }}>{savedPlan ? 'Your plan today' : 'Plan your week'}</Text>
+                        {plannedToday.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{plannedToday.map((cls) => <View key={cls.id} style={{ backgroundColor: cls.action === 'skip' ? PAPER.apricot : PAPER.sage, borderRadius: 8, padding: 7 }}><Text style={{ fontFamily: SERIF_FONT, fontSize: 13, color: cls.unsafe ? COLORS.dangerText : COLORS.textPrimary }}>{shortSubjectName(cls.subjectName, 10)} · {cls.unsafe ? 'Review skip' : cls.action === 'skip' ? 'Skip' : 'Attend'}</Text><Text style={{ fontFamily: SERIF_FONT, fontSize: 12, color: COLORS.textSecondary }}>{cls.startTime}–{cls.endTime}</Text></View>)}</View> : <Text style={{ fontFamily: SERIF_FONT, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary, marginTop: 4 }}>{savedPlan?.warnings.length ? 'Sync to check your plan' : savedPlan ? 'View your upcoming classes on the calendar' : 'Choose your skips on a live calendar'}</Text>}
                     </TouchableOpacity>
                     {isHoliday ? (
                         <HolidayCard onUndo={() => dispatch({ type: 'REMOVE_HOLIDAY', payload: todayKey })} />

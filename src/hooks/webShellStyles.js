@@ -8,6 +8,7 @@ export const WEB_SHELL_STYLES = `
         }
         html, body {
             height: 100%;
+            height: 100dvh;
             margin: 0;
             overflow: hidden;
             overscroll-behavior: none;
@@ -15,7 +16,8 @@ export const WEB_SHELL_STYLES = `
             -webkit-text-size-adjust: 100%;
             background-color: var(--presence-background, #f8f6f2);
         }
-        #root { position: fixed; inset: 0; height: auto; min-height: 0; overflow: hidden; }
+        /* The screen and capsule share one containing block in installed Safari. */
+        #root { position: absolute; inset: 0; height: 100%; min-height: 0; overflow: hidden; }
         html[data-keyboard='open'] #root {
             position: fixed;
             top: var(--presence-vv-top, 0px);

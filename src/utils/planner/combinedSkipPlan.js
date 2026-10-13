@@ -47,18 +47,22 @@ function subjectChoices(base, events, limit, allowSkip) {
 }
 
 /** Pure, timetable-backed plan. No historical records or college totals are changed. */
-export function buildCombinedSkipPlan(state, { pairsPerWeek = 2, weeks = 4, fromDate = state.devDate || new Date() } = {}) {
+export function buildCombinedSkipPlan(state, { pairsPerWeek = 2, weeks = 4, fromDate = state.devDate || new Date(), includeToday = false } = {}) {
     if (!whole(pairsPerWeek)) throw new RangeError('Weekly skips must be a whole, non-negative number');
     if (!Number.isInteger(weeks) || weeks < 1 || weeks > 12) throw new RangeError('Choose between 1 and 12 weeks');
     const now = new Date(fromDate);
     if (!Number.isFinite(now.getTime())) throw new RangeError('Invalid plan date');
     const todayKey = toPlannerDateKey(now);
+    const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const start = validDate(todayKey);
-    start.setDate(start.getDate() + 1);
+    if (!includeToday) start.setDate(start.getDate() + 1);
     const end = validDate(weekKey(start));
     end.setDate(end.getDate() + weeks * 7 - 1);
     const semesterEnd = state.settings?.semesterEndDate;
     const warnings = [];
+    if (state.timetableMeta?.source !== 'manual' && (state.timetableMeta?.timesAreInferred || ['derived', 'register-derived'].includes(state.timetableMeta?.source))) {
+        warnings.push('Confirm class times in Edit timetable before planning skips. These times are inferred.');
+    }
     if (semesterEnd) {
         const term = typeof semesterEnd === 'string' ? validDate(semesterEnd.split('T')[0]) : null;
         if (!term) warnings.push('Check the semester end date in Settings.');
@@ -104,13 +108,19 @@ export function buildCombinedSkipPlan(state, { pairsPerWeek = 2, weeks = 4, from
         const cursor = new Date(coverage);
         cursor.setDate(cursor.getDate() + 1);
         // Do not invent credit for classes after the college's published register.
-        while (toPlannerDateKey(cursor) <= todayKey) {
+        while (toPlannerDateKey(cursor) < todayKey || (!includeToday && toPlannerDateKey(cursor) === todayKey)) {
             const key = toPlannerDateKey(cursor);
             if (!holiday(state, key) && state.attendanceRecords?.[key]?.[subject.id]?.status !== 'cancelled') weekly[DAYS[cursor.getDay()]].filter((cls) => cls.subjectId === subject.id && cls.units >= 2 && cls.units % 2 === 0).forEach((cls) => {
                 subject.t += cls.units;
                 subject.reservedPairs += cls.units / 2;
             });
             cursor.setDate(cursor.getDate() + 1);
+        }
+        if (includeToday && toPlannerDateKey(coverage) < todayKey && !holiday(state, todayKey) && state.attendanceRecords?.[todayKey]?.[subject.id]?.status !== 'cancelled') {
+            weekly[DAYS[now.getDay()]].filter((cls) => cls.subjectId === subject.id && cls.endTime <= clock && cls.units >= 2 && cls.units % 2 === 0).forEach((cls) => {
+                subject.t += cls.units;
+                subject.reservedPairs += cls.units / 2;
+            });
         }
     }
     if (needsSync) warnings.push('Sync with our college first: an attendance update date is missing, in the future, or over 31 days old.');
@@ -121,6 +131,9 @@ export function buildCombinedSkipPlan(state, { pairsPerWeek = 2, weeks = 4, from
         if (!holiday(state, dateKey)) weekly[DAYS[cursor.getDay()]].forEach((cls, index) => {
             // Unverified single periods are never turned into invented two-lecture events.
             if (cls.units < 2 || cls.units % 2) return;
+            // Today's published subject-day is already in the baseline totals.
+            if (includeToday && dateKey === todayKey && getErpCoverageDateForSubject(cls.subjectId, state) >= todayKey) return;
+            if (includeToday && dateKey === todayKey && cls.endTime <= clock) return;
             if (state.attendanceRecords?.[dateKey]?.[cls.subjectId]?.status === 'cancelled') return;
             events.push({ ...cls, id: `${dateKey}:${cls.subjectId}:${cls.startTime}:${index}`, dateKey, dayName: DAYS[cursor.getDay()], weekKey: weekKey(cursor), pairs: cls.units / 2 });
         });
@@ -178,6 +191,17 @@ export function buildCombinedSkipPlan(state, { pairsPerWeek = 2, weeks = 4, from
         startDate: toPlannerDateKey(start), endDate: toPlannerDateKey(end), hasEndDate: !!semesterEnd,
         reservedPairs: subjects.reduce((sum, subject) => sum + subject.reservedPairs, 0),
         scheduledPairs: events.reduce((sum, cls) => sum + cls.pairs, 0), skippedPairs: subjects.reduce((sum, subject) => sum + subject.skippedPairs, 0) };
+}
+
+/** Saved choices are preferences, never marks in the college register. */
+export function getSavedSkipPlan(state, preferences = state.settings?.skipPlan) {
+    if (!preferences || !whole(preferences.pairsPerWeek) || ![1, 2, 4, 8].includes(preferences.weeks)) return null;
+    const plan = buildCombinedSkipPlan(state, { ...preferences, includeToday: true });
+    const available = new Set(plan.weeks.flatMap((week) => week.classes.map((cls) => cls.id)));
+    const selected = plan.warnings.length ? [] : Array.isArray(preferences.skipIds)
+        ? preferences.skipIds.filter((id) => available.has(id))
+        : plan.weeks.flatMap((week) => week.classes.filter((cls) => cls.action === 'skip').map((cls) => cls.id));
+    return projectCombinedSkipPlan(plan, selected);
 }
 
 /** Replays calendar choices without changing the register or treating a risky choice as safe. */

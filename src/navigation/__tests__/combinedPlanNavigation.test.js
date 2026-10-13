@@ -7,6 +7,10 @@ jest.mock('../../screens/main/TodayScreen', () => {
     const { Text, TouchableOpacity } = require('react-native');
     return ({ navigation }) => <TouchableOpacity accessibilityLabel="Weekly plan" onPress={() => navigation.navigate('Insights', { section: 'plan' })}><Text>Today</Text></TouchableOpacity>;
 });
+jest.mock('../../screens/main/SkipPlanScreen', () => {
+    const { Text } = require('react-native');
+    return ({ route }) => <Text>{`Combined plan${route.params.subjectId ? ` for ${route.params.subjectId}` : ''}`}</Text>;
+});
 jest.mock('../../screens/main/InsightsScreen', () => {
     const { Text } = require('react-native');
     return ({ route }) => <Text>{route.params.section === 'plan' ? `Combined plan${route.params.subjectId ? ` for ${route.params.subjectId}` : ''}` : 'Overview'}</Text>;
@@ -36,7 +40,7 @@ test('Today shortcut switches the main tab and opens Plan with a reloadable URL'
     const screen = renderNavigator();
     fireEvent.press(screen.getByLabelText('Weekly plan'));
     expect(screen.getByText('Combined plan')).toBeTruthy();
-    expect(window.history.pushState).toHaveBeenCalledWith({ tab: 'Insights', index: 0 }, '', '?tab=Insights&section=plan');
+    expect(window.history.pushState).toHaveBeenCalledWith({ tab: 'Insights', index: 1 }, '', '?tab=Insights&screen=SkipPlan');
 });
 test('a Plan URL restores the chosen Insights section', () => {
     window.location.search = '?tab=Insights&section=plan';
@@ -44,5 +48,10 @@ test('a Plan URL restores the chosen Insights section', () => {
 });
 test('a subject calendar URL keeps the originating subject focused after reload', () => {
     window.location.search = '?tab=Insights&section=plan&subject=algorithms';
+    expect(renderNavigator().getByText('Combined plan for algorithms')).toBeTruthy();
+});
+
+test.each(['Today', 'Subjects'])('a dedicated calendar URL restores on the originating %s tab', (tab) => {
+    window.location.search = `?tab=${tab}&screen=SkipPlan&subject=algorithms`;
     expect(renderNavigator().getByText('Combined plan for algorithms')).toBeTruthy();
 });

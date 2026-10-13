@@ -11,6 +11,7 @@ import SettingsScreen from '../screens/main/SettingsScreen';
 import EditTimetableScreen from '../screens/main/EditTimetableScreen';
 import EditSubjectsScreen from '../screens/main/EditSubjectsScreen';
 import InsightsScreen from '../screens/main/InsightsScreen';
+import SkipPlanScreen from '../screens/main/SkipPlanScreen';
 import ERPConnectScreen from '../screens/main/ERPConnectScreen';
 import BrandLoader from '../components/common/BrandLoader';
 import TabIcon from './TabIcon';
@@ -38,6 +39,7 @@ function TabScene({ children }) {
 // Screens reachable from every tab.
 const sharedScreens = (Stack) => (
     <>
+        <Stack.Screen name="SkipPlan" component={SkipPlanScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="EditTimetable" component={EditTimetableScreen} />
         <Stack.Screen name="EditSubjects" component={EditSubjectsScreen} />

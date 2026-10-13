@@ -11,6 +11,7 @@ import {
     TextInput,
 } from 'react-native';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme/theme';
+import G4TimetablePrompt from '../../components/today/G4TimetablePrompt';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { useApp } from '../../context/AppContext';
 import Button from '../../components/common/Button';
@@ -138,6 +139,7 @@ const EditTimetableScreen = ({ navigation }) => {
                 a selector the student flips between constantly, and the two read
                 as one toolbar. Scrolling it away would cost more than it gains. */}
             <ScreenHeader title="Edit Timetable" />
+                <G4TimetablePrompt allowDismiss={false} />
             <View style={styles.header}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.daysScroll}>
                     {DAYS.map(day => (

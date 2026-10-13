@@ -21,7 +21,6 @@ import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import PaperScreenHeader from '../../components/common/PaperScreenHeader';
 import { shortSubjectName } from '../../utils/subjectName';
 import AttendanceImpactCard from '../../components/insights/AttendanceImpactCard';
-import CombinedSkipPlanner from '../../components/insights/CombinedSkipPlanner';
 
 // Semester-scale horizons (a term runs months, not a couple of weeks).
 const WEEK_OPTIONS = [8, 12, 16, 20];
@@ -31,7 +30,6 @@ const WEEK_OPTIONS = [8, 12, 16, 20];
 // Three groups, each answering one question.
 const TABS = [
     { key: 'overview', label: 'Overview' },
-    { key: 'plan', label: 'Plan' },
     { key: 'patterns', label: 'Patterns' },
     { key: 'subjects', label: 'Subjects' },
     { key: 'impact', label: 'Impact' },
@@ -42,8 +40,8 @@ const TABS = [
 export default function InsightsScreen({ route, navigation }) {
     const styles = getStyles();
     const { state } = useApp();
-    const [activeTab, setActiveTab] = useState(() => route?.params?.section === 'plan' ? 'plan' : 'overview');
-    React.useEffect(() => { if (route?.params?.section === 'plan') setActiveTab('plan'); }, [route?.params]);
+    const [activeTab, setActiveTab] = useState('overview');
+    React.useEffect(() => { if (route?.params?.section === 'plan') navigation.navigate('SkipPlan', { subjectId: route.params.subjectId }); }, [route?.params]);
     // Default to a realistic estimate of the weeks left in the term, not a fixed guess.
     const [weeksLeft, setWeeksLeft] = useState(() => estimateWeeksRemaining(state));
     const [expandedSubject, setExpandedSubject] = useState(null);
@@ -139,7 +137,7 @@ export default function InsightsScreen({ route, navigation }) {
                     )}
                 </PaperScreenHeader>
 
-                {activeTab === 'plan' ? <CombinedSkipPlanner navigation={navigation} initialSubjectId={route?.params?.subjectId} /> : activeTab === 'impact' ? <View style={{ marginHorizontal: SPACING.screenPadding }}><AttendanceImpactCard initialMode="today" /></View> : !intel.hasData ? (
+                {activeTab === 'impact' ? <View style={{ marginHorizontal: SPACING.screenPadding }}><AttendanceImpactCard initialMode="today" /></View> : !intel.hasData ? (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>No insights yet</Text>
                         <Text style={styles.emptyText}>Insights appear once our college has recorded a few days of classes.{'\n'}Pull down on Today to sync now.</Text>
@@ -153,7 +151,7 @@ export default function InsightsScreen({ route, navigation }) {
                         <TouchableOpacity
                             style={styles.emptyCard}
                             accessibilityRole="button"
-                            onPress={() => setActiveTab('plan')}
+                            onPress={() => navigation.navigate('SkipPlan')}
                         >
                             <Text style={styles.emptyTitle}>Try skips on the calendar</Text>
                             <Text style={styles.emptyText}>Tap your classes and watch your attendance plan change.</Text>

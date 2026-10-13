@@ -315,7 +315,8 @@ export function mapTimetableToState(erpTimetable, erpTimeSlots, existingSubjects
         }
     }
 
-    return { timetable, timeSlots: erpTimeSlots, newSubjects };
+    const groups = [...new Set(Object.values(erpTimetable).flat().map((entry) => entry.group).filter(Boolean))];
+    return { timetable, timeSlots: erpTimeSlots, newSubjects, group: groups.length === 1 ? groups[0] : null };
 }
 
 /**

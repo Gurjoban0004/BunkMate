@@ -135,7 +135,7 @@ export function useErpAutoSync(state, dispatch) {
         const lastTtFetch = currentState.timetableMeta?.fetchedAt;
         const ttSource = currentState.timetableMeta?.source;
         const shouldFetchTimetable = ttSource !== 'manual' && (
-            force || !lastTtFetch || !REAL_TT_SOURCES.includes(ttSource)
+            force || ttSource === 'cohort' || !lastTtFetch || !REAL_TT_SOURCES.includes(ttSource)
             || (Date.now() - new Date(lastTtFetch).getTime()) > TIMETABLE_INTERVAL_MS
         );
         const timetablePromise = shouldFetchTimetable
@@ -315,6 +315,7 @@ export function useErpAutoSync(state, dispatch) {
                                 timetable: mapped.timetable,
                                 timeSlots: mapped.timeSlots,
                                 source: ttData.source,
+                                group: mapped.group,
                                 fetchedAt: ttData.fetchedAt,
                                 timesAreInferred: ttData.timesAreInferred || false,
                                 periodDefinitions: ttData.timeSlots,

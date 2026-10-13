@@ -58,7 +58,12 @@ function AppContent() {
     applyTheme(currentTheme, currentPalette);
 
     useEffect(() => {
-        if (Platform.OS === 'web') document.documentElement.style.setProperty('--presence-background', COLORS.background);
+        if (Platform.OS === 'web') {
+            document.documentElement.style.setProperty('--presence-background', COLORS.background);
+            document.body.style.backgroundColor = COLORS.background;
+            const themeMeta = document.querySelector('meta[name="theme-color"]');
+            if (themeMeta) themeMeta.content = COLORS.background;
+        }
     }, [currentTheme, currentPalette]);
 
     useEffect(() => {

@@ -1,103 +1,69 @@
 # Main capsule tab bar
 
-The main navigation adapts the supplied `ios components` capsule to Presence's
-existing visual system. It extends the current interface; it does not establish
-a new design system. `src/theme/theme.js` remains the source for colors and Times
-typography. The selected destination uses `inputBackground` with primary ink,
-while other destinations use secondary ink. Capsule dimensions are integration
-choices, not official Apple measurements.
+Presence adapts the supplied capsule to its existing theme and navigation.
+`src/theme/theme.js` supplies colors and serif typography. Selected destinations
+use `inputBackground` and primary ink; other labels use secondary ink. Dimensions
+below are Presence integration choices, not Apple specifications.
 
-## Integration
+## Layout and behavior
 
-- Web uses the controlled vendored `IOS26TabBar`, existing Presence icons, and
-  host theme overrides in `PresenceTabBar.web.js` and `presence-tabbar.css`.
-  The vendor README records source and local keyboard changes.
-- iOS uses `PresenceTabBar.ios.js`, React Navigation tab events, safe-area
-  insets, and Expo `BlurView` (`expo-blur`). Native blur needs this dependency
-  in the built app. Reduced transparency uses an opaque theme surface, and
-  reduced motion disables capsule sliding. Android retains its existing bar.
-- Today, Subjects, and Insights remain the main destinations. Admin is a
-  web-only destination gated by the existing authenticated admin capability.
-- The capsule overlays the page without a full-width backing strip. Shared
-  `TabScrollView` adds clearance to scrolling content on ten main screens:
-  `--ios-tabbar-reserved` on web and measured tab-bar height on iOS. The outer
-  web screen no longer reserves a blank footer; old fixed footer spacers are
-  removed. Navigation hides while the software keyboard is open.
-- Screen headers receive the actual top inset, then add a 20px content gap
-  (12px for compact detail headers). Paper screens explicitly set their outer
-  SafeAreaView top and bottom edges to `off`: the installed web version of the
-  safe-area library applies omitted array edges additively, so an array alone
-  does not reliably exclude top padding. Left/right insets still protect
-  landscape content.
-- The capsule bottom inset is `max(8px, safe-area-bottom - 12px)` on web/iOS.
-  The October 9 adjustment follows the user's report that the bar still sat too
-  high; at a 34px safe area it sits 22px from the bottom, 12px lower than before.
-  The capsule owns bottom placement once. Its 64px height and
-  20px side margins are Presence integration choices, not Apple specifications.
-- The web root fills the viewport with `position: fixed; inset: 0`. The document
-  background follows the active theme. Keyboard handling uses the existing
-  visual-viewport hook and hides navigation while the keyboard is open.
+- Web uses the controlled vendored `IOS26TabBar`, Presence icons and host
+  overrides in `PresenceTabBar.web.js` and `presence-tabbar.css`: 64px height,
+  20px horizontal insets, 6px bottom inset and 420px maximum width. The host
+  layer is absolute in the same containing block as the page.
+- `webShellStyles.js` gives `html`/`body` 100dvh height with a 100% fallback.
+  `#root` uses `position: absolute; inset: 0; height: 100%`, avoiding separate
+  fixed coordinate systems. App.js updates document background and theme-color
+  to the current theme. Existing viewport-fit=cover and default status-bar
+  metadata remain in place.
+- Native iOS uses `PresenceTabBar.ios.js`, React Navigation events and Expo
+  `BlurView`. Bottom padding is `Math.max(6, insets.bottom)`, preserving the
+  home-indicator inset. The navigator receives the real inset; only screen
+  children receive bottom zero so the capsule owns clearance once. Android
+  retains its existing bar.
+- Today, Subjects and Insights are the main destinations. Admin stays web-only
+  and gated by the existing authenticated capability. The capsule overlays
+  content without a full-width backing strip.
+- `TabScrollView` reserves scrolling clearance using `--ios-tabbar-reserved`
+  on web and measured bar height on iOS; the skip calendar supplies its own
+  clearance. Headers use actual top/side insets.
+- Navigation hides when the software keyboard opens. The existing web
+  visual-viewport root override remains active for that state. Native reduced
+  motion disables sliding and reduced transparency uses an opaque theme surface.
+  Web retains CSS preferences and the blur fallback.
 
-## Evidence and remaining checks
+## Evidence and unresolved device check
 
-The October 8 correction superseded the earlier component-only preview verdict:
-user screenshots showed status-bar overlap and a bottom strip in the installed
-Home Screen app. The user confirmed the original icon had never been replaced
-since status-bar metadata changed from `black-translucent` to `default`.
+Current `.impeccable/review/compact-calendar/` browser evidence covers 390×844
+with injected 47px top/0px bottom insets, 320×667 and 1024×768. At 390×844 the
+root is 844px tall and the 64px capsule occupies y=774–838, leaving 6px below.
+Actual screens/shell use temporary adapters and two real subjects from a
+sanitized historical July register, with no app records or storage writes.
+Injected insets do not reproduce installed Safari behavior.
 
-Browser review now uses the actual Today, Subjects, and Insights components with
-an isolated read-only conversion of the existing `research/erp-capture-10.json`.
-This is captured college attendance, not generated records; the application
-state and database are untouched. The capture covers two subjects and the
-historical June/July register, not the user's current October attendance.
-Safe-area inputs are injected for browser measurement; they do not simulate
-Safari's installation metadata or prove physical-device rendering.
+Final **SHIP** covers closure of three specific review findings, including the
+native inset correction in source. It is not a second full-surface clearance or
+device verdict. Earlier placement verdicts cannot validate the user-rejected
+installed layout. Test/export results are in
+[combined-skip-plan.md](combined-skip-plan.md).
 
-Captures under `.impeccable/review/` include a 393×852 portrait viewport with
-47px top/34px bottom insets, a 430×932 viewport with 59px top/34px bottom insets,
-a 375×667 viewport with zero insets, 844×390 landscape with 44px side/21px bottom
-insets, and 1024×768 desktop. At 393×852, the root is 852px tall, Subjects starts
-at y=67, and the earlier 68px capsule occupied y=750–818. The last Insights text scrolls above
-the capsule. These checks establish browser geometry only. A fresh finish review returned
-**ship**, explicitly scoped to these browser surfaces and the dense admin viewer.
+The iPhone 13 Home Screen white gap and requested lower placement are **not
+verified on device**; no physical device or simulator capture was available.
+After updating, inspect the existing Home Screen installation and obtain a
+fresh screenshot before claiming the gap or placement is fixed. There is no
+evidence that this layout requires deleting and re-adding the icon.
 
-The October 9 combined-planner check records a 64px capsule at y=766–830 in a
-393×852 viewport with injected 47px top/34px bottom insets. Captures under
-`.impeccable/review/combined-plan/` cover that viewport, 375×667 and 1024×768,
-including dated class decisions and final subject-balance text clearance. The
-latest user feedback supersedes the previous capsule-placement ship verdict.
-The fresh combined-plan finish review resolved its sole contrast issue and
-returned **ship** for the final browser captures only. This is the current
-browser verdict; it does not close installed Home Screen or native-device checks.
+`?debug=viewport` (or `&debug=viewport`) shows display mode, viewport/root sizes,
+safe areas, capsule position, keyboard state and Presence cache names. Keyboard,
+font scaling, VoiceOver and TalkBack need device checks. Dark browser captures
+do not establish native dark behavior.
 
-The integration tests report 365 passes and one skipped test across 54 suites.
-Production web, Android and iOS bundle exports are checked separately from device
-rendering. Physical iPhone/Home Screen and native iOS verification remain
-pending; no device or simulator capture is available. Dark appearance, software
-keyboard behavior and device accessibility also remain unverified in this review.
+## Incumbent context
 
-After deploying, open the existing installation and use Settings → Download
-attendance backup before replacing its Home Screen icon. The download contains
-existing attendance and settings, excludes credentials, and does not modify
-records. Keep the file: this export does not provide an automatic restore flow.
-An older installation may retain its prior status-bar/display metadata, so
-remove and re-add the icon through Safari after saving the backup. Request a
-new screenshot from that installed Home Screen app; this remains **not verified
-on device**.
-
-For an opt-in readout, open `?debug=viewport` (or append `&debug=viewport` to an
-existing query). It shows display mode, viewport and root sizes, safe-area
-values, capsule position, keyboard state, and Presence cache names. Guidance:
-[WebKit's viewport-fit and safe-area explanation](https://webkit.org/blog/7929/designing-websites-for-iphone-x/)
-and [Apple's layout guidance](https://developer.apple.com/design/human-interface-guidelines/layout).
-
-## Existing documentation drift
-
-`docs/design_system.md` still describes Plus Jakarta Sans and JetBrains Mono,
-whereas the current theme explicitly uses Times New Roman on iOS/web and the
-platform serif on Android. Some generic `GLASS` definitions also retain older
-blue palette values; this capsule receives the active theme directly. Those
-pre-existing differences are recorded here without repairing or replacing
-incumbent documentation or tokens. `PRODUCT.md` and the existing design document
-remain unchanged; this ordinary navigation extension creates no root
-`DESIGN.md` or global design sidecar.
+This integration was compared with the theme, navigation, PRODUCT.md,
+`docs/design_system.md` and current captures. The design document names Plus
+Jakarta Sans and JetBrains Mono; implementation uses Times on iOS/web and
+platform serif on Android. Generic `GLASS` definitions retain older palette
+values, while this capsule receives the active theme. Those pre-existing
+differences remain without changing product guidance, tokens, global design
+documentation or a sidecar.

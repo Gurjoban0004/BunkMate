@@ -301,6 +301,7 @@ export default function ERPSetupScreen({ navigation }) {
                             timetable: mapped.timetable,
                             timeSlots: mapped.timeSlots,
                             source: ttData.source,
+                            group: mapped.group,
                             fetchedAt: ttData.fetchedAt,
                             timesAreInferred: ttData.timesAreInferred || false,
                             periodDefinitions: ttData.timeSlots,

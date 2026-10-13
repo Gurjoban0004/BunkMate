@@ -41,7 +41,9 @@ export function getTodaySkipPairs(state) {
     const date = getTodayKey(state.devDate);
     if ((state.holidays || []).includes(date) || state.attendanceRecords?.[date]?._holiday) return [];
     return getTodayClasses(state, state.devDate).flatMap((cls, index) => {
-        const count = Math.max(1, Math.ceil(cls.units / 2));
+        if (state.attendanceRecords?.[date]?.[cls.subjectId]?.status === 'cancelled') return [];
+        if (!Number.isInteger(cls.units) || cls.units < 2 || cls.units % 2) return [];
+        const count = cls.units / 2;
         return Array.from({ length: count }, (_, pair) => ({
             ...cls, id: `${date}:${cls.subjectId}:${index}:${pair}`, pair: pair + 1, pairCount: count,
         }));

@@ -1,5 +1,5 @@
 import fc from 'fast-check';
-import { buildCombinedSkipPlan, projectCombinedSkipPlan } from '../planner/combinedSkipPlan';
+import { buildCombinedSkipPlan, projectCombinedSkipPlan, getSavedSkipPlan } from '../planner/combinedSkipPlan';
 
 function input() {
     const timeSlots = Array.from({ length: 4 }, (_, i) => ({ id: String(i), start: `${9 + i}:00`.padStart(5, '0'), end: `${10 + i}:00`.padStart(5, '0') }));
@@ -26,6 +26,15 @@ function checkTrace(state, result) {
     }
     for (const row of result.subjects) expect([row.a, row.t]).toEqual([totals[row.id].a, totals[row.id].t]);
 }
+
+test('pauses inferred times until the timetable has been confirmed', () => {
+    const state = input(); state.timetableMeta = { source: 'portal-web', timesAreInferred: true };
+    const paused = buildCombinedSkipPlan(state);
+    expect(paused.warnings[0]).toContain('Edit timetable');
+    expect(paused.weeks.flatMap(w => w.classes).every(c => c.action === 'attend')).toBe(true);
+    state.timetableMeta.source = 'manual';
+    expect(buildCombinedSkipPlan(state).warnings).toEqual([]);
+});
 
 test('protects the weaker subject, provides real times, and leaves every input record unchanged', () => {
     const state = input(), before = JSON.stringify(state);
@@ -155,4 +164,42 @@ test('calendar keeps larger blocks whole, handles duplicate choices once, and re
     expect(projection.overall).toMatchObject({ attended: 180, conducted: 200, projectedA: 180, projectedT: 204 });
     expect(projection.overall.recovery.find((target) => target.label === 'Previous').pairs).toBe(18);
     expect(projection.subjects[0].recoverPreviousPairs).toBe(null);
+});
+
+
+test('saved plan includes unreported classes today without double counting published subject-days', () => {
+    const state = input();
+    state.devDate = '2026-10-12T08:00:00';
+    state.settings.skipPlan = { pairsPerWeek: 2, weeks: 1 };
+    const before = JSON.stringify(state);
+    let plan = getSavedSkipPlan(state);
+    expect(plan.startDate).toBe('2026-10-12');
+    expect(plan.weeks[0].classes.filter((cls) => cls.dateKey === '2026-10-12')).toHaveLength(2);
+    expect(plan.reservedPairs).toBe(0);
+    expect(JSON.stringify(state)).toBe(before);
+    state.settings.lastSubjectSyncDates = { a: '2026-10-12' };
+    plan = getSavedSkipPlan(state);
+    expect(plan.weeks[0].classes.filter((cls) => cls.dateKey === '2026-10-12').map((cls) => cls.subjectId)).toEqual(['b']);
+});
+test('expired manual choices are removed, unsafe choices are preserved as warnings, and config is never attendance', () => {
+    const state = input();
+    state.devDate = '2026-10-12T08:00:00';
+    state.subjects[0].initialAttended = 75;
+    state.settings.skipPlan = { pairsPerWeek: 1, weeks: 1 };
+    const cls = getSavedSkipPlan(state).weeks[0].classes[0];
+    state.settings.skipPlan.skipIds = [cls.id, 'expired'];
+    const plan = getSavedSkipPlan(state);
+    expect(plan.weeks[0].classes[0]).toMatchObject({ action: 'skip', unsafe: true });
+    expect(state.subjects[0].initialAttended).toBe(75);
+    state.settings.skipPlan.pairsPerWeek = 1.5;
+    expect(getSavedSkipPlan(state)).toBe(null);
+});
+
+test('unpublished classes that already ended today never lend attendance credit to later skips', () => {
+    const state = input(); state.devDate = '2026-10-12T11:15:00';
+    state.settings.skipPlan = { pairsPerWeek: 2, weeks: 1 };
+    const plan = getSavedSkipPlan(state);
+    expect(plan.subjects.find(s => s.id === 'a').reservedPairs).toBe(1);
+    expect(plan.weeks[0].classes.filter(c => c.dateKey === '2026-10-12').map(c => c.subjectId)).toEqual(['b']);
+    expect(plan.subjects.find(s => s.id === 'a').recordedA).toBe(90);
 });

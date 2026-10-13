@@ -1,14 +1,15 @@
 import TabScrollView from '../../components/common/TabScrollView';
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, getErpCoverageDateForSubject } from '../../utils/attendance';
 import Card from '../../components/common/Card';
 import CalendarView from '../../components/subjects/CalendarView';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
+import { COLORS, PAPER, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { shortSubjectName } from '../../utils/subjectName';
+import AttendanceImpactCard from '../../components/insights/AttendanceImpactCard';
 import SubjectSummaryCard from '../../components/planner/SubjectDetail/SubjectSummaryCard';
 import PatternsInsights from '../../components/planner/SubjectDetail/PatternsInsights';
 import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
@@ -70,19 +71,19 @@ export default function SubjectDetailScreen({ route, navigation }) {
                     title={shortSubjectName(subject?.name) || 'Subject'}
                     bleed={{ horizontal: SPACING.screenPadding, top: SPACING.md }}
                 />
-                {/* Where it stands + what the next class does + the way back */}
+                {/* Recorded summary and the existing hypothetical simulator. */}
                 {plannerData && <SubjectSummaryCard subjectData={plannerData} />}
                 <TouchableOpacity
                     style={styles.plannerButton}
                     accessibilityRole="button"
                     accessibilityLabel={`Open Insights calendar for ${subject.name}`}
                     onPress={() => {
-                        if (Platform.OS === 'web') navigation.navigate('Insights', { section: 'plan', subjectId });
-                        else navigation.getParent()?.navigate('Insights', { screen: 'InsightsMain', params: { section: 'plan', subjectId } });
+                        navigation.navigate('SkipPlan', { subjectId });
                     }}
                 >
-                    <Text style={styles.plannerButtonText}>Try skips on the calendar</Text>
+                    <Text style={styles.plannerButtonText}>Plan on calendar</Text>
                 </TouchableOpacity>
+                <AttendanceImpactCard key={subjectId} subjectId={subjectId} />
 
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>
@@ -242,6 +243,6 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.primary,
         fontWeight: '700',
     },
-    plannerButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.textPrimary, borderRadius: 12, padding: 12, marginBottom: 20 },
-    plannerButtonText: { ...TYPOGRAPHY.bodyMedium, fontWeight: '700', color: COLORS.background },
+    plannerButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: PAPER.lavender, borderRadius: 12, padding: 12, marginBottom: 20 },
+    plannerButtonText: { ...TYPOGRAPHY.bodyMedium, fontWeight: '700', color: PAPER.apricotInk },
 });

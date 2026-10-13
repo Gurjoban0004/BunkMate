@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useApp } from '../../context/AppContext';
 import { getTodaySkipPairs, simulateAttendanceImpact } from '../../utils/attendanceImpact';
 import { formatTimeRange } from '../../utils/dateHelpers';
-import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, TABULAR } from '../../theme/theme';
+import { COLORS, PAPER, SPACING, TYPOGRAPHY, BORDER_RADIUS, TABULAR } from '../../theme/theme';
 
 const pct = (value) => `${value.toFixed(2)}%`;
 const runLabel = (pairs) => pairs === null ? 'Not reachable' : pairs === 0 ? 'Already reached' : `${pairs} ${pairs === 1 ? 'pair' : 'pairs'} · ${pairs * 2} lectures`;
@@ -147,9 +147,9 @@ const getStyles = () => StyleSheet.create({
     note: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: SPACING.xs },
     modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginTop: SPACING.md, marginBottom: SPACING.sm },
     modeButton: { padding: SPACING.sm, minHeight: 48, justifyContent: 'center', borderRadius: BORDER_RADIUS.sm, backgroundColor: COLORS.inputBackground },
-    activeButton: { backgroundColor: COLORS.primary },
+    activeButton: { backgroundColor: PAPER.lavender },
     buttonText: { ...TYPOGRAPHY.labelMedium, color: COLORS.textPrimary },
-    activeText: { color: COLORS.textOnPrimary },
+    activeText: { color: PAPER.apricotInk },
     selectionRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: SPACING.sm, minHeight: 48 },
     choice: { ...TYPOGRAPHY.labelMedium, color: COLORS.primaryDark },
     flex: { flex: 1 },

@@ -67,11 +67,13 @@ test('handles missing records, no totals and invalid counts without inventing at
 
 test('automatically discovers today’s full pairs and respects holidays', () => {
     const input = state();
-    input.timeSlots = [{ id: 'p1', start: '09:00', end: '10:00' }, { id: 'p2', start: '10:00', end: '11:00' }, { id: 'p3', start: '13:00', end: '15:00' }];
-    input.timetable.Thursday = [{ slotId: 'p1', subjectId: 'math' }, { slotId: 'p2', subjectId: 'math' }, { slotId: 'p3', subjectId: 'physics' }];
+    input.timeSlots = [{ id: 'p1', start: '09:00', end: '10:00' }, { id: 'p2', start: '10:00', end: '11:00' }, { id: 'p3', start: '13:00', end: '14:00' }, { id: 'p4', start: '14:00', end: '15:00' }];
+    input.timetable.Thursday = [{ slotId: 'p1', subjectId: 'math' }, { slotId: 'p2', subjectId: 'math' }, { slotId: 'p3', subjectId: 'physics' }, { slotId: 'p4', subjectId: 'physics' }];
     const pairs = getTodaySkipPairs(input);
     expect(pairs.map((p) => p.subjectId)).toEqual(['math', 'physics']);
     expect(new Set(pairs.map((p) => p.id)).size).toBe(2);
+    input.attendanceRecords['2026-10-08'] = { physics: { status: 'cancelled', source: 'erp' } };
+    expect(getTodaySkipPairs(input).map((p) => p.subjectId)).toEqual(['math']);
     input.holidays = ['2026-10-08'];
     expect(getTodaySkipPairs(input)).toEqual([]);
 });
@@ -90,4 +92,12 @@ test('minimum recovery agrees with exact fraction boundaries across varied recor
             }
         }
     ), { numRuns: 500 });
+});
+
+test('an unverified single timetable period is never invented as a two-lecture attendance event', () => {
+    const state = { subjects: [{ id: 'a', name: 'Algorithms', initialAttended: 90, initialTotal: 100 }],
+        devDate: '2026-10-12T08:00:00', attendanceRecords: {}, holidays: [], settings: {},
+        timetable: { Monday: [{ subjectId: 'a', slotId: '1' }] },
+        timeSlots: [{ id: '1', start: '09:00', end: '10:00' }] };
+    expect(getTodaySkipPairs(state)).toEqual([]);
 });

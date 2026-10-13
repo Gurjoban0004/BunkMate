@@ -1,3 +1,4 @@
+import { activateG4Timetable, timetableFingerprint, isG4PortalGroup } from '../utils/cohortTimetable';
 import React, { createContext, useContext, useReducer, useEffect, useState, useRef, useCallback } from 'react';
 import { initNetworkListener, onNetworkStatusChange } from '../utils/firebaseHelpers';
 import { loadLocalState, loadCloudState, saveAppState, migrateToFirestore } from '../storage/storage';
@@ -174,14 +175,29 @@ export function appReducer(state, action) {
                 timetableMeta: { ...state.timetableMeta, source: 'manual' },
             };
 
+        case 'ACTIVATE_G4_TIMETABLE':
+            return activateG4Timetable(state, action.payload);
+
         case 'ERP_SET_TIMETABLE': {
-            const { timetable, timeSlots, fetchedAt, periodDefinitions, timesAreInferred, erpEndpoint } = action.payload;
+            const { timetable, timeSlots, fetchedAt, periodDefinitions, timesAreInferred, erpEndpoint, source, group } = action.payload;
+            const cohortActive = state.timetableMeta?.source === 'cohort';
+            const portalGrid = source === 'portal-web' || source === 'erp';
+            const published = portalGrid && !timesAreInferred;
+            const groupChanged = !!group && !isG4PortalGroup(group);
+            if (state.timetableMeta?.cohortRetired && !published) {
+                return { ...state, timetableMeta: { ...state.timetableMeta, fetchedAt } };
+            }
+            if (cohortActive && !(portalGrid && groupChanged) && (!published || timetableFingerprint(timetable, timeSlots) === state.timetableMeta.portalBaseline)) {
+                return { ...state, timetableMeta: { ...state.timetableMeta, fetchedAt } };
+            }
             return {
                 ...state,
                 timetable,
                 timeSlots,
                 timetableMeta: {
-                    source: 'erp',
+                    source: source || 'erp',
+                    ...(group ? { group } : {}),
+                    ...(cohortActive || state.timetableMeta?.cohortRetired ? { cohortVersion: state.timetableMeta.cohortVersion, cohortRetired: true } : {}),
                     fetchedAt,
                     derivedAt: state.timetableMeta?.derivedAt || null,
                     erpEndpoint: erpEndpoint || null,
