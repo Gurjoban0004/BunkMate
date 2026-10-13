@@ -29,8 +29,10 @@ choices, not official Apple measurements.
   safe-area library applies omitted array edges additively, so an array alone
   does not reliably exclude top padding. Left/right insets still protect
   landscape content.
-- The capsule bottom inset is `max(8px, safe-area-bottom)` on web/iOS, with no
-  subtraction. The capsule owns the bottom safe area once. Its 68px height and
+- The capsule bottom inset is `max(8px, safe-area-bottom - 12px)` on web/iOS.
+  The October 9 adjustment follows the user's report that the bar still sat too
+  high; at a 34px safe area it sits 22px from the bottom, 12px lower than before.
+  The capsule owns bottom placement once. Its 64px height and
   20px side margins are Presence integration choices, not Apple specifications.
 - The web root fills the viewport with `position: fixed; inset: 0`. The document
   background follows the active theme. Keyboard handling uses the existing
@@ -38,7 +40,7 @@ choices, not official Apple measurements.
 
 ## Evidence and remaining checks
 
-The October 8 correction supersedes the earlier component-only preview verdict:
+The October 8 correction superseded the earlier component-only preview verdict:
 user screenshots showed status-bar overlap and a bottom strip in the installed
 Home Screen app. The user confirmed the original icon had never been replaced
 since status-bar metadata changed from `black-translucent` to `default`.
@@ -55,14 +57,24 @@ Captures under `.impeccable/review/` include a 393×852 portrait viewport with
 47px top/34px bottom insets, a 430×932 viewport with 59px top/34px bottom insets,
 a 375×667 viewport with zero insets, 844×390 landscape with 44px side/21px bottom
 insets, and 1024×768 desktop. At 393×852, the root is 852px tall, Subjects starts
-at y=67, and the capsule occupies y=750–818. The last Insights text scrolls above
+at y=67, and the earlier 68px capsule occupied y=750–818. The last Insights text scrolls above
 the capsule. These checks establish browser geometry only. A fresh finish review returned
 **ship**, explicitly scoped to these browser surfaces and the dense admin viewer.
 
-The integration tests report 353 passes and one skipped test across 51 suites.
-Production web and iOS bundle exports are checked separately from device
+The October 9 combined-planner check records a 64px capsule at y=766–830 in a
+393×852 viewport with injected 47px top/34px bottom insets. Captures under
+`.impeccable/review/combined-plan/` cover that viewport, 375×667 and 1024×768,
+including dated class decisions and final subject-balance text clearance. The
+latest user feedback supersedes the previous capsule-placement ship verdict.
+The fresh combined-plan finish review resolved its sole contrast issue and
+returned **ship** for the final browser captures only. This is the current
+browser verdict; it does not close installed Home Screen or native-device checks.
+
+The integration tests report 365 passes and one skipped test across 54 suites.
+Production web, Android and iOS bundle exports are checked separately from device
 rendering. Physical iPhone/Home Screen and native iOS verification remain
-pending; no device or simulator capture is available.
+pending; no device or simulator capture is available. Dark appearance, software
+keyboard behavior and device accessibility also remain unverified in this review.
 
 After deploying, open the existing installation and use Settings → Download
 attendance backup before replacing its Home Screen icon. The download contains

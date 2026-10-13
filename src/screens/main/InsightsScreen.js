@@ -21,6 +21,7 @@ import WeeklyReportCard from '../../components/insights/WeeklyReportCard';
 import PaperScreenHeader from '../../components/common/PaperScreenHeader';
 import { shortSubjectName } from '../../utils/subjectName';
 import AttendanceImpactCard from '../../components/insights/AttendanceImpactCard';
+import CombinedSkipPlanner from '../../components/insights/CombinedSkipPlanner';
 
 // Semester-scale horizons (a term runs months, not a couple of weeks).
 const WEEK_OPTIONS = [8, 12, 16, 20];
@@ -30,6 +31,7 @@ const WEEK_OPTIONS = [8, 12, 16, 20];
 // Three groups, each answering one question.
 const TABS = [
     { key: 'overview', label: 'Overview' },
+    { key: 'plan', label: 'Plan' },
     { key: 'patterns', label: 'Patterns' },
     { key: 'subjects', label: 'Subjects' },
     { key: 'impact', label: 'Impact' },
@@ -37,10 +39,11 @@ const TABS = [
 
 // ─── Component ───────────────────────────────────────────────────────
 
-export default function InsightsScreen() {
+export default function InsightsScreen({ route, navigation }) {
     const styles = getStyles();
     const { state } = useApp();
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState(() => route?.params?.section === 'plan' ? 'plan' : 'overview');
+    React.useEffect(() => { if (route?.params?.section === 'plan') setActiveTab('plan'); }, [route?.params]);
     // Default to a realistic estimate of the weeks left in the term, not a fixed guess.
     const [weeksLeft, setWeeksLeft] = useState(() => estimateWeeksRemaining(state));
     const [expandedSubject, setExpandedSubject] = useState(null);
@@ -126,6 +129,7 @@ export default function InsightsScreen() {
                                         activeOpacity={0.8}
                                         accessibilityRole="tab"
                                         accessibilityState={{ selected: on }}
+                                        aria-selected={on}
                                     >
                                         <Text style={[styles.tabText, on && styles.tabTextActive]}>{t.label}</Text>
                                     </TouchableOpacity>
@@ -135,7 +139,7 @@ export default function InsightsScreen() {
                     )}
                 </PaperScreenHeader>
 
-                {activeTab === 'impact' ? <View style={{ marginHorizontal: SPACING.screenPadding }}><AttendanceImpactCard initialMode="today" /></View> : !intel.hasData ? (
+                {activeTab === 'plan' ? <CombinedSkipPlanner navigation={navigation} initialSubjectId={route?.params?.subjectId} /> : activeTab === 'impact' ? <View style={{ marginHorizontal: SPACING.screenPadding }}><AttendanceImpactCard initialMode="today" /></View> : !intel.hasData ? (
                     <View style={styles.emptyCard}>
                         <Text style={styles.emptyTitle}>No insights yet</Text>
                         <Text style={styles.emptyText}>Insights appear once our college has recorded a few days of classes.{'\n'}Pull down on Today to sync now.</Text>
@@ -149,10 +153,10 @@ export default function InsightsScreen() {
                         <TouchableOpacity
                             style={styles.emptyCard}
                             accessibilityRole="button"
-                            onPress={() => setActiveTab('impact')}
+                            onPress={() => setActiveTab('plan')}
                         >
-                            <Text style={styles.emptyTitle}>What if I skip today?</Text>
-                            <Text style={styles.emptyText}>Preview your combined attendance and the class pairs needed to recover.</Text>
+                            <Text style={styles.emptyTitle}>Try skips on the calendar</Text>
+                            <Text style={styles.emptyText}>Tap your classes and watch your attendance plan change.</Text>
                         </TouchableOpacity>
                         <WeeklyReportCard report={weeklyReport} subjects={state.subjects} />
 
@@ -490,7 +494,7 @@ export default function InsightsScreen() {
                 )}
 
                 {/* Footer Note */}
-                {activeTab !== 'impact' && <View style={styles.footerNote}>
+                {!['impact', 'plan'].includes(activeTab) && <View style={styles.footerNote}>
                     <Text style={styles.footerNoteText}>
                         {endGameStats.isExactMath
                             ? 'Exact calculation based on our timetable until the semester end date.'

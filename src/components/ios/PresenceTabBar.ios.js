@@ -7,7 +7,7 @@ import TabIcon from '../../navigation/TabIcon';
 import { COLORS, TYPOGRAPHY, PALETTES } from '../../theme/theme';
 import { triggerHaptic } from '../../utils/haptics';
 
-const BAR_HEIGHT = 68;
+const BAR_HEIGHT = 64;
 const BAR_PADDING = 5;
 
 /** Native counterpart of the supplied capsule; React Navigation owns tab state. */
@@ -41,7 +41,7 @@ export default function PresenceTabBar({ state, descriptors, navigation, insets 
     const tabWidth = (width - BAR_PADDING * 2) / state.routes.length;
     if (keyboardOpen) return null;
 
-    return <View pointerEvents="box-none" onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)} style={[styles.layer, { paddingBottom: Math.max(insets.bottom, 8), paddingHorizontal: Math.max(insets.left, insets.right, 20) }]}>
+    return <View pointerEvents="box-none" onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)} style={[styles.layer, { paddingBottom: Math.max(insets.bottom - 12, 8), paddingHorizontal: Math.max(insets.left, insets.right, 20) }]}>
         <View style={[styles.shadow, { shadowColor: COLORS.shadow }]}>
             <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={[styles.capsule, { backgroundColor: reduceTransparency ? COLORS.cardBackground : 'transparent' }]}>
                 {!reduceTransparency && <BlurView pointerEvents="none" intensity={85} tint={dark ? 'systemMaterialDark' : 'systemMaterialLight'} style={StyleSheet.absoluteFill} />}
@@ -80,6 +80,6 @@ const styles = StyleSheet.create({
     shadow: { width: '100%', maxWidth: 420, borderRadius: 36, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12 },
     capsule: { minHeight: BAR_HEIGHT, borderRadius: 36, overflow: 'hidden', padding: BAR_PADDING, flexDirection: 'row', alignItems: 'stretch' },
     pill: { position: 'absolute', left: 7, top: 5, bottom: 5, borderRadius: 28 },
-    item: { flex: 1, minHeight: 58, minWidth: 44, justifyContent: 'center', alignItems: 'center', gap: 3, paddingVertical: 6 },
+    item: { flex: 1, minHeight: 54, minWidth: 44, justifyContent: 'center', alignItems: 'center', gap: 3, paddingVertical: 5 },
     label: { ...TYPOGRAPHY.captionMedium, fontSize: 13, lineHeight: 16, textAlign: 'center' },
 });

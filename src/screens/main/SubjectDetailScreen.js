@@ -1,6 +1,6 @@
 import TabScrollView from '../../components/common/TabScrollView';
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { getSubjectAttendance, getErpCoverageDateForSubject } from '../../utils/attendance';
@@ -10,11 +10,8 @@ import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { shortSubjectName } from '../../utils/subjectName';
 import SubjectSummaryCard from '../../components/planner/SubjectDetail/SubjectSummaryCard';
-import AttendanceImpactCard from '../../components/insights/AttendanceImpactCard';
-import WhatIfSimulator from '../../components/planner/SubjectDetail/WhatIfSimulator';
 import PatternsInsights from '../../components/planner/SubjectDetail/PatternsInsights';
 import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
-import { simulateAttendance } from '../../utils/planner/attendanceCalculations';
 
 export default function SubjectDetailScreen({ route, navigation }) {
     const styles = getStyles();
@@ -22,7 +19,6 @@ export default function SubjectDetailScreen({ route, navigation }) {
     const { state } = useApp();
     const [showAllHistory, setShowAllHistory] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
-    const [simulationOffset, setSimulationOffset] = useState(0);
 
     const subject = state.subjects.find((s) => s.id === subjectId);
     const stats = useMemo(() => getSubjectAttendance(subjectId, state), [subjectId, state]);
@@ -46,11 +42,6 @@ export default function SubjectDetailScreen({ route, navigation }) {
 
     // Planner data for merged components
     const plannerData = useMemo(() => getSubjectPlannerData(subjectId, state), [subjectId, state]);
-    const pairPlannerData = useMemo(() => plannerData ? { ...plannerData, unitsPerClass: 2 } : null, [plannerData]);
-    const simulatedData = useMemo(() => {
-        if (!pairPlannerData || simulationOffset === 0) return pairPlannerData;
-        return { ...pairPlannerData, ...simulateAttendance(pairPlannerData.attended, pairPlannerData.total, simulationOffset, 2) };
-    }, [pairPlannerData, simulationOffset]);
     if (!subject || !stats) {
         return (
             <SafeAreaView style={styles.container}>
@@ -80,26 +71,17 @@ export default function SubjectDetailScreen({ route, navigation }) {
                     bleed={{ horizontal: SPACING.screenPadding, top: SPACING.md }}
                 />
                 {/* Where it stands + what the next class does + the way back */}
-                {simulationOffset > 0 && <Text style={styles.syncNote}>Attend preview · {simulationOffset * 2} future lectures · records unchanged</Text>}
-                {simulatedData && <SubjectSummaryCard subjectData={simulatedData} />}
-                {pairPlannerData && <WhatIfSimulator
-                    subjectData={pairPlannerData}
-                    initialMode="attend"
-                    allowSkip={false}
-                    title="Attend preview"
-                    classLabel="pairs · 2 lectures"
-                    simulationOffset={simulationOffset}
-                    setSimulationOffset={setSimulationOffset}
-                />}
-
-                {/* Planner: What-If Simulator */}
-                <AttendanceImpactCard key={subjectId} subjectId={subjectId} />
+                {plannerData && <SubjectSummaryCard subjectData={plannerData} />}
                 <TouchableOpacity
-                    style={styles.showMoreButton}
+                    style={styles.plannerButton}
                     accessibilityRole="button"
-                    onPress={() => navigation.navigate('SubjectPlanner', { subjectId, subjectName: subject.name, initialMode: 'skip' })}
+                    accessibilityLabel={`Open Insights calendar for ${subject.name}`}
+                    onPress={() => {
+                        if (Platform.OS === 'web') navigation.navigate('Insights', { section: 'plan', subjectId });
+                        else navigation.getParent()?.navigate('Insights', { screen: 'InsightsMain', params: { section: 'plan', subjectId } });
+                    }}
                 >
-                    <Text style={styles.showMoreText}>Plan specific classes on a calendar</Text>
+                    <Text style={styles.plannerButtonText}>Try skips on the calendar</Text>
                 </TouchableOpacity>
 
                 {/* Calendar Heatmap */}
@@ -113,7 +95,7 @@ export default function SubjectDetailScreen({ route, navigation }) {
                     <CalendarView subjectId={subjectId} state={state} flat={true} />
                 </Card>
 
-                {simulatedData && <PatternsInsights subjectData={simulatedData} />}
+                {plannerData && <PatternsInsights subjectData={plannerData} />}
 
                 {/* Recent history with edit */}
                 {recentRecords.length > 0 && (
@@ -260,4 +242,6 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.primary,
         fontWeight: '700',
     },
+    plannerButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.textPrimary, borderRadius: 12, padding: 12, marginBottom: 20 },
+    plannerButtonText: { ...TYPOGRAPHY.bodyMedium, fontWeight: '700', color: COLORS.background },
 });

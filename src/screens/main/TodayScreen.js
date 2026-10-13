@@ -1,8 +1,8 @@
 import TabScrollView from '../../components/common/TabScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, RefreshControl } from 'react-native';
-import { COLORS, SPACING, PAPER } from '../../theme/theme';
+import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Platform } from 'react-native';
+import { COLORS, SPACING, PAPER, SERIF_FONT } from '../../theme/theme';
 import { useApp } from '../../context/AppContext';
 import { getGreeting } from '../../utils/greeting';
 import { getTodayClasses, getCurrentClassIndex } from '../../utils/attendance';
@@ -157,6 +157,13 @@ const TodayScreen = ({ navigation }) => {
                 </BannerHost>
 
                 <View style={styles.content}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open combined weekly skip plan" onPress={() => {
+                        if (Platform.OS === 'web') navigation.navigate('Insights', { section: 'plan' });
+                        else navigation.getParent()?.navigate('Insights', { screen: 'InsightsMain', params: { section: 'plan' } });
+                    }} style={{ paddingVertical: 16, minHeight: 48, borderBottomWidth: 1, borderBottomColor: PAPER.line, marginBottom: 16 }}>
+                        <Text style={{ fontFamily: SERIF_FONT, fontSize: 17, fontWeight: '700', color: COLORS.textPrimary }}>Your weekly skip plan</Text>
+                        <Text style={{ fontFamily: SERIF_FONT, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary, marginTop: 4 }}>Choose a weekly budget. Keep every subject on track.</Text>
+                    </TouchableOpacity>
                     {isHoliday ? (
                         <HolidayCard onUndo={() => dispatch({ type: 'REMOVE_HOLIDAY', payload: todayKey })} />
                     ) : todayClasses.length === 0 ? (

@@ -34,7 +34,7 @@ export default function WebTabNavigator() {
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }],
         Subjects: [{ name: 'SubjectsList', params: {} }],
-        Insights: [{ name: 'InsightsMain', params: {} }],
+        Insights: [{ name: 'InsightsMain', params: new URLSearchParams(window.location.search).get('section') === 'plan' ? { section: 'plan', subjectId: new URLSearchParams(window.location.search).get('subject') || undefined } : {} }],
         Admin: [{ name: 'AdminMain', params: {} }],
     });
 
@@ -95,6 +95,12 @@ export default function WebTabNavigator() {
         navigate: (screenOrTabName, params = {}) => {
             if (['Today', 'Subjects', 'Insights', 'Admin'].includes(screenOrTabName)) {
                 if (allowedWebTab(screenOrTabName, isAdmin) !== screenOrTabName) return;
+                if (screenOrTabName === 'Insights' && params.section === 'plan') {
+                    setStacks(prev => ({ ...prev, Insights: [{ name: 'InsightsMain', params: { section: 'plan', subjectId: params.subjectId } }] }));
+                    setCurrentTab('Insights');
+                    window.history.pushState({ tab: 'Insights', index: 0 }, '', `?tab=Insights&section=plan${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}`);
+                    return;
+                }
                 // Tapping the already-active tab pops its stack to root (native tab behavior)
                 if (currentTabRef.current === screenOrTabName) {
                     setStacks(prev => {

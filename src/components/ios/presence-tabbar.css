@@ -1,9 +1,9 @@
 /* Host tokens and layout adaptations; the supplied library stylesheet stays intact. */
 :root {
-  --tabbar-height: 68px;
+  --tabbar-height: 64px;
   --tabbar-radius: 36px;
   --tabbar-inset-x: 20px;
-  --tabbar-inset-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  --tabbar-inset-bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 12px));
   --tabbar-label-size: 13px;
   --tabbar-label-line-height: 16px;
   --tabbar-label-weight: 500;
