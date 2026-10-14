@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { PAPER, SERIF_FONT } from '../../theme/theme';
 
 /**
@@ -56,7 +56,7 @@ const getStyles = () => StyleSheet.create({
     },
     badgeText: { fontSize: 9, fontWeight: '700', color: PAPER.primary },
     action: {
-        minHeight: 32, justifyContent: 'center', paddingHorizontal: 10,
+        minHeight: Platform.OS === 'android' ? 48 : 44, justifyContent: 'center', paddingHorizontal: 12,
         borderRadius: 9, borderWidth: 1, borderColor: PAPER.line, backgroundColor: PAPER.surface,
     },
     actionText: { ...SERIF, fontSize: 11, fontWeight: '700', color: PAPER.secondary },

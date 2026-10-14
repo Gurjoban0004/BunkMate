@@ -10,8 +10,8 @@ export default function Card({ children, style }) {
 const getStyles = () => StyleSheet.create({
     card: {
         backgroundColor: COLORS.cardBackground,
-        padding: SPACING.cardPadding,
-        borderRadius: BORDER_RADIUS.md,
+        padding: SPACING.md,
+        borderRadius: BORDER_RADIUS.lg,
         
         
         ...SHADOWS.small,

@@ -58,9 +58,8 @@ const SERIF = {
 
 const getStyles = () => StyleSheet.create({
     header: {
-        paddingHorizontal: 24,
-        // 30 clears the 17px the schedule card lifts into this sheet.
-        paddingBottom: 30,
+        paddingHorizontal: 20,
+        paddingBottom: 24,
     },
     row: { flexDirection: 'row', alignItems: 'flex-start' },
     textCol: { flex: 1, minWidth: 0 },
@@ -68,16 +67,15 @@ const getStyles = () => StyleSheet.create({
         ...SERIF, fontSize: 34, fontWeight: '700', color: PAPER.paperInk,
         letterSpacing: -1.1, lineHeight: 40,
     },
-    // Negative margin, not a short lineHeight: keeps the replica's tight
-    // two-line stack without cropping descenders.
+    // A full line box clears the serif descenders on both platforms.
     name: {
         ...SERIF, fontSize: 37, fontWeight: '700', color: PAPER.paperInk,
-        letterSpacing: -1.2, lineHeight: 44, marginTop: -6,
+        letterSpacing: -1.2, lineHeight: 44, marginTop: 0,
     },
-    date: { ...SERIF, fontSize: 12, lineHeight: 16, color: PAPER.paperSubInk, marginTop: 8, letterSpacing: 0.1 },
+    date: { ...SERIF, fontSize: 14, lineHeight: 19, color: PAPER.paperSubInk, marginTop: 8, letterSpacing: 0.1 },
     status: { ...SERIF, fontSize: 11, lineHeight: 15, color: PAPER.muted, marginTop: 3 },
     avatar: {
-        width: 40, height: 40, borderRadius: 20, marginLeft: 12, marginTop: 2,
+        width: Platform.OS === 'android' ? 48 : 44, height: Platform.OS === 'android' ? 48 : 44, borderRadius: 22, marginLeft: 12, marginTop: 2,
         alignItems: 'center', justifyContent: 'center', backgroundColor: PAPER.primarySoft,
     },
     avatarText: { fontSize: 13, fontWeight: '700', color: PAPER.primary },

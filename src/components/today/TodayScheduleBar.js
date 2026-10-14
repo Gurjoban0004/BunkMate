@@ -133,8 +133,8 @@ const SERIF = { fontFamily: SERIF_FONT };
 const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: PAPER.surface,
-        borderRadius: 12,
-        padding: 15,
+        borderRadius: 16,
+        padding: 16,
         borderWidth: 1,
         borderColor: PAPER.line,
     },

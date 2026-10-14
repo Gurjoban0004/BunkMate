@@ -149,12 +149,12 @@ export default function InsightsScreen({ route, navigation }) {
                            classes. It belongs with the other retrospectives. */}
                         {activeTab === 'overview' && (<>
                         <TouchableOpacity
-                            style={styles.emptyCard}
+                            style={styles.plannerShortcut}
                             accessibilityRole="button"
                             onPress={() => navigation.navigate('SkipPlan')}
                         >
                             <Text style={styles.emptyTitle}>Try skips on the calendar</Text>
-                            <Text style={styles.emptyText}>Tap your classes and watch your attendance plan change.</Text>
+                            <Text style={styles.plannerShortcutText}>Choose skips and see your plan change.</Text>
                         </TouchableOpacity>
                         <WeeklyReportCard report={weeklyReport} subjects={state.subjects} />
 
@@ -542,8 +542,7 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.cardGap,
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
-        ...SHADOWS.small,
+        padding: SPACING.md,
     },
     sectionTitle: { ...TYPOGRAPHY.headingSmall, color: COLORS.textPrimary, marginBottom: 4 },
     sectionSubtitle: { ...TYPOGRAPHY.captionMedium, color: COLORS.textMuted, marginBottom: SPACING.md },
@@ -558,14 +557,13 @@ const getStyles = () => StyleSheet.create({
         borderWidth: 1,
         borderColor: COLORS.borderSubtle,
         backgroundColor: COLORS.cardBackground,
-        ...SHADOWS.small,
     },
     cleanInsightIconWrapper: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: SPACING.sm },
     cleanInsightText: { flex: 1, fontSize: FONT_SIZES.sm, color: COLORS.textPrimary, lineHeight: 20 },
 
     // Glance cards
     glanceScroll: { paddingRight: SPACING.lg, paddingBottom: SPACING.sm },
-    glanceCard: { backgroundColor: COLORS.cardBackground, padding: SPACING.lg, borderRadius: BORDER_RADIUS.lg, minWidth: 130, marginRight: SPACING.md, borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small },
+    glanceCard: { backgroundColor: COLORS.cardBackground, padding: SPACING.md, borderRadius: BORDER_RADIUS.lg, minWidth: 130, marginRight: SPACING.md, borderWidth: 1, borderColor: COLORS.borderSubtle, ...SHADOWS.small },
     glanceIconBg: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.md },
     glanceIcon: { fontSize: 18 },
     glanceValue: { fontSize: 26, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 4 },
@@ -602,6 +600,9 @@ const getStyles = () => StyleSheet.create({
     thresholdLine: { position: 'absolute', top: -1, width: 1.5, height: 10, backgroundColor: COLORS.textMuted, opacity: 0.5 },
     subjectMeta: { ...TYPOGRAPHY.captionMedium, color: COLORS.textMuted, marginTop: 4 },
 
+    plannerShortcut: { marginHorizontal: SPACING.screenPadding, marginVertical: SPACING.md, padding: SPACING.md, backgroundColor: PAPER.lavender, borderRadius: BORDER_RADIUS.lg },
+    plannerShortcutText: { ...TYPOGRAPHY.bodyMedium, color: PAPER.lavenderInk, lineHeight: 21 },
+
     // Empty
     emptyCard: { margin: SPACING.screenPadding, padding: SPACING.xl, backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.lg, alignItems: 'center', ...SHADOWS.small },
     emptyTitle: { ...TYPOGRAPHY.headingSmall, color: COLORS.textPrimary, marginBottom: SPACING.sm },
@@ -613,20 +614,17 @@ const getStyles = () => StyleSheet.create({
     verdictCard: {
         marginHorizontal: SPACING.screenPadding,
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.lg,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.md,
         marginBottom: SPACING.cardGap,
         borderWidth: 1,
         borderColor: COLORS.border,
-        ...SHADOWS.small,
     },
     verdictLabel: {
         fontWeight: '700',
-        fontSize: 10,
-        color: COLORS.textMuted,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 6,
+        fontSize: 14,
+        color: COLORS.textSecondary,
+        marginBottom: 8,
     },
     verdictText: {
         fontWeight: '600',
@@ -700,11 +698,10 @@ const getStyles = () => StyleSheet.create({
         marginHorizontal: SPACING.screenPadding,
         backgroundColor: COLORS.cardBackground,
         borderRadius: BORDER_RADIUS.lg,
-        padding: SPACING.lg,
+        padding: SPACING.md,
         marginBottom: SPACING.cardGap,
         borderWidth: 1,
         borderColor: COLORS.border,
-        ...SHADOWS.small,
     },
     cardHeader: {
         flexDirection: 'row',

@@ -18,6 +18,7 @@ import { logger } from './logger';
 import { getClassesForDay, getSubjectSkipBudget, roundPct } from './attendance';
 import { shortSubjectName } from './subjectName';
 import { getDateKey } from './dateHelpers';
+import { getSavedSkipPlan } from './planner/combinedSkipPlan';
 
 const CHANNEL_ID = 'daily-plan';
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -52,6 +53,8 @@ async function ensureChannel() {
 /** Ask for permission. Returns true if granted. */
 export async function requestNotificationPermission() {
     if (Platform.OS === 'web') return false;
+    // Android 13 needs a notification channel before the permission prompt.
+    await ensureChannel();
     const { status: existing } = await Notifications.getPermissionsAsync();
     let final = existing;
     if (existing !== 'granted') {
@@ -65,16 +68,30 @@ export async function requestNotificationPermission() {
  * The one sentence for a day, from the timetable and the college's numbers.
  * @returns {{ title, body } | null}  null when there is nothing to say
  */
-export function buildDayPlan(state, date) {
+export function buildDayPlan(state, date, savedPlan = getSavedSkipPlan(state)) {
     const dayName = DAY_NAMES[date.getDay()];
+    const dateKey = getDateKey(date);
     const holidays = state.holidays || [];
-    if (holidays.includes(getDateKey(date))) return null;
-    const classes = getClassesForDay(state, dayName);
+    if (holidays.includes(dateKey) || state.attendanceRecords?.[dateKey]?._holiday) return null;
+    const classes = getClassesForDay(state, dayName).filter((cls) => state.attendanceRecords?.[dateKey]?.[cls.subjectId]?.status !== 'cancelled');
     if (classes.length === 0) return null;
 
+    if (savedPlan) {
+        const planned = savedPlan.weeks.flatMap((week) => week.classes).filter((cls) => cls.dateKey === dateKey);
+        const skipped = planned.filter((cls) => cls.action === 'skip' && !cls.unsafe && !savedPlan.warnings.length);
+        const label = (cls) => `${shortSubjectName(cls.subjectName)} (${cls.startTime})`;
+        const attend = classes.filter((cls) => !skipped.some((skip) => skip.subjectId === cls.subjectId && skip.startTime === cls.startTime));
+        return { title: `${dayName}: your calendar plan`, body: savedPlan.warnings.length
+            ? 'Attend your classes. Sync your college records to review skip suggestions.'
+            : `${skipped.length ? `Planned skip: ${skipped.map(label).join(', ')}. ` : ''}${attend.length ? `Attend ${attend.map(label).join(', ')}.` : 'Attend the other classes this week.'}` };
+    }
+
+    const remaining = new Map();
     const verdicts = classes.map((cls) => {
         const b = getSubjectSkipBudget(cls.subjectId, state);
-        const safe = !!b && b.onTrack && b.skipUnits >= cls.units;
+        if (!remaining.has(cls.subjectId)) remaining.set(cls.subjectId, b?.skipUnits || 0);
+        const safe = !!b && b.onTrack && cls.units >= 2 && cls.units % 2 === 0 && remaining.get(cls.subjectId) >= cls.units;
+        if (safe) remaining.set(cls.subjectId, remaining.get(cls.subjectId) - cls.units);
         return { name: shortSubjectName(cls.subjectName), safe, pct: b ? roundPct(b.percentage) : null };
     });
     const safe = verdicts.filter((v) => v.safe);
@@ -100,11 +117,12 @@ export async function syncDailyPlanNotifications(state) {
     if (Platform.OS === 'web') return null;
     const granted = await requestNotificationPermission();
     if (!granted) return null;
-    await ensureChannel();
     await Notifications.cancelAllScheduledNotificationsAsync();
 
-    const [hour, minute] = String(state.settings?.notificationTime || '07:30').split(':').map(Number);
+    const time = String(state.settings?.notificationTime || '07:30');
+    const [hour, minute] = (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : '07:30').split(':').map(Number);
     const now = new Date();
+    const savedPlan = getSavedSkipPlan(state);
     let scheduled = 0;
 
     for (let i = 0; i < PLAN_DAYS; i++) {
@@ -112,11 +130,11 @@ export async function syncDailyPlanNotifications(state) {
         day.setDate(now.getDate() + i);
         day.setHours(hour, minute, 0, 0);
         if (day <= now) continue; // this morning already passed
-        const plan = buildDayPlan(state, day);
+        const plan = buildDayPlan(state, day, savedPlan);
         if (!plan) continue;
         await Notifications.scheduleNotificationAsync({
-            content: { title: plan.title, body: plan.body, sound: 'default', ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}) },
-            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: day },
+            content: { title: plan.title, body: plan.body, sound: 'default' },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: day, ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}) },
         });
         scheduled++;
     }
@@ -143,14 +161,13 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
     if (Platform.OS === 'web' || !state.settings?.smartAlertsEnabled) return;
     const granted = await requestNotificationPermission();
     if (!granted) return;
-    await ensureChannel();
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getDateKey(new Date());
     for (const subject of state.subjects || []) {
         const stats = getSubjectAttendance(subject.id, state);
         if (!stats || stats.totalUnits === 0) continue;
 
-        const target = subject.target || state.settings?.dangerThreshold || 75;
+        const target = subject.target ?? state.settings?.dangerThreshold ?? 75;
         const pct = stats.percentage;
         const nState = state.notificationState?.[subject.id] || {};
         if (nState.lastNotifiedDate === today) continue;
@@ -168,18 +185,18 @@ export async function checkSmartAlerts(state, dispatch, getSubjectAttendance) {
             patch = { ...nState, belowThresholdNotified: true, lastNotifiedDate: today };
         } else if (pct >= target && pct < target + 2 && !nState.dangerZoneNotified) {
             title = `${shortSubjectName(subject.name)} is on the line`;
-            body = `You're at ${roundPct(pct)}%. One more miss puts you under ${target}%.`;
+            body = `You're at ${roundPct(pct)}%, close to your ${target}% minimum. Check your plan before skipping.`;
             patch = { ...nState, dangerZoneNotified: true, lastNotifiedDate: today };
         } else if (pct >= target + 5 && (nState.belowThresholdNotified || nState.dangerZoneNotified)) {
             patch = { ...nState, belowThresholdNotified: false, dangerZoneNotified: false };
         }
 
-        if (patch) dispatch({ type: 'UPDATE_NOTIFICATION_STATE', payload: { subjectId: subject.id, data: patch } });
         if (title) {
             await Notifications.scheduleNotificationAsync({
-                content: { title, body, sound: 'default', ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}) },
-                trigger: null,
+                content: { title, body, sound: 'default' },
+                trigger: Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null,
             });
         }
+        if (patch) dispatch({ type: 'UPDATE_NOTIFICATION_STATE', payload: { subjectId: subject.id, data: patch } });
     }
 }

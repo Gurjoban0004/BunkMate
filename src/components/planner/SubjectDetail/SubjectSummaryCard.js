@@ -45,9 +45,10 @@ export default function SubjectSummaryCard({ subjectData }) {
 const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.md + 2,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.md,
         marginBottom: SPACING.md,
+        marginTop: SPACING.md,
         borderWidth: 1,
         borderColor: COLORS.border,
     },

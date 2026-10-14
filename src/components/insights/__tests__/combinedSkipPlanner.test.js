@@ -32,6 +32,20 @@ test('one-time setup validates integers and persists preferences without attenda
     expect(JSON.stringify(mockState)).toBe(before);
     expect(mockDispatch.mock.calls[0][0].payload).toEqual({ skipPlan: { pairsPerWeek: 2, weeks: 4, skipIds: null } });
 });
+test('setup stepper supports zero and custom goals, and saves the selected horizon', () => {
+    mockState.settings = {};
+    const screen = page();
+    fireEvent.press(screen.getByLabelText('Decrease weekly skip goal'));
+    fireEvent.press(screen.getByLabelText('Decrease weekly skip goal'));
+    expect(screen.getByLabelText('Skip pairs per week').props.value).toBe('0');
+    expect(screen.getByLabelText('Decrease weekly skip goal').props.accessibilityState.disabled).toBe(true);
+    fireEvent.press(screen.getByLabelText('Increase weekly skip goal'));
+    expect(screen.getByLabelText('Skip pairs per week').props.value).toBe('1');
+    fireEvent.changeText(screen.getByLabelText('Skip pairs per week'), '7');
+    fireEvent.press(screen.getByLabelText('Plan 8 weeks'));
+    fireEvent.press(screen.getByLabelText('Save balanced weekly plan'));
+    expect(mockDispatch).toHaveBeenCalledWith({ type: 'UPDATE_SETTINGS', payload: { skipPlan: { pairsPerWeek: 7, weeks: 8, skipIds: null } } });
+});
 test('a class tap stores only hypothetical choices and instantly updates after shared state changes', () => {
     const screen = page(), label = 'Skip Algorithms on 2026-10-12 at 09:00, 1 full pairs';
     const before = JSON.stringify(mockState.attendanceRecords);

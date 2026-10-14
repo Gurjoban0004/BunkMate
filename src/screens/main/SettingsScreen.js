@@ -21,7 +21,7 @@ import { showAlert } from '../../utils/alert';
 import PlatformDatePicker from '../../components/common/PlatformDatePicker';
 import PaperScreenHeader from '../../components/common/PaperScreenHeader';
 import { enableWebPush, disableWebPush, isWebPushEnabled } from '../../utils/webPush';
-import { syncDailyPlanNotifications, cancelAllReminders } from '../../utils/notifications';
+import { syncDailyPlanNotifications, cancelAllReminders, requestNotificationPermission } from '../../utils/notifications';
 import { formatRelativeTime, formatTime } from '../../utils/dateHelpers';
 import { APP_VERSION } from '../../config/version';
 import LegalSheet from '../../components/common/LegalSheet';
@@ -134,6 +134,14 @@ const SettingsScreen = ({ navigation }) => {
             await cancelAllReminders().catch(() => {});
         }
         updateSetting('notificationEnabled', value);
+    };
+
+    const handleGoalAlertToggle = async (value) => {
+        if (value && !await requestNotificationPermission().catch(() => false)) {
+            showAlert("Couldn't enable goal alerts", 'Allow notifications for Presence in Android settings, then try again.');
+            return;
+        }
+        updateSetting('smartAlertsEnabled', value);
     };
 
     // Web/PWA class guidance — subscribes this browser to server-sent push.
@@ -454,7 +462,7 @@ const SettingsScreen = ({ navigation }) => {
                                     </View>
                                     <Switch
                                         value={smartAlertsEnabled}
-                                        onValueChange={(value) => updateSetting('smartAlertsEnabled', value)}
+                                        onValueChange={handleGoalAlertToggle}
                                         trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
                                         thumbColor={smartAlertsEnabled ? COLORS.primary : COLORS.textMuted}
                                         accessibilityLabel="Goal alerts"
@@ -499,7 +507,7 @@ const SettingsScreen = ({ navigation }) => {
                                         onBlur={handleSaveName}
                                         onSubmitEditing={handleSaveName}
                                     />
-                                    <TouchableOpacity onPress={handleSaveName}>
+                                    <TouchableOpacity style={styles.nameSaveButton} onPress={handleSaveName}>
                                         <Text style={styles.saveButton}>Save</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -657,12 +665,12 @@ const getStyles = () => StyleSheet.create({
     scrollContent: { paddingTop: SPACING.md, paddingBottom: SPACING.xxl },
     section: { marginBottom: SPACING.lg },
     sectionTitle: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', paddingHorizontal: SPACING.screenPadding, marginBottom: SPACING.sm },
-    card: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.md, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
-    cardGroup: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.md, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
-    groupItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md },
+    card: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.screenPadding, borderRadius: BORDER_RADIUS.lg, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
+    cardGroup: { backgroundColor: COLORS.cardBackground, marginHorizontal: SPACING.screenPadding, borderRadius: BORDER_RADIUS.lg, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+    groupItem: { minHeight: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.md },
     divider: { height: 1, backgroundColor: COLORS.border, marginLeft: SPACING.md },
     cardTitle: { fontSize: FONT_SIZES.md, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 4 },
-    cardDescription: { fontSize: FONT_SIZES.xs, color: COLORS.textSecondary, marginBottom: SPACING.md },
+    cardDescription: { fontSize: FONT_SIZES.sm, lineHeight: 19, color: COLORS.textSecondary },
     timePickerModalContent: { backgroundColor: COLORS.cardBackground, padding: SPACING.xl, borderRadius: BORDER_RADIUS.md, width: '90%', maxWidth: 400, borderWidth: 1, borderColor: COLORS.border },
     timeInputContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: SPACING.xl },
     customTimeInput: { width: 60, height: 60, backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, fontSize: 32, fontWeight: '700', color: COLORS.textPrimary, textAlign: 'center' },
@@ -677,19 +685,21 @@ const getStyles = () => StyleSheet.create({
     settingInfo: { flex: 1, marginRight: SPACING.md },
     settingDescription: { fontSize: FONT_SIZES.xs, color: COLORS.textSecondary, marginTop: 2 },
     nameEditContainer: { flexDirection: 'row', alignItems: 'center' },
-    nameInput: { backgroundColor: COLORS.inputBackground, paddingHorizontal: SPACING.sm, paddingVertical: 6, borderRadius: BORDER_RADIUS.sm, fontSize: FONT_SIZES.md, color: COLORS.textPrimary, minWidth: 120, marginRight: SPACING.sm },
+    nameInput: { minHeight: Platform.OS === 'android' ? 48 : 44, backgroundColor: COLORS.inputBackground, paddingHorizontal: SPACING.sm, paddingVertical: 6, borderRadius: BORDER_RADIUS.sm, fontSize: FONT_SIZES.md, color: COLORS.textPrimary, minWidth: 120, marginRight: SPACING.sm },
+    nameSaveButton: { minHeight: Platform.OS === 'android' ? 48 : 44, minWidth: Platform.OS === 'android' ? 48 : 44, justifyContent: 'center', alignItems: 'center' },
     saveButton: { color: COLORS.primary, fontWeight: '600', fontSize: FONT_SIZES.sm },
-    nameDisplay: { flexDirection: 'row', alignItems: 'center' },
+    nameDisplay: { minHeight: Platform.OS === 'android' ? 48 : 44, flexDirection: 'row', alignItems: 'center' },
     nameText: { fontSize: FONT_SIZES.md, color: COLORS.textSecondary, marginRight: SPACING.sm },
     editIcon: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
     optionsRow: { flexDirection: 'row', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: 4 },
-    optionButton: { flex: 1, paddingVertical: SPACING.sm, alignItems: 'center', borderRadius: BORDER_RADIUS.sm },
+    optionButton: { minHeight: Platform.OS === 'android' ? 48 : 44, flex: 1, paddingVertical: SPACING.sm, alignItems: 'center', borderRadius: BORDER_RADIUS.sm },
     optionButtonActive: { backgroundColor: COLORS.primary },
     optionText: { fontSize: FONT_SIZES.sm, fontWeight: '500', color: COLORS.textSecondary },
     optionTextActive: { color: COLORS.textOnPrimary, fontWeight: '600' },
     
     // Threshold UI Styles
     thresholdValueBox: {
+        minHeight: Platform.OS === 'android' ? 48 : 44,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.inputBackground,
@@ -742,6 +752,8 @@ const getStyles = () => StyleSheet.create({
         borderRadius: 5,
     },
     editButton: {
+        minHeight: Platform.OS === 'android' ? 48 : 44,
+        justifyContent: 'center',
         backgroundColor: COLORS.inputBackground,
         paddingHorizontal: 12,
         paddingVertical: 6,
@@ -829,7 +841,7 @@ const getStyles = () => StyleSheet.create({
     customTargetName: { fontSize: FONT_SIZES.sm, color: COLORS.textPrimary, fontWeight: '500' },
     customTargetValue: { fontSize: FONT_SIZES.sm, color: COLORS.primary, fontWeight: '700' },
     optionsGroupSmall: { flexDirection: 'row', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, padding: 4 },
-    smallOptionBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: BORDER_RADIUS.sm, alignItems: 'center' },
+    smallOptionBtn: { minHeight: Platform.OS === 'android' ? 48 : 44, paddingVertical: 6, paddingHorizontal: 16, borderRadius: BORDER_RADIUS.sm, alignItems: 'center', justifyContent: 'center' },
 
     // Palette Picker
     paletteSection: {
@@ -899,7 +911,7 @@ const getStyles = () => StyleSheet.create({
     },
     timePickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border },
     timePickerLabel: { fontSize: FONT_SIZES.sm, color: COLORS.textSecondary },
-    timeBadge: { backgroundColor: COLORS.primaryLight, paddingHorizontal: SPACING.md, paddingVertical: 6, borderRadius: BORDER_RADIUS.sm },
+    timeBadge: { minHeight: Platform.OS === 'android' ? 48 : 44, justifyContent: 'center', backgroundColor: COLORS.primaryLight, paddingHorizontal: SPACING.md, paddingVertical: 6, borderRadius: BORDER_RADIUS.sm },
     timeText: { fontSize: FONT_SIZES.sm, fontWeight: '600', color: COLORS.primary },
     linkText: { fontSize: FONT_SIZES.md, fontWeight: '500', color: COLORS.textPrimary },
     chevron: { fontSize: 20, color: COLORS.textMuted },
@@ -950,6 +962,8 @@ const getStyles = () => StyleSheet.create({
 
     // Sync button styles
     syncButton: {
+        minHeight: Platform.OS === 'android' ? 48 : 44,
+        justifyContent: 'center',
         backgroundColor: COLORS.primaryLight,
         paddingHorizontal: SPACING.md,
         paddingVertical: 8,

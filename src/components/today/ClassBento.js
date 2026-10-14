@@ -19,7 +19,7 @@ import { getTodayKey } from '../../utils/dateHelpers';
  * colour becomes the subject's identity.
  *
  * A class the college has already marked keeps its colour but goes full width
- * and drops in opacity: it is history, and history should recede without
+ * and uses less vertical space: history should recede without
  * changing identity.
  */
 
@@ -99,21 +99,21 @@ const getStyles = () => StyleSheet.create({
     // Two to a row, as in the replica's 2-column grid. `flex: 1` alone would
     // let three tiles share one row; a 45% basis is wider than a third, so the
     // third tile wraps, and flexGrow then fills the row it lands on.
-    card: { flexGrow: 1, flexBasis: '45%', padding: 15, borderRadius: 18 },
+    card: { flexGrow: 1, flexBasis: '45%', padding: 16, borderRadius: 16 },
     cardTall: { minHeight: 145 },
     // History recedes by weight, not by hue — the day ahead stays the loudest
     // thing on the screen without a finished class changing colour.
-    cardDone: { minHeight: 104, opacity: 0.62 },
+    cardDone: { minHeight: 104, opacity: 1 },
     cardWide: { flexBasis: '100%' },
     time: { ...SERIF, fontSize: 12, fontWeight: '700' },
-    name: { ...SERIF, fontSize: 16, fontWeight: '700', letterSpacing: -0.3, lineHeight: 17, marginTop: 20 },
-    nameDone: { marginTop: 13 },
+    name: { ...SERIF, fontSize: 16, fontWeight: '700', letterSpacing: -0.3, lineHeight: 21, marginTop: 16 },
+    nameDone: { marginTop: 12 },
     room: { ...SERIF, fontSize: 11, marginTop: 5, opacity: 0.8 },
     bottom: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
         marginTop: 'auto', paddingTop: 12,
     },
     bottomDone: { marginTop: 8, paddingTop: 0 },
-    footnote: { ...SERIF, fontSize: 10, fontWeight: '700', flexShrink: 1, marginRight: 8 },
+    footnote: { ...SERIF, fontSize: 12, fontWeight: '600', flexShrink: 1, marginRight: 8 },
     pct: { ...SERIF, fontSize: 16, fontWeight: '700' },
 });

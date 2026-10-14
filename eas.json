@@ -13,7 +13,8 @@
             },
             "env": {
                 "EXPO_PUBLIC_API_BASE_URL": "https://presence.runs-on.dev"
-            }
+            },
+            "channel": "development"
         },
         "preview": {
             "environment": "preview",
@@ -24,7 +25,8 @@
             },
             "env": {
                 "EXPO_PUBLIC_API_BASE_URL": "https://presence.runs-on.dev"
-            }
+            },
+            "channel": "preview"
         },
         "production": {
             "environment": "production",
@@ -34,7 +36,8 @@
             },
             "env": {
                 "EXPO_PUBLIC_API_BASE_URL": "https://presence.runs-on.dev"
-            }
+            },
+            "channel": "production"
         }
     },
     "submit": {

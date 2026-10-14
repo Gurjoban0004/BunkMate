@@ -104,14 +104,14 @@ function AppContent() {
         const sub = AppState.addEventListener('change', (next) => { if (next === 'active') replan(); });
         return () => { sub.remove(); clearTimeout(planTimerRef.current); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLoading, state.setupComplete, reminderOn, reminderTime, erpLastSynced, state.timetableMeta?.fetchedAt]);
+    }, [isLoading, state.setupComplete, reminderOn, reminderTime, erpLastSynced, state.timetableMeta?.fetchedAt, state.settings?.skipPlan, state.holidays, state.subjects, state.attendanceRecords]);
 
     // ── Android: warn the moment a subject crosses the line ───────────
     useEffect(() => {
         if (Platform.OS !== 'android' || !erpLastSynced || !state.settings?.smartAlertsEnabled) return;
         checkSmartAlerts(stateRef.current, dispatch, getSubjectAttendance).catch(() => {});
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [erpLastSynced]);
+    }, [erpLastSynced, state.settings?.smartAlertsEnabled]);
 
     if (isLoading || !devReady) {
         return <BrandLoader />;

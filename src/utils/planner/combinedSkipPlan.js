@@ -28,17 +28,30 @@ const weekKey = (date) => {
     return toPlannerDateKey(monday);
 };
 
-// For a fixed skipped count, all paths have the same fraction. Retain a feasible
-// path for each count; later skips preserve early-week attendance credit.
-function subjectChoices(base, events, limit, allowSkip) {
+// Equal-count paths have identical fractions. Prefer spaced dates only after
+// checking the minimum at each event; later attendance never funds an early skip.
+function subjectChoices(base, events, limit, allowSkip, weekdayUse = null, otherSkips = []) {
+    const spacing = (ids) => {
+        if (!weekdayUse) return 0;
+        const skipped = events.filter((event) => ids.includes(event.id));
+        let cost = skipped.reduce((sum, event) => sum + (weekdayUse[event.dayName] || 0) * event.pairs * 4, 0);
+        const distance = (a, b) => Math.abs(DAYS.indexOf(a.dayName) - DAYS.indexOf(b.dayName));
+        for (let i = 0; i < skipped.length; i++) {
+            for (const other of [...otherSkips, ...skipped.slice(0, i)]) cost += 12 * skipped[i].pairs * other.pairs / (distance(skipped[i], other) + 1) ** 2;
+        }
+        return cost;
+    };
+    const retain = (next, count, path) => {
+        if (!next.has(count) || spacing(path.ids) < spacing(next.get(count).ids)) next.set(count, path);
+    };
     let choices = new Map([[0, { a: base.a, t: base.t, ids: [] }]]);
     for (const event of events) {
         const next = new Map();
         for (const [count, path] of choices) {
-            if (!next.has(count)) next.set(count, { ...path, a: path.a + event.units, t: path.t + event.units });
+            retain(next, count, { ...path, a: path.a + event.units, t: path.t + event.units });
             const skipped = count + event.pairs;
             if (allowSkip && skipped <= limit && 100 * path.a >= base.target * (path.t + event.units)) {
-                next.set(skipped, { a: path.a, t: path.t + event.units, ids: [...path.ids, event.id] });
+                retain(next, skipped, { a: path.a, t: path.t + event.units, ids: [...path.ids, event.id] });
             }
         }
         choices = next;
@@ -142,6 +155,7 @@ export function buildCombinedSkipPlan(state, { pairsPerWeek = 2, weeks = 4, from
     const allowSkip = !warnings.length;
     const baselines = Object.fromEntries(subjects.map((subject) => [subject.id, { ...subject }]));
     const weekPlans = [];
+    const weekdayUse = {};
     const weekKeys = [];
     const monday = validDate(weekKey(start));
     while (end >= start && monday <= end) { weekKeys.push(toPlannerDateKey(monday)); monday.setDate(monday.getDate() + 7); }
@@ -162,6 +176,15 @@ export function buildCombinedSkipPlan(state, { pairsPerWeek = 2, weeks = 4, from
         }
         const skippedPairs = Math.max(...allocations.keys());
         const selection = allocations.get(skippedPairs);
+        // Keep the safest subject allocation, then spread its feasible dates
+        // around other skips this week and rotate away from earlier weeks.
+        const chosen = [];
+        selection.choices.forEach((choice) => {
+            const subject = subjects.find((item) => item.id === choice.id);
+            choice.option = subjectChoices(subject, classes.filter((cls) => cls.subjectId === choice.id), choice.count, allowSkip, weekdayUse, chosen).get(choice.count);
+            chosen.push(...classes.filter((cls) => choice.option.ids.includes(cls.id)));
+        });
+        chosen.forEach((cls) => { weekdayUse[cls.dayName] = (weekdayUse[cls.dayName] || 0) + cls.pairs; });
         const skipIds = new Set(selection.choices.flatMap((choice) => choice.option.ids));
         const trace = Object.fromEntries(subjects.map((subject) => [subject.id, { a: subject.a, t: subject.t }]));
         const rows = classes.map((cls) => {

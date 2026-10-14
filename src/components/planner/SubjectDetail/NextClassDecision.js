@@ -60,25 +60,12 @@ export default function NextClassDecision({ subjectData }) {
 const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         marginBottom: SPACING.md,
         borderWidth: 1,
         borderColor: COLORS.border,
-        ...Platform.select({
-            ios: {
-                shadowColor: COLORS.shadow,
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 3,
-            },
-            android: {
-                elevation: 2,
-            },
-            web: {
-                boxShadow: '0px 2px 4px rgba(15,23,42,0.05)',
-            }
-        }),
+
     },
     title: {
         fontWeight: '700',

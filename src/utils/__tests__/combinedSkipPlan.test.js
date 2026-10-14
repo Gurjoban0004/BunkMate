@@ -27,6 +27,29 @@ function checkTrace(state, result) {
     for (const row of result.subjects) expect([row.a, row.t]).toEqual([totals[row.id].a, totals[row.id].t]);
 }
 
+test('spreads feasible skips across the week and rotates weekdays across weeks', () => {
+    const state = input();
+    state.subjects.forEach((subject) => { subject.initialAttended = 100; subject.initialTotal = 100; });
+    state.timetable = Object.fromEntries(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day) => [day, state.timeSlots.map((slot, i) => ({ slotId: slot.id, subjectId: i < 2 ? 'a' : 'b' }))]));
+    for (const pairsPerWeek of [1, 2, 3]) {
+        const result = buildCombinedSkipPlan(state, { pairsPerWeek, weeks: 4 });
+        const days = result.weeks.map((week) => week.classes.filter((cls) => cls.action === 'skip').map((cls) => cls.dayName));
+        expect(new Set(days.flat()).size).toBeGreaterThanOrEqual(4);
+        days.forEach((week) => { expect(new Set(week).size).toBe(pairsPerWeek); });
+        if (pairsPerWeek === 2) days.forEach((week) => { expect(Math.abs(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].indexOf(week[0]) - ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].indexOf(week[1]))).toBeGreaterThanOrEqual(2); });
+        checkTrace(state, result);
+        expect(buildCombinedSkipPlan(state, { pairsPerWeek, weeks: 4 })).toEqual(result);
+    }
+});
+
+test('spacing never invents another weekday when only one scheduled day is feasible', () => {
+    const state = input(); state.timetable = { Friday: state.timetable.Friday };
+    const result = buildCombinedSkipPlan(state, { pairsPerWeek: 1, weeks: 4 });
+    expect(result.weeks.every((week) => week.skippedPairs === 1)).toBe(true);
+    expect(result.weeks.flatMap((week) => week.classes.filter((cls) => cls.action === 'skip')).every((cls) => cls.dayName === 'Friday')).toBe(true);
+    checkTrace(state, result);
+});
+
 test('pauses inferred times until the timetable has been confirmed', () => {
     const state = input(); state.timetableMeta = { source: 'portal-web', timesAreInferred: true };
     const paused = buildCombinedSkipPlan(state);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import PaperWash, { usePaperTopPadding } from './PaperWash';
 import { PAPER, SERIF_FONT } from '../../theme/theme';
 
@@ -55,10 +56,10 @@ export default function PaperScreenHeader({ title, subtitle, onBack, right, chil
                         activeOpacity={0.7}
                         accessibilityRole="button"
                         accessibilityLabel="Go back"
-                        // The tap target stays 44pt even though the circle is 34.
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                        <Text style={styles.backGlyph}>←</Text>
+                        <Svg width={20} height={20} viewBox="0 0 20 20" accessible={Platform.OS === 'web' ? undefined : false} aria-hidden>
+                            <Path d="M13 4l-6 6 6 6" fill="none" stroke={PAPER.primary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                        </Svg>
                     </TouchableOpacity>
                 )}
 
@@ -89,27 +90,26 @@ const getStyles = () => StyleSheet.create({
     // read as "under a header" rather than "behind the title".
     header: {
         paddingHorizontal: 20,
-        paddingBottom: 18,
+        paddingBottom: 16,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: PAPER.line,
     },
     headerCompact: { paddingBottom: 12 },
     back: {
-        width: 34, height: 34, borderRadius: 17, marginRight: 12,
+        width: Platform.OS === 'android' ? 48 : 44, height: Platform.OS === 'android' ? 48 : 44, borderRadius: 12, marginRight: 12,
         alignItems: 'center', justifyContent: 'center',
         backgroundColor: PAPER.surface,
         borderWidth: 1, borderColor: PAPER.line,
     },
-    backGlyph: { fontSize: 17, fontWeight: '600', color: PAPER.primary, lineHeight: 22 },
     row: { flexDirection: 'row', alignItems: 'center' },
     textCol: { flex: 1, minWidth: 0 },
     // lineHeight clears fontSize — see PaperHeader for why that is not optional.
     title: {
-        ...SERIF, fontSize: 29, fontWeight: '700', color: PAPER.paperInk,
-        letterSpacing: -0.9, lineHeight: 35,
+        ...SERIF, fontSize: 32, fontWeight: '700', color: PAPER.paperInk,
+        letterSpacing: -0.8, lineHeight: 38,
     },
     titleCompact: { fontSize: 22, lineHeight: 27, letterSpacing: -0.5 },
     titleSm: { fontSize: 24, lineHeight: 29, letterSpacing: -0.6 },
     titleXs: { fontSize: 18, lineHeight: 23, letterSpacing: -0.3 },
-    subtitle: { ...SERIF, fontSize: 12, lineHeight: 16, color: PAPER.paperSubInk, marginTop: 4 },
+    subtitle: { ...SERIF, fontSize: 14, lineHeight: 19, color: PAPER.paperSubInk, marginTop: 4 },
 });

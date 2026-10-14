@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { formatPct } from '../../utils/attendance';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES } from '../../theme/theme';
 
@@ -67,25 +67,13 @@ const getStyles = () => StyleSheet.create({
     container: {
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
-        borderRadius: BORDER_RADIUS.md,
-        paddingVertical: SPACING.sm + 4,
-        paddingHorizontal: SPACING.md + 2,
+        borderRadius: BORDER_RADIUS.lg,
+        marginTop: SPACING.md,
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.md,
         borderWidth: 1,
         borderColor: COLORS.border,
-        ...Platform.select({
-            ios: {
-                shadowColor: COLORS.shadow,
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 3,
-            },
-            android: {
-                elevation: 2,
-            },
-            web: {
-                boxShadow: '0px 2px 4px rgba(15,23,42,0.05)',
-            }
-        }),
+
     },
     heroRow: {
         flexDirection: 'row',

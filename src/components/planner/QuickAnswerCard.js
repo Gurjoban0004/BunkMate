@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutAnimation } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { formatPct } from '../../utils/attendance';
 import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, PAPER, SERIF_FONT } from '../../theme/theme';
 import { getDayRecommendation } from '../../utils/planner.js';
@@ -18,15 +18,6 @@ const PAPER_TONE = () => ({
 
 const QuickAnswerCard = ({ dayStatus, compact = false }) => {
     const [expanded, setExpanded] = useState(false);
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-        }).start();
-    }, []);
 
     if (!dayStatus || dayStatus.status === 'noclass') {
         return null;
@@ -34,7 +25,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
 
     if (dayStatus.status === 'setup_day') {
         return (
-            <Animated.View style={{ opacity: fadeAnim }}>
+            <View>
                 <View style={[styles.compactCard, { backgroundColor: COLORS.cardBackground, borderColor: COLORS.success }]}>
                     <View style={styles.compactRow}>
                         <Text style={[styles.compactLabel, { color: COLORS.textSecondary }]}>
@@ -45,7 +36,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                         </Text>
                     </View>
                 </View>
-            </Animated.View>
+            </View>
         );
     }
 
@@ -82,7 +73,6 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
     const recommendation = getDayRecommendation(classes);
 
     const toggleExpand = () => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setExpanded(!expanded);
     };
 
@@ -92,7 +82,7 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
         const tones = PAPER_TONE();
         const tone = tones[status] || tones.partial;
         return (
-            <Animated.View style={{ opacity: fadeAnim }}>
+            <View>
                 <TouchableOpacity
                     style={[styles.compactCard, { backgroundColor: tone.bg, borderColor: tone.border }]}
                     onPress={toggleExpand}
@@ -127,12 +117,12 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                         </View>
                     )}
                 </TouchableOpacity>
-            </Animated.View>
+            </View>
         );
     }
 
     return (
-        <Animated.View style={{ opacity: fadeAnim }}>
+        <View>
             <TouchableOpacity
                 style={[styles.card, { backgroundColor: cfg.bg, borderColor: cfg.border }]}
                 onPress={compact ? toggleExpand : undefined}
@@ -188,16 +178,16 @@ const QuickAnswerCard = ({ dayStatus, compact = false }) => {
                     )}
                 </View>
             </TouchableOpacity>
-        </Animated.View>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     compactCard: {
-        marginTop: 16,
-        paddingVertical: 13,
+        marginTop: 0,
+        paddingVertical: 16,
         paddingHorizontal: 16,
-        borderRadius: 12,
+        borderRadius: 16,
         borderWidth: 1,
     },
     compactDetails: {

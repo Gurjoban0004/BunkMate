@@ -243,6 +243,6 @@ const getStyles = () => StyleSheet.create({
         color: COLORS.primary,
         fontWeight: '700',
     },
-    plannerButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: PAPER.lavender, borderRadius: 12, padding: 12, marginBottom: 20 },
+    plannerButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: PAPER.lavender, borderRadius: 16, padding: 16, marginBottom: 16 },
     plannerButtonText: { ...TYPOGRAPHY.bodyMedium, fontWeight: '700', color: PAPER.apricotInk },
 });

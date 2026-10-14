@@ -118,6 +118,12 @@ describe('calculateBestBunkDay prefers a safe day', () => {
 describe('buildDayPlan (Android morning notification)', () => {
     test('says exactly what the numbers allow', () => {
         const state = makeState({
+            timetable: { Monday: [
+                { subjectId: 'adi', customStart: '09:00', customEnd: '10:00' },
+                { subjectId: 'adi', customStart: '10:00', customEnd: '11:00' },
+                { subjectId: 'dbms', customStart: '11:00', customEnd: '12:00' },
+                { subjectId: 'dbms', customStart: '12:00', customEnd: '13:00' },
+            ] },
             subjects: [
                 { id: 'adi', name: 'Algorithm Design', initialAttended: 36, initialTotal: 40 },  // 90%, can skip
                 { id: 'dbms', name: 'DBMS', initialAttended: 15, initialTotal: 20 },            // 75%, no margin

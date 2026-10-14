@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, subjectTint } from '../../theme/theme';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { COLORS, SPACING, BORDER_RADIUS, subjectTint } from '../../theme/theme';
 import { shortSubjectName } from '../../utils/subjectName';
 import { formatPct } from '../../utils/attendance';
 
 /**
- * WeeklyReportCard — Beautiful weekly attendance summary.
+ * Weekly attendance summary from the published register.
  *
  * Props:
  *   report: output of generateWeeklyReport()
@@ -41,7 +41,7 @@ const WeeklyReportCard = ({ report, subjects, onDismiss }) => {
             {/* Dismiss */}
             {onDismiss && (
                 <TouchableOpacity style={styles.dismissBtn} onPress={onDismiss}>
-                    <Text style={styles.dismissText}>CLOSE</Text>
+                    <Text style={styles.dismissText}>Close</Text>
                 </TouchableOpacity>
             )}
 
@@ -71,11 +71,11 @@ const WeeklyReportCard = ({ report, subjects, onDismiss }) => {
                 </View>
             </View>
 
-            {/* Best & Worst */}
+            {/* Highlights share the same surface as the subject chart. */}
             <View style={styles.statsRow}>
                 {bestSubject && (
                     <View style={styles.statBox}>
-                        <Text style={styles.statLabel}>Best Subject</Text>
+                        <Text style={styles.statLabel}>Best this week</Text>
                         <View style={styles.subjectTag}>
                             <View style={[styles.subjectDot, { backgroundColor: bestSubject.color }]} />
                             <Text style={styles.subjectName} numberOfLines={1}>
@@ -87,16 +87,16 @@ const WeeklyReportCard = ({ report, subjects, onDismiss }) => {
                         </Text>
                     </View>
                 )}
-                {worstSubject && (
+                {worstSubject && worstSubject.percentage < 100 && (
                     <View style={styles.statBox}>
-                        <Text style={styles.statLabel}>Needs Work</Text>
+                        <Text style={styles.statLabel}>Lowest this week</Text>
                         <View style={styles.subjectTag}>
                             <View style={[styles.subjectDot, { backgroundColor: worstSubject.color }]} />
                             <Text style={styles.subjectName} numberOfLines={1}>
                                 {shortSubjectName(worstSubject.name)}
                             </Text>
                         </View>
-                        <Text style={[styles.statValue, { color: COLORS.dangerText }]}>
+                        <Text style={styles.statValue}>
                             {formatPct(worstSubject.percentage)}%
                         </Text>
                     </View>
@@ -152,12 +152,14 @@ const getStyles = () => StyleSheet.create({
         backgroundColor: COLORS.cardBackground,
         marginHorizontal: SPACING.screenPadding,
         marginBottom: SPACING.cardGap,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: SPACING.md,
         borderWidth: 1,
         borderColor: COLORS.border,
     },
     dismissBtn: {
+        minHeight: Platform.OS === 'android' ? 48 : 44,
+        minWidth: Platform.OS === 'android' ? 48 : 44,
         position: 'absolute',
         top: 12,
         right: 12,
@@ -173,10 +175,8 @@ const getStyles = () => StyleSheet.create({
     },
     dismissText: {
         fontWeight: '700',
-        fontSize: 9,
+        fontSize: 12,
         color: COLORS.textMuted,
-        letterSpacing: 0.5,
-        textTransform: 'uppercase',
     },
     header: {
         flexDirection: 'row',
@@ -191,7 +191,7 @@ const getStyles = () => StyleSheet.create({
     },
     headerDate: {
         fontWeight: '500',
-        fontSize: 11,
+        fontSize: 12,
         color: COLORS.textSecondary,
         marginTop: 2,
         letterSpacing: 0.2,
@@ -216,9 +216,7 @@ const getStyles = () => StyleSheet.create({
     personalityBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.sm,
+        paddingVertical: SPACING.sm,
         marginBottom: SPACING.md,
     },
     personalityContent: {
@@ -226,38 +224,36 @@ const getStyles = () => StyleSheet.create({
     },
     personalityTitle: {
         fontWeight: '700',
-        fontSize: FONT_SIZES.sm,
+        fontSize: 14,
         color: COLORS.textPrimary,
     },
     personalityDesc: {
         fontWeight: '400',
-        fontSize: 11,
+        fontSize: 12,
+        lineHeight: 17,
         color: COLORS.textSecondary,
         marginTop: 1,
     },
     statsRow: {
-        flexDirection: 'row',
+        gap: SPACING.sm,
         marginBottom: SPACING.md,
     },
     statBox: {
-        flex: 1,
-        backgroundColor: COLORS.inputBackground,
-        borderRadius: BORDER_RADIUS.md,
-        padding: SPACING.sm,
-        marginRight: SPACING.xs,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
     },
     statLabel: {
         fontWeight: '600',
-        fontSize: 10,
-        color: COLORS.textMuted,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 4,
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        flex: 1,
     },
     subjectTag: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 2,
+        flex: 1,
+        minWidth: 0,
     },
     subjectDot: {
         width: 6,
@@ -273,8 +269,8 @@ const getStyles = () => StyleSheet.create({
     },
     statValue: {
         fontWeight: '700',
-        fontSize: 16,
-        letterSpacing: -0.3,
+        fontSize: 14,
+        color: COLORS.textPrimary,
     },
     barSection: {
         marginBottom: SPACING.md,
@@ -282,7 +278,7 @@ const getStyles = () => StyleSheet.create({
     barRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 6,
+        marginBottom: SPACING.sm,
     },
     barDot: {
         width: 6,
@@ -292,7 +288,7 @@ const getStyles = () => StyleSheet.create({
     },
     barName: {
         fontWeight: '500',
-        fontSize: 11,
+        fontSize: 12,
         color: COLORS.textSecondary,
         width: 80,
     },
@@ -310,9 +306,9 @@ const getStyles = () => StyleSheet.create({
     },
     barValue: {
         fontWeight: '600',
-        fontSize: 10,
-        color: COLORS.textMuted,
-        width: 30,
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        minWidth: 34,
         textAlign: 'right',
     },
     footerRow: {
@@ -332,8 +328,8 @@ const getStyles = () => StyleSheet.create({
     },
     footerStatLabel: {
         fontWeight: '400',
-        fontSize: 10,
-        color: COLORS.textMuted,
+        fontSize: 12,
+        color: COLORS.textSecondary,
         marginTop: 2,
     },
 });

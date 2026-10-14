@@ -56,7 +56,7 @@ export default function RecoveryPaths({ subjectData, flat = false }) {
 const getStyles = () => StyleSheet.create({
     strip: {
         backgroundColor: COLORS.cardBackground,
-        borderRadius: BORDER_RADIUS.md,
+        borderRadius: BORDER_RADIUS.lg,
         padding: 16,
         marginBottom: SPACING.md,
         borderWidth: 1,

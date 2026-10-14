@@ -162,9 +162,9 @@ const TodayScreen = ({ navigation }) => {
                 </BannerHost>
 
                 <View style={styles.content}>
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open combined weekly skip plan" onPress={() => navigation.navigate('SkipPlan')} style={{ padding: 12, minHeight: 48, backgroundColor: PAPER.lavender, borderRadius: 12, marginBottom: 16 }}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open combined weekly skip plan" onPress={() => navigation.navigate('SkipPlan')} style={{ padding: 16, minHeight: 48, backgroundColor: PAPER.lavender, borderRadius: 16, marginBottom: 16 }}>
                         <Text style={{ fontFamily: SERIF_FONT, fontSize: 17, fontWeight: '700', color: PAPER.apricotInk }}>{savedPlan ? 'Your plan today' : 'Plan your week'}</Text>
-                        {plannedToday.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{plannedToday.map((cls) => <View key={cls.id} style={{ backgroundColor: cls.action === 'skip' ? PAPER.apricot : PAPER.sage, borderRadius: 8, padding: 7 }}><Text style={{ fontFamily: SERIF_FONT, fontSize: 13, color: cls.unsafe ? COLORS.dangerText : COLORS.textPrimary }}>{shortSubjectName(cls.subjectName, 10)} · {cls.unsafe ? 'Review skip' : cls.action === 'skip' ? 'Skip' : 'Attend'}</Text><Text style={{ fontFamily: SERIF_FONT, fontSize: 12, color: COLORS.textSecondary }}>{cls.startTime}–{cls.endTime}</Text></View>)}</View> : <Text style={{ fontFamily: SERIF_FONT, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary, marginTop: 4 }}>{savedPlan?.warnings.length ? 'Sync to check your plan' : savedPlan ? 'View your upcoming classes on the calendar' : 'Choose your skips on a live calendar'}</Text>}
+                        {plannedToday.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{plannedToday.map((cls) => <View key={cls.id} style={{ paddingVertical: 8, paddingRight: 16 }}><Text style={{ fontFamily: SERIF_FONT, fontSize: 13, color: cls.unsafe ? COLORS.dangerText : PAPER.lavenderInk }}>{shortSubjectName(cls.subjectName, 10)} · {cls.unsafe ? 'Review skip' : cls.action === 'skip' ? 'Skip' : 'Attend'}</Text><Text style={{ fontFamily: SERIF_FONT, fontSize: 12, color: COLORS.textSecondary }}>{cls.startTime}–{cls.endTime}</Text></View>)}</View> : <Text style={{ fontFamily: SERIF_FONT, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary, marginTop: 4 }}>{savedPlan?.warnings.length ? 'Sync to check your plan' : savedPlan ? 'View your upcoming classes on the calendar' : 'Choose your skips on a live calendar'}</Text>}
                     </TouchableOpacity>
                     {isHoliday ? (
                         <HolidayCard onUndo={() => dispatch({ type: 'REMOVE_HOLIDAY', payload: todayKey })} />
@@ -241,14 +241,14 @@ const getStyles = () => StyleSheet.create({
 
     // 20px gutter, as in the replica's `.content`.
     content: { paddingHorizontal: 20 },
-    scheduleLift: { marginTop: -17 },
+    scheduleLift: { marginTop: 0, marginBottom: 16 },
 
     nowFlag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, marginBottom: 7, marginLeft: 2 },
     nowDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PAPER.primary },
     nowFlagText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.55, color: PAPER.primary },
 
-    minorLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 0.6, color: PAPER.muted, marginTop: 16, marginBottom: 8 },
-    bento: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    minorLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.6, color: PAPER.muted, marginTop: 16, marginBottom: 8 },
+    bento: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
 });
 
 export default TodayScreen;

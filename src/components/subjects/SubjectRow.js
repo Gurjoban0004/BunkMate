@@ -77,12 +77,12 @@ const SubjectRow = ({ subject, status, subjects, onPress }) => {
 
 const getStyles = () => StyleSheet.create({
     container: {
-        flexDirection: 'row', alignItems: 'center', gap: SPACING.md + 2,
+        flexDirection: 'row', alignItems: 'center', gap: SPACING.md,
         marginHorizontal: SPACING.screenPadding,
-        marginBottom: SPACING.md - 4, padding: SPACING.md + 2,
+        marginBottom: SPACING.md - 4, padding: SPACING.md,
         // The bento's radius and its bare edge — a tint that already separates
         // the card from the page does not also need a stroke around it.
-        borderRadius: 18,
+        borderRadius: 16,
     },
     content: { flex: 1 },
     topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: SPACING.sm },
