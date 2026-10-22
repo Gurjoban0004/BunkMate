@@ -29,7 +29,7 @@ export default function PlannerCalendar({ state, subjectId, mode, classesByDateK
     const styles = getStyles();
     const isSkip = mode === 'skip';
 
-    const todayKey = toKey(new Date());
+    const todayKey = toKey(new Date(state.devDate || new Date()));
 
     // Plannable range bounds — used to gate month navigation.
     const plannableKeys = useMemo(() => Object.keys(classesByDateKey).sort(), [classesByDateKey]);
@@ -37,7 +37,7 @@ export default function PlannerCalendar({ state, subjectId, mode, classesByDateK
 
     // Start on the current month.
     const [monthCursor, setMonthCursor] = useState(() => {
-        const now = new Date();
+        const now = new Date(state.devDate || new Date());
         return { year: now.getFullYear(), month: now.getMonth() };
     });
 
@@ -83,10 +83,11 @@ export default function PlannerCalendar({ state, subjectId, mode, classesByDateK
 
     // Navigation gating: never browse before the current month, never past the
     // last month that actually contains a plannable class.
-    const now = new Date();
-    const atFloor = monthCursor.year === now.getFullYear() && monthCursor.month === now.getMonth();
+    const now = new Date(state.devDate || new Date());
+    const cursorKey = monthCursor.year * 12 + monthCursor.month;
+    const atFloor = cursorKey <= now.getFullYear() * 12 + now.getMonth();
     const lastDate = lastPlannableKey ? new Date(lastPlannableKey + 'T12:00:00') : now;
-    const atCeiling = monthCursor.year === lastDate.getFullYear() && monthCursor.month === lastDate.getMonth();
+    const atCeiling = cursorKey >= lastDate.getFullYear() * 12 + lastDate.getMonth();
 
     const shiftMonth = (delta) => {
         setMonthCursor((prev) => {
@@ -214,8 +215,8 @@ const getStyles = () => StyleSheet.create({
         paddingHorizontal: 2,
     },
     navBtn: {
-        width: 34,
-        height: 34,
+        width: 48,
+        height: 48,
         borderRadius: BORDER_RADIUS.sm,
         borderWidth: 1,
         borderColor: COLORS.border,

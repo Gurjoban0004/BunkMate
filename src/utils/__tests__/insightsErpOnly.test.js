@@ -131,7 +131,7 @@ describe('buildDayPlan (Android morning notification)', () => {
         });
         const plan = buildDayPlan(state, new Date('2026-09-07T07:30:00')); // Monday
         expect(plan.title).toBe('Monday: 2 classes');
-        expect(plan.body).toBe('Skip Algorithm Design if you must. Attend DBMS.');
+        expect(plan.body).toBe('Attend DBMS. Check the skip calendar before missing Algorithm Design.');
     });
 
     test('nothing on a day with no classes or a holiday', () => {

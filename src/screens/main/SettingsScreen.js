@@ -122,7 +122,8 @@ const SettingsScreen = ({ navigation }) => {
     // the switch off rather than lying.
     const handleAndroidReminderToggle = async (value) => {
         if (value) {
-            const count = await syncDailyPlanNotifications({ ...state, settings: { ...state.settings, notificationEnabled: true } }).catch(() => null);
+            const granted = await requestNotificationPermission().catch(() => false);
+            const count = granted ? await syncDailyPlanNotifications({ ...state, settings: { ...state.settings, notificationEnabled: true } }).catch(() => null) : null;
             if (count === null) {
                 showAlert(
                     "Couldn't enable reminders",

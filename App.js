@@ -93,8 +93,7 @@ function AppContent() {
         clearTimeout(planTimerRef.current);
         planTimerRef.current = setTimeout(() => {
             const s = stateRef.current;
-            if (!s.setupComplete) return;
-            (s.settings?.notificationEnabled ? syncDailyPlanNotifications(s) : cancelAllReminders())
+            (s.setupComplete && s.settings?.notificationEnabled ? syncDailyPlanNotifications(s) : cancelAllReminders())
                 .catch(() => { /* notifications are non-critical */ });
         }, 1500);
     };
@@ -104,7 +103,7 @@ function AppContent() {
         const sub = AppState.addEventListener('change', (next) => { if (next === 'active') replan(); });
         return () => { sub.remove(); clearTimeout(planTimerRef.current); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLoading, state.setupComplete, reminderOn, reminderTime, erpLastSynced, state.timetableMeta?.fetchedAt, state.settings?.skipPlan, state.holidays, state.subjects, state.attendanceRecords]);
+    }, [isLoading, state.setupComplete, reminderOn, reminderTime, erpLastSynced, state.timetable, state.timeSlots, state.timetableMeta, state.settings?.semesterEndDate, state.settings?.skipPlan, state.holidays, state.subjects, state.attendanceRecords]);
 
     // ── Android: warn the moment a subject crosses the line ───────────
     useEffect(() => {

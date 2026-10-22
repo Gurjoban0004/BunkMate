@@ -1,5 +1,5 @@
 import TabScrollView from '../../components/common/TabScrollView';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
@@ -9,7 +9,7 @@ import CalendarView from '../../components/subjects/CalendarView';
 import { COLORS, PAPER, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../theme/theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { shortSubjectName } from '../../utils/subjectName';
-import AttendanceImpactCard from '../../components/insights/AttendanceImpactCard';
+import WhatIfSimulator from '../../components/planner/SubjectDetail/WhatIfSimulator';
 import SubjectSummaryCard from '../../components/planner/SubjectDetail/SubjectSummaryCard';
 import PatternsInsights from '../../components/planner/SubjectDetail/PatternsInsights';
 import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
@@ -20,6 +20,8 @@ export default function SubjectDetailScreen({ route, navigation }) {
     const { state } = useApp();
     const [showAllHistory, setShowAllHistory] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
+    const [simulationOffset, setSimulationOffset] = useState(0);
+    useEffect(() => { setSimulationOffset(0); }, [subjectId]);
 
     const subject = state.subjects.find((s) => s.id === subjectId);
     const stats = useMemo(() => getSubjectAttendance(subjectId, state), [subjectId, state]);
@@ -73,17 +75,23 @@ export default function SubjectDetailScreen({ route, navigation }) {
                 />
                 {/* Recorded summary and the existing hypothetical simulator. */}
                 {plannerData && <SubjectSummaryCard subjectData={plannerData} />}
+                {plannerData && <WhatIfSimulator
+                    key={subjectId}
+                    subjectData={plannerData}
+                    simulationOffset={simulationOffset}
+                    setSimulationOffset={setSimulationOffset}
+                    navigation={navigation}
+                />}
                 <TouchableOpacity
                     style={styles.plannerButton}
                     accessibilityRole="button"
-                    accessibilityLabel={`Open Insights calendar for ${subject.name}`}
+                    accessibilityLabel={`Open weekly skip calendar for ${subject.name}`}
                     onPress={() => {
                         navigation.navigate('SkipPlan', { subjectId });
                     }}
                 >
-                    <Text style={styles.plannerButtonText}>Plan on calendar</Text>
+                    <Text style={styles.plannerButtonText}>Weekly skip calendar</Text>
                 </TouchableOpacity>
-                <AttendanceImpactCard key={subjectId} subjectId={subjectId} />
 
                 {/* Calendar Heatmap */}
                 <Card style={styles.calendarCard}>

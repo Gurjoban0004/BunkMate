@@ -57,7 +57,7 @@ export function isWithinPlannerWindow(dateInput, stateOrSubject) {
 
 export function getUpcomingSubjectClasses(state, subjectId, options = {}) {
     const {
-        fromDate = new Date(),
+        fromDate = state?.devDate || new Date(),
         maxClasses = 14,
         maxDays = 100,
     } = options;
@@ -76,7 +76,7 @@ export function getUpcomingSubjectClasses(state, subjectId, options = {}) {
         if (endDate && currentDate > endDate) break;
 
         const dateKey = toPlannerDateKey(currentDate);
-        if (!holidays.includes(dateKey)) {
+        if (!holidays.includes(dateKey) && !state.attendanceRecords?.[dateKey]?._holiday && state.attendanceRecords?.[dateKey]?.[subjectId]?.status !== 'cancelled') {
             const dayName = DAY_NAMES[currentDate.getDay()];
             // Merged classes, not raw period slots: a 2-hour class is ONE
             // selectable class worth 2 units. Offering its halves separately
@@ -121,7 +121,7 @@ export function getUpcomingSubjectClasses(state, subjectId, options = {}) {
  */
 export function getPlannableSubjectClasses(state, subjectId, options = {}) {
     const {
-        fromDate = new Date(),
+        fromDate = state?.devDate || new Date(),
         maxClasses = 60,
         maxDays = 140,
     } = options;
@@ -130,7 +130,8 @@ export function getPlannableSubjectClasses(state, subjectId, options = {}) {
 
     // Real timetable wins when present.
     const real = getUpcomingSubjectClasses(state, subjectId, { fromDate, maxClasses, maxDays });
-    if (real.length > 0) {
+    const hasSubjectTimetable = Object.values(state.timetable || {}).some((entries) => Array.isArray(entries) && entries.some((entry) => entry.subjectId === subjectId));
+    if (real.length > 0 || hasSubjectTimetable) {
         return real.map((cls) => ({ ...cls, assumed: false }));
     }
 
@@ -150,7 +151,7 @@ export function getPlannableSubjectClasses(state, subjectId, options = {}) {
         const dateKey = toPlannerDateKey(cursor);
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-        if (!isWeekend && !holidays.includes(dateKey)) {
+        if (!isWeekend && !holidays.includes(dateKey) && !state.attendanceRecords?.[dateKey]?._holiday && state.attendanceRecords?.[dateKey]?.[subjectId]?.status !== 'cancelled') {
             classes.push({
                 subjectId,
                 classKey: `${dateKey}:assumed`,

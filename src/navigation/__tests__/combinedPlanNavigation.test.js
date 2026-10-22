@@ -17,7 +17,10 @@ jest.mock('../../screens/main/InsightsScreen', () => {
 });
 jest.mock('../../screens/main/SubjectsScreen', () => () => null);
 jest.mock('../../screens/main/SubjectDetailScreen', () => () => null);
-jest.mock('../../screens/main/SubjectPlannerScreen', () => () => null);
+jest.mock('../../screens/main/SubjectPlannerScreen', () => {
+    const { Text } = require('react-native');
+    return ({ route }) => <Text>{`Subject planner for ${route.params.subjectId}: ${route.params.initialMode}`}</Text>;
+});
 jest.mock('../../screens/main/SettingsScreen', () => () => null);
 jest.mock('../../screens/main/EditTimetableScreen', () => () => null);
 jest.mock('../../screens/main/EditSubjectsScreen', () => () => null);
@@ -54,4 +57,9 @@ test('a subject calendar URL keeps the originating subject focused after reload'
 test.each(['Today', 'Subjects'])('a dedicated calendar URL restores on the originating %s tab', (tab) => {
     window.location.search = `?tab=${tab}&screen=SkipPlan&subject=algorithms`;
     expect(renderNavigator().getByText('Combined plan for algorithms')).toBeTruthy();
+});
+
+test.each(['Today', 'Subjects', 'Insights'])('restores the subject attend planner on %s after reload', (tab) => {
+    window.location.search = `?tab=${tab}&screen=SubjectPlanner&subject=algorithms&mode=attend`;
+    expect(renderNavigator().getByText('Subject planner for algorithms: attend')).toBeTruthy();
 });

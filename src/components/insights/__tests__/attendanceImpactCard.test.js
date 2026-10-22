@@ -76,8 +76,39 @@ test('preserves the quick attend preview in full pairs alongside the new skip fe
     const screen = render(<AttendPreview />);
     expect(screen.getByText('Attend preview')).toBeTruthy();
     expect(screen.getByText('83.3%')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Add one simulated class pair'));
+    fireEvent.press(screen.getByLabelText('Add one simulated class'));
     expect(screen.getByText('83.9%')).toBeTruthy();
     expect(screen.getByText('Plan on a calendar')).toBeTruthy();
     expect(JSON.stringify(mockAppState)).toBe(before);
+});
+
+test('the restored stepper sums the actual upcoming class lengths and stops at semester end', () => {
+    mockAppState.timetable.Friday = [{ slotId: 'p1', subjectId: 'math' }];
+    mockAppState.settings.semesterEndDate = '2026-10-15';
+    function Preview() {
+        const [offset, setOffset] = React.useState(0);
+        return <WhatIfSimulator subjectData={{ id: 'math', name: 'Math', attended: 50, total: 60, target: 75, unitsPerClass: 2 }} simulationOffset={offset} setSimulationOffset={setOffset} />;
+    }
+    const page = render(<Preview />);
+    fireEvent.press(page.getByLabelText('Add one simulated class'));
+    expect(page.getByText('82.0%')).toBeTruthy(); // Friday: 1 period
+    fireEvent.press(page.getByLabelText('Add one simulated class'));
+    expect(page.getByText('79.4%')).toBeTruthy(); // Thursday: 2 more periods
+    expect(page.getByLabelText('Add one simulated class').props.accessibilityState.disabled).toBe(true);
+    fireEvent.press(page.getByLabelText('Remove one simulated class'));
+    expect(page.getByText('82.0%')).toBeTruthy();
+});
+
+test('attend guidance uses the next class length and stops promising gains after the last class', () => {
+    mockAppState.timetable.Friday = [{ slotId: 'p1', subjectId: 'math' }];
+    mockAppState.settings.semesterEndDate = '2026-10-09';
+    function Preview() {
+        const [offset, setOffset] = React.useState(0);
+        return <WhatIfSimulator subjectData={{ id: 'math', name: 'Math', attended: 50, total: 60, target: 75, unitsPerClass: 2 }} initialMode="attend" simulationOffset={offset} setSimulationOffset={setOffset} />;
+    }
+    const page = render(<Preview />);
+    expect(page.getByText(/The next class adds about 0.3 percentage points/)).toBeTruthy();
+    fireEvent.press(page.getByLabelText('Add one simulated class'));
+    expect(page.getByText(/No more upcoming classes in this planning window/)).toBeTruthy();
+    expect(page.queryByText(/The next class adds/)).toBeNull();
 });

@@ -40,6 +40,7 @@ function TabScene({ children }) {
 const sharedScreens = (Stack) => (
     <>
         <Stack.Screen name="SkipPlan" component={SkipPlanScreen} />
+        <Stack.Screen name="SubjectPlanner" component={SubjectPlannerScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="EditTimetable" component={EditTimetableScreen} />
         <Stack.Screen name="EditSubjects" component={EditSubjectsScreen} />
@@ -65,7 +66,6 @@ function SubjectsStackScreen() {
         <ErrorBoundary screen screenName="Subjects">
             <TabScene><SubjectsStack.Navigator screenOptions={{ headerShown: false }}>
                 <SubjectsStack.Screen name="SubjectsList" component={SubjectsScreen} />
-                <SubjectsStack.Screen name="SubjectPlanner" component={SubjectPlannerScreen} />
                 {sharedScreens(SubjectsStack)}
             </SubjectsStack.Navigator></TabScene>
         </ErrorBoundary>

@@ -50,6 +50,7 @@ jest.mock('expo-notifications', () => ({
   requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
   scheduleNotificationAsync: jest.fn(async () => 'id'),
   cancelAllScheduledNotificationsAsync: jest.fn(async () => {}),
+  cancelScheduledNotificationAsync: jest.fn(async () => {}),
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
   AndroidImportance: { DEFAULT: 3 },
   SchedulableTriggerInputTypes: { DATE: 'date' },

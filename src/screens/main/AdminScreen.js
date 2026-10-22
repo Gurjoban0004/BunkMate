@@ -45,6 +45,7 @@ const SCREEN_LABELS = {
     SubjectsList: 'Subjects',
     SubjectDetail: 'Subject detail',
     SubjectPlanner: 'Planner',
+    SkipPlan: 'Skip calendar',
     Insights: 'Insights',
     InsightsMain: 'Insights',
     Settings: 'Settings',
@@ -202,18 +203,18 @@ function DayStrip({ sessions, dayStart }) {
     );
 }
 
-function Loadable({ load, loading, error, onRetry, children }) {
+function Loadable({ load, loading, error, onRetry, hasData, children }) {
     const styles = getStyles();
     useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-    if (loading) {
+    if (loading && !hasData) {
         return <View style={styles.loadingContainer}><ActivityIndicator size="small" color={COLORS.primary} /><Text style={styles.loadingText}>Loading…</Text></View>;
     }
     if (error) {
         return (
-            <View style={styles.errorContainer}>
+            <><View style={styles.errorContainer}>
                 <Text style={styles.errorText} numberOfLines={3}>{error}</Text>
                 {onRetry && <TouchableOpacity onPress={onRetry} style={styles.retryBtn}><Text style={styles.retryBtnText}>Retry</Text></TouchableOpacity>}
-            </View>
+            </View>{hasData ? children : null}</>
         );
     }
     return <>{children}</>;
@@ -246,11 +247,12 @@ function Chip({ text }) {
  * A new fetcher (e.g. another day) starts from empty.
  */
 function useMetric(fetcher) {
-    const [state, setState] = useState({ data: null, loading: false, error: null });
+    const [state, setState] = useState({ data: null, loading: false, error: null, updatedAt: null });
     const dataRef = useRef(null);
     const inFlight = useRef(null);
     const generation = useRef(0);   // bumps with the fetcher, so a late answer for the old day is dropped
     const lastFetcher = useRef(fetcher);
+    useEffect(() => () => { generation.current++; }, []);
 
     useEffect(() => {
         if (lastFetcher.current === fetcher) return;
@@ -258,7 +260,7 @@ function useMetric(fetcher) {
         generation.current++;
         inFlight.current = null;
         dataRef.current = null;
-        setState({ data: null, loading: false, error: null });
+        setState({ data: null, loading: false, error: null, updatedAt: null });
     }, [fetcher]);
 
     const load = useCallback((force = false) => {
@@ -267,8 +269,8 @@ function useMetric(fetcher) {
         const gen = generation.current;
         const current = () => gen === generation.current;
         setState((s) => ({ ...s, loading: true, error: null }));
-        const request = fetcher(force).then(
-            (data) => { if (!current()) return false; dataRef.current = data; setState({ data, loading: false, error: null }); return true; },
+        const request = Promise.resolve().then(() => fetcher(force)).then(
+            (data) => { if (!current()) return false; dataRef.current = data; setState({ data, loading: false, error: null, updatedAt: Date.now() }); return true; },
             (e) => { if (!current()) return false; setState((s) => ({ ...s, loading: false, error: e?.message || 'Failed to load' })); return false; },
         ).finally(() => { if (inFlight.current === request) inFlight.current = null; });
         inFlight.current = request;
@@ -326,6 +328,8 @@ export default function AdminScreen() {
 
     // Students tab
     const [query, setQuery] = useState('');
+    const [studentFilter, setStudentFilter] = useState('all');
+    const [studentSort, setStudentSort] = useState('recent');
     const [selected, setSelected] = useState(null);   // { rollNumber, studentName }
     const [purging, setPurging] = useState(false);
 
@@ -363,10 +367,13 @@ export default function AdminScreen() {
     // caches them (20s / 60s), so a poll is at most one real read per tick.
     useEffect(() => {
         if (tab !== 'today' || !viewingToday) return undefined;
-        const fast = setInterval(() => { live.load(true); }, 60000);
-        const slow = setInterval(() => { daily.load(true); }, 120000);
-        return () => { clearInterval(fast); clearInterval(slow); };
-    }, [tab, viewingToday]); // eslint-disable-line react-hooks/exhaustive-deps
+        const visible = () => typeof document === 'undefined' || !document.hidden;
+        const resume = () => { if (visible()) { live.load(true); daily.load(true); } };
+        const fast = setInterval(() => { if (visible()) live.load(true); }, 60000);
+        const slow = setInterval(() => { if (visible()) daily.load(true); }, 120000);
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', resume);
+        return () => { clearInterval(fast); clearInterval(slow); if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', resume); };
+    }, [tab, viewingToday, live.load, daily.load]);
 
     const tabMetrics = {
         today: [live, daily, usage, logins],
@@ -498,9 +505,14 @@ export default function AdminScreen() {
     const students = roster.data?.users || [];
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return students;
-        return students.filter((u) => String(u.rollNumber).toLowerCase().includes(q) || String(u.studentName || '').toLowerCase().includes(q));
-    }, [students, query]);
+        return students.filter((u) => (!q || `${u.rollNumber} ${u.studentName || ''} ${u.batchGroup || ''}`.toLowerCase().includes(q))
+            && (studentFilter === 'all' || studentFilter === 'below' && u.belowGoal > 0
+                || studentFilter === 'disconnected' && !u.erpConnected || studentFilter === 'nocloud' && !u.inCloud
+                || studentFilter === 'revoked' && revokedSet.has(String(u.rollNumber))))
+            .sort((a, b) => studentSort === 'name' ? String(a.studentName || a.rollNumber).localeCompare(String(b.studentName || b.rollNumber))
+                : studentSort === 'attendance' ? (a.overallAttendancePct ?? Infinity) - (b.overallAttendancePct ?? Infinity)
+                    : (b.lastActive || 0) - (a.lastActive || 0));
+    }, [students, query, studentFilter, studentSort, revokedSet]);
 
     const adminName = (state.userName || 'Admin').split(' ')[0];
     const d = daily.data;
@@ -535,10 +547,10 @@ export default function AdminScreen() {
                 <View style={styles.hero}>
                     <View style={styles.heroControlsRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.heroEyebrow}>ADMIN</Text>
-                            <Text style={styles.heroTitle}>Hello, {adminName}</Text>
+                            <Text style={styles.heroTitle}>Admin · {adminName}</Text>
+                            <Text style={styles.noteText}>{live.error ? 'Live refresh failed · showing last result' : live.updatedAt ? `Live data checked ${fmtWhen(live.updatedAt)}` : 'Checking live activity…'}</Text>
                         </View>
-                        <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh} disabled={refreshing} activeOpacity={0.7}>
+                        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh admin panels" accessibilityState={{ disabled: refreshing }} style={styles.refreshBtn} onPress={onRefresh} disabled={refreshing} activeOpacity={0.7}>
                             {refreshing ? <ActivityIndicator size="small" color={COLORS.primary} /> : <PanelIcon name="refresh" color={COLORS.primary} size={14} />}
                             <Text style={styles.refreshBtnText}>{refreshing ? 'Refreshing…' : 'Refresh'}</Text>
                         </TouchableOpacity>
@@ -555,7 +567,7 @@ export default function AdminScreen() {
                 {/* Tabs */}
                 <View style={styles.catRow}>
                     {TABS.map((t) => (
-                        <TouchableOpacity key={t.key} style={[styles.catTab, tab === t.key && styles.catTabActive]} onPress={() => setTab(t.key)} activeOpacity={0.8}>
+                        <TouchableOpacity accessibilityRole="tab" accessibilityState={{ selected: tab === t.key }} key={t.key} style={[styles.catTab, tab === t.key && styles.catTabActive]} onPress={() => setTab(t.key)} activeOpacity={0.8}>
                             <Text style={[styles.catTabText, tab === t.key && styles.catTabTextActive]} numberOfLines={1}>{t.label}</Text>
                         </TouchableOpacity>
                     ))}
@@ -578,7 +590,7 @@ export default function AdminScreen() {
                         </View>
 
                         <Panel icon="clock" title="Who used the app" accent={COLORS.primary} statusText={d ? `${d.users} student${d.users === 1 ? '' : 's'}` : ''}>
-                            <Loadable load={daily.load} loading={daily.loading && !d} error={daily.error} onRetry={() => daily.load(true)}>
+                            <Loadable hasData={daily.data != null} load={daily.load} loading={daily.loading && !d} error={daily.error} onRetry={() => daily.load(true)}>
                                 {d && (
                                     <>
                                         <View style={[styles.kpiRow, { marginTop: 0 }]}>
@@ -658,7 +670,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="activity" title="Daily students — last 14 days" accent={COLORS.primary} statusText="tap a day">
-                            <Loadable load={usage.load} loading={usage.loading && !usage.data} error={usage.error} onRetry={() => usage.load(true)}>
+                            <Loadable hasData={usage.data != null} load={usage.load} loading={usage.loading && !usage.data} error={usage.error} onRetry={() => usage.load(true)}>
                                 {usage.data && (
                                     <Columns
                                         values={usage.data.days.map((x) => x.users)}
@@ -672,7 +684,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="users" title="Online now" accent={COLORS.successText} statusText={lv ? `updated ${fmtClock(lv.generatedAt)}` : ''}>
-                            <Loadable load={live.load} loading={live.loading && !lv} error={live.error} onRetry={() => live.load(true)}>
+                            <Loadable hasData={live.data != null} load={live.load} loading={live.loading && !lv} error={live.error} onRetry={() => live.load(true)}>
                                 {lv && (lv.online.length === 0 ? <Empty>Nobody has the app open right now.</Empty>
                                     : lv.online.map((u) => personLine({
                                         key: u.rollNumber, rollNumber: u.rollNumber, fallback: u.studentName,
@@ -684,7 +696,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="key" title="Sign-in log" accent={COLORS.primary} statusText={logins.data ? `${logins.data.loginsToday} today` : ''}>
-                            <Loadable load={logins.load} loading={logins.loading && !logins.data} error={logins.error} onRetry={() => logins.load(true)}>
+                            <Loadable hasData={logins.data != null} load={logins.load} loading={logins.loading && !logins.data} error={logins.error} onRetry={() => logins.load(true)}>
                                 {logins.data && (
                                     <>
                                         <View style={[styles.kpiRow, { marginTop: 0 }]}>
@@ -710,7 +722,7 @@ export default function AdminScreen() {
                 {/* ══ STUDENTS ══ */}
                 {tab === 'students' && (
                     <Panel icon="users" title="Students" accent={COLORS.primary} statusText={`${students.length}`}>
-                        <Loadable load={roster.load} loading={roster.loading && !roster.data} error={roster.error} onRetry={() => roster.load(true)}>
+                        <Loadable hasData={roster.data != null} load={roster.load} loading={roster.loading && !roster.data} error={roster.error} onRetry={() => roster.load(true)}>
                             {unfinishedAll > 0 && (
                                 <View style={styles.noticeBox}>
                                     <Text style={styles.noticeText}>
@@ -732,8 +744,15 @@ export default function AdminScreen() {
                             )}
                             <View style={styles.searchBar}>
                                 <PanelIcon name="search" color={COLORS.textMuted} size={16} />
-                                <TextInput style={styles.searchInput} value={query} onChangeText={setQuery} placeholder="Name or roll number" placeholderTextColor={COLORS.textMuted} />
+                                <TextInput accessibilityLabel="Search students" style={styles.searchInput} value={query} onChangeText={setQuery} placeholder="Name, roll number or batch" placeholderTextColor={COLORS.textMuted} />
                             </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                                {[['all', 'Everyone'], ['below', 'Below goal'], ['disconnected', 'Disconnected'], ['nocloud', 'No cloud copy'], ['revoked', 'Revoked']].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="button" accessibilityLabel={`Filter students: ${label}`} accessibilityState={{ selected: studentFilter === key }} onPress={() => setStudentFilter(key)} style={[styles.typePill, studentFilter === key && styles.studentFilterOn]}><Text style={styles.studentFilterText}>{label}</Text></TouchableOpacity>)}
+                            </ScrollView>
+                            <View style={styles.chipRow}>
+                                {[['recent', 'Recent'], ['name', 'Name'], ['attendance', 'Lowest attendance']].map(([key, label]) => <TouchableOpacity key={key} accessibilityRole="button" accessibilityLabel={`Sort students: ${label}`} accessibilityState={{ selected: studentSort === key }} onPress={() => setStudentSort(key)} style={[styles.typePill, studentSort === key && styles.studentFilterOn]}><Text style={styles.studentFilterText}>{label}</Text></TouchableOpacity>)}
+                            </View>
+                            <Text accessibilityLiveRegion="polite" style={styles.noteText}>{filtered.length} of {students.length} students</Text>
                             {filtered.map((u) => {
                                 const isRevoked = revokedSet.has(String(u.rollNumber));
                                 const badge = isRevoked ? ['REVOKED', COLORS.dangerLight, COLORS.dangerDark]
@@ -776,7 +795,7 @@ export default function AdminScreen() {
                 {tab === 'attendance' && (
                     <>
                         <Panel icon="activity" title="Across students" accent={COLORS.primary} statusText="cloud copies">
-                            <Loadable load={overview.load} loading={overview.loading && !o} error={overview.error} onRetry={() => overview.load(true)}>
+                            <Loadable hasData={overview.data != null} load={overview.load} loading={overview.loading && !o} error={overview.error} onRetry={() => overview.load(true)}>
                                 {o && (
                                     <>
                                         <View style={[styles.kpiRow, { marginTop: 0 }]}>
@@ -792,7 +811,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="difficulty" title="Subjects by miss rate" accent={COLORS.warning} statusText="all students">
-                            <Loadable load={difficulty.load} loading={difficulty.loading} error={difficulty.error} onRetry={() => difficulty.load(true)}>
+                            <Loadable hasData={difficulty.data != null} load={difficulty.load} loading={difficulty.loading} error={difficulty.error} onRetry={() => difficulty.load(true)}>
                                 {(difficulty.data || []).map((s, i) => (
                                     <View key={i} style={styles.difficultyRow}>
                                         <View style={styles.difficultyInfo}>
@@ -808,7 +827,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="trending-down" title="Misses by weekday" accent={COLORS.danger} statusText="register">
-                            <Loadable load={bunk.load} loading={bunk.loading} error={bunk.error} onRetry={() => bunk.load(true)}>
+                            <Loadable hasData={bunk.data != null} load={bunk.load} loading={bunk.loading} error={bunk.error} onRetry={() => bunk.load(true)}>
                                 {(bunk.data || []).map((x, i) => (
                                     <Bar key={i} label={x.day} value={x.bunkRate} maxVal={100} color={x.bunkRate >= 30 ? COLORS.danger : x.bunkRate >= 15 ? COLORS.warning : COLORS.success} />
                                 ))}
@@ -817,7 +836,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="users" title="Batches" accent={COLORS.success} statusText="every student">
-                            <Loadable load={batches.load} loading={batches.loading} error={batches.error} onRetry={() => batches.load(true)}>
+                            <Loadable hasData={batches.data != null} load={batches.load} loading={batches.loading} error={batches.error} onRetry={() => batches.load(true)}>
                                 {(batches.data || []).map((b, i) => (
                                     <Bar key={i} label={b.batch} value={b.percentage} maxVal={100} color={COLORS.primary} right={`${b.count} (${b.percentage.toFixed(0)}%)`} />
                                 ))}
@@ -831,7 +850,7 @@ export default function AdminScreen() {
                 {tab === 'health' && (
                     <>
                         <Panel icon="zap" title="College outages" accent={downtime.data?.length ? COLORS.danger : COLORS.success} statusText={downtime.data?.length ? `${downtime.data.length} active` : 'all clear'}>
-                            <Loadable load={downtime.load} loading={downtime.loading} error={downtime.error} onRetry={() => downtime.load(true)}>
+                            <Loadable hasData={downtime.data != null} load={downtime.load} loading={downtime.loading} error={downtime.error} onRetry={() => downtime.load(true)}>
                                 {(downtime.data || []).map((ev) => (
                                     <View key={ev.id} style={styles.endpointRow}>
                                         <View style={[styles.statusDot, { backgroundColor: COLORS.danger }]} />
@@ -856,7 +875,7 @@ export default function AdminScreen() {
                                     <Kpi label="LOST SIGN-INS 7D" value={o.signInLost7d} tone={o.signInLost7d > 0 ? 'bad' : 'good'} />
                                 </View>
                             )}
-                            <Loadable load={endpoints.load} loading={endpoints.loading} error={endpoints.error} onRetry={() => endpoints.load(true)}>
+                            <Loadable hasData={endpoints.data != null} load={endpoints.load} loading={endpoints.loading} error={endpoints.error} onRetry={() => endpoints.load(true)}>
                                 {(endpoints.data || []).map((ep, i) => (
                                     <View key={i} style={styles.endpointRow}>
                                         <View style={[styles.statusDot, { backgroundColor: endpointColor(ep.successRate) }]} />
@@ -872,7 +891,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="key" title="Sign-in prompts" accent={sessions.data?.total ? COLORS.warning : COLORS.success} statusText="last 7 days">
-                            <Loadable load={sessions.load} loading={sessions.loading} error={sessions.error} onRetry={() => sessions.load(true)}>
+                            <Loadable hasData={sessions.data != null} load={sessions.load} loading={sessions.loading} error={sessions.error} onRetry={() => sessions.load(true)}>
                                 {sessions.data && (
                                     <>
                                         <Text style={styles.noteText}>
@@ -896,7 +915,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="alert" title="Parser failures" accent={COLORS.danger} statusText="recent">
-                            <Loadable load={failures.load} loading={failures.loading} error={failures.error} onRetry={() => failures.load(true)}>
+                            <Loadable hasData={failures.data != null} load={failures.load} loading={failures.loading} error={failures.error} onRetry={() => failures.load(true)}>
                                 {(failures.data || []).map((f, i) => <FailureCard key={i} failure={f} name={nameOf(f.rollNumber)} />)}
                                 {failures.data && failures.data.length === 0 && <Empty>No parser errors in the recent syncs.</Empty>}
                             </Loadable>
@@ -910,7 +929,7 @@ export default function AdminScreen() {
                         {configError && <View style={styles.errorContainer}><Text style={styles.errorText}>{configError}</Text><TouchableOpacity onPress={loadConfig} style={styles.retryBtn}><Text style={styles.retryBtnText}>Retry</Text></TouchableOpacity></View>}
 
                         <Panel icon="megaphone" title="Announcements" accent={COLORS.primary} statusText="72h">
-                            <Loadable load={announcements.load} loading={announcements.loading} error={announcements.error} onRetry={() => announcements.load(true)}>
+                            <Loadable hasData={announcements.data != null} load={announcements.load} loading={announcements.loading} error={announcements.error} onRetry={() => announcements.load(true)}>
                                 <View style={styles.inputGroup}><Text style={styles.inputLabel}>TITLE</Text><TextInput style={styles.input} value={annTitle} onChangeText={setAnnTitle} placeholder="Short and clear" placeholderTextColor={COLORS.textMuted} /></View>
                                 <View style={styles.inputGroup}><Text style={styles.inputLabel}>MESSAGE</Text><TextInput style={[styles.input, { minHeight: 60 }]} value={annBody} onChangeText={setAnnBody} placeholder="What students should know" placeholderTextColor={COLORS.textMuted} multiline /></View>
                                 <View style={styles.typeRow}>
@@ -967,7 +986,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="lock" title="Revoked access" accent={COLORS.danger} statusText={`${(revoked.data || []).length}`}>
-                            <Loadable load={revoked.load} loading={revoked.loading} error={revoked.error} onRetry={() => revoked.load(true)}>
+                            <Loadable hasData={revoked.data != null} load={revoked.load} loading={revoked.loading} error={revoked.error} onRetry={() => revoked.load(true)}>
                                 <View style={styles.inputGroup}><Text style={styles.inputLabel}>ROLL NUMBER</Text><TextInput style={styles.input} value={revokeRoll} onChangeText={setRevokeRoll} placeholder="e.g. 2410990123" placeholderTextColor={COLORS.textMuted} keyboardType="number-pad" /></View>
                                 {!!nameOf(revokeRoll.trim()) && <Text style={styles.flagHint}>{nameOf(revokeRoll.trim())}</Text>}
                                 <View style={styles.inputGroup}><Text style={styles.inputLabel}>REASON</Text><TextInput style={styles.input} value={revokeReason} onChangeText={setRevokeReason} placeholder="Shown to the student" placeholderTextColor={COLORS.textMuted} /></View>
@@ -985,7 +1004,7 @@ export default function AdminScreen() {
                         </Panel>
 
                         <Panel icon="list" title="Audit log" accent={COLORS.textMuted} statusText="last 60">
-                            <Loadable load={audit.load} loading={audit.loading} error={audit.error} onRetry={() => audit.load(true)}>
+                            <Loadable hasData={audit.data != null} load={audit.load} loading={audit.loading} error={audit.error} onRetry={() => audit.load(true)}>
                                 {(audit.data || []).map((e) => (
                                     <View key={e.id} style={styles.tableRow}>
                                         <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={2}>{e.action}{e.detail ? ` · ${summariseDetail(e.detail)}` : ''}</Text>
@@ -1036,7 +1055,7 @@ function StudentSheet({ student, isRevoked, onClose, onRevoke, onUnrevoke }) {
                         <TouchableOpacity onPress={onClose} style={styles.modalCloseBtn} accessibilityLabel="Close"><Text style={styles.modalCloseText}>✕</Text></TouchableOpacity>
                     </View>
                     <ScrollView style={{ maxHeight: 480 }}>
-                        <Loadable load={detail.load} loading={detail.loading && !s} error={detail.error} onRetry={() => detail.load(true)}>
+                        <Loadable hasData={detail.data != null} load={detail.load} loading={detail.loading && !s} error={detail.error} onRetry={() => detail.load(true)}>
                             {s && (
                                 <>
                                     <View style={[styles.kpiRow, { marginTop: 0 }]}>
@@ -1143,12 +1162,11 @@ const getStyles = () => StyleSheet.create({
     errorText: { ...TYPOGRAPHY.captionMedium, color: COLORS.dangerDark, textAlign: 'center' },
     retryBtn: { backgroundColor: COLORS.danger, paddingHorizontal: SPACING.md, paddingVertical: 5, borderRadius: BORDER_RADIUS.sm },
     retryBtnText: { ...TYPOGRAPHY.labelSmall, color: COLORS.textOnPrimary },
-    refreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryLight, paddingHorizontal: 10, paddingVertical: 6, borderRadius: BORDER_RADIUS.full },
+    refreshBtn: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primaryLight, paddingHorizontal: 12, paddingVertical: 8, borderRadius: BORDER_RADIUS.full },
     refreshBtnText: { ...TYPOGRAPHY.micro, color: COLORS.primary },
 
     hero: { backgroundColor: COLORS.cardBackground, borderRadius: BORDER_RADIUS.xl, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.lg, marginBottom: SPACING.md, ...SHADOWS.medium },
     heroControlsRow: { flexDirection: 'row', gap: SPACING.xs, alignItems: 'center' },
-    heroEyebrow: { ...TYPOGRAPHY.micro, color: COLORS.primary, letterSpacing: 1.2 },
     heroTitle: { ...TYPOGRAPHY.headingLarge, color: COLORS.textPrimary, marginTop: 4 },
     kpiRow: { flexDirection: 'row', gap: SPACING.xs, marginTop: SPACING.md },
     kpiCell: { flex: 1, alignItems: 'center', backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, paddingVertical: SPACING.sm, paddingHorizontal: 2 },
@@ -1256,7 +1274,9 @@ const getStyles = () => StyleSheet.create({
     inputLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginBottom: 4 },
     input: { backgroundColor: COLORS.inputBackground, borderRadius: BORDER_RADIUS.md, paddingHorizontal: SPACING.md, paddingVertical: 10, color: COLORS.textPrimary, ...TYPOGRAPHY.bodyMedium, borderWidth: 1, borderColor: COLORS.border },
     typeRow: { flexDirection: 'row', gap: SPACING.xs, marginBottom: SPACING.sm },
-    typePill: { flex: 1, paddingVertical: 6, alignItems: 'center', borderRadius: BORDER_RADIUS.sm, backgroundColor: COLORS.inputBackground, borderWidth: 1, borderColor: COLORS.border },
+    typePill: { flex: 1, minHeight: 48, paddingHorizontal: 12, justifyContent: 'center', paddingVertical: 8, alignItems: 'center', borderRadius: BORDER_RADIUS.sm, backgroundColor: COLORS.inputBackground, borderWidth: 1, borderColor: COLORS.border },
+    studentFilterOn: { backgroundColor: COLORS.primaryLight, borderColor: COLORS.primaryDark },
+    studentFilterText: { ...TYPOGRAPHY.labelSmall, color: COLORS.textPrimary },
     typePillActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
     typePillText: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
     typePillTextActive: { color: COLORS.textOnPrimary },

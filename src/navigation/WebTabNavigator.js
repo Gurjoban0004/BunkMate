@@ -33,8 +33,8 @@ export default function WebTabNavigator() {
     const isAdmin = ADMIN_AVAILABLE && isAdminUser(appState);
     const [currentTab, setCurrentTab] = useState(() => initialWebTab(window.location.search, isAdmin));
     const urlParams = new URLSearchParams(window.location.search);
-    const restoreCalendar = urlParams.get('section') === 'plan' || urlParams.get('screen') === 'SkipPlan';
-    const calendarRoute = { name: 'SkipPlan', params: { subjectId: urlParams.get('subject') || undefined } };
+    const restoreCalendar = urlParams.get('section') === 'plan' || ['SkipPlan', 'SubjectPlanner'].includes(urlParams.get('screen'));
+    const calendarRoute = { name: urlParams.get('screen') === 'SubjectPlanner' ? 'SubjectPlanner' : 'SkipPlan', params: { subjectId: urlParams.get('subject') || undefined, initialMode: urlParams.get('mode') === 'attend' ? 'attend' : 'skip' } };
     const [stacks, setStacks] = useState({
         Today: [{ name: 'TodayMain', params: {} }, ...(restoreCalendar && currentTab === 'Today' ? [calendarRoute] : [])],
         Subjects: [{ name: 'SubjectsList', params: {} }, ...(restoreCalendar && currentTab === 'Subjects' ? [calendarRoute] : [])],
@@ -126,7 +126,7 @@ export default function WebTabNavigator() {
                     const tab = currentTabRef.current;
                     const newStack = [...prev[tab], { name: screenOrTabName, params }];
                     if (Platform.OS === 'web') {
-                        window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}`);
+                        window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}${params.initialMode === 'attend' ? '&mode=attend' : ''}`);
                     }
                     return { ...prev, [tab]: newStack };
                 });
@@ -137,7 +137,7 @@ export default function WebTabNavigator() {
                 const tab = currentTabRef.current;
                 const newStack = [...prev[tab], { name: screenOrTabName, params }];
                 if (Platform.OS === 'web') {
-                    window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}`);
+                    window.history.pushState({ tab, index: newStack.length - 1 }, '', `?tab=${tab}&screen=${screenOrTabName}${params.subjectId ? `&subject=${encodeURIComponent(params.subjectId)}` : ''}${params.initialMode === 'attend' ? '&mode=attend' : ''}`);
                 }
                 return { ...prev, [tab]: newStack };
             });

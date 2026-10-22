@@ -9,6 +9,7 @@ import PlannerCalendar from '../../components/planner/PlannerCalendar';
 import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import { getSubjectPlannerData } from '../../utils/planner/dataAdapter';
 import { getPlannableSubjectClasses } from '../../utils/planner/semesterWindow';
+import { formatTimeRange } from '../../utils/dateHelpers';
 import {
     calculatePlannerPercentage,
     calculateSkipAllowance,
@@ -47,18 +48,7 @@ export default function SubjectPlannerScreen({ route }) {
         return map;
     }, [plannable]);
 
-    if (!planner) {
-        return (
-            <SafeAreaView style={styles.screen} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
-                <ScreenHeader title="Plan classes" />
-                <View style={styles.emptyWrap}>
-                    <Text style={styles.emptyTitle}>Subject not found</Text>
-                </View>
-            </SafeAreaView>
-        );
-    }
-
-    const { attended, total, target, name, unitsPerClass = 1 } = planner;
+    const { attended = 0, total = 0, target = 75, name, unitsPerClass = 1 } = planner || {};
     const accent = mode === 'skip' ? COLORS.danger : COLORS.success;
     const accentDark = mode === 'skip' ? COLORS.dangerDark : COLORS.successDark;
 
@@ -79,8 +69,8 @@ export default function SubjectPlannerScreen({ route }) {
     const toggleDay = (dateKey) => {
         const dayClasses = classesByDateKey[dateKey] || [];
         if (dayClasses.length === 0) return;
-        const anySelected = dayClasses.some((c) => selected[c.classKey]);
         setSelected((prev) => {
+            const anySelected = dayClasses.some((c) => prev[c.classKey]);
             const next = { ...prev };
             for (const c of dayClasses) {
                 if (anySelected) delete next[c.classKey];
@@ -88,6 +78,19 @@ export default function SubjectPlannerScreen({ route }) {
             }
             return next;
         });
+    };
+
+    const selectSuggested = () => {
+        const next = {};
+        let projection = { attended, total, percentage: currentPercentage };
+        for (const cls of plannable) {
+            if (mode === 'attend' && projection.percentage >= target) break;
+            const candidate = simulateAttendance(projection.attended, projection.total, mode === 'skip' ? -cls.units : cls.units);
+            if (mode === 'skip' && candidate.percentage < target) break;
+            next[cls.classKey] = true;
+            projection = candidate;
+        }
+        setSelected(next);
     };
 
     const clearAll = () => {
@@ -110,13 +113,19 @@ export default function SubjectPlannerScreen({ route }) {
                 return {
                     label: 'Below target',
                     text: recovery
-                        ? `You'd need ${recovery.classesNeeded} class${recovery.classesNeeded === 1 ? '' : 'es'} to climb back to ${target}%.`
+                        ? `You'd need about ${recovery.classesNeeded} class${recovery.classesNeeded === 1 ? '' : 'es'} to climb back to ${target}%.`
                         : `This drops you under ${target}%.`,
                     tone: 'danger',
                 };
             }
             // Max additional safe skips from the *current* real state.
-            const remaining = calculateSkipAllowance(target, attended, total, unitsPerClass).skips - selectedCount;
+            let budget = calculateSkipAllowance(target, simulated.attended, simulated.total).units;
+            let remaining = 0;
+            for (const cls of plannable.filter((item) => !selected[item.classKey])) {
+                if (cls.units > budget) break;
+                budget -= cls.units;
+                remaining++;
+            }
             if (remaining > 0) {
                 return {
                     label: 'Safe',
@@ -126,7 +135,7 @@ export default function SubjectPlannerScreen({ route }) {
             }
             return {
                 label: 'On the edge',
-                text: `One more skip drops you below ${target}%.`,
+                text: selectedCount === plannable.length ? 'No more classes in this planning window.' : `The next available skip drops you below ${target}%.`,
                 tone: 'warning',
             };
         }
@@ -138,16 +147,23 @@ export default function SubjectPlannerScreen({ route }) {
                 tone: 'success',
             };
         }
-        const plusOne = simulateAttendance(simulated.attended, simulated.total, 1, unitsPerClass);
+        if (belowTarget && selectedCount === plannable.length) {
+            return { label: 'More classes needed', text: `Attending every class in this window still leaves you below ${target}%.`, tone: 'warning' };
+        }
+        const nextClass = plannable.find((cls) => !selected[cls.classKey]);
+        if (!nextClass) {
+            return { label: 'End of plan', text: 'No more classes in this planning window.', tone: 'success' };
+        }
+        const plusOne = simulateAttendance(simulated.attended, simulated.total, 1, nextClass.units);
         const gain = (plusOne.percentage - simulated.percentage).toFixed(1);
         return {
             label: 'Climbing',
             text: selectedCount > 0
-                ? `Each attended class adds about +${gain}% from here.`
+                ? `The next unselected class adds about ${gain} percentage points.`
                 : `Tap upcoming classes you plan to attend.`,
             tone: 'success',
         };
-    }, [mode, belowTarget, simulated, target, attended, total, selectedUnits, selectedCount, currentPercentage, unitsPerClass]);
+    }, [mode, belowTarget, simulated, target, selectedCount, currentPercentage, unitsPerClass, plannable, selected]);
 
     const toneColor = {
         success: COLORS.successDark,
@@ -158,7 +174,7 @@ export default function SubjectPlannerScreen({ route }) {
     // ── Week strip (next 7 days) ────────────────────────────────────
     const weekStrip = useMemo(() => {
         const out = [];
-        const today = new Date();
+        const today = new Date(state.devDate || new Date());
         today.setHours(0, 0, 0, 0);
         for (let i = 0; i < 7; i++) {
             const d = new Date(today);
@@ -176,7 +192,7 @@ export default function SubjectPlannerScreen({ route }) {
             });
         }
         return out;
-    }, [classesByDateKey, selected]);
+    }, [classesByDateKey, selected, state.devDate]);
 
     // ── Selected summary ────────────────────────────────────────────
     const selectedList = useMemo(
@@ -188,6 +204,8 @@ export default function SubjectPlannerScreen({ route }) {
 
     const verb = mode === 'skip' ? 'Skipping' : 'Attending';
     const hasPlannable = plannable.length > 0;
+
+    if (!planner) return <SafeAreaView style={styles.screen}><ScreenHeader title="Plan classes" /><Text style={styles.emptyTitle}>Subject not found</Text></SafeAreaView>;
 
     return (
         <SafeAreaView style={styles.screen} edges={{ top: 'off', bottom: 'off', left: 'additive', right: 'additive' }}>
@@ -268,6 +286,15 @@ export default function SubjectPlannerScreen({ route }) {
 
                 {hasPlannable ? (
                     <>
+                        <View style={styles.summaryHeader}>
+                            <TouchableOpacity accessibilityRole="button" onPress={selectSuggested} style={styles.suggestionButton}>
+                                <Text style={styles.clearText}>{mode === 'skip' ? 'Select safe skips' : 'Select to reach target'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity accessibilityRole="button" disabled={!selectedCount} onPress={clearAll} style={styles.suggestionButton}>
+                                <Text style={[styles.clearText, !selectedCount && { color: COLORS.textMuted }]}>Clear selection</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={[styles.noteText, { color: COLORS.textSecondary, marginBottom: SPACING.md }]}>Preview only · selects upcoming classes without changing college records.</Text>
                         {/* Week strip */}
                         <Text style={styles.sectionLabel}>This week</Text>
                         <View style={styles.weekStrip}>
@@ -282,6 +309,9 @@ export default function SubjectPlannerScreen({ route }) {
                                     disabled={!d.plannable}
                                     activeOpacity={d.plannable ? 0.6 : 1}
                                     onPress={() => toggleDay(d.key)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`${d.dayName} ${d.date}, ${d.plannable ? 'toggle all classes' : 'no classes'}`}
+                                    accessibilityState={{ selected: d.selected, disabled: !d.plannable }}
                                 >
                                     <Text style={[styles.weekDay, d.selected && { color: accentDark }]}>{d.dayName}</Text>
                                     <Text style={[styles.weekDate, d.selected && { color: accentDark, fontWeight: '800' }, !d.plannable && { color: COLORS.textMuted }]}>
@@ -331,11 +361,12 @@ export default function SubjectPlannerScreen({ route }) {
                                         <TouchableOpacity
                                             key={c.classKey}
                                             style={[styles.chip, { backgroundColor: mode === 'skip' ? COLORS.dangerLight : COLORS.successLight, borderColor: accent }]}
-                                            onPress={() => toggleDay(c.dateKey)}
-                                            accessibilityLabel={`Remove ${c.dayName} ${c.date.getDate()}`}
+                                            onPress={() => setSelected((prev) => { const next = { ...prev }; delete next[c.classKey]; return next; })}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Remove ${c.dateKey} ${c.time || 'estimated class'}`}
                                         >
                                             <Text style={[styles.chipText, { color: accentDark }]}>
-                                                {WEEKDAY_SHORT[c.date.getDay()]} {c.date.getDate()}
+                                                {WEEKDAY_SHORT[c.date.getDay()]} {c.date.getDate()}{c.time ? ` · ${formatTimeRange(c.startTime, c.endTime)}` : ''} · {c.units} periods
                                             </Text>
                                             <Text style={[styles.chipX, { color: accentDark }]}>×</Text>
                                         </TouchableOpacity>
@@ -381,6 +412,8 @@ const getStyles = () => StyleSheet.create({
         marginBottom: SPACING.lg,
     },
     modeBtn: {
+        minHeight: 48,
+        justifyContent: 'center',
         flex: 1,
         paddingVertical: 9,
         borderRadius: BORDER_RADIUS.full,
@@ -569,6 +602,7 @@ const getStyles = () => StyleSheet.create({
         lineHeight: 18,
     },
     // Summary
+    suggestionButton: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 },
     summary: {
         marginTop: SPACING.xs,
     },

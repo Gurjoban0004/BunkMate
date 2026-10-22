@@ -8,9 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #f6f5f1; --card: #ffffff; --inset: #f4f3f7; --ink: #292737; --ink2: #666373; --muted: #85818d;
+  --bg: #f6f5f1; --card: #ffffff; --inset: #f4f3f7; --ink: #292737; --ink2: #666373; --muted: #716d7a;
   --line: #e5e3e9; --line2: rgba(95,102,139,.14); --accent: #5f668b; --accent-soft: #e8e9f5;
-  --good: #4f8f74; --good-soft: #e4f1eb; --bad: #b5674e; --bad-soft: #fbe7de; --warn: #c08f45; --warn-soft: #f9f0dc;
+  --good: #347453; --good-soft: #e4f1eb; --bad: #a54e36; --bad-soft: #fbe7de; --warn: #876025; --warn-soft: #f9f0dc;
   --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
   --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: light;
@@ -42,7 +42,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 80px; }
 h2 { font: 600 26px/1.15 var(--serif); margin: 0 0 4px; letter-spacing: -.01em; }
 .lede { color: var(--ink2); margin: 0 0 18px; max-width: 72ch; }
 .grid { display: grid; gap: 16px; }
-.g2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0; }
 .card h3 { font: 600 13px var(--sans); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
 .card h3 .hint { margin-left: auto; font-weight: 400; color: var(--muted); font-size: 12px; }
@@ -60,7 +60,7 @@ h2 { font: 600 26px/1.15 var(--serif); margin: 0 0 4px; letter-spacing: -.01em; 
 .btn:disabled { opacity: .4; cursor: default; }
 .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 input[type=date], input[type=search], select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
-input[type=search] { min-width: 260px; }
+input[type=search] { min-width: min(260px, 100%); max-width: 100%; }
 
 .table-wrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -126,17 +126,33 @@ button.student-avatar:focus-visible { outline: 2px solid var(--accent); outline-
 .student-profile { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
 .student-profile .student-avatar { width: 56px; height: 56px; font-size: 22px; }
 .student-profile h2 { margin: 0; }
+
+::selection { background: var(--accent-soft); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button, input, select { min-height: 44px; }
+input { caret-color: var(--accent); }
+.sort { border: 0; padding: 0; background: transparent; font: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; text-align: left; }
+@media (max-width: 640px) {
+  .bar, main { padding-left: 16px; padding-right: 16px; }
+  nav { padding-left: 4px; padding-right: 4px; }
+  .bar { align-items: center; gap: 8px; }
+  .brand small { display: none; }
+  .status { gap: 8px; font-size: 11px; }
+  .drawer { padding: 16px; }
+  .tl-row { grid-template-columns: 110px minmax(80px, 1fr) 48px; gap: 8px; }
+  .hbar { grid-template-columns: minmax(80px, 120px) 1fr 56px; gap: 8px; }
+}
 </style>
 </head>
 <body>
 <header>
   <div class="bar">
     <div class="brand">Presence<small>Admin</small></div>
-    <div class="status"><span id="loaded"></span><button class="btn" id="refresh">Refresh</button></div>
+    <div class="status"><span id="loaded" role="status" aria-live="polite"></span><button class="btn" id="refresh">Refresh</button></div>
   </div>
   <nav id="nav"></nav>
 </header>
-<main id="view"></main>
+<main id="view" aria-busy="true"></main>
 <div id="drawer"></div>
 <dialog id="photo-dialog" class="photo-dialog" aria-labelledby="photo-title">
   <header><h2 id="photo-title">Student photo</h2><button class="btn" data-close-photo>Close photo</button></header>
@@ -159,15 +175,17 @@ const html = (strings, ...vals) => new Raw(strings.reduce((out, s, i) => out + s
 
 const memo = new Map();
 function api(path) {
-  if (!memo.has(path)) {
-    memo.set(path, fetch(path).then(async (r) => {
+  const cached = memo.get(path);
+  if (!cached || Date.now() - cached.at > 60000) {
+    const promise = fetch(path, { signal: AbortSignal.timeout(20000) }).then(async (r) => {
       const body = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
       if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
       return body;
-    }));
-    memo.get(path).catch(() => memo.delete(path));
+    });
+    memo.set(path, { promise, at: Date.now() });
+    promise.catch(() => { if (memo.get(path)?.promise === promise) memo.delete(path); });
   }
-  return memo.get(path);
+  return memo.get(path).promise;
 }
 const metric = (name, params = {}) => api(`/api/metric/${name}?${new URLSearchParams(params)}`);
 
@@ -188,7 +206,7 @@ const ago = (ms) => {
   return `${Math.floor(s / 86400)}d ago`;
 };
 const pct = (v, d = 0) => (v == null ? '—' : `${Number(v).toFixed(d)}%`);
-const SCREENS = { TodayMain: 'Today', SubjectsList: 'Subjects', SubjectDetail: 'Subject detail', SubjectPlanner: 'Planner', Insights: 'Insights', InsightsMain: 'Insights', Settings: 'Settings', EditTimetable: 'Edit timetable', EditSubjects: 'Edit subjects', ERPConnect: 'Connect college', AdminMain: 'Admin' };
+const SCREENS = { TodayMain: 'Today', SubjectsList: 'Subjects', SubjectDetail: 'Subject detail', SubjectPlanner: 'Planner', SkipPlan: 'Skip calendar', Insights: 'Insights', InsightsMain: 'Insights', Settings: 'Settings', EditTimetable: 'Edit timetable', EditSubjects: 'Edit subjects', ERPConnect: 'Connect college', AdminMain: 'Admin' };
 function features(screens) {
   const out = {};
   Object.entries(screens || {}).forEach(([k, n]) => { const l = SCREENS[k] || k; out[l] = (out[l] || 0) + (Number(n) || 0); });
@@ -249,7 +267,12 @@ function columns(values, labels, { selected = -1, pick } = {}) {
 }
 function load(target, fn) {
   target.innerHTML = '<div class="loading">Loading…</div>';
-  return fn().then((out) => { target.innerHTML = part(out); }, (e) => { target.innerHTML = part(html`<div class="error">${e.message}</div>`); });
+  target.pending = fn().then((out) => { target.innerHTML = part(out); return true; }, (e) => {
+    target.innerHTML = part(html`<div class="error" role="alert">${e.message} <button class="btn" data-retry>Retry panel</button></div>`);
+    target.querySelector('[data-retry]').onclick = () => load(target, fn);
+    return false;
+  });
+  return target.pending;
 }
 const slot = (id) => html`<div id="${id}"><div class="loading">Loading…</div></div>`;
 
@@ -257,6 +280,7 @@ const slot = (id) => html`<div id="${id}"><div class="loading">Loading…</div><
 const VIEWS = {};
 
 VIEWS.today = async (view, q) => {
+  const $v = (selector) => view.querySelector(selector);
   const day = q.day || istDay();
   const isToday = day === istDay();
   view.innerHTML = part(html`
@@ -264,7 +288,7 @@ VIEWS.today = async (view, q) => {
     <p class="lede">Who opened the app, when, for how long, and what they used. Times are IST; a session is foreground time to the minute, and beats more than five minutes apart start a new one.</p>
     <div class="controls">
       <button class="btn" data-go="#today?day=${shift(day, -1)}">‹ Previous</button>
-      <input type="date" id="day" value="${day}" max="${istDay()}">
+      <input type="date" id="day" aria-label="Activity date" value="${day}" max="${istDay()}">
       <button class="btn" data-go="#today?day=${shift(day, 1)}" ${isToday ? 'disabled' : ''}>Next ›</button>
       ${isToday ? '' : html`<button class="btn" data-go="#today">Back to today</button>`}
     </div>
@@ -275,15 +299,15 @@ VIEWS.today = async (view, q) => {
       <div class="card"><h3>What's used most <span class="hint">screen views</span></h3>${slot('t-features')}</div>
     </div>
     <div class="card mt"><h3>Everyone who opened the app</h3>${slot('t-table')}</div>`);
-  $('#day').onchange = (e) => { location.hash = `#today?day=${e.target.value}`; };
+  $v('#day').onchange = (e) => { location.hash = `#today?day=${e.target.value}`; };
 
   const [d, live, logins] = await Promise.all([
     metric('daily', { day }),
     isToday ? metric('live').catch(() => null) : null,
     isToday ? metric('loginEvents').catch(() => null) : null,
-  ]).catch((e) => { $('#t-kpis').innerHTML = part(html`<div class="error">${e.message}</div>`); throw e; });
+  ]).catch((e) => { $v('#t-kpis').innerHTML = part(html`<div class="error">${e.message}</div>`); throw e; });
 
-  $('#t-kpis').innerHTML = part(html`<div class="kpis">
+  $v('#t-kpis').innerHTML = part(html`<div class="kpis">
     ${isToday ? kpi('Online now', live?.onlineNow, live?.onlineNow ? 'good' : '') : ''}
     ${kpi('Students', d.users)}${kpi('Sessions', d.sessions)}${kpi('Time in app', mins(d.minutes))}
     ${kpi('Avg per student', mins(d.avgMinutes))}
@@ -293,7 +317,7 @@ VIEWS.today = async (view, q) => {
 
   const people = [...d.people].sort((a, b) => a.firstOpenAt - b.firstOpenAt);
   const at = (ms) => Math.min(100, Math.max(0, ((ms - d.dayStart) / DAY) * 100));
-  $('#t-timeline').innerHTML = part(people.length ? html`<div class="timeline">
+  $v('#t-timeline').innerHTML = part(people.length ? html`<div class="timeline">
     <div class="tl-row head"><span></span><div class="tl-scale">${[0, 3, 6, 9, 12, 15, 18, 21].map((h) => html`<span style="left:${(h / 24) * 100}%">${h % 12 || 12}${h < 12 ? 'am' : 'pm'}</span>`)}</div><span class="right">time</span></div>
     ${people.map((p) => html`<div class="tl-row" data-student="${p.rollNumber}">
       <span class="tl-name"><span class="name">${nameOf(p.rollNumber, p.studentName) || p.rollNumber}</span></span>
@@ -304,10 +328,10 @@ VIEWS.today = async (view, q) => {
       <span class="right num">${mins(p.minutes)}</span></div>`)}
   </div>` : empty(isToday ? 'Nobody has opened the app yet today.' : 'Nobody opened the app on this day.'));
 
-  $('#t-hours').innerHTML = part(columns(d.hours, d.hours.map((_, h) => (h % 3 ? '' : `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`))));
-  $('#t-features').innerHTML = part(features(d.screens).length ? hbars(features(d.screens), { color: 'var(--good)' }) : empty('No screen views yet — they come from app versions with usage pings.'));
+  $v('#t-hours').innerHTML = part(columns(d.hours, d.hours.map((_, h) => (h % 3 ? '' : `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`))));
+  $v('#t-features').innerHTML = part(features(d.screens).length ? hbars(features(d.screens), { color: 'var(--good)' }) : empty('No screen views yet — they come from app versions with usage pings.'));
 
-  $('#t-table').innerHTML = part(people.length ? html`<div class="table-wrap"><table>
+  $v('#t-table').innerHTML = part(people.length ? html`<div class="table-wrap"><table>
     <tr><th>Student</th><th>First opened</th><th>Last seen</th><th class="right">Sessions</th><th class="right">Time</th><th>Device</th><th>Used</th></tr>
     ${people.map((p) => html`<tr class="click" data-student="${p.rollNumber}">
       <td>${who(p.rollNumber, p.studentName)}</td><td class="num">${clock(p.firstOpenAt)}</td><td class="num">${clock(p.lastSeenAt)}</td>
@@ -318,30 +342,32 @@ VIEWS.today = async (view, q) => {
 };
 
 VIEWS.trends = async (view) => {
+  const $v = (selector) => view.querySelector(selector);
   view.innerHTML = part(html`<h2>Trends</h2><p class="lede">The last 14 college days. Click a column to open that day.</p>
     <div class="grid g2"><div class="card"><h3>Students per day</h3>${slot('r-users')}</div><div class="card"><h3>Screen views per day</h3>${slot('r-views')}</div></div>
     <div class="grid g2 mt"><div class="card"><h3>Features, last 14 days</h3>${slot('r-features')}</div><div class="card"><h3>By day</h3>${slot('r-table')}</div></div>`);
   const u = await metric('usage');
   const labels = u.days.map((x) => String(Number(x.day.slice(8))));
   const pick = (i) => u.days[i].day;
-  $('#r-users').innerHTML = part(columns(u.days.map((x) => x.users), labels, { pick, selected: u.days.length - 1 }));
-  $('#r-views').innerHTML = part(columns(u.days.map((x) => x.views), labels, { pick }));
-  $('#r-features').innerHTML = part(hbars(features(u.screens), { color: 'var(--good)' }));
-  $('#r-table').innerHTML = part(html`<div class="table-wrap"><table><tr><th>Day</th><th class="right">Students</th><th class="right">Views</th><th>Top screen</th></tr>
+  $v('#r-users').innerHTML = part(columns(u.days.map((x) => x.users), labels, { pick, selected: u.days.length - 1 }));
+  $v('#r-views').innerHTML = part(columns(u.days.map((x) => x.views), labels, { pick }));
+  $v('#r-features').innerHTML = part(hbars(features(u.screens), { color: 'var(--good)' }));
+  $v('#r-table').innerHTML = part(html`<div class="table-wrap"><table><tr><th>Day</th><th class="right">Students</th><th class="right">Views</th><th>Top screen</th></tr>
     ${[...u.days].reverse().map((x) => html`<tr class="click" data-go="#today?day=${x.day}"><td>${dayLabel(x.day)}</td><td class="right num">${x.users}</td><td class="right num">${x.views}</td><td>${features(x.screens)[0]?.[0] || '—'}</td></tr>`)}
   </table></div>`);
 };
 
 VIEWS.students = async (view, q) => {
+  const $v = (selector) => view.querySelector(selector);
   view.innerHTML = part(html`<h2>Students</h2><p class="lede">Everyone the server has seen sign in or sync, merged with what their phone backed up. Click a row for the full profile, or a photo to view it in full. Missing photos appear after the student's next college sync.</p>
     ${slot('s-kpis')}<div class="controls">
-      <input type="search" id="s-q" placeholder="Search name or roll number" value="${q.q || ''}">
-      <select id="s-f"><option value="">Everyone</option><option value="7d">Active in the last 7 days</option><option value="nocloud">No cloud copy</option><option value="below">Below goal</option><option value="revoked">Revoked</option></select>
-    </div><div class="card">${slot('s-table')}</div>`);
+      <input type="search" id="s-q" aria-label="Search students" placeholder="Name, roll number or batch" value="${q.q || ''}">
+      <select id="s-f" aria-label="Filter students"><option value="">Everyone</option><option value="7d">Active in the last 7 days</option><option value="nocloud">No cloud copy</option><option value="below">Below goal</option><option value="revoked">Revoked</option></select>
+    </div><p id="s-count" class="lede" aria-live="polite"></p><div class="card">${slot('s-table')}</div>`);
   const [r, revoked] = await Promise.all([metric('userRoster'), api('/api/raw/revoked').catch(() => [])]);
   const revokedSet = new Set(revoked.map((x) => x.id));
   const week = Date.now() - 7 * DAY;
-  $('#s-kpis').innerHTML = part(html`<div class="kpis">${kpi('Students', r.users.length)}${kpi('Active 7 days', r.users.filter((u) => u.lastActive >= week).length)}
+  $v('#s-kpis').innerHTML = part(html`<div class="kpis">${kpi('Students', r.users.length)}${kpi('Active 7 days', r.users.filter((u) => u.lastActive >= week).length)}
     ${kpi('With cloud copy', r.users.filter((u) => u.inCloud).length)}${kpi('Photos saved', r.users.filter((u) => photoSource(u.studentPhoto)).length)}${kpi('Below goal', r.users.filter((u) => u.belowGoal > 0).length, 'warn')}${kpi('Revoked', revokedSet.size, revokedSet.size ? 'bad' : '')}</div>
     <div class="controls">${Object.entries(r.byPlatform).map(([k, n]) => html`<span class="chip accent">${k} · ${n}</span>`)}${Object.entries(r.byVersion).sort((a, b) => b[1] - a[1]).map(([k, n]) => html`<span class="chip">v${k} · ${n}</span>`)}
     ${r.unfinished.count ? html`<span class="chip warn">${r.unfinished.count} legacy login-code accounts not listed</span>` : ''}</div>`);
@@ -349,13 +375,14 @@ VIEWS.students = async (view, q) => {
   let sort = { key: 'lastActive', dir: -1 };
   const cols = [['studentName', 'Student'], ['batchGroup', 'Batch'], ['lastActive', 'Last seen'], ['firstSeen', 'First seen'], ['loginCount', 'Logins'], ['syncCount', 'Syncs'], ['overallAttendancePct', 'Attendance'], ['belowGoal', 'Below goal'], ['platform', 'Device']];
   const draw = () => {
-    const needle = $('#s-q').value.trim().toLowerCase();
-    const f = $('#s-f').value;
-    const rows = r.users.filter((u) => (!needle || `${u.studentName || ''} ${u.rollNumber}`.toLowerCase().includes(needle))
+    const needle = $v('#s-q').value.trim().toLowerCase();
+    const f = $v('#s-f').value;
+    const rows = r.users.filter((u) => (!needle || `${u.studentName || ''} ${u.rollNumber} ${u.batchGroup || ''}`.toLowerCase().includes(needle))
       && (!f || (f === '7d' && u.lastActive >= week) || (f === 'nocloud' && !u.inCloud) || (f === 'below' && u.belowGoal > 0) || (f === 'revoked' && revokedSet.has(u.rollNumber))))
       .sort((a, b) => { const x = a[sort.key] ?? '', y = b[sort.key] ?? ''; return (x > y ? 1 : x < y ? -1 : 0) * sort.dir; });
-    $('#s-table').innerHTML = part(rows.length ? html`<div class="table-wrap"><table>
-      <tr>${cols.map(([k, l]) => html`<th data-sort="${k}">${l}${sort.key === k ? (sort.dir > 0 ? ' ↑' : ' ↓') : ''}</th>`)}<th>Status</th></tr>
+    $v('#s-count').textContent = `${rows.length} of ${r.users.length} students`;
+    $v('#s-table').innerHTML = part(rows.length ? html`<div class="table-wrap"><table>
+      <tr>${cols.map(([k, l]) => html`<th aria-sort="${sort.key === k ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none'}"><button class="sort" data-sort="${k}">${l}${sort.key === k ? (sort.dir > 0 ? ' ↑' : ' ↓') : ''}</button></th>`)}<th>Status</th></tr>
       ${rows.map((u) => html`<tr class="click" data-student="${u.rollNumber}">
         <td>${who(u.rollNumber, u.studentName)}</td><td>${u.batchGroup}</td>
         <td class="num">${ago(u.lastActive)}</td><td class="num">${u.firstSeen ? new Date(u.firstSeen).toLocaleDateString('en-IN') : '—'}</td>
@@ -364,17 +391,18 @@ VIEWS.students = async (view, q) => {
         <td>${u.platform || '—'}<span class="sub">${u.version ? `v${u.version}` : ''}</span></td>
         <td>${revokedSet.has(u.rollNumber) ? html`<span class="chip bad">revoked</span>` : !u.inCloud ? html`<span class="chip">no cloud copy</span>` : u.erpConnected ? html`<span class="chip good">active</span>` : html`<span class="chip warn">disconnected</span>`}</td></tr>`)}
     </table></div>` : empty('No match.'));
-    view.querySelectorAll('th[data-sort]').forEach((th) => { th.onclick = () => { const k = th.dataset.sort; sort = { key: k, dir: sort.key === k ? -sort.dir : -1 }; draw(); }; });
+    view.querySelectorAll('button[data-sort]').forEach((th) => { th.onclick = () => { const k = th.dataset.sort; sort = { key: k, dir: sort.key === k ? -sort.dir : -1 }; draw(); }; });
   };
-  $('#s-q').oninput = draw;
-  $('#s-f').onchange = draw;
+  $v('#s-q').oninput = draw;
+  $v('#s-f').onchange = draw;
   draw();
 };
 
 VIEWS.signins = async (view) => {
+  const $v = (selector) => view.querySelector(selector);
   view.innerHTML = part(html`<h2>Sign-ins</h2><p class="lede">Every sign-in attempt against the college, recorded by the server on the login path itself.</p>${slot('l-body')}`);
   const l = await metric('loginEvents');
-  $('#l-body').innerHTML = part(html`<div class="kpis">${kpi('Sign-ins today', l.loginsToday)}${kpi('Students today', l.studentsToday)}${kpi('Sign-ins 24h', l.logins24h)}${kpi('Rejected 24h', l.failed24h, l.failed24h ? 'warn' : '')}${kpi('Events on record', l.total)}</div>
+  $v('#l-body').innerHTML = part(html`<div class="kpis">${kpi('Sign-ins today', l.loginsToday)}${kpi('Students today', l.studentsToday)}${kpi('Sign-ins 24h', l.logins24h)}${kpi('Rejected 24h', l.failed24h, l.failed24h ? 'warn' : '')}${kpi('Events on record', l.total)}</div>
     <div class="controls">${Object.entries(l.byOutcome).map(([k, n]) => html`<span class="chip ${OUTCOME[k]?.[1] || ''}">${OUTCOME[k]?.[0] || k} · ${n}</span>`)}</div>
     <div class="card"><div class="table-wrap"><table><tr><th>When</th><th>Student</th><th>Outcome</th><th>Device</th><th>Device id</th><th>Network</th></tr>
     ${l.events.map((e) => html`<tr class="click" data-student="${e.rollNumber}"><td class="num">${dateTime(e.at)}<span class="sub">${ago(e.at)}</span></td><td>${who(e.rollNumber, e.studentName)}</td>
@@ -384,53 +412,57 @@ VIEWS.signins = async (view) => {
 };
 
 VIEWS.attendance = async (view) => {
+  const $v = (selector) => view.querySelector(selector);
   view.innerHTML = part(html`<h2>Attendance</h2><p class="lede">Across the students whose phones back their attendance up to the cloud.</p>${slot('a-kpis')}
     <div class="card"><h3>Subjects by miss rate <span class="hint">subjects with two or more students</span></h3>${slot('a-subjects')}</div>
     <div class="grid g2 mt"><div class="card"><h3>Misses by weekday <span class="hint">from the register</span></h3>${slot('a-week')}</div><div class="card"><h3>Batches <span class="hint">every student</span></h3>${slot('a-batch')}</div></div>`);
-  load($('#a-kpis'), async () => { const o = await metric('overview'); return html`<div class="kpis">${kpi('Avg attendance', pct(o.avgAttendancePct, 1), o.avgAttendancePct < 75 ? 'bad' : 'good')}${kpi('Below goal', o.belowGoalStudents, o.belowGoalStudents ? 'warn' : '')}${kpi('With numbers', o.studentsWithNumbers)}${kpi('College connected', o.connected)}${kpi('Cloud copies', o.students)}</div>`; });
-  load($('#a-subjects'), async () => {
+  load($v('#a-kpis'), async () => { const o = await metric('overview'); return html`<div class="kpis">${kpi('Avg attendance', pct(o.avgAttendancePct, 1), o.avgAttendancePct < 75 ? 'bad' : 'good')}${kpi('Below goal', o.belowGoalStudents, o.belowGoalStudents ? 'warn' : '')}${kpi('With numbers', o.studentsWithNumbers)}${kpi('College connected', o.connected)}${kpi('Cloud copies', o.students)}</div>`; });
+  load($v('#a-subjects'), async () => {
     const s = await metric('subjectDifficulty');
     return s.length ? html`<div class="table-wrap"><table><tr><th>Subject</th><th class="right">Students</th><th class="right">Attended</th><th class="right">Missed</th><th style="width:40%">Miss rate</th></tr>
       ${s.map((x) => html`<tr><td class="name">${x.name}<span class="sub">${x.code}</span></td><td class="right num">${x.students}</td><td class="right num">${x.totalPresent}</td><td class="right num">${x.totalAbsent}</td>
       <td><div class="hbar" style="grid-template-columns:1fr 60px;padding:0"><div class="track"><div class="fill" style="width:${Math.min(100, x.bunkRate)}%;background:${x.bunkRate >= 35 ? 'var(--bad)' : x.bunkRate >= 15 ? 'var(--warn)' : 'var(--good)'}"></div></div><span class="right num">${pct(x.bunkRate)}</span></div></td></tr>`)}</table></div>` : empty('Needs at least two students on a subject.');
   });
-  load($('#a-week'), async () => { const b = await metric('bunkCulture'); return b.every((x) => !x.total) ? empty('No register data yet.') : hbars(b.map((x) => [x.day, x.bunkRate]), { color: 'var(--bad)', fmt: (v) => pct(v) }); });
-  load($('#a-batch'), async () => { const b = await metric('batchDistribution'); return hbars(b.map((x) => [x.batch, x.count])); });
+  load($v('#a-week'), async () => { const b = await metric('bunkCulture'); return b.every((x) => !x.total) ? empty('No register data yet.') : hbars(b.map((x) => [x.day, x.bunkRate]), { color: 'var(--bad)', fmt: (v) => pct(v) }); });
+  load($v('#a-batch'), async () => { const b = await metric('batchDistribution'); return hbars(b.map((x) => [x.batch, x.count])); });
 };
 
 VIEWS.health = async (view) => {
+  const $v = (selector) => view.querySelector(selector);
   view.innerHTML = part(html`<h2>Health</h2><p class="lede">From the sync telemetry phones write after a cloud sign-in. Empty here while the Today tab is busy means phones are not completing that sign-in.</p>
     <div class="card"><h3>College outages <span class="hint">last hour</span></h3>${slot('h-out')}</div>
     <div class="grid g2 mt"><div class="card"><h3>Endpoints <span class="hint">24 hours</span></h3>${slot('h-ep')}</div><div class="card"><h3>Sign-in prompts <span class="hint">7 days</span></h3>${slot('h-sess')}</div></div>
     <div class="card mt"><h3>Parser failures <span class="hint">recent syncs</span></h3>${slot('h-parse')}</div>`);
-  load($('#h-out'), async () => { const d = await metric('downtime'); return d.length ? d.map((x) => html`<div class="hbar" style="grid-template-columns:1fr auto"><span><span class="dot" style="background:var(--bad)"></span><b>${x.type}</b> — ${x.failures}/${x.attempts} calls failed, ${x.affectedUsers} students, since ${clock(x.startedAt)}<span class="sub">${x.sampleError || ''}</span></span><b class="num">${pct(x.failRate)}</b></div>`) : empty('Nothing failing. Outages appear on their own and clear when the college recovers.'); });
-  load($('#h-ep'), async () => {
+  load($v('#h-out'), async () => { const d = await metric('downtime'); return d.length ? d.map((x) => html`<div class="hbar" style="grid-template-columns:1fr auto"><span><span class="dot" style="background:var(--bad)"></span><b>${x.type}</b> — ${x.failures}/${x.attempts} calls failed, ${x.affectedUsers} students, since ${clock(x.startedAt)}<span class="sub">${x.sampleError || ''}</span></span><b class="num">${pct(x.failRate)}</b></div>`) : empty('Nothing failing. Outages appear on their own and clear when the college recovers.'); });
+  load($v('#h-ep'), async () => {
     const [e, o] = await Promise.all([metric('endpointHealth'), metric('overview')]);
     return html`<div class="kpis">${kpi('Syncs 24h', o.syncs24h)}${kpi('Success 24h', pct(o.successRate24h), o.successRate24h == null ? '' : o.successRate24h >= 95 ? 'good' : 'warn')}</div>
       ${e.length ? html`<div class="table-wrap"><table><tr><th>Endpoint</th><th class="right">Calls</th><th class="right">Failed</th><th class="right">Avg</th><th class="right">Success</th></tr>${e.map((x) => html`<tr><td class="name">${x.name}</td><td class="right num">${x.count}</td><td class="right num">${x.fail}</td><td class="right num">${x.avgDuration}ms</td><td class="right num">${pct(x.successRate, 1)}</td></tr>`)}</table></div>` : empty('No sync telemetry in 24 hours.')}`;
   });
-  load($('#h-sess'), async () => {
+  load($v('#h-sess'), async () => {
     const s = await metric('sessionEvents');
     return html`<div class="controls">${Object.entries(s.byReason).map(([k, n]) => html`<span class="chip warn">${REASON[k] || k} · ${n}</span>`)}</div>
       ${s.recent.length ? html`<div class="table-wrap"><table><tr><th>Student</th><th>Asked to</th><th>Why</th><th>When</th></tr>${s.recent.map((x) => html`<tr class="click" data-student="${x.rollNumber || x.userId}"><td>${who(x.rollNumber || x.userId, x.studentName)}</td><td>${x.type === 'needsOtp' ? 'enter a code' : 'sign in again'}</td><td>${REASON[x.reason] || x.reason}</td><td class="num">${ago(x.at)}</td></tr>`)}</table></div>` : empty('Nobody was asked to sign in again this week.')}`;
   });
-  load($('#h-parse'), async () => { const p = await metric('parserFailures'); return p.length ? p.map((f) => html`<details><summary>${nameOf(f.rollNumber) || ''} ${f.rollNumber} · ${dateTime(f.timestampMs)} · ${f.errors.length} error(s)</summary><pre>${JSON.stringify(f.errors, null, 2)}</pre></details>`) : empty('No parser errors.'); });
+  load($v('#h-parse'), async () => { const p = await metric('parserFailures'); return p.length ? p.map((f) => html`<details><summary>${nameOf(f.rollNumber) || ''} ${f.rollNumber} · ${dateTime(f.timestampMs)} · ${f.errors.length} error(s)</summary><pre>${JSON.stringify(f.errors, null, 2)}</pre></details>`) : empty('No parser errors.'); });
 };
 
 VIEWS.controls = async (view) => {
+  const $v = (selector) => view.querySelector(selector);
   view.innerHTML = part(html`<h2>Controls</h2><p class="lede">Read-only here. Change these from the admin panel in the app, where every write is authorised and audited.</p>
     <div class="grid g2"><div class="card"><h3>Remote config</h3>${slot('c-config')}</div><div class="card"><h3>Revoked access</h3>${slot('c-revoked')}</div></div>
     <div class="card mt"><h3>Announcements</h3>${slot('c-ann')}</div><div class="card mt"><h3>Audit log <span class="hint">last 200 admin actions</span></h3>${slot('c-audit')}</div>`);
-  load($('#c-config'), async () => { const c = await api('/api/raw/config'); return c ? html`<dl class="facts">${Object.entries(c).map(([k, v]) => html`<div><dt>${k}</dt><dd>${typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd></div>`)}</dl>` : empty('No config document — the app runs on defaults.'); });
-  load($('#c-revoked'), async () => { const r = await api('/api/raw/revoked'); return r.length ? html`<table><tr><th>Student</th><th>Reason</th><th>When</th></tr>${r.map((x) => html`<tr class="click" data-student="${x.id}"><td>${who(x.id)}</td><td>${x.reason}</td><td class="num">${dateTime(x.revokedAt)}<span class="sub">by ${x.revokedBy || '—'}</span></td></tr>`)}</table>` : empty('Nobody is revoked.'); });
-  load($('#c-ann'), async () => { const a = await api('/api/raw/announcements'); return a.length ? html`<div class="table-wrap"><table><tr><th>Title</th><th>Type</th><th>State</th><th>Published</th><th>Expires</th></tr>${a.map((x) => html`<tr><td class="name">${x.title}<span class="sub">${x.message}</span></td><td>${x.type}</td><td>${x.active && (!x.expiry || x.expiry > Date.now()) ? html`<span class="chip good">live</span>` : html`<span class="chip">off</span>`}</td><td class="num">${dateTime(x.createdAt)}</td><td class="num">${x.expiry ? dateTime(x.expiry) : 'never'}</td></tr>`)}</table></div>` : empty('No announcements.'); });
-  load($('#c-audit'), async () => { const a = await api('/api/raw/audit'); return a.length ? html`<div class="table-wrap"><table><tr><th>When</th><th>Admin</th><th>Action</th><th>Detail</th></tr>${a.map((x) => html`<tr><td class="num">${dateTime(x.at)}</td><td>${nameOf(x.actor) || x.actor}</td><td class="name">${x.action}</td><td><code>${JSON.stringify(x.detail)}</code></td></tr>`)}</table></div>` : empty('No admin actions yet.'); });
+  load($v('#c-config'), async () => { const c = await api('/api/raw/config'); return c ? html`<dl class="facts">${Object.entries(c).map(([k, v]) => html`<div><dt>${k}</dt><dd>${typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd></div>`)}</dl>` : empty('No config document — the app runs on defaults.'); });
+  load($v('#c-revoked'), async () => { const r = await api('/api/raw/revoked'); return r.length ? html`<table><tr><th>Student</th><th>Reason</th><th>When</th></tr>${r.map((x) => html`<tr class="click" data-student="${x.id}"><td>${who(x.id)}</td><td>${x.reason}</td><td class="num">${dateTime(x.revokedAt)}<span class="sub">by ${x.revokedBy || '—'}</span></td></tr>`)}</table>` : empty('Nobody is revoked.'); });
+  load($v('#c-ann'), async () => { const a = await api('/api/raw/announcements'); return a.length ? html`<div class="table-wrap"><table><tr><th>Title</th><th>Type</th><th>State</th><th>Published</th><th>Expires</th></tr>${a.map((x) => html`<tr><td class="name">${x.title}<span class="sub">${x.message}</span></td><td>${x.type}</td><td>${x.active && (!x.expiry || x.expiry > Date.now()) ? html`<span class="chip good">live</span>` : html`<span class="chip">off</span>`}</td><td class="num">${dateTime(x.createdAt)}</td><td class="num">${x.expiry ? dateTime(x.expiry) : 'never'}</td></tr>`)}</table></div>` : empty('No announcements.'); });
+  load($v('#c-audit'), async () => { const a = await api('/api/raw/audit'); return a.length ? html`<div class="table-wrap"><table><tr><th>When</th><th>Admin</th><th>Action</th><th>Detail</th></tr>${a.map((x) => html`<tr><td class="num">${dateTime(x.at)}</td><td>${nameOf(x.actor) || x.actor}</td><td class="name">${x.action}</td><td><code>${JSON.stringify(x.detail)}</code></td></tr>`)}</table></div>` : empty('No admin actions yet.'); });
 };
 
 // ── Student drawer ───────────────────────────────────────────────────
 async function openStudent(roll) {
   const box = $('#drawer');
   box.innerHTML = part(html`<div class="drawer-bg" data-close></div><aside class="drawer"><button class="btn close" data-close>Close ✕</button><div id="d-body"><div class="loading">Loading ${roll}…</div></div></aside>`);
+  const body = box.querySelector('#d-body');
   try {
     const s = await metric('student', { roll });
     const l = s.ledger || {};
@@ -439,7 +471,7 @@ async function openStudent(roll) {
     const days = Array.from({ length: 30 }, (_, i) => shift(istDay(), i - 29));
     const maxMin = Math.max(1, ...s.usage.map((u) => u.minutes));
     const fact = (k, v) => html`<div><dt>${k}</dt><dd>${v ?? '—'}</dd></div>`;
-    $('#d-body').innerHTML = part(html`
+    body.innerHTML = part(html`
       <div class="student-profile">${avatar(s.rollNumber, s.studentName, s.studentPhoto)}<h2>${s.studentName || 'Name not reported'}</h2></div>
       <p class="lede num">${s.rollNumber} · ${s.batchGroup}${l.platform ? ` · ${l.platform}` : ''}${l.appVersion ? ` v${l.appVersion}` : ''}
         ${s.revoked ? html` <span class="chip bad">revoked — ${s.revoked.reason}</span>` : ''}${s.cloud ? '' : html` <span class="chip">no cloud copy</span>`}</p>
@@ -477,25 +509,35 @@ async function openStudent(roll) {
 
       <details class="mt"><summary>Raw data</summary><pre>${JSON.stringify(s, null, 2)}</pre></details>`);
   } catch (e) {
-    $('#d-body').innerHTML = part(html`<div class="error">${e.message}</div>`);
+    body.innerHTML = part(html`<div class="error">${e.message}</div>`);
   }
 }
 
 // ── Routing ──────────────────────────────────────────────────────────
 const TABS = [['today', 'Today'], ['trends', 'Trends'], ['students', 'Students'], ['signins', 'Sign-ins'], ['attendance', 'Attendance'], ['health', 'Health'], ['controls', 'Controls']];
+let renderVersion = 0;
 
 async function render() {
+  const version = ++renderVersion;
   const [name, qs] = (location.hash.slice(1) || 'today').split('?');
   const q = Object.fromEntries(new URLSearchParams(qs));
   const tab = VIEWS[name] ? name : 'today';
-  $('#nav').innerHTML = part(TABS.map(([k, l]) => html`<a href="#${k}" class="${k === tab ? 'on' : ''}">${l}</a>`));
+  $('#nav').innerHTML = part(TABS.map(([k, l]) => html`<a href="#${k}" aria-current="${k === tab ? 'page' : 'false'}" class="${k === tab ? 'on' : ''}">${l}</a>`));
   const view = $('#view');
+  // Scope pending work to its own page so a slow response cannot overwrite a newer tab.
+  const page = document.createElement('div');
+  view.replaceChildren(page);
+  view.setAttribute('aria-busy', 'true');
+  $('#loaded').textContent = 'Loading…';
   try {
-    await VIEWS[tab](view, q);
+    await VIEWS[tab](page, q);
+    await Promise.all([...page.querySelectorAll('[id]')].map((element) => element.pending).filter(Boolean));
   } catch (e) {
-    if (!view.querySelector('.error')) view.insertAdjacentHTML('beforeend', part(html`<div class="error mt">${e.message}</div>`));
+    if (!page.querySelector('.error')) page.insertAdjacentHTML('beforeend', part(html`<div class="error mt" role="alert">${e.message} · Use Refresh to try again.</div>`));
   }
-  $('#loaded').textContent = `Loaded ${new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
+  if (version !== renderVersion) return;
+  view.setAttribute('aria-busy', 'false');
+  $('#loaded').textContent = page.querySelector('.error') ? 'Some data failed · retry available' : `Checked ${clock(Date.now())} IST`;
 }
 
 document.addEventListener('click', (e) => {
@@ -523,7 +565,12 @@ document.addEventListener('click', (e) => {
   if (student && student.dataset.student) openStudent(student.dataset.student);
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#photo-dialog').open) $('#drawer').innerHTML = ''; });
-$('#refresh').onclick = async () => { memo.clear(); await loadNames(); render(); };
+$('#refresh').onclick = async () => {
+  const button = $('#refresh');
+  button.disabled = true; button.textContent = 'Refreshing…';
+  try { memo.clear(); await loadNames(); await render(); }
+  finally { button.disabled = false; button.textContent = 'Refresh'; }
+};
 window.addEventListener('hashchange', render);
 
 async function loadNames() {

@@ -70,3 +70,16 @@ test('subject selection happens in the details panel and leaves the calendar com
     fireEvent.press(screen.getByLabelText('Show all subjects'));
     expect(screen.getByLabelText('Skip Algorithms on 2026-10-12 at 09:00, 1 full pairs')).toBeTruthy();
 });
+
+test('attend all and undo only change plan preferences', () => {
+    const before = JSON.stringify(mockState.attendanceRecords), screen = page();
+    fireEvent.press(screen.getByText('Attend all'));
+    const next = mockDispatch.mock.calls.at(-1)[0];
+    expect(next.payload.skipPlan.skipIds).toEqual([]);
+    mockState = { ...mockState, settings: { ...mockState.settings, skipPlan: next.payload.skipPlan } };
+    screen.rerender(<SafeAreaInsetsContext.Provider value={{ top: 47, bottom: 0, left: 0, right: 0 }}><CombinedSkipPlanner /></SafeAreaInsetsContext.Provider>);
+    expect(screen.getByText('90.2% after this class')).toBeTruthy();
+    fireEvent.press(screen.getByText('Undo change'));
+    expect(mockDispatch.mock.calls.at(-1)[0].payload.skipPlan).toEqual({ pairsPerWeek: 2, weeks: 4 });
+    expect(JSON.stringify(mockState.attendanceRecords)).toBe(before);
+});

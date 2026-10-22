@@ -1,6 +1,7 @@
 import {
     getPlannerEndDate,
     getUpcomingSubjectClasses,
+    getPlannableSubjectClasses,
     isWithinPlannerWindow,
 } from '../semesterWindow';
 
@@ -40,5 +41,18 @@ describe('semesterWindow planner helpers', () => {
 
         expect(classes.map(cls => cls.dateKey)).toEqual(['2026-05-08']);
         expect(classes.every(cls => cls.subjectId === 'math')).toBe(true);
+    });
+
+    test('does not invent weekday classes when the actual timetable has no remaining sessions', () => {
+        const classes = getPlannableSubjectClasses(state, 'math', { fromDate: new Date(2026, 4, 7), maxDays: 1 });
+        expect(classes.map((cls) => cls.dateKey)).toEqual(['2026-05-08']);
+        expect(getPlannableSubjectClasses(state, 'math', { fromDate: new Date(2026, 4, 8) })).toEqual([]);
+    });
+
+    test('excludes register holidays and cancelled classes from real and estimated calendars', () => {
+        const input = { ...state, holidays: [], attendanceRecords: { '2026-05-06': { _holiday: true }, '2026-05-08': { math: { status: 'cancelled' } } } };
+        const options = { fromDate: new Date(2026, 4, 4) };
+        expect(getPlannableSubjectClasses(input, 'math', options)).toEqual([]);
+        expect(getPlannableSubjectClasses({ ...input, timetable: {} }, 'math', options).map((cls) => cls.dateKey)).toEqual(['2026-05-05', '2026-05-07']);
     });
 });

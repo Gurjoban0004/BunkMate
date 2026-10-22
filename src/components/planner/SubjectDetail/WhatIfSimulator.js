@@ -1,23 +1,19 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, BORDER_RADIUS, SHADOWS, TYPOGRAPHY } from '../../../theme/theme';
 import { calculatePlannerPercentage, simulateAttendance, calculateRecoveryClasses, calculateSkipAllowance } from '../../../utils/planner/attendanceCalculations';
-import { generateRecoveryPaths } from '../../../utils/planner/recoveryPlanner';
 import { useApp } from '../../../context/AppContext';
-import { getPlannerEndDate, getPlannableSubjectClasses } from '../../../utils/planner/semesterWindow';
+import { getPlannableSubjectClasses } from '../../../utils/planner/semesterWindow';
 
 /**
  * Interactive What-If Simulator with Skip/Attend stepper and dynamic predictions.
  */
-export default function WhatIfSimulator({ subjectData, initialMode = 'skip', simulationOffset = 0, setSimulationOffset, allowSkip = true, title = 'Simulator', classLabel = 'classes' }) {
+export default function WhatIfSimulator({ subjectData, navigation, initialMode = 'skip', simulationOffset = 0, setSimulationOffset, allowSkip = true, title = 'Skip / Attend simulator', classLabel = 'classes' }) {
     const styles = getStyles();
     const { attended, total, target, unitsPerClass = 1 } = subjectData;
 
     // 'skip' or 'attend' (fix)
-    const [mode, setMode] = useState(initialMode === 'skip' ? 'skip' : 'attend');
-
-    const navigation = useNavigation();
+    const [mode, setMode] = useState(allowSkip && initialMode === 'skip' ? 'skip' : 'attend');
 
     const handleModeChange = (newMode) => {
         setMode(newMode);
@@ -32,13 +28,13 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
         () => getPlannableSubjectClasses(state, subjectData.id, { maxClasses: 60 }),
         [state, subjectData.id]
     );
-    const hasSemesterEndDate = !!getPlannerEndDate(state);
     // The stepper counts CLASSES, so cap it by classes left, not periods.
-    const maxSimulatorSteps = Math.min(40, plannableClasses.length > 0 ? plannableClasses.length : 20);
+    const maxSimulatorSteps = Math.min(40, plannableClasses.length);
 
     const manualSteps = Math.abs(simulationOffset);
     const activeSteps = Math.min(maxSimulatorSteps, manualSteps);
-    const offset = mode === 'skip' ? -activeSteps : activeSteps;
+    const selectedUnits = plannableClasses.slice(0, activeSteps).reduce((sum, cls) => sum + (cls.assumed ? unitsPerClass : cls.units), 0);
+    const offset = mode === 'skip' ? -selectedUnits : selectedUnits;
 
     const openCalendarPlanner = () => {
         navigation.navigate('SubjectPlanner', {
@@ -50,11 +46,11 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
 
     // Simulation Data
     const currentPercentage = calculatePlannerPercentage(attended, total);
-    const simulated = simulateAttendance(attended, total, offset, unitsPerClass);
+    const simulated = simulateAttendance(attended, total, offset);
     const delta = (simulated.percentage - currentPercentage).toFixed(1);
 
     const handleStep = (val) => {
-        const newActive = Math.max(0, Math.min(maxSimulatorSteps, manualSteps + val));
+        const newActive = Math.max(0, Math.min(maxSimulatorSteps, activeSteps + val));
         if (setSimulationOffset) {
             setSimulationOffset(mode === 'skip' ? -newActive : newActive);
         }
@@ -67,46 +63,38 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                 // How many to recover?
                 const recovery = calculateRecoveryClasses(simulated.attended, simulated.total, target, unitsPerClass);
                 if (recovery) {
-                    // Try to get recovery paths for timeline/specific dates
-                    // We simulate the subject state with the newly skipped classes
-                    const simulatedSubject = {
-                        ...subjectData,
-                        attended: simulated.attended,
-                        total: simulated.total
-                    };
-                    const paths = generateRecoveryPaths(simulatedSubject, [target]);
-
-                    let extraText = '';
-                    if (paths.paths && paths.paths.length > 0) {
-                        extraText = ` (See Recovery Plan)`;
-                    }
-
                     return {
                         label: 'Warning',
-                        text: `Requires ${recovery.classesNeeded} classes to recover${extraText}.`,
+                        text: `Requires about ${recovery.classesNeeded} more classes to recover to ${target}%.`,
                         color: COLORS.dangerText
                     };
                 }
                 return {
                     label: 'Warning',
-                    text: `Danger! You will drop below ${target}%.`,
+                    text: `${target}% cannot be reached with the absences already recorded.`,
                     color: COLORS.dangerText
                 };
             } else {
                 // Calculate absolute consecutive skips possible from real state
-                const maxSafeSkips = calculateSkipAllowance(target, attended, total, unitsPerClass).skips;
-                const remainingSkips = maxSafeSkips - activeSteps;
+                let budget = calculateSkipAllowance(target, simulated.attended, simulated.total).units;
+                let remainingSkips = 0;
+                for (const cls of plannableClasses.slice(activeSteps)) {
+                    const units = cls.assumed ? unitsPerClass : cls.units;
+                    if (units > budget) break;
+                    budget -= units;
+                    remainingSkips++;
+                }
 
                 if (remainingSkips > 0) {
                     return {
                         label: 'Safe',
-                        text: `You can skip ${remainingSkips} more ${remainingSkips === 1 ? 'class' : 'classes'} safely.`,
+                        text: `You can skip ${remainingSkips} more ${remainingSkips === 1 ? 'class' : 'classes'} and stay at ${target}% or above.`,
                         color: COLORS.successDark
                     };
                 } else {
                     return {
                         label: 'Edge',
-                        text: `You are on the edge! 1 more skip drops you below ${target}%.`,
+                        text: activeSteps === maxSimulatorSteps ? 'No more upcoming classes in this planning window.' : `The next skip drops you below ${target}%.`,
                         color: COLORS.warningDark
                     };
                 }
@@ -120,12 +108,20 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                     color: COLORS.successDark
                 };
             } else {
-                // Per class gain at current state
-                const plusOne = simulateAttendance(simulated.attended, simulated.total, 1, unitsPerClass);
+                const nextClass = plannableClasses[activeSteps];
+                if (!nextClass) {
+                    return {
+                        label: 'End of plan',
+                        text: 'No more upcoming classes in this planning window.',
+                        color: COLORS.textSecondary
+                    };
+                }
+                const nextUnits = nextClass.assumed ? unitsPerClass : nextClass.units;
+                const plusOne = simulateAttendance(simulated.attended, simulated.total, 1, nextUnits);
                 const gain = (plusOne.percentage - simulated.percentage).toFixed(1);
                 return {
                     label: 'Improving',
-                    text: `Every class adds +${gain}% to your score.`,
+                    text: `The next class adds about ${gain} percentage points.`,
                     color: COLORS.successDark
                 };
             }
@@ -137,12 +133,12 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>{title}</Text>
+                <Text style={[styles.title, { flex: 1 }]}>{title}</Text>
                 <View style={styles.modeSwitch}>
-                    {allowSkip && <TouchableOpacity style={[styles.modeBtn, mode === 'skip' && styles.modeBtnActive]} onPress={() => handleModeChange('skip')}>
+                    {allowSkip && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Simulate skipping classes" accessibilityState={{ selected: mode === 'skip' }} style={[styles.modeBtn, mode === 'skip' && styles.modeBtnActive]} onPress={() => handleModeChange('skip')}>
                         <Text style={[styles.modeBtnText, mode === 'skip' && styles.modeBtnTextActive]}>SKIP</Text>
                     </TouchableOpacity>}
-                    <TouchableOpacity style={[styles.modeBtn, mode === 'attend' && styles.modeBtnActive]} onPress={() => handleModeChange('attend')}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Simulate attending classes" accessibilityState={{ selected: mode === 'attend' }} style={[styles.modeBtn, mode === 'attend' && styles.modeBtnActive]} onPress={() => handleModeChange('attend')}>
                         <Text style={[styles.modeBtnText, mode === 'attend' && styles.modeBtnTextActive]}>ATTEND</Text>
                     </TouchableOpacity>
                 </View>
@@ -151,14 +147,14 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
             {/* Compact result + stepper in one block */}
             <View style={styles.compactResultRow}>
                 <View style={styles.stepperWrapper}>
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove one simulated class pair" style={[styles.stepperBtn, manualSteps <= 0 && styles.stepperBtnDisabled]} onPress={() => handleStep(-1)} disabled={manualSteps <= 0}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove one simulated class" style={[styles.stepperBtn, activeSteps <= 0 && styles.stepperBtnDisabled]} onPress={() => handleStep(-1)} disabled={activeSteps <= 0}>
                         <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>-</Text>
                     </TouchableOpacity>
                     <View style={styles.stepperValueContainer}>
                         <Text style={styles.stepperValue}>{activeSteps}</Text>
-                        <Text style={styles.stepperUnit}>{classLabel}</Text>
+                        <Text style={styles.stepperUnit}>{activeSteps === 1 && classLabel === 'classes' ? 'class' : classLabel}</Text>
                     </View>
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add one simulated class pair" style={[styles.stepperBtn, activeSteps >= maxSimulatorSteps && styles.stepperBtnDisabled]} onPress={() => handleStep(1)} disabled={activeSteps >= maxSimulatorSteps}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add one simulated class" style={[styles.stepperBtn, activeSteps >= maxSimulatorSteps && styles.stepperBtnDisabled]} onPress={() => handleStep(1)} disabled={activeSteps >= maxSimulatorSteps}>
                         <Text style={[styles.stepperActionText, { color: mode === 'skip' ? COLORS.danger : COLORS.success }]}>+</Text>
                     </TouchableOpacity>
                 </View>
@@ -171,6 +167,12 @@ export default function WhatIfSimulator({ subjectData, initialMode = 'skip', sim
                     </Text>
                 </View>
             </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 }}>
+                <Text style={styles.progressLabel}>Preview · records unchanged</Text>
+                {activeSteps > 0 && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Reset simulation" onPress={() => setSimulationOffset(0)} style={{ minHeight: 44, paddingHorizontal: 8, justifyContent: 'center' }}><Text style={styles.planCtaText}>Reset</Text></TouchableOpacity>}
+            </View>
+            {plannableClasses[0]?.assumed && <Text style={styles.progressLabel}>Estimated weekday classes · connect a timetable for exact dates.</Text>}
 
             <View style={styles.insightPill}>
                 <View style={[styles.insightDot, { backgroundColor: insight.color }]} />
@@ -235,6 +237,8 @@ const getStyles = () => StyleSheet.create({
         borderColor: COLORS.border,
     },
     modeBtn: {
+        minHeight: 48,
+        justifyContent: 'center',
         paddingHorizontal: 12,
         paddingVertical: 5,
         borderRadius: BORDER_RADIUS.full,
@@ -331,6 +335,7 @@ const getStyles = () => StyleSheet.create({
         flex: 1,
     },
     planCta: {
+        minHeight: 48,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

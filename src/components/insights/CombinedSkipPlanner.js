@@ -33,6 +33,7 @@ export default function CombinedSkipPlanner({ navigation, initialSubjectId }) {
     const [page, setPage] = useState(null);
     const [selectedDay, setSelectedDay] = useState(null);
     const [subjectFilter, setSubjectFilter] = useState(initialSubjectId || null);
+    const [undoPlan, setUndoPlan] = useState(null);
     const plan = useMemo(() => getSavedSkipPlan(state, preferences), [state, preferences]);
     const validBudget = /^\d+$/.test(budget) && Number.isSafeInteger(Number(budget));
     const events = plan?.weeks.flatMap((week) => week.classes) || [];
@@ -58,7 +59,7 @@ export default function CombinedSkipPlanner({ navigation, initialSubjectId }) {
     const paused = !plan || !!plan.warnings.length;
     const overBudget = plan?.weeks.some((week) => week.overBudget);
     const selectedWeek = plan?.weeks[focusWeek];
-    const setPreferences = (next) => dispatch({ type: 'UPDATE_SETTINGS', payload: { skipPlan: next } });
+    const setPreferences = (next) => { setUndoPlan(preferences); dispatch({ type: 'UPDATE_SETTINGS', payload: { skipPlan: next } }); };
     const openSettings = () => { setPanelMode('settings'); setBudget(String(preferences.pairsPerWeek)); setWeeks(preferences.weeks); setSettingsOpen(true); };
     const toggle = (cls) => {
         const ids = new Set(events.filter((event) => event.action === 'skip').map((event) => event.id));
@@ -105,13 +106,18 @@ export default function CombinedSkipPlanner({ navigation, initialSubjectId }) {
             {classes.length ? classes.map((cls) => {
                 const tint = subjectTint(cls.subjectId, state.subjects), skip = cls.action === 'skip';
                 return <TouchableOpacity key={cls.id} accessibilityRole="checkbox" accessibilityLabel={`Skip ${cls.subjectName} on ${cls.dateKey} at ${cls.startTime}, ${cls.pairs} full pairs`} aria-checked={skip} accessibilityState={{ checked: skip, disabled: paused }} disabled={paused} onPress={() => toggle(cls)} style={[styles.classRow, { backgroundColor: tint.bg }, cls.unsafe && { borderColor: COLORS.dangerText }]}>
-                    <View style={[styles.subjectDot, { backgroundColor: tint.accent }]} /><View style={styles.flex}><Text style={[styles.body, { fontWeight: '700' }]}>{shortSubjectName(cls.subjectName, 12)}</Text><Text style={styles.caption}>{formatTimeRange(cls.startTime, cls.endTime)} · {cls.units} lectures</Text></View>
+                    <View style={[styles.subjectDot, { backgroundColor: tint.accent }]} /><View style={styles.flex}><Text style={[styles.body, { fontWeight: '700' }]}>{shortSubjectName(cls.subjectName, 12)}</Text><Text style={styles.caption}>{formatTimeRange(cls.startTime, cls.endTime)} · {cls.units} lectures</Text><Text style={cls.unsafe ? styles.warning : styles.caption}>{pct(cls.percentageAfter)} after this class{cls.unsafe ? ' · below minimum' : ''}</Text></View>
                     <View style={[styles.choice, { backgroundColor: skip ? PAPER.apricot : PAPER.sage }]}><Icon name={skip ? 'skip' : 'attend'} color={skip ? PAPER.apricotInk : PAPER.sageInk} /><Text style={[styles.body, { color: skip ? PAPER.apricotInk : PAPER.sageInk }]}>{skip ? 'Skip' : 'Attend'}</Text></View>
                 </TouchableOpacity>;
             }) : <Text style={styles.empty}>{subjectFilter ? 'No classes for this subject.' : 'No classes on this day.'}</Text>}
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="View all subject projections and recovery" onPress={() => { setPanelMode('details'); setDetails(true); }} style={[styles.summary, { backgroundColor: risky.length || paused ? PAPER.apricot : PAPER.sage }]}>
                 <View style={styles.flex}><Text style={styles.body}>{paused ? 'Check your records & timetable' : risky.length ? 'A subject needs attention' : overBudget ? 'Over your weekly budget' : 'Your attendance with this plan'}</Text><Text style={styles.caption}>{paused ? plan?.warnings[0] : risky.length ? 'An earlier skip crosses a minimum' : `Through ${dateLabel(end)} · tap for subjects`}</Text></View><Text style={[styles.heading, { color: risky.length ? COLORS.dangerText : COLORS.successText }]}>{plan ? pct(plan.overall.projectedPercentage) : '—'}</Text>
             </TouchableOpacity>
+            <View style={[styles.legendMarks, { flexWrap: 'wrap' }]}>
+                <TouchableOpacity accessibilityRole="button" onPress={() => setPreferences({ ...preferences, skipIds: [] })} style={styles.smallButton}><Text style={styles.link}>Attend all</Text></TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" disabled={paused} onPress={() => setPreferences({ ...preferences, skipIds: null })} style={[styles.smallButton, paused && styles.disabled]}><Text style={styles.link}>Balance skips</Text></TouchableOpacity>
+                {undoPlan && <TouchableOpacity accessibilityRole="button" onPress={() => { dispatch({ type: 'UPDATE_SETTINGS', payload: { skipPlan: undoPlan } }); setUndoPlan(null); }} style={styles.smallButton}><Text style={styles.link}>Undo change</Text></TouchableOpacity>}
+            </View>
             {paused && <View style={styles.legendMarks}><TouchableOpacity accessibilityRole="button" disabled={!triggerErpSync || isErpSyncing} onPress={() => triggerErpSync?.(true)} style={styles.smallButton}><Text style={styles.link}>{isErpSyncing ? 'Syncing…' : 'Sync college records'}</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" onPress={() => navigation?.navigate('EditTimetable')} style={styles.smallButton}><Text style={styles.link}>Edit timetable</Text></TouchableOpacity></View>}
             <Text style={styles.preview}>Preview only · attend the other classes</Text>
         </ScrollView>
@@ -139,6 +145,7 @@ export default function CombinedSkipPlanner({ navigation, initialSubjectId }) {
                         <Text style={styles.caption}>Fewer skips when needed to protect each subject’s minimum. Your attendance stays unchanged.</Text>
                         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Save balanced weekly plan" accessibilityState={{ disabled: !validBudget }} disabled={!validBudget} onPress={() => { setPreferences({ pairsPerWeek: Number(budget), weeks, skipIds: null }); closePanel(); setSelectedDay(null); setPage(null); }} style={[styles.primaryButton, !validBudget && styles.disabled]}><Text style={styles.primaryText}>{saved ? 'Update my plan' : 'Build my plan'}</Text><Icon name="next" color={PAPER.sageInk} /></TouchableOpacity>
                     </> : <>
+                        {plan?.warnings.map((warning) => <Text key={warning} accessibilityRole="alert" style={styles.warning}>{warning}</Text>)}
                         <Text style={styles.caption}>Projections assume you attend the other classes.</Text>
                         {plan?.subjects.map((subject) => { const tint = subjectTint(subject.id, state.subjects); return <TouchableOpacity key={subject.id} accessibilityRole="button" accessibilityLabel={`Focus calendar on ${subject.name}`} onPress={() => { setSubjectFilter(subject.id); setSelectedDay(null); setDetails(false); }} style={[styles.detailSubject, { backgroundColor: tint.bg }]}><Text style={styles.heading}>{shortSubjectName(subject.name)}</Text><Text style={styles.body}>{pct(subject.currentPercentage)} → {pct(subject.projectedPercentage)} · {subject.target}% minimum</Text><Text style={styles.caption}>{subject.skipNowPairs ?? 'Unlimited'} pairs available now · {subject.skippedPairs} planned</Text>{!!subject.unsafeSkips && <Text style={styles.warning}>A skip crosses this subject’s minimum.</Text>}<Text style={styles.caption}>{subject.recordedA}/{subject.recordedT} → {subject.a}/{subject.t} lectures</Text><Text style={styles.caption}>Recover previous: {subject.recoverPreviousPairs === null ? 'unreachable' : `${subject.recoverPreviousPairs} full pairs`}</Text></TouchableOpacity>; })}
                         <Text style={styles.heading}>Numbers & recovery</Text><Text style={styles.body}>Recorded {plan?.overall.attended}/{plan?.overall.conducted} · projected {plan?.overall.projectedA}/{plan?.overall.projectedT} lectures</Text><Text style={styles.caption}>Consecutive full pairs after this plan</Text>
